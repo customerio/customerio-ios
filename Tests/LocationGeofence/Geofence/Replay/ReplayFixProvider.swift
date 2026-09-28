@@ -5,57 +5,37 @@ import Foundation
 
 /// What `CLLocationManager.location` answered, as the drive recorded it.
 ///
-/// This is one half of `FakeLocationAuthority`: the authority is the seam, this is the answer
-/// book behind it. The SDK's own `+Fixes` code then decides what the answer means — whether the
-/// cache or the resolver's fix is fresher, what provenance to stamp on it, and whether to log it.
-/// Nothing here labels a fix or picks between fixes; a replay that did either would be deciding
-/// something the SDK is supposed to decide.
+/// The answer book behind `FakeLocationAuthority`. The SDK's own `FixSelection` code decides what
+/// an answer means (cache vs resolver, provenance, logging); nothing here labels or picks a fix.
 ///
-/// **A pulled fix is state, not an event.** `CLLocationManager.location` is a value the OS keeps and
-/// the SDK reads whenever it needs one. The log line is written at the moment of the *read*, and
-/// the read happens inside work an earlier stimulus started — the registration ledger reads the
-/// cache in the middle of a sync that a bus fix kicked off a second earlier. Replaying those records
-/// as stimuli in sequence would deliver the value after the decision that needed it.
+/// **A pulled fix is state, not an event.** The log line is written at the *read*, which happens
+/// inside work an earlier stimulus started (e.g. the registration ledger reading mid-sync).
+/// Replaying those records as stimuli would deliver the value after the decision that needed it.
 ///
-/// **Indexed by stimulus window, not by clock.** The obvious rule — "the newest sample at or before
-/// the clock" — is off by one window and quietly wrong. Virtual time only advances at stimulus
-/// boundaries, so while the SDK does the work triggered by the stimulus at `t`, the clock still
-/// reads `t`, and every sample that work produced was recorded *after* `t`. Looking backwards
-/// therefore never finds the current window's own samples; it reaches into the previous phase of
-/// the drive. On the 2026-09-09 iPhone drive that answered a registration-time read with a position
-/// recorded thirty minutes and two kilometres later, and the SDK confidently decided it was inside
-/// the wrong fence.
+/// **Indexed by stimulus window, not by clock.** Virtual time only advances at stimulus
+/// boundaries, so while the SDK works on the stimulus at `t` the clock reads `t`, and every sample
+/// that work produced was recorded *after* `t`. "Newest sample at or before the clock" would
+/// answer from the previous phase of the drive. A window the SDK reads in but the drive recorded
+/// nothing for is reported, not approximated.
 ///
-/// So samples are grouped by the stimulus they were recorded under, and a read is answered from the
-/// window it happens in. A window the SDK reads in but the drive recorded nothing for is not
-/// approximated — it is reported, because that is the replay having no answer rather than a
-/// different one.
-///
-/// **What this deliberately does not assert.** Not how many times the SDK reads, not in what order,
-/// and not from which call site. Within a window the samples are served in recorded order and the
-/// last one repeats once exhausted, so adding, removing or reordering reads inside a window changes
-/// nothing. Those are implementation. What it does catch is the SDK reading during a phase of the
-/// drive where it previously did not read at all — a change in behaviour, not a refactor.
+/// **Not asserted:** how many times, in what order, or from where the SDK reads within a window —
+/// samples are served in recorded order and the last repeats. What is caught is the SDK reading
+/// in a phase of the drive where it did not read at all.
 @MainActor
 final class ReplayFixProvider {
     /// One recorded read of the OS cache.
     ///
-    /// **`at` places it, `age` describes it, and the two must not be mixed.** `at` is the drive's
-    /// clock saying *when the SDK looked*; it decides which stimulus window the answer belongs to
-    /// and nothing else. `age` is *how stale the position already was* when it was looked at, and
-    /// it is the only part the SDK ever reasons about.
+    /// `at` is when the SDK looked, and only picks the stimulus window. `age` is how stale the
+    /// position already was, and is the only part the SDK reasons about.
     struct CachedRead {
         let at: TimeInterval
-        /// `nil` is a read that found nothing — the capture writes it `prov=none`, and it is a
-        /// recorded answer rather than a missing record.
+        /// `nil` is a read that found nothing (`prov=none`): a recorded answer, not a missing record.
         let location: LocationData?
         let accuracy: Double
         let age: TimeInterval
     }
 
-    /// The stimuli that drive work, in order. Records the runner treats as no-ops are excluded —
-    /// pulls, and the inert app-state lines — because letting one define a boundary would split a
-    /// window the SDK ran as a single phase. See `ReplayRunner.isStimulus`.
+    /// The stimuli that drive work, in order. See `ReplayRunner.isStimulus`.
     private var stimulusTimes: [TimeInterval] = []
     /// Recorded answers, grouped by the window they were recorded in.
     private var samplesByWindow: [Int: [CachedRead]] = [:]
@@ -92,9 +72,7 @@ final class ReplayFixProvider {
         samplesByWindow = [:]
         cursorByWindow = [:]
         carriedByWindow = [:]
-        // Accounting belongs to the drive being loaded. Left standing, a second `load` on the same
-        // provider reports the previous drive's reads — and `pullAccounting` is diagnostic output,
-        // so it would be believed.
+        // Accounting belongs to the drive being loaded, not a previous `load`.
         pullCount = 0
         unansweredWindows = []
         for sample in samples.sorted(by: { $0.at < $1.at }) {
@@ -107,19 +85,11 @@ final class ReplayFixProvider {
 
     /// One read of the OS cache, answered from the drive.
     ///
-    /// A `CLLocation` rather than a `GeofenceFix`, because that is what the OS hands over and the
-    /// SDK's own `selectFix()` is what turns one into the other.
-    ///
-    /// **The timestamp is built here, at the moment of the read, and never at load time.** The
-    /// recording and the replay run on different clocks: virtual time only moves at a stimulus or a
-    /// boundary release, so it stands still while the SDK reacts, while the drive went on recording.
-    /// Dating a fix from the drive's clock therefore hands the SDK a position born *after* its own
-    /// `now` — and with `age=0` on nearly every recorded read, that is not an edge case but the
-    /// normal one. The SDK measures staleness as `now - timestamp`, gets a negative number, and
-    /// every rule that reads it (`BaselineHealDecision`'s `fixAge >= 0`, and so the contradiction
-    /// gate and the baseline heal above it) fails open without saying so. Applying the recorded age
-    /// against the clock at the instant of the read gives the SDK exactly the staleness the phone
-    /// measured, whatever the clock is quantised to.
+    /// **The timestamp is built at the moment of the read, never at load time.** Virtual time
+    /// stands still while the SDK reacts, so dating a fix from the drive's clock would put it after
+    /// the SDK's `now`. The negative age then fails `BaselineHealDecision`'s `fixAge >= 0` guard,
+    /// silently disabling the contradiction gate and the heal. `now - age` gives the SDK exactly
+    /// the staleness the phone measured.
     func nextCachedLocation() -> CLLocation? {
         pullCount += 1
         guard let sample = nextSampleInCurrentWindow(), let location = sample.location else { return nil }
@@ -136,9 +106,8 @@ final class ReplayFixProvider {
         )
     }
 
-    /// Loads the answers the drive's fresh-fix requests received. Only a capture whose
-    /// `fix.received` carries accuracy can supply them; older ones load none, and every request
-    /// falls back to `currentPosition()`.
+    /// Loads the answers the drive's fresh-fix requests received. Captures whose `fix.received`
+    /// lacks accuracy load none, and every request falls back to `currentPosition()`.
     func loadRequestedAnswers(_ answers: [CachedRead]) {
         requestedAnswers = answers.sorted { $0.at < $1.at }
         answerCursor = 0
@@ -148,11 +117,9 @@ final class ReplayFixProvider {
     /// request's timeout. Consumed, so one answer serves one request.
     ///
     /// Looked up ahead rather than delivered at its recorded time, because the replay's request
-    /// timeout fires immediately. In the car the answer arrived seconds after the request and was
-    /// what the pass decided from — on the 2026-09-24 iPhone drive, 29.6 m ten seconds later, where
-    /// the cached read at the request was 34.2 m and left one polygon undecided. Answers the replay
-    /// has already moved past (a request it no longer makes) are skipped, never handed to a later
-    /// request.
+    /// timeout fires immediately while in the car the answer arrived seconds later and was what the
+    /// pass decided from. Answers the replay has already moved past are skipped, never handed to a
+    /// later request.
     func requestedAnswer(within timeout: TimeInterval) -> CLLocation? {
         while answerCursor < requestedAnswers.count, requestedAnswers[answerCursor].at < now {
             answerCursor += 1
@@ -174,11 +141,9 @@ final class ReplayFixProvider {
 
     /// The drive's position right now, WITHOUT consuming a cache read.
     ///
-    /// A fresh-fix request is the OS answering from current GPS, not a walk of the recorded
-    /// cache-read stream, so it must neither advance the cursor nor count as a pull. Consuming here
-    /// let the first polygon's request in an os-transition pass eat the window's only sample, so
-    /// every polygon after it saw `no_usable_fix`. The callback's own carried position is the read
-    /// the drive made at this stimulus; a plain `location.fix` sample answers a window without one.
+    /// A fresh-fix request is the OS answering from current GPS, not a cache read, so it must not
+    /// advance the cursor or count as a pull (it would eat the window's only sample). Prefers the
+    /// callback's carried position, then the window's first `location.fix` sample.
     func currentPosition() -> CLLocation? {
         let index = window(at: now)
         guard let read = carriedByWindow[index] ?? samplesByWindow[index]?.first,
@@ -194,12 +159,9 @@ final class ReplayFixProvider {
 
     /// Whether every read the SDK made landed in a window the drive actually recorded.
     func pullAccounting() -> String? {
-        // Only a drive that *records* cache reads can be accounted against them. An Android
-        // capture has none — that platform is told its positions on the bus and never reads
-        // `CLLocationManager`, so every `location.fix` it writes is an arrival. Replaying one here
-        // still exercises the iOS composition, which does read the cache, and the callbacks' own
-        // carried positions answer most of those reads; the windows they do not cover are a gap in
-        // what the other platform can express, not a replay that wandered off the drive.
+        // Only a drive that records cache reads can be accounted against them. An Android capture
+        // has none (every `location.fix` there is an arrival), so its uncovered windows are a gap in
+        // what that platform records, not a replay that wandered off the drive.
         guard !samplesByWindow.isEmpty else { return nil }
         guard !unansweredWindows.isEmpty else { return nil }
         let stamps = unansweredWindows.sorted().map { index -> String in
@@ -222,22 +184,15 @@ final class ReplayFixProvider {
     private func nextSampleInCurrentWindow() -> CachedRead? {
         let index = window(at: now)
         guard let samples = samplesByWindow[index], !samples.isEmpty else {
-            // The callback's own line carries the read the SDK made to write it, so a callback
-            // window is never legitimately empty — `logReceivedCallback` calls `bestKnownFixDetail`
-            // and *then* logs, which is exactly why the two can land on either side of a
-            // millisecond in a capture that stamps to the millisecond. On the 2026-09-12 iPhone
-            // drive two of fifteen callbacks in one relaunch storm straddled a tick that way, and
-            // the read the transform filed under the previous stimulus left theirs with nothing.
-            //
-            // Last resort, never a supplement: the recorded `location.fix` lines stay the answer
-            // wherever the window has them, so a window the SDK reads in and the drive genuinely
-            // recorded nothing for is still reported.
+            // `logReceivedCallback` reads and *then* logs, so the read's `location.fix` line can land
+            // a millisecond tick before the callback and be filed under the previous stimulus. The
+            // callback's carried read covers that. Last resort only, so a window with genuinely no
+            // recorded read is still reported.
             if let carried = carriedByWindow[index] { return carried }
             unansweredWindows.insert(index)
             return nil
         }
-        // Served in recorded order; the last repeats once exhausted, so the number of reads the SDK
-        // makes is not an assertion.
+        // Served in recorded order; the last repeats once exhausted.
         let cursor = min(cursorByWindow[index, default: 0], samples.count - 1)
         cursorByWindow[index] = cursor + 1
         return samples[cursor]

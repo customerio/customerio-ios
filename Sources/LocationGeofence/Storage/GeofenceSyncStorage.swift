@@ -1,9 +1,7 @@
 import CioInternalCommon
 import Foundation
 
-/// Narrow storage interface for `GeofenceSyncCoordinator`. Exposes only the reads and
-/// writes the sync pipeline needs; cooldown methods stay on `GeofenceStorage` for
-/// `GeofenceEventTracker`.
+/// The storage reads and writes `GeofenceSyncCoordinator` needs, and nothing else.
 protocol GeofenceSyncStorage: Sendable {
     func getCachedConfig() async -> GeofenceConfig?
     func getCachedGeofences() async -> [Geofence]

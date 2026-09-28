@@ -1,18 +1,12 @@
 import Foundation
 
 /// Server-driven geofence configuration. Each field overrides the corresponding fallback
-/// constant in `GeofenceConstants`; `GeofenceConfig.fallback` mirrors those constants for
-/// callers that need a fully-formed default.
+/// constant in `GeofenceConstants`; `fallback` mirrors those constants.
 ///
-/// Persisted alongside the cached business geofences in `GeofenceState`. Decoders are
-/// responsible for per-field sanitization (positive numerics, in-range counts) so any
-/// `GeofenceConfig` instance is already valid.
-///
-/// `maxBusinessGeofences` is 0…19 on iOS: 20 monitored regions total, one slot reserved
-/// for the SDK-built movement-trigger geofence. `0` is a valid server-side kill switch —
-/// disables business region registration for the account without uninstalling the SDK.
+/// Persisted in `GeofenceState`. `GeofenceApiConfig.toDomain` sanitizes every field, so any
+/// instance is already valid.
 struct GeofenceConfig: Codable, Equatable, Sendable {
-    /// Movement-trigger geofence radius in meters. Default 3000m.
+    /// Movement-trigger geofence radius in meters.
     let localRefreshTriggerRadius: Double
     /// Distance in meters from the last server fetch that triggers a fresh nearby fetch.
     let remoteFetchRefreshTriggerRadius: Double
@@ -21,15 +15,14 @@ struct GeofenceConfig: Codable, Equatable, Sendable {
     let remoteFetchRefreshExpiry: TimeInterval
     /// Duplicate-transition suppression window keyed by "userId:geofenceId:transitionType".
     let duplicateEventsExpiry: TimeInterval
-    /// Maximum number of business geofences to monitor. Always 0…19 on iOS (movement
-    /// trigger consumes the 20th OS slot). `0` is the server-driven kill switch: nothing
-    /// registers, not even the movement trigger.
+    /// Maximum number of business geofences to monitor. Always 0…19 on iOS (the movement
+    /// trigger takes the 20th OS slot). `0` is the server-driven kill switch: nothing registers,
+    /// not even the movement trigger.
     let maxBusinessGeofences: Int
     /// Maximum distance in meters from the device at which a geofence is registered with the OS.
     /// Geofences beyond it are skipped and re-added by a later re-rank as the device moves closer;
-    /// `GeofenceConstants.noMonitoringDistanceCap` means no cap. The server value and `fallback`
-    /// apply `GeofenceConstants.defaultMaxMonitoringDistance` when the server omits it (see
-    /// `GeofenceApiConfig.toDomain`).
+    /// `GeofenceConstants.noMonitoringDistanceCap` means no cap. Defaults to
+    /// `GeofenceConstants.defaultMaxMonitoringDistance` when the server omits it.
     let maxMonitoringDistance: Double
 }
 

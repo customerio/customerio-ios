@@ -51,12 +51,11 @@ struct GeofenceMonitorBinderTests {
                 fileManager: .default,
                 directoryURL: FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
             ),
-            // Private centre, not `.default`: the resolver subscribes to
-            // `willEnterForeground`, and the suite runs in parallel inside a real app. One
-            // foregrounding starts a pass on every live resolver, and an unrelated test's pass
-            // holds `passesInFlight` long enough for the pass under test to take the
-            // already-running short-circuit and log nothing.
             fixResolver: fixResolver ?? MovementFixResolver(logger: LoggerMock()),
+            // Private centre, not `.default`: the resolver subscribes to `willEnterForeground`,
+            // and one foregrounding starts a pass on every live resolver in the process. An
+            // unrelated test's pass then holds `passesInFlight`, and the pass under test takes the
+            // already-running short-circuit and logs nothing.
             notificationCenter: NotificationCenter()
         )
     }
@@ -109,15 +108,12 @@ struct GeofenceMonitorBinderTests {
         return mock
     }
 
-    /// Polls the fire-and-forget Task created inside the transition handler. Bounded so a
+    /// Polls the fire-and-forget Task created inside the transition handler, bounded so a
     /// regression doesn't hang the suite.
     ///
-    /// Yields first, which settles the short paths in microseconds, then falls back to sleeping.
-    /// Yield-only is not enough: the polygon paths reach storage and a fix request before the
-    /// coordinator is touched, and 50 yields elapse almost instantly when this suite runs on its
-    /// own. Measured — the polygon enter tests passed only while the resolver suite ran alongside
-    /// them and failed 3/3 when this suite ran alone, so a yield-only wait makes the result depend
-    /// on which OTHER tests happen to be running.
+    /// Yields first for the short paths, then sleeps. Yield-only is not enough: the polygon paths
+    /// reach storage and a fix request before the coordinator, and 50 yields elapse almost
+    /// instantly when this suite runs alone.
     private func awaitDispatch(_ condition: @autoclosure () -> Bool) async {
         for _ in 0 ..< 50 {
             if condition() { return }
@@ -180,8 +176,8 @@ struct GeofenceMonitorBinderTests {
         #expect(coordinator.handleMovementReceivedArguments?.anchorIsLiveFix == false)
     }
 
-    /// We only register the movement trigger for `.exit`; an unexpected `.enter` on the
-    /// reserved identifier must NOT fall through to either the tracker or the coordinator.
+    /// The movement trigger registers `.exit` only; a stray `.enter` must reach neither the tracker
+    /// nor the coordinator.
     @Test
     func bind_givenMovementTriggerEnter_expectNeitherDispatchPathFires() async {
         let monitor = MockGeofenceRegionMonitor()
@@ -242,12 +238,10 @@ struct GeofenceMonitorBinderTests {
             identifier: "business-region-1",
             transition: .enter,
             location: LocationData(latitude: 37.0, longitude: -122.0),
-            // The production value on both monitors: a business event carries coordinates that
-            // were not obtained for it. The mock defaults to true, which would let a binder that
-            // hardcoded `anchorIsLiveFix: true` pass.
+            // The production value on both monitors. The mock defaults to true, which would let a
+            // binder that hardcoded `anchorIsLiveFix: true` pass.
             locationIsFresh: false
         )
-        // Tracker dispatch is observable via the delivery mock's call count.
         await awaitDispatch(delivery.trackMetricCallsCount > 0)
         await awaitDispatch(coordinator.refreshCallsCount > 0)
 
@@ -256,13 +250,12 @@ struct GeofenceMonitorBinderTests {
         #expect(coordinator.refreshCallsCount == 1)
         #expect(coordinator.refreshReceivedArguments?.latitude == 37.0)
         #expect(coordinator.refreshReceivedArguments?.longitude == -122.0)
-        // The flag that decides the trigger radius, so the one that matters most here.
+        // Decides the trigger radius.
         #expect(coordinator.refreshReceivedArguments?.anchorIsLiveFix == false)
     }
 
-    /// The refresh anchors on the crossing's own coordinates, so without one there is nothing to
-    /// anchor to. Returning early is correct; passing a placeholder would re-rank the whole set
-    /// around the equator.
+    /// The refresh anchors on the crossing's own coordinates. A placeholder would re-rank the whole
+    /// set around the equator.
     @Test
     func bind_givenBusinessGeofenceTransitionWithoutLocation_expectNoRefresh() async {
         let monitor = MockGeofenceRegionMonitor()
@@ -273,8 +266,8 @@ struct GeofenceMonitorBinderTests {
         let resolver = makeResolver(tracker: tracker)
         GeofenceMonitorBinder.bind(monitor: monitor, resolver: resolver, coordinator: coordinator, logger: LoggerMock())
         monitor.simulateTransition(identifier: "business-region-1", transition: .enter, location: nil)
-        // Anchored on a positive barrier ordered after the same handler, not on bare yields: a
-        // count that is zero because nothing has run yet proves nothing.
+        // A positive barrier from the same handler first: a zero count before anything ran
+        // proves nothing.
         await awaitDispatch(delivery.trackMetricCallsCount > 0)
         for _ in 0 ..< 10 {
             await Task.yield()
@@ -283,9 +276,8 @@ struct GeofenceMonitorBinderTests {
         #expect(coordinator.refreshCallsCount == 0)
     }
 
-    /// The trigger EXIT already refreshes through `handleMovement`. If it ALSO reached `refresh`
-    /// the two would race for the same gate and one would be dropped as `alreadyInProgress` —
-    /// which is exactly the lost refresh this change exists to prevent.
+    /// The trigger EXIT already refreshes through `handleMovement`. Also calling `refresh` would
+    /// race for the same gate, and one would be dropped as `alreadyInProgress`.
     @Test
     func bind_givenMovementTriggerExit_expectRefreshNotAlsoRequested() async {
         let monitor = MockGeofenceRegionMonitor()
@@ -344,10 +336,9 @@ struct GeofenceMonitorBinderTests {
         #expect(await storage.getPolygonMembership()["poly-1"]?.membership == .inside)
     }
 
-    /// The dead-zone fix. Entering a polygon's covering circle leaves the device beside a boundary
-    /// the OS cannot report, and the wake is sized only at registration time — so the crossing that
-    /// usually follows within minutes has nothing to wake it. Measured in the field: a circle entry
-    /// 45 m from the ring, then 11 minutes of silence.
+    /// Entering a polygon's covering circle leaves the device beside a boundary the OS cannot
+    /// report, and the wake is sized only at registration, so the crossing that usually follows has
+    /// nothing to wake it.
     ///
     /// `handleMovement`, not `refresh`: `refresh` answers `.skip` unless the device moved a full
     /// refresh radius from the last registration centre, and `.skip` never touches the trigger.
@@ -374,11 +365,9 @@ struct GeofenceMonitorBinderTests {
         #expect(coordinator.handleMovementCallsCount == 1)
     }
 
-    /// The re-arm must be sized against the fix the membership pass obtained, NOT the crossing's
-    /// own coordinates. Business events dispatch with `locationIsFresh == false` on both monitor
-    /// paths, and the coordinator widens the trigger to the full refresh radius for any anchor that
-    /// is not a live fix — so passing the callback's location through would install the widest
-    /// possible wake in the one case that needs the tightest, and the test would still be green.
+    /// The re-arm is sized against the membership pass's fix, not the crossing's coordinates.
+    /// Business events carry `locationIsFresh == false`, and the coordinator widens the trigger to
+    /// the full refresh radius for a non-live anchor: the widest wake where the tightest is needed.
     @Test
     func bind_givenPolygonCoveringCircleEnter_expectTheResolversFixNotTheCallbacks() async {
         let monitor = MockGeofenceRegionMonitor()
@@ -403,18 +392,14 @@ struct GeofenceMonitorBinderTests {
         let arguments = coordinator.handleMovementReceivedArguments
         #expect(arguments?.latitude == Self.insideFix.coordinate.latitude)
         #expect(arguments?.longitude == Self.insideFix.coordinate.longitude)
-        // The whole point: a non-live anchor makes the coordinator widen the trigger to maximum.
         #expect(arguments?.anchorIsLiveFix == true)
     }
 
-    /// The coordinates alone are not enough. The re-arm starts a membership pass over every
-    /// registered polygon, and that pass forces a fix strictly newer than the last one this
-    /// resolver delivered — which is the entry's own. Left to request one, it is refused and every
-    /// polygon records `no_usable_fix`, so the crossing this path exists to catch goes undecided.
+    /// The re-arm's membership pass demands a fix strictly newer than the resolver's last, which is
+    /// the entry's own. Left to request one, every polygon records `no_usable_fix`.
     ///
-    /// Asserted on the argument rather than on the pass: the pass runs behind `DIGraphShared`.
-    /// Accuracy and timestamp are checked too — membership judges against both, so a fix that
-    /// arrived stripped of them would be judged on different terms than the one that was taken.
+    /// Asserted on the argument because the pass runs inside the coordinator, mocked here.
+    /// Accuracy and timestamp are checked too: membership judges against both.
     @Test
     func bind_givenPolygonCoveringCircleEnter_expectTheResolvedFixTravelsToTheReArm() async {
         let monitor = MockGeofenceRegionMonitor()
@@ -494,9 +479,9 @@ struct GeofenceMonitorBinderTests {
         #expect(coordinator.refreshCallsCount == 1)
     }
 
-    /// Regression guard for the crossing-refresh #1296 added. `handleMovement` refetches on
-    /// distance and on a missing anchor, never on AGE, so re-arming alone would leave a
-    /// time-expired catalog stale on a circle entry made without moving a refetch radius.
+    /// `handleMovement` refetches on distance and on a missing anchor, never on age, so re-arming
+    /// alone would leave a time-expired catalog stale on a circle entry made without moving a
+    /// refetch radius.
     @Test
     func bind_givenPolygonCoveringCircleEnter_expectCatalogStillRefreshed() async {
         let monitor = MockGeofenceRegionMonitor()
@@ -526,12 +511,11 @@ struct GeofenceMonitorBinderTests {
 
     // MARK: - Visit wake
 
-    /// The in-circle dead zone has no edge to cross, so the only thing that can notice the device
-    /// is now inside a polygon is a re-evaluation. A visit has to start one.
+    /// The in-circle dead zone has no edge to cross, so only a re-evaluation can notice the device
+    /// is inside a polygon. A visit has to start one.
     ///
-    /// Asserted on the pass record rather than a verdict: with no fix available in a unit test the
-    /// pass decides nothing, and `n=0` is logged before the empty guard precisely so "a pass ran"
-    /// is observable independently of what it concluded.
+    /// Asserted on the pass record: no polygon is seeded, so the pass decides nothing, but its
+    /// start is logged before the empty guard.
     @Test
     func bindVisits_givenAnIdentifiedUser_expectAPolygonPassAndStaysArmed() async {
         let visitMonitor = MockGeofenceVisitMonitor()
@@ -550,21 +534,20 @@ struct GeofenceMonitorBinderTests {
 
         #expect(stayArmed == true)
         #expect(logger.debugReceivedInvocations.contains { $0.message.contains("(visit)") })
-        // `bindVisits` holds the resolver weakly, and nothing below touches it — without this
-        // ARC releases it at its last use and the pass silently never runs.
+        // `bindVisits` holds the resolver weakly; without this ARC can release it and the pass
+        // never runs.
         withExtendedLifetime(resolver) {}
     }
 
-    /// Shahroz's reproduction. A visit reports that the device ARRIVED, so any cached fix is from
-    /// before the arrival — reusing it decides from where the device was. Here the cached fix is
-    /// five seconds old and outside the ring while the device is inside it: the pass has to ask.
+    /// A visit reports that the device arrived, so any cached fix predates the arrival. Here the
+    /// cached fix is five seconds old and outside the ring while the device is inside it: the pass
+    /// has to ask.
     @Test
     func bindVisits_givenACachedFixFromBeforeTheArrival_expectTheCurrentFixRequested() async {
         let storage = makeStorage()
         await seedPolygon(in: storage)
         let contextStore = makeContextStore(userId: "user-1")
         let fixResolver = MovementFixResolver(logger: LoggerMock())
-        // Outside the ring and predating the visit, exactly what a pre-arrival cache holds.
         fixResolver.systemCachedFix = {
             CLLocation(
                 coordinate: CLLocationCoordinate2D(latitude: 0.02, longitude: 0.02),
@@ -572,7 +555,7 @@ struct GeofenceMonitorBinderTests {
                 timestamp: Date().addingTimeInterval(-5)
             )
         }
-        // Only a forced request reaches this, and it is the fix that decides the arrival.
+        // Only a forced request reaches this.
         fixResolver.requestFreshFix = { [weak fixResolver] in
             fixResolver?.handleResolvedFix(Self.insideFix)
         }
@@ -594,10 +577,8 @@ struct GeofenceMonitorBinderTests {
         withExtendedLifetime(resolver) {}
     }
 
-    /// Signed out, a visit has nothing to evaluate for. The handler must say so rather than spend
-    /// the wake, because its answer is what disarms monitoring — leaving it armed wakes the app
-    /// for a user we no longer act for. That the monitor then acts on the refusal is asserted in
-    /// `GeofenceVisitMonitorTests`; here only the answer is in scope.
+    /// Signed out, the handler's `false` is what disarms monitoring. The monitor acting on it is
+    /// covered in `GeofenceVisitMonitorTests`.
     @Test
     func bindVisits_givenNoIdentifiedUser_expectNoPassAndRefusal() async {
         let visitMonitor = MockGeofenceVisitMonitor()
@@ -611,16 +592,14 @@ struct GeofenceMonitorBinderTests {
             backgroundTaskRunner: NoBackgroundTaskRunner()
         )
         let stayArmed = visitMonitor.simulateVisit()
-        // Fixed wait, not a poll: this asserts an ABSENCE, and a poll returning early on
-        // "not logged yet" would pass before the pass had any chance to run.
+        // Fixed wait, not a poll: an absence cannot be polled for.
         try? await Task.sleep(nanoseconds: 300000000)
 
         #expect(stayArmed == false)
         #expect(!logger.debugReceivedInvocations.contains { $0.message.contains("(visit)") })
     }
 
-    /// A departure is as good a wake as an arrival: the device having left somewhere is equally
-    /// a reason to re-judge membership, and the handler must not filter on the edge.
+    /// A departure is as good a reason to re-judge membership as an arrival.
     @Test
     func bindVisits_givenADeparture_expectAPolygonPassToo() async {
         let visitMonitor = MockGeofenceVisitMonitor()
@@ -643,12 +622,9 @@ struct GeofenceMonitorBinderTests {
     }
 }
 
-/// Lets a visit test await the pass instead of polling for it.
-///
-/// `bindVisits` runs the pass in a `Task` the caller gets no handle on, so the only other option
-/// is a deadline — and a deadline on `@MainActor` work, under a suite that runs hundreds of tests
-/// in parallel, fails whenever the main actor stays busy past it. Measured at roughly one run in
-/// two before this.
+/// Lets a visit test await the pass instead of polling for it. `bindVisits` runs the pass in a
+/// `Task` with no handle, and a deadline on `@MainActor` work fails whenever parallel suites keep
+/// the main actor busy past it.
 private struct SignalingBackgroundTaskRunner: BackgroundTaskRunner {
     let finished: AsyncSignal
 

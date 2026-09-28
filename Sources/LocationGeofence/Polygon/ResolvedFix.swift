@@ -6,13 +6,13 @@ import Foundation
 /// is not requested twice.
 ///
 /// A value type rather than `CLLocation` because it crosses task boundaries: `CLLocation` is a
-/// reference type the compiler cannot prove immutable, and the three fields below are all any
-/// consumer reads.
+/// reference type the compiler cannot prove immutable, and the fields below are all any consumer
+/// reads.
 struct ResolvedFix: Equatable, Sendable {
     let latitude: Double
     let longitude: Double
     let horizontalAccuracy: CLLocationAccuracy
-    /// When the fix was taken — the field that decides whether a later pass may reuse it.
+    /// When the fix was taken; decides whether a later pass may reuse it.
     let timestamp: Date
 
     init(latitude: Double, longitude: Double, horizontalAccuracy: CLLocationAccuracy, timestamp: Date) {
@@ -31,13 +31,10 @@ struct ResolvedFix: Equatable, Sendable {
         )
     }
 
-    /// Rebuilt with the same accuracy and timestamp: membership judges against both, so a fix that
-    /// lost them on the way through would be judged on different terms than the pass that took it.
+    /// Keeps accuracy and timestamp, which membership judges against.
     ///
-    /// Altitude and vertical accuracy are NOT carried, and nothing on the membership path reads
-    /// them. Keep it that way: `alt=0` with no vertical accuracy is the signature our drive
-    /// analysis reads as a coarse cell fix, so routing one of these into `GeofenceLog.fixQuality`
-    /// would forge it.
+    /// Altitude and vertical accuracy are NOT carried. Keep this out of the fix-quality logs:
+    /// `alt=0` with no vertical accuracy is what drive analysis reads as a coarse cell fix.
     var location: CLLocation {
         CLLocation(
             coordinate: CLLocationCoordinate2D(latitude: latitude, longitude: longitude),

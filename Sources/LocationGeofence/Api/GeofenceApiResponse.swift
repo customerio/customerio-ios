@@ -190,8 +190,8 @@ extension GeofenceApiResponse {
         config?.toDomain()
     }
 
-    /// Regions the OS would reject (non-positive radius, out-of-range coordinates) are dropped
-    /// here so one bad server region costs itself, not a nearest-selection slot or the whole sync.
+    /// Regions that cannot be monitored (see `GeofenceRegionDropReason`) are dropped here and
+    /// reported, so one bad server region costs itself, not a nearest-selection slot or the sync.
     func toDomainRegions(onInvalidRegion: (String, GeofenceRegionDropReason) -> Void = { _, _ in }) -> [Geofence] {
         geofences.compactMap { region in
             switch region.toDomain() {
@@ -258,13 +258,13 @@ private extension Comparable {
 }
 
 extension GeofenceApiRegion {
-    /// `nil` when the region can't be registered as described: an unrecognized `shape`, a circle
-    /// missing or misreporting its geometry, or a polygon whose ring or enclosing circle fails the
-    /// acceptance rules below. Empty / nil / all-unknown `transition_types` fall back to
-    /// `[.enter, .exit]`; a mix of valid + unknown keeps just the valid subset. `lastUpdated`
-    /// defaults to epoch when missing so callers can compare without unwrapping. `name` is `nil`
-    /// when the server omits it (or sends an empty string), so the domain value is always either
-    /// `nil` or non-empty.
+    /// Fails when the region can't be registered as described: an unrecognized `shape`, polygon
+    /// fields with no `shape`, a circle missing or misreporting its geometry, or a polygon whose
+    /// ring or enclosing circle fails the acceptance rules below. Empty / nil / all-unknown
+    /// `transition_types` fall back to `[.enter, .exit]`; a mix of valid + unknown keeps just the
+    /// valid subset. `lastUpdated` defaults to epoch when missing so callers can compare without
+    /// unwrapping. `name` is `nil` when the server omits it (or sends an empty string), so the
+    /// domain value is always either `nil` or non-empty.
     func toDomain() -> Result<Geofence, GeofenceRegionDropReason> {
         let resolved: ResolvedGeometry?
         let dropReason: GeofenceRegionDropReason

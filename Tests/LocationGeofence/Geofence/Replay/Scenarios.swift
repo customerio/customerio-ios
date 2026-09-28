@@ -14,9 +14,7 @@ import Foundation
 /// **Under `xcodebuild`, prefix the variable with `TEST_RUNNER_`.** Simulator tests do not inherit
 /// the shell environment; only variables with that prefix are forwarded to the test process. A bare
 /// `CIO_GEOFENCE_SCENARIOS=… xcodebuild …` is silently ignored and the sibling checkout is used
-/// instead — which looks exactly like the override working, because the tests still run and still
-/// pass. It cost a bogus isolation check and a negative control that appeared to prove the matcher
-/// was asserting nothing.
+/// instead — which looks exactly like the override working, because the tests still run and pass.
 ///
 ///     TEST_RUNNER_CIO_GEOFENCE_SCENARIOS=/path/to/mobile-replay-harness/scenarios xcodebuild … test
 ///
@@ -59,18 +57,16 @@ enum Scenarios {
     /// it does not recognise.
     ///
     /// Discovery cannot throw — it feeds a `@Test` argument list, which is built before any test
-    /// runs — so an unreadable drive can only be *collected* here and reported by a case that does
-    /// run. Silently dropping it, which is what a bare `try?` does, lets the suite go green having
-    /// replayed fewer drives than exist: the precise failure this harness is built to refuse.
+    /// runs — so an unreadable drive is collected here and reported by a case that does run.
+    /// Dropping it silently would let the suite go green having replayed fewer drives than exist.
     private(set) static var unreadable: [String] = []
 
     /// Every scenario in the corpus whose header says it belongs on this composition, paired with
     /// the parsed scenario so a caller can filter further without re-reading the file.
     ///
     /// A header naming neither this platform, the other one, nor `any` is a broken file rather
-    /// than somebody else's drive, so it is reported rather than quietly skipped. Only a *load*
-    /// failure was recorded before, which left a misspelled `"platfrom"` key — or a stray `"iOS"`
-    /// — parsing cleanly, defaulting to `unknown`, and vanishing from the run with nothing said.
+    /// than somebody else's drive (a misspelled key or a stray `"iOS"` parses as `unknown`), so it
+    /// is reported rather than quietly skipped.
     private static let discovered: [(name: String, scenario: Scenario)] = {
         guard let root else { return [] }
         let files = (try? FileManager.default.contentsOfDirectory(atPath: root.path)) ?? []
@@ -98,9 +94,8 @@ enum Scenarios {
                     )
                     return false
                 }
-                // Validated, not defaulted, for the same reason as `platform`: defaulting a
-                // missing `source.kind` to `recorded` let an authored scenario with no `source`
-                // satisfy the "did discovery find any drives?" guard on its own.
+                // Validated, not defaulted, for the same reason as `platform`: an authored
+                // scenario counted as `recorded` would satisfy the "found any drives?" guard alone.
                 guard kinds.contains(scenario.header.sourceKind) else {
                     unreadable.append(
                         "\(name): header source.kind is \"\(scenario.header.sourceKind)\", "

@@ -2,31 +2,23 @@ import CioInternalCommon
 import CoreLocation
 import Foundation
 
-/// How a pass is sequenced over the polygons it judges, split from the resolver's core so both
-/// stay under the file cap. These are `internal` rather than `private` only because of that
-/// split; they remain implementation detail of the resolver.
+/// How a pass is sequenced over the polygons it judges, split from the resolver's core for the
+/// file cap. Members are `internal` only because of the split.
 extension PolygonMembershipResolver {
     /// Runs one pass over `geofenceIds` against a single fix in TWO phases: everything the fix
     /// alone can decide is settled first, and only then are the marginal arrivals corroborated.
     ///
-    /// The order is the point. Corroborating inline let one marginal polygon's request burn its
-    /// `movementFixRequestTimeout` in the middle of the loop, handing every polygon after it the
-    /// same fix ten seconds older — enough to push a fix that was decisive when the pass started
-    /// past `movementFixMaxAge` and have it refused as `fix_too_old`. An arrival at one venue then
-    /// depended on whether an unrelated venue happened to be marginal, and on catalog order.
+    /// Corroborating inline would let one marginal polygon's request (up to
+    /// `movementFixRequestTimeout`) age the fix past `movementFixMaxAge` for every polygon after
+    /// it, so one venue's arrival would depend on another venue and on catalog order.
     func runPass(
         geofenceIds: [String],
         fix: PassFix,
         pass: Int,
         isStillCurrent: (@Sendable () -> Bool)? = nil
     ) async {
-        // Created here, so the pass owns it: see `PassCorroboration` for why resolver-level state
-        // let overlapping fresh passes answer each other's corroboration requests.
+        // Per pass, not per resolver; see `PassCorroboration`.
         let cache = PassCorroboration()
-        // Settled where the fix was CHOSEN and carried here — see `PassFix`. Re-reading the clock
-        // at this point is the bug this replaced: a held fix accepted just inside
-        // `movementFixMaxAge` crosses it before the loop starts, and every polygon records
-        // `fix_too_old` while the branch that would have requested a replacement never ran.
         var deferred: [DeferredCorroboration] = []
         for geofenceId in geofenceIds {
             if let pending = await evaluate(
@@ -36,11 +28,9 @@ extension PolygonMembershipResolver {
             }
         }
         for pending in deferred {
-            // Re-read per polygon, immediately before the request, and not once for the batch:
-            // an ambiguous INSIDE cannot move a belief that already says inside, so a second fix
-            // would buy a forced request (up to `movementFixRequestTimeout`) only to reach
-            // `no_change`. Phase one, and phase two's own awaits, can both land that belief after
-            // this polygon was classified — so a value read any earlier is the wrong value.
+            // An ambiguous INSIDE cannot move a belief that already says inside, so a second fix
+            // would only reach `no_change`. Re-read per polygon, right before the request: phase
+            // one and earlier corroborations can both land that belief after classification.
             guard await storage.getPolygonMembership()[pending.geofence.id]?.membership != .inside
             else {
                 logger.geofencePolygonUndecided(
@@ -70,13 +60,10 @@ extension PolygonMembershipResolver {
         }
     }
 
-    /// Logs the verdict and applies it. Shared by both phases so a corroborated arrival and a
-    /// decisive one are recorded identically apart from `cor`.
+    /// Logs the verdict and applies it, so both phases record identically apart from `cor`.
     ///
-    /// `age` is the pass fix's age AT RECORD TIME, not at the moment it was judged. On a
-    /// `cor=true` verdict those differ: the corroboration request sits between them and can run
-    /// to `movementFixRequestTimeout`, so the logged age can exceed `movementFixMaxAge` on a
-    /// verdict whose gate passed cleanly. Reading it as a leaked gate is the obvious mistake.
+    /// The logged age is the fix's age AT RECORD TIME. On a corroborated verdict the second
+    /// request sits in between, so the age can exceed `movementFixMaxAge` although the gate passed.
     func record(
         _ verdict: PolygonVerdict,
         for geofence: Geofence,
@@ -104,9 +91,8 @@ struct PolygonVerdict {
     let pass: Int
 }
 
-/// How a recorded verdict stands with respect to a second fix, widened from a Bool because
-/// "committed without confirmation" is a third state and folding it into `false` would report an
-/// uncorroborated marginal arrival as though no second fix had ever been wanted.
+/// How a recorded verdict stands with respect to a second fix. Three states, not a Bool, so an
+/// uncorroborated marginal arrival is not logged as though no second fix was wanted.
 enum VerdictCorroboration: Equatable {
     /// Decisive on one fix; no second was asked for.
     case notNeeded
@@ -115,7 +101,7 @@ enum VerdictCorroboration: Equatable {
     /// Marginal, and committed anyway because no second opinion could be had.
     case unconfirmed(PolygonUndecidedReason)
 
-    /// The shared `cor` boolean: a second fix agreed, or it did not.
+    /// The shared cross-SDK `cor` boolean: whether a second fix agreed.
     var confirmed: Bool { self == .confirmed }
 
     /// `nil` unless the arrival committed without confirmation, so the key is absent on every

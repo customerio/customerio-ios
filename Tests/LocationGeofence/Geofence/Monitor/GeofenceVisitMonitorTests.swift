@@ -106,9 +106,8 @@ struct GeofenceVisitMonitorTests {
 
     @Test
     func start_givenNeverAuthorized_expectSkipRecorded() {
-        // Asserts the skip is RECORDED, because that log is the only thing unique to this branch.
-        // The disarm below is real but not distinctive — the first `stop()` on any fresh instance
-        // reaches CoreLocation whatever brought us there.
+        // The skip log is the only thing unique to this branch: the first `stop()` on any fresh
+        // instance reaches CoreLocation whatever brought us there.
         let f = Fixture()
         f.status.value = .denied
         f.monitor.start()
@@ -147,8 +146,7 @@ struct GeofenceVisitMonitorTests {
     // MARK: - Delivery
 
     /// The handler's answer IS the disarm decision — that is how sign-out stops the monitor
-    /// without a teardown hook. Nothing else asserts the monitor acts on it: the binder tests
-    /// check what the handler returns, not what the monitor does with it.
+    /// without a teardown hook. The binder tests only check what the handler returns.
     @Test
     func didVisit_givenTheHandlerRefuses_expectDisarmed() {
         let f = Fixture()
@@ -171,11 +169,8 @@ struct GeofenceVisitMonitorTests {
         #expect(f.manager.stopCount == 0)
     }
 
-    /// Both edges, in one test on purpose. A departure must reach the handler as well as an
-    /// arrival — the binder re-judges membership on either. Asserting only the departure passes
-    /// against a constant `isArrival` and against the two dates being carried across swapped,
-    /// because neither date on a departure is `.distantFuture`; the arrival case is what
-    /// separates them.
+    /// Both edges in one test: asserting only the departure also passes against a constant
+    /// `isArrival` or swapped dates, because neither date on a departure is `.distantFuture`.
     @Test
     func didVisit_givenEitherEdge_expectTheEdgeReportedAsGiven() {
         let f = Fixture()

@@ -4,11 +4,8 @@ import Foundation
 import SharedTests
 import Testing
 
-/// The composition produces real SDK decisions from injected input.
-///
-/// These are the harness's own tests, not a drive's: they prove the SDK can be driven without a
-/// device, without the OS, and on a clock the test controls. A scenario replay only means
-/// something if this holds first.
+/// The harness's own tests: the SDK can be driven without a device or the OS, on a clock the test
+/// controls. A scenario replay only means something if these hold.
 @Suite("Replay harness", .serialized, .enabled(if: ReplayRuntime.isMonitorAvailable))
 @MainActor
 struct ReplayHarnessTests {
@@ -20,11 +17,9 @@ struct ReplayHarnessTests {
     private static let awayLatitude = 10.01510
     /// When the device reaches the fence.
     ///
-    /// Past `contradictionGateReplayWindow` (10 s) deliberately. Inside that window the SDK vets an
-    /// OS event against a fresh fix, because a CLMonitor re-add replays the daemon's stale belief as
-    /// an immediate event — so a crossing delivered in the same instant as the registration, with
-    /// the device still parked outside, is one the SDK is *right* to refuse. Registering and then
-    /// teleporting into the fence is not something a drive can do; arriving a while later is.
+    /// Past `contradictionGateReplayWindow` (10 s) on purpose. Inside it the SDK vets an OS event
+    /// against a fresh fix (a CLMonitor re-add replays the daemon's stale belief), so an enter at
+    /// registration time with the device still outside is rightly refused.
     private static let arrivalAt: TimeInterval = 30
 
     /// One fence, as the API would return it.
@@ -34,15 +29,12 @@ struct ReplayHarnessTests {
         """
     }
 
-    /// Brings the SDK to a registered state the only way a real app can: answer its fetch, give it
-    /// a position, sign a user in. Nothing is written to the SDK's own state by the test — the
-    /// registration, and the dedup baseline behind it, are the SDK's own work.
+    /// Brings the SDK to a registered state the way a real app does: answer its fetch, give it a
+    /// position, sign a user in. Nothing is written to the SDK's own state directly.
     @available(iOS 17.0, *)
     private func registered(_ harness: ReplayHarness, fenceId: String) async throws {
         try harness.enqueueFetch(bodyJSON: catalogue(fenceId))
-        // A `manager_cache` position is something the SDK *pulls*, so it is loaded as the cache's
-        // value from t0 rather than delivered as an event. Handing it over as a stimulus would
-        // model a fix arriving, which is not what reading `CLLocationManager.location` is.
+        // A `manager_cache` position is pulled, so it is loaded as the cache's value, not delivered.
         harness.loadPulledFixes(stimuli: [0, Self.arrivalAt], samples: [
             harness.pulledFix(
                 latitude: Self.awayLatitude,
@@ -51,8 +43,7 @@ struct ReplayHarnessTests {
                 age: 0,
                 at: 0
             ),
-            // Where the device is once it has driven in. The SDK reads this — it is not told it —
-            // so every decision that follows sees the position a phone at the fence would report.
+            // Where the device is once it has driven in.
             harness.pulledFix(
                 latitude: Self.latitude,
                 longitude: Self.longitude,
@@ -62,20 +53,14 @@ struct ReplayHarnessTests {
             )
         ])
         harness.setIdentified(true)
-        // `onIdentified` runs its anchor decision on a Task, and with no anchor available it arms
-        // for the next fix — in `.automatic` that arming is what calls `acquireFix`. Waiting on the
-        // call makes the arm observable: feeding the bus fix before it lands means `onLocationAcquired`
-        // sees nothing armed, drops the fix, and no sync ever starts. The old harness hid this race
-        // by caching bus fixes as the module's last-known, which gave the Task an anchor it should
-        // not have had (see `feedFix`).
+        // `onIdentified` arms for the next fix on a Task (and calls `acquireFix` in `.automatic`).
+        // A bus fix fed before that lands finds nothing armed and no sync starts.
         #expect(
             await settleOnMain { harness.acquireFixCallCount >= 1 },
             "identify did not arm for a fix"
         )
-        // What actually drives the sync: a fix *arriving* from the Location module. The pull above
-        // only answers the reads the registration ledger makes once the sync is already running —
-        // it cannot start one, because production's trigger reads the Location module's stored
-        // position, not the geofence monitor's cache.
+        // A fix arriving from the Location module drives the sync; the pull above only answers
+        // reads made once it is running.
         harness.feedFix(
             latitude: Self.awayLatitude,
             longitude: Self.longitude,
@@ -83,29 +68,23 @@ struct ReplayHarnessTests {
             age: 0,
             source: .bus
         )
-        // The fetch and the baseline write are boundaries now: they answer when the drive says
-        // they did, and a hand-written setup has no drive behind it. See `settleBoundaries`.
+        // The fetch is a boundary, and a hand-written setup has no drive to answer it.
         try await harness.settleBoundaries()
         #expect(
             await settleOnMain { harness.emitted(ev: "registration.applied").count == 1 },
             "setup did not reach a registered state: \(harness.emitted.map { $0["ev"] ?? "?" })"
         )
-        // The drive in. Until now the fence is registered and the device is outside it; from here
-        // the cache answers with the fence's own coordinates, which is what makes an arriving
-        // `enter` agree with the world instead of contradicting it.
+        // The drive in: from here the cache answers with the fence's coordinates, so an arriving
+        // `enter` agrees with the world.
         await harness.advance(to: Self.arrivalAt)
         harness.resetOutput()
     }
 
-    /// A `prov=resolver` record is the SDK *reading* its own cache, not a position arriving.
+    /// A `prov=resolver` record is the SDK reading, not a position arriving; only the bus event
+    /// reaches `GeofenceRefreshTrigger`. Delivered as an arrival it would consume identify's rearm
+    /// flag and start a sync the drive never ran.
     ///
-    /// `bestKnownFixDetail()` writes one whenever the resolver's fix is newer than
-    /// `CLLocationManager`'s, and nothing about that read reaches `GeofenceRefreshTrigger` — only
-    /// the Location module's bus event does. Replaying it as a delivery consumed the rearm flag
-    /// identify had just set and started a sync the drive never ran.
-    ///
-    /// The bus fix at the end is the control. Without it a harness that had stopped delivering
-    /// *any* fix would pass the first half of this test having proved nothing.
+    /// The bus fix at the end is the control, so a harness delivering no fix at all cannot pass.
     @Test
     @available(iOS 17.0, *)
     func feedFix_givenResolverSourcedRead_expectInertUntilBusFixArrives() async throws {
@@ -171,25 +150,15 @@ struct ReplayHarnessTests {
         }
     }
 
-    /// **The spike's central assumption.**
+    /// The cooldown follows virtual time, not the wall clock. If it read the wall clock, every
+    /// duration in a replayed scenario would be meaningless while still passing.
     ///
-    /// §5 of the format decision claims the iOS clock gap does not block replay, because the raw
-    /// `Date()` sites live in the CLMonitor wrappers that replay substitutes. If that is wrong, the
-    /// cooldown below is computed against wall-clock time while the scenario is stamped in virtual
-    /// time, and every duration assertion in the scenarios becomes meaningless *while still passing*.
+    /// Each `enter` is preceded by an `exit` so it is a genuine state change; otherwise the dedup
+    /// baseline discards it and the cooldown is never consulted. Cooldown is keyed per
+    /// `user:fence:transition`, so the exits do not consume the enter's window.
     ///
-    /// Rather than grep for `Date()`, this drives the real cooldown path and checks the decision
-    /// follows virtual time.
-    ///
-    /// Each `enter` is preceded by an `exit` so it is a genuine state change. Without that the
-    /// dedup baseline discards it as a duplicate and the cooldown is never consulted — the test
-    /// would pass having proved nothing. Cooldown is keyed per `user:fence:transition`, so the
-    /// interleaved exits do not consume the enter's window.
-    ///
-    /// Every crossing gets its own instant. An OS event's identity is its date, and two events for
-    /// one condition sharing a date are one event delivered twice — on a phone the daemon cannot
-    /// date an enter and an exit of the same condition identically. Delivering two at one virtual
-    /// instant would therefore model a re-delivery, and the second would be refused as one.
+    /// Every crossing gets its own instant: two events for one condition sharing a date are one
+    /// event re-delivered, and the second would be refused as such.
     @Test
     @available(iOS 17.0, *)
     func deliverCrossing_givenVirtualTimePastCooldown_expectTransitionAccepted() async throws {
@@ -201,10 +170,7 @@ struct ReplayHarnessTests {
                 await harness.advance(to: at)
                 let accepted = harness.emitted(ev: "transition.accepted").count
                 harness.deliverCrossing(fence: "A", transition: transition)
-                // A crossing can re-centre the movement trigger, and the baseline write that
-                // follows is a boundary now. A replayed drive opens it from the recording; this
-                // test has no recording, so it says so explicitly. Without it the write stays owed
-                // and the next crossing is judged against the previous centre.
+                // No recording here, so answer any fetch the crossing's follow-up parked.
                 try await harness.settleBoundaries()
                 await settleOnMain { harness.emitted(ev: "transition.accepted").count > accepted }
             }
@@ -213,9 +179,8 @@ struct ReplayHarnessTests {
             #expect(harness.emitted(ev: "transition.accepted").contains { $0["t"] == "enter" })
             try await cross(.exit, at: Self.arrivalAt + 2)
 
-            // Still inside the enter cooldown in *virtual* time. Only milliseconds of real time have
-            // passed, so a wall-clock read would also suppress here — this leg alone proves nothing.
-            // It is the pair that does.
+            // Inside the cooldown in virtual time. A wall-clock read would also suppress here; it is
+            // the pair with the next leg that proves anything.
             harness.resetOutput()
             try await cross(.enter, at: 60)
             #expect(
@@ -235,12 +200,8 @@ struct ReplayHarnessTests {
         }
     }
 
-    /// **The re-delivery rule, exercised.**
-    ///
-    /// CoreLocation hands the same event over more than once — byte-identical objects sharing a
-    /// microsecond `date`. Two deliveries at one virtual instant model that exactly, because the
-    /// harness dates an event from the clock at delivery. The record remembers the date of the last
-    /// event it processed, so the copy is refused by identity, before its state is even compared.
+    /// CoreLocation hands the same event over more than once, sharing a `date`. Two deliveries at
+    /// one virtual instant model that, and the copy is refused by date before its state is compared.
     @Test
     @available(iOS 17.0, *)
     func deliverCrossing_givenSameEventTwice_expectSecondDropped() async throws {
@@ -260,8 +221,7 @@ struct ReplayHarnessTests {
         }
     }
 
-    /// The other half: a genuinely different event must not be swallowed. Advancing the clock gives
-    /// the second crossing its own date, which is what a real later crossing always carries.
+    /// A genuinely different event must not be swallowed; advancing the clock gives it its own date.
     @Test
     @available(iOS 17.0, *)
     func deliverCrossing_givenDistinctEvents_expectNeitherDropped() async throws {
@@ -282,12 +242,9 @@ struct ReplayHarnessTests {
         }
     }
 
-    /// The case the state compare alone cannot see: a copy of an *earlier* event arriving after the
-    /// baseline has moved on. On the road this is the movement trigger's exit re-delivered after the
-    /// pass it started re-centred the trigger; the copy's state differs from the fresh seed, so by
-    /// state alone it is a new crossing. By date it is older than the last event processed for the
-    /// condition, and refused on that — not on when the SDK happened to write the baseline, which
-    /// is the comparison that answered differently on the phone and in replay (drive 5).
+    /// A copy of an *earlier* event arriving after the baseline has moved on (e.g. the movement
+    /// trigger's exit re-delivered after its pass re-centred the trigger). By state it is a new
+    /// crossing; by date it is older than the last event processed, and refused on that.
     @Test
     @available(iOS 17.0, *)
     func deliverCrossing_givenCopyOfOlderEventAfterBaselineMoved_expectRefusedAsStale() async throws {
@@ -324,19 +281,16 @@ struct ReplayHarnessTests {
             _ = await settleOnMain { !harness.emitted.isEmpty }
 
             #expect(!harness.emitted.isEmpty)
-            // Every captured record must carry the replay classification, or the matcher has nothing
-            // to align on.
+            // Every captured record must carry `ev`, or the matcher has nothing to align on.
             #expect(harness.emitted.allSatisfy { $0["ev"] != nil })
         }
     }
 
-    /// **A second adopt in one process re-arms nothing.** (drive 5, 2026-09-12)
+    /// A second adopt in one process re-arms nothing.
     ///
-    /// The bootstrap re-runs on reconcile drift and on permission changes, and adopts again from
-    /// storage read before in-flight work has landed. On the phone that second run re-armed the
-    /// previous session's twenty conditions — two of them just evicted, their removes still queued
-    /// ahead — put the OS over its budget, and CoreLocation gave every one of them up. Everything
-    /// the first run adopted already has a geometry entry, so the second has nothing left to do.
+    /// The bootstrap re-runs on reconcile drift and permission changes, adopting from storage read
+    /// before in-flight work lands. Re-arming there can include just-evicted conditions, push the
+    /// OS over its budget, and make CoreLocation give every condition up.
     @Test
     @available(iOS 17.0, *)
     func wireMonitor_givenAlreadyAdopted_expectSecondRunRearmsNothing() async throws {
@@ -344,9 +298,8 @@ struct ReplayHarnessTests {
             let harness = ReplayHarness()
             try await registered(harness, fenceId: "A")
 
-            // Counted before the relaunch: `registered()` has already driven the OS, and the double
-            // is deliberately kept across `reenterProcess()`, so measuring after the adopt counts
-            // setup's own operations and passes however little the adopt did.
+            // Counted before the relaunch: the double survives `reenterProcess()` and already holds
+            // setup's operations.
             let armedBeforeRelaunch = harness.conditionMonitor.operations.count
 
             // The OS relaunches the app: the mirror says both conditions survived, so the bootstrap adopts.

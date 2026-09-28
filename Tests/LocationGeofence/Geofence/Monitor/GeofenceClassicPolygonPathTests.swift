@@ -8,10 +8,6 @@ import Testing
 /// membership verdict is the resolver's job, but it can only be right if this path hands over the
 /// circle the OS actually crossed — a polygon forwarded as `unknown`, or carrying a replacement
 /// fence's geometry, silently becomes a circle fence for every pre-iOS-18 user.
-///
-/// Measured on the iOS 17.5 simulator 2026-09-14: the classic path already fetches, registers and
-/// evaluates polygons end-to-end. These pin the monitor's half of that so it cannot regress
-/// unnoticed — no drive covers this band, and the CLMonitor twin cannot be built in a test at all.
 @Suite("CoreLocationGeofenceMonitor polygon path", .serialized)
 @MainActor
 struct GeofenceClassicPolygonPathTests {
@@ -145,7 +141,7 @@ struct GeofenceClassicPolygonPathTests {
             delivered.append(Delivered(identifier: identifier, transition: transition, circle: circle))
         }
 
-        // The drain is a Task hop; give it one turn of the main actor.
+        // The drain is a Task hop.
         let drained = await waitForDrain { delivered.count >= 2 }
         #expect(drained, "buffered event never drained")
         guard case .circle(let crossed) = delivered.first?.circle else {
@@ -160,10 +156,8 @@ struct GeofenceClassicPolygonPathTests {
         #expect(second.radius == 900, "each event must carry the circle IT crossed, not a shared lookup")
     }
 
-    /// Yields the main actor until the drain has run, rather than sleeping a fixed interval — a
-    /// fixed wait is the shape that made the MessagingInApp suite flaky. It must yield rather than
-    /// spin: the drain is a `Task { @MainActor }`, so a synchronous loop holds the actor the drain
-    /// needs and the condition can never become true.
+    /// Yields rather than spins: the drain is a `Task { @MainActor }`, so a synchronous loop would
+    /// hold the actor the drain needs.
     private func waitForDrain(iterations: Int = 200, _ condition: () -> Bool) async -> Bool {
         for _ in 0 ..< iterations {
             if condition() { return true }
@@ -172,9 +166,8 @@ struct GeofenceClassicPolygonPathTests {
         return condition()
     }
 
-    /// The gate analysis for iOS 13-17 rests on "registering 9 regions produced ZERO
-    /// `os.callback.received`", which is only evidence if this path emits that record at all. An
-    /// owned crossing must produce one — see the absence-of-a-log-line trap.
+    /// A missing `os.callback.received` is read as "the OS raised nothing", which only holds if
+    /// this path emits it for every owned crossing.
     @Test
     func ownedCrossing_expectAReceivedCallbackRecord() throws {
         try DiagnosticsGateTesting.withDiagnostics(true) {

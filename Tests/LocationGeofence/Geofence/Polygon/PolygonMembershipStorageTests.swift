@@ -109,8 +109,8 @@ struct PolygonMembershipStorageTests {
     }
 
     /// The clamp on write protects new beliefs; this is the recovery path for one already on disk
-    /// with a future stamp, left by a build that predates that clamp. Read unclamped it wins every
-    /// comparison, so no later fix can repair the belief until the wall clock catches up.
+    /// with a future stamp. Read unclamped it wins every comparison, so no later fix can repair the
+    /// belief until the wall clock catches up.
     @Test
     func recordPolygonMembership_givenPersistedBeliefStampedInTheFuture_expectLaterFixStillDecides() async {
         let storage = await makeStorage()
@@ -199,8 +199,8 @@ struct PolygonMembershipStorageTests {
         #expect(await storage.getMonitorRegionRecords()["1"] == nil)
     }
 
-    /// The clear now keys off the monitor record alone, so with no record there is nothing to
-    /// persist. A belief written by a wake pass during the gap must not be collateral of that.
+    /// The clear keys off the monitor record alone, so with no record it writes nothing and a
+    /// belief written by a wake pass during the gap survives.
     @Test
     func clearMonitorRegionRecord_givenNoMonitorRecord_expectBeliefUntouched() async {
         let storage = await makeStorage()
@@ -225,10 +225,9 @@ struct PolygonMembershipStorageTests {
     }
 
     /// A verdict of `inside` after the gap is a no-change, which is both the win and the loss of
-    /// keeping the belief. A device that never left gets no duplicate enter — the point of the
-    /// change. A device that left and returned unseen gets neither its exit nor its re-enter, and
-    /// the two are indistinguishable here because the OS was not evaluating: nothing local can tell
-    /// them apart. The accepted loss is pinned rather than left to be discovered in the field.
+    /// keeping the belief. A device that never left gets no duplicate enter. A device that left and
+    /// returned unseen gets neither its exit nor its re-enter: the OS was not evaluating, so nothing
+    /// local can tell the two apart. The accepted loss is pinned here.
     @Test
     func clearMonitorRegionRecord_givenInsideVerdictAfterGap_expectNoChangeEitherWay() async {
         let storage = await makeStorage()
@@ -274,14 +273,14 @@ struct PolygonMembershipStorageTests {
     }
 
     /// The ordering guard compares the stored time against the incoming evidence, so the stored one
-    /// has to BE evidence. Storing the write time instead made every record instantly "newer" than
+    /// has to BE evidence. Storing the write time would make every record instantly "newer" than
     /// the fix that justified it, rejecting a later verdict whose own fix was genuinely newer.
     @Test
     func recordPolygonMembership_givenEvidenceNewerThanPriorEvidence_expectAccepted() async {
         let storage = await makeStorage()
         let firstFix = Date(timeIntervalSince1970: 1000)
         let secondFix = Date(timeIntervalSince1970: 1005)
-        // A write lands well after the fix that justified it — the gap the old code stored.
+        // The write lands well after the fix that justified it.
         _ = await storage.recordPolygonMembership(
             .inside, forIdentifier: "1", onlyIfBeliefPredates: firstFix,
             now: Date(timeIntervalSince1970: 1060)
@@ -424,11 +423,10 @@ struct PolygonMembershipStorageTests {
         #expect(outcome == .deliver(.exit))
     }
 
-    /// The covering exit's window, and why the circle is compared inside the write rather than
-    /// before the hop: the resolver matched the event's circle against the fence it loaded, then a
-    /// refresh replaced ring and circle together before the store landed. Recording `outside` here
-    /// would assert the device left a polygon it may be standing inside, stamped with a date no
-    /// older fix can then correct.
+    /// Why the circle is compared inside the write rather than before the hop: a refresh can
+    /// replace ring and circle together before the store lands. Recording `outside` then would
+    /// assert the device left a polygon it may be standing inside, stamped with a date no older fix
+    /// can correct.
     @Test
     func recordPolygonMembership_givenTheCircleReplacedSinceTheEventWasRaised_expectSuppressed() async {
         let storage = await makeStorage()

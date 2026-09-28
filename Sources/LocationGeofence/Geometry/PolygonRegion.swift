@@ -5,13 +5,14 @@ import Foundation
 /// Planar geometry for a polygon geofence, evaluated on a local equirectangular projection
 /// around the polygon's vertex centroid.
 ///
-/// Projection: `x = R·Δlon·cos(lat₀)`, `y = R·Δlat` (radians, R = 6371000 m). Android implements
-/// the same contract independently rather than sharing this code; the two agree to ~0.0005 m on
-/// the shared fixtures (≤1 km) and diverge further out — up to ~1.2 m at lat 31°, ~3.5 m at 60°.
+/// Projection: `x = R·Δlon·cos(lat₀)`, `y = R·Δlat` (radians, R = 6371000 m). Android does not
+/// share this projection: it ray-casts in raw degrees and projects each edge distance around the
+/// query point, so the two SDKs can differ slightly on large rings.
 ///
 /// The ray cast is half-open, so the boundary is not symmetric: a point on the west or south edge
-/// (and the south-west vertex) reads as INSIDE, one on the east or north edge as outside. Delivery
-/// never acts within the accuracy-gate floor, so the asymmetry is unobservable in practice.
+/// (and the south-west vertex) reads as INSIDE, one on the east or north edge as outside. A point
+/// on the boundary has an edge distance of 0, which never yields a verdict, so the asymmetry is
+/// unobservable in practice.
 struct PolygonRegion {
     private struct Point {
         let x: Double
@@ -26,8 +27,7 @@ struct PolygonRegion {
 
     /// IUGG mean Earth radius, the `R` of the projection above. CoreLocation exposes no equivalent
     /// constant — it offers geodesic distances (`CLLocation.distance`) but no way to project, which
-    /// point-in-polygon needs — and the value is part of the projection contract shared with
-    /// Android, so changing it would desynchronize the cross-SDK fixtures.
+    /// point-in-polygon needs. Android uses the same value.
     private static let earthRadiusMeters = 6371000.0
     private static let degreesToRadians = Double.pi / 180
 
@@ -40,14 +40,12 @@ struct PolygonRegion {
     /// edge distance; collapsing it keeps the count comparable to the server's own cap, which is
     /// stated in unique vertices.
     ///
-    /// The range check is a construction precondition rather than a second opinion on server
-    /// policy: it is what bounds the work this initializer does. Everything downstream walks
-    /// longitudes in 360° steps, and past roughly 3.2e18 subtracting 360 no longer changes a
-    /// `Double` at all — a single wild value in a decodable payload would hang the process, on
-    /// every rebuild from cache rather than only on the sync that received it.
+    /// The range check bounds the work downstream: longitudes are walked in 360° steps, and past
+    /// roughly 3.2e18 subtracting 360 no longer changes a `Double`, so one wild value would hang
+    /// the process on every rebuild from cache.
     ///
-    /// O(n): the degeneracy checks live in `init(validating:)`, not here, because callers rebuild a
-    /// region per evaluation.
+    /// O(n): the degeneracy checks live in `init(validating:)` because callers rebuild a region per
+    /// evaluation.
     init?(vertices: [LocationData]) {
         var open: [LocationData] = []
         open.reserveCapacity(vertices.count)
@@ -101,13 +99,12 @@ struct PolygonRegion {
         a.latitude == b.latitude && unwrapLongitude(a.longitude, near: b.longitude) == b.longitude
     }
 
-    /// This is the only writer of `Geofence.vertices`: a ring from any other source has not been
-    /// through the checks below and may not satisfy them.
+    /// The only writer of `Geofence.vertices`: a ring from any other source has not been through
+    /// these checks.
     ///
-    /// Decode-time construction: additionally rejects rings that cannot be monitored sensibly —
-    /// zero area, or self-intersecting. Separate from `init(vertices:)` because that one runs on
-    /// hot paths (once per polygon per wake and per evaluation) while these checks are O(n²), so
-    /// they belong at the API boundary where they run once per sync.
+    /// Additionally rejects rings with zero area or a self-intersection. These checks are O(n²),
+    /// so they run once per sync at the API boundary rather than in `init(vertices:)`, which runs
+    /// per polygon per evaluation.
     init?(validating vertices: [LocationData]) {
         self.init(vertices: vertices)
         guard Self.enclosesArea(projected), !Self.selfIntersects(projected) else { return nil }
@@ -184,8 +181,8 @@ struct PolygonRegion {
     /// The circle path does not mirror this: `Geofence.edgeDistanceTo` is
     /// `max(0, distanceTo - radius)`, clamped to 0 inside and never negative. Ranking a polygon
     /// alongside circles therefore needs `max(0, -signedEdgeDistance)`, not a plain negation.
-    /// The sign convention here is fixed by the cross-SDK geometry fixtures and cannot be flipped
-    /// unilaterally.
+    /// Android uses the same sign, and the polygon verdict logs `edge` with it, so it cannot be
+    /// flipped unilaterally.
     func signedEdgeDistance(to location: LocationData) -> Double {
         let p = project(location)
         var minDistance = Double.greatestFiniteMagnitude
@@ -204,13 +201,10 @@ struct PolygonRegion {
     /// circle can contain the whole ring — so a verdict there would be a coin flip rather than a
     /// boundary case. Used as the ceiling in `PolygonMembershipDecision`.
     ///
-    /// An approximation of the maximum inradius, deliberately: it is O(n) from the ring we already
-    /// hold, where a true inradius needs a search. It reads exact for a circle (`2πr²/2πr = r`) and
-    /// measured 1.01–1.35× the grid-computed inradius across the four real retail rings in the test
-    /// workspace (Tim Hortons 24.2 vs 24.0, Safari Homes 308.5 vs 229.3). It errs HIGH, which
-    /// widens the accuracy we accept rather than narrowing it — the safe direction here, because
-    /// refusing a real arrival is the expensive error and nothing downstream trusts this as a
-    /// distance.
+    /// An O(n) approximation of the maximum inradius, where a true inradius needs a search. Exact
+    /// for a circle (`2πr²/2πr = r`) and never below the inradius of a convex ring, so it errs
+    /// HIGH, which widens the accuracy accepted: the safe direction, since refusing a real arrival
+    /// is the expensive error.
     var scale: Double {
         var twiceArea = 0.0
         var perimeter = 0.0
@@ -225,7 +219,7 @@ struct PolygonRegion {
     }
 
     /// Shifts longitudes into the ±180° window around the first vertex so a ring crossing the
-    /// antimeridian is continuous. Part of the projection contract shared with Android.
+    /// antimeridian is continuous.
     private static func unwrapLongitudes(_ ring: [LocationData]) -> [LocationData] {
         guard let reference = ring.first?.longitude else { return ring }
         return ring.map {

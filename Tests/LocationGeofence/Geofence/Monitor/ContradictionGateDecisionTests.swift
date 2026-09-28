@@ -3,15 +3,12 @@
 import Foundation
 import Testing
 
-/// Pins the contradiction gate's decision semantics. The gate reuses
-/// `BaselineHealDecision.synthesizedTransition` with `lastState` set to the INCOMING OS
-/// transition: a non-nil result means a fresh gated fix unambiguously says the opposite of what
-/// the OS delivered, so the event is refused before the dedup baseline advances. These tests
-/// document that reuse from the gate's perspective — refusal must trigger only on confident
-/// geometric contradiction, and every undecidable input must fail open (deliver).
+/// The contradiction gate reuses `BaselineHealDecision.synthesizedTransition` with `lastState`
+/// set to the INCOMING OS transition: non-nil means a fresh fix confidently says the opposite of
+/// what the OS delivered, so the event is refused. Every undecidable input must fail open.
 @Suite("ContradictionGateDecision")
 struct ContradictionGateDecisionTests {
-    /// Mirrors the gate's call in `CLMonitorGeofenceMonitor.process(event:)`.
+    /// Mirrors the gate's call in `CLMonitorGeofenceMonitor.isEventContradictedByFreshFix`.
     private func refuses(
         incoming: GeofenceTransition,
         distanceFromCenter: Double,
@@ -28,17 +25,17 @@ struct ContradictionGateDecisionTests {
         ) != nil
     }
 
-    // MARK: - Confident contradictions refuse (the two field-observed damage classes)
+    // MARK: - Confident contradictions refuse
 
     @Test
     func gate_givenEnterWithFixFarOutside_expectRefusal() {
-        // The Saleem/Baba-Sweets class: stale daemon belief replays an enter kilometres away.
+        // Stale daemon belief replays an enter kilometres away.
         #expect(refuses(incoming: .enter, distanceFromCenter: 7787))
     }
 
     @Test
     func gate_givenExitWithFixDeepInside_expectRefusal() {
-        // The login-inside-fences class: default-unsatisfied belief replays an exit at the center.
+        // Default-unsatisfied belief replays an exit at the center.
         #expect(refuses(incoming: .exit, distanceFromCenter: 0))
     }
 

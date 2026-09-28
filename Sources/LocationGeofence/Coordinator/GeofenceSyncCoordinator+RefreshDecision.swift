@@ -2,55 +2,46 @@ import CioInternalCommon
 import CoreLocation
 import Foundation
 
-/// The `refresh` decision table, split out to keep the coordinator's core flow readable.
-/// Methods are `internal` (not `private`) only because they live in a separate file from their
-/// callers; they remain coordinator implementation detail.
+/// The `refresh` decision table. Internal only because it lives in a separate file from its callers.
 extension GeofenceSyncCoordinatorImpl {
-    /// Decision table for an identify / app-launch refresh, independent of what triggered it:
-    /// re-fetch when the cache is stale in time, re-rank locally when the ranking is stale or the
-    /// cache is unregistered, else skip.
+    /// Re-fetch when the cache is stale in time or distance, re-rank locally when the ranking is
+    /// stale or the cache is unregistered, else skip.
     func refreshAction(location: LocationData, config: GeofenceConfig) async -> RefreshAction {
         let lastSync = await storage.getLastSync()
-        // Measured from the last registration; nil (never set) → 0 → treated as within radius.
+        // No registration centre yet counts as within radius.
         let distanceFromLastRegistration = (await storage.getLastRegistrationCenter()).map { distance(from: $0, to: location) } ?? 0
 
         if isStaleInTime(lastSync: lastSync, config: config) { return .remote }
         if movedBeyondRefetchRadius(from: lastSync?.location, to: location, config: config) { return .remote }
-        // Device left the trigger radius since the nearest-set was last ranked — re-rank locally,
-        // no network. This is the EXIT the live movement trigger fires on; refresh() catches one
-        // missed while the app was dead (no boundary crossing to wake it).
+        // Catches a movement-trigger EXIT missed while the app was dead.
         if distanceFromLastRegistration >= config.localRefreshTriggerRadius { return .local }
         if await hasUnregisteredCache() { return .local }
         return .skip
     }
 
-    /// True once the device has moved far enough from the last registration centre to re-rank.
-    /// Measured from that centre, never from the trigger: the trigger moves on every polygon wake,
-    /// so anchoring to it would reset the distance each time and re-ranking would never come due.
+    /// Measured from the last registration centre, never from the trigger: the trigger moves on
+    /// every polygon wake, so re-ranking would never come due.
     func movedBeyondRerankRadius(to location: LocationData, config: GeofenceConfig) async -> Bool {
         guard let center = await storage.getLastRegistrationCenter() else { return true }
         return distance(from: center, to: location) >= config.localRefreshTriggerRadius
     }
 
-    /// True once the device has moved beyond the refetch radius from the fetch anchor — the cached
-    /// set was ranked around that anchor and no longer covers the area. False when there's no anchor
-    /// to measure from.
+    /// False when there's no fetch anchor to measure from.
     func movedBeyondRefetchRadius(from anchor: LocationData?, to location: LocationData, config: GeofenceConfig) -> Bool {
         guard let anchor else { return false }
         return distance(from: anchor, to: location) >= config.remoteFetchRefreshTriggerRadius
     }
 
-    /// Cache aged out of its freshness window (or was never fetched).
+    /// True when the cache aged out of its freshness window or was never fetched.
     func isStaleInTime(lastSync: LastSyncRecord?, config: GeofenceConfig) -> Bool {
         guard let lastSync else { return true }
         return dateUtil.now.timeIntervalSince(lastSync.timestamp) >= config.remoteFetchRefreshExpiry
     }
 
-    /// Cache holds regions but nothing is registered with the OS (e.g. regs lost on sign-out) →
-    /// re-register. A missing registration center is the "nothing registered" signal: it's set
-    /// whenever the movement trigger registers and cleared on sign-out. A distance-capped set has
-    /// no business regions but still registers the trigger (center set), so it's not "lost" — gating
-    /// on the center too avoids a redundant re-rank on every refresh for a fully-capped workspace.
+    /// Cache holds regions but nothing is registered (e.g. cleared on sign-out). Also requires no
+    /// registration centre, which every recorded registration sets and sign-out clears: a
+    /// fully distance-capped set registers no business regions but isn't lost, and would
+    /// otherwise re-rank on every refresh.
     func hasUnregisteredCache() async -> Bool {
         guard !(await storage.getCachedGeofences()).isEmpty else { return false }
         let noBusinessRegistered = await storage.getRegisteredBusinessIds().isEmpty

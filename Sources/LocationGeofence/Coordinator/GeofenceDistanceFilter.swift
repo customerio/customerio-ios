@@ -1,25 +1,17 @@
 import CioInternalCommon
 import Foundation
 
-/// Picks the `limit` regions closest to a given location, used by the sync coordinator
-/// to cap business-geofence registrations at the OS-allowed count (iOS allows 20 total
-/// monitored regions; one slot is reserved for the movement-trigger geofence).
+/// Picks the `limit` regions closest to a location, capping business registrations at the OS
+/// budget (20 monitored regions on iOS, one reserved for the movement trigger).
 struct GeofenceDistanceFilter: Sendable {
-    /// Ranks and caps by distance to each region's *boundary* (`edgeDistanceTo`), so a region the
-    /// device is inside ranks first among the candidates and survives both the limit and the
-    /// distance cap.
+    /// Ranks by distance to each region's *boundary* (`edgeDistanceTo`), so a region the device is
+    /// inside ranks first and survives both the limit and the distance cap. The backend applies its
+    /// own limit first, by distance to centre, so a large containing region can be cut before this.
     ///
-    /// Only among the candidates: the backend applies its own limit first, ordered by distance to
-    /// each region's center, so in a dense workspace a large region containing the device can be
-    /// cut before it ever reaches this sort. Aligning that server-side ordering with boundary
-    /// distance is a separate change.
-    ///
-    /// Ties broken by ascending `id` for deterministic ordering. Distances are rounded to whole
-    /// meters before comparison: `CLLocation.distance` can return sub-meter-varying values for
-    /// identical inputs, which would otherwise defeat the id tiebreak and make the order of
-    /// equidistant regions nondeterministic. Regions whose boundary is farther than `maxDistance`
-    /// are excluded (`GeofenceConstants.noMonitoringDistanceCap` for no cap). Returns empty when
-    /// `limit <= 0`.
+    /// Ties break by ascending `id`. Distances are rounded to whole meters first: `CLLocation.distance`
+    /// can vary sub-meter for identical inputs, which would defeat the tiebreak. Regions whose
+    /// boundary is beyond `maxDistance` are excluded (`GeofenceConstants.noMonitoringDistanceCap` for
+    /// no cap). Returns empty when `limit <= 0`.
     func nearest(_ regions: [Geofence], to location: LocationData, limit: Int, maxDistance: Double) -> [Geofence] {
         guard limit > 0, !regions.isEmpty else { return [] }
         return regions

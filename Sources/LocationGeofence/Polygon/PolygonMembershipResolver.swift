@@ -7,30 +7,23 @@ import UIKit
 
 /// Turns OS covering-circle events into customer-facing polygon transitions.
 ///
-/// The OS monitors a polygon's server-guaranteed covering circle and knows nothing about the
-/// polygon itself, so membership is a second fact that has to be established on device. This sits
-/// between the monitor and the event tracker and is the only component that owns it. Circle
-/// geofences pass straight through: the contradiction gate, baseline heal and dedup baseline that
-/// serve them are deliberately left unaware polygons exist.
+/// The OS monitors only a polygon's server-guaranteed covering circle, so membership has to be
+/// established on device, and this is the only component that owns it. Circle geofences pass
+/// straight through; the contradiction gate, baseline heal and dedup baseline know nothing of
+/// polygons.
 ///
-/// Two invariants define correctness here, and neither may be relaxed:
+/// Invariants, neither to be relaxed:
 /// - an ENTER requires a gated fix placing the device inside the polygon;
-/// - an EXIT requires either a covering-circle exit — polygon ⊆ circle, so leaving the circle
-///   provably leaves the polygon — or a gated fix placing the device outside.
+/// - an EXIT requires a covering-circle exit (polygon ⊆ circle) or a gated fix placing the device
+///   outside.
 ///
-/// Everything else is silent, and a fix that cannot decide leaves the stored belief untouched
-/// rather than guessing.
+/// A fix that cannot decide leaves the stored belief untouched. One deliberate exception on ENTER:
+/// a fix inside by LESS than its own accuracy commits unless a usable second fix reads outside
+/// (see `PolygonMembershipDecision.resolvedOutcome`). Such a verdict logs `cor=false` with a
+/// `corwhy` reason.
 ///
-/// One asymmetry inside the ENTER invariant, and it is deliberate: a fix that places the device
-/// inside but by LESS than its own accuracy is accepted unless a usable second fix positively
-/// places it outside. It is not held pending confirmation. While the device stands still nothing
-/// re-derives a missed arrival, so refusing one loses the visit; a spurious one is corrected by
-/// the next decisive fix. Such a verdict records `cor=false` with a `corwhy` reason, so a capture
-/// never reads it as decisive.
-///
-/// Owns its own `MovementFixResolver` rather than reading the monitor's: the transition handler
-/// carries only coordinates, while the gate needs accuracy and age, and on a wrapper cold wake
-/// `CustomerIO.initialize` has not run — the same reasoning that gives each monitor its own.
+/// Owns its own `MovementFixResolver`: the transition handler carries only coordinates while the
+/// gate needs accuracy and age, and on a wrapper cold wake `CustomerIO.initialize` has not run.
 @MainActor
 final class PolygonMembershipResolver {
     let storage: GeofenceStorage
@@ -39,13 +32,13 @@ final class PolygonMembershipResolver {
     // `internal`, not `private`, only because the split extension files use them.
     let logger: Logger
     let contextStore: BackgroundDeliveryContextStore
-    let dateUtil: DateUtil // Fix ages. Real clock in production; replay injects the drive's. Read by +Fix/+Pass.
+    let dateUtil: DateUtil // Fix ages; the replay harness injects a recorded clock.
     let notificationCenter: NotificationCenter
     var foregroundObserverToken: NSObjectProtocol?
 
     private var passesInFlight = 0
-    /// Monotonic, so two passes that overlap are distinguishable in a capture. A movement wake
-    /// does not yield to an in-flight foreground pass, so their verdicts genuinely interleave.
+    /// Monotonic, so overlapping passes are distinguishable in a capture: a forced-fresh pass does
+    /// not yield to one in flight, so their verdicts can interleave.
     private var passSequence = 0
 
     private func nextPass() -> Int {
@@ -89,11 +82,9 @@ final class PolygonMembershipResolver {
     /// tracker unchanged; a polygon's covering-circle event is interpreted against membership.
     ///
     /// A geofence missing from the cache (a sync raced this event, or the OS still holds a
-    /// condition the cache has dropped) is forwarded rather than dropped: treating it as a circle
-    /// is the behaviour that predates polygons, and losing a real crossing is worse than a
-    /// covering-circle-shaped one.
-    /// - Returns: whether the caller should re-arm the wake against this crossing, and the fix to
-    ///   size it with. See ``PolygonTransitionOutcome`` for why the fix travels with the answer.
+    /// condition the cache has dropped) is forwarded as a circle: losing a real crossing is worse
+    /// than reporting a covering-circle-shaped one.
+    /// - Returns: whether the caller should re-arm the wake, and the fix to size it with.
     @discardableResult
     func handleTransition(
         identifier: String,
@@ -102,22 +93,20 @@ final class PolygonMembershipResolver {
         eventCircle: GeofenceEventCircle = .unknown
     ) async -> PolygonTransitionOutcome {
         guard let geofence = await cachedGeofence(id: identifier), geofence.vertices != nil else {
-            // Uncached, or a genuine circle: forward untouched, the behaviour that predates polygons.
+            // Uncached, or a genuine circle: forward untouched.
             await transitionEmitter.trackTransition(geofenceId: identifier, transition: transition, occurredAt: occurredAt)
             // A circle fence's own event IS the answer, so there is no boundary left to wake for.
             return .nothingToRearm
         }
         switch transition {
         case .exit:
-            // No ring needed — leaving a circle says nothing about a ring — but the certainty is
-            // polygon ⊆ ITS OWN covering circle, so the crossed circle has to still be the fence's.
-            // That is checked inside the write, not here: a refresh landing between this hop and
-            // the store would otherwise leave `outside` recorded for a device inside the
-            // replacement polygon, stamped with a date no older fix can correct.
+            // No ring needed, but the certainty is polygon ⊆ ITS OWN covering circle, so the write
+            // checks the crossed circle is still the fence's. Checked in the write, not here: a
+            // refresh landing before the store would otherwise record `outside` for a device
+            // inside the replacement polygon.
             //
-            // `expired` is refused rather than forwarded: the circle crossed is gone, so the write
-            // has nothing to check the ring against, and "cannot say" would store `outside` for a
-            // device inside the replacement polygon. The next pass re-derives it.
+            // `expired` is refused: the crossed circle is gone, so there is nothing to check
+            // against. The next pass re-derives membership.
             switch eventCircle {
             case .circle(let crossed):
                 await apply(.outside, to: geofence, evidence: occurredAt, confirmedByFix: false, evaluatedCircle: crossed)
@@ -138,15 +127,12 @@ final class PolygonMembershipResolver {
             }
             // Also a movement event, so the same staleness rule applies as on a wake.
             //
-            // No user boundary across the fix, unlike `evaluateMembership`, and none exists to
-            // carry: the binder dispatches this with no expected user captured anywhere. Accepted
-            // on the trade this file makes elsewhere — the crossing is geometrically real, and
-            // declining it loses it for good because the dedup baseline has already advanced. The
-            // cost is real: a switch inside the fix window attributes it to a user who may not
-            // monitor this polygon at all.
+            // No user-switch guard across the fix: the binder captures no expected user for this
+            // path. Accepted because the crossing is real and the dedup baseline has already
+            // advanced, so declining it loses it for good. The cost: a switch inside the fix
+            // window attributes it to the new user.
             //
-            // The fix travels out so the caller can re-arm the wake against the boundary the OS
-            // cannot see; without it the device keeps whatever trigger it arrived with.
+            // The fix travels out so the caller can re-arm the wake against the polygon boundary.
             guard let fix = await evaluate(geofenceId: identifier, requiresFreshFix: true) else {
                 // The pass already recorded why. No fix means nothing to size a trigger with.
                 return .nothingToRearm
@@ -156,22 +142,18 @@ final class PolygonMembershipResolver {
     }
 
     /// Re-evaluates membership for polygons that have just been registered, where the device may
-    /// already be standing inside and no crossing will ever be delivered. A geofence that is no
-    /// longer cached or no longer a polygon has nothing to decide.
+    /// already be standing inside and no crossing will ever be delivered.
     ///
-    /// One fix serves the whole batch, for the same reason the foreground pass shares one: resolving
-    /// per geofence issues a fresh timed request each time the cache stays empty, and a registration
-    /// carrying several new polygons would spend that timeout once per polygon on the main actor.
+    /// One fix serves the whole batch: resolving per geofence would spend a timed request per
+    /// polygon on the main actor whenever the cache stays empty.
     ///
-    /// Logged because this path bypasses `handleTransition`, so nothing else records that we were
-    /// asked to re-check. Reading the absence of a log line as an absence of evaluations led to
-    /// exactly the wrong conclusion once already.
+    /// Each request is logged because this path bypasses `handleTransition`, so nothing else
+    /// records that a re-check was asked for.
     ///
-    /// `isStillCurrent` is re-checked after the fix resolves. Resolving suspends, and a user switch
-    /// in that window clears user-scoped state — without the re-check this task would resume and
-    /// rewrite the old user's belief, stamping any resulting event to whoever signed in.
+    /// `isStillCurrent` is re-checked after the fix resolves: a user switch during that await
+    /// clears user-scoped state, and resuming would rewrite the old user's belief.
     /// - Returns: whether a usable fix was obtained, so a caller that owes a verdict can retry on
-    /// other terms. True when there was nothing to evaluate — nothing is owed then.
+    /// other terms. True when there was nothing to evaluate.
     @discardableResult
     func evaluateMembership(
         geofenceIds: [String],
@@ -186,9 +168,8 @@ final class PolygonMembershipResolver {
         // that fix inside `evaluate`, so a refresh landing mid-request cannot be decided against.
         var pending: [String] = []
         for geofenceId in geofenceIds {
-            // Builds the ring and discards it, unlike the foreground pass's cheaper `vertices`
-            // test: this one runs before the request, so an unbuildable ring is worth catching
-            // here rather than spending a whole fix request to reject it after.
+            // Builds the ring, not just the `vertices` check the whole-set pass uses, so an
+            // unbuildable ring is dropped before a fix request is spent on it.
             guard let geofence = await cachedGeofence(id: geofenceId), geofence.polygonRegion != nil
             else { continue }
             pending.append(geofenceId)
@@ -206,21 +187,14 @@ final class PolygonMembershipResolver {
         return true
     }
 
-    /// Re-evaluates every registered polygon when the app comes to the foreground.
+    /// Re-evaluates every registered polygon against one fix. Runs on foreground, movement wakes
+    /// and visits: a device already inside a polygon when monitoring began has crossed nothing, so
+    /// no OS event will report it.
     ///
-    /// The one case no OS event covers: a device already inside a polygon when monitoring begins
-    /// has crossed nothing, so the OS has nothing to report, and a device standing still produces
-    /// no movement pass either. Foregrounding is the remaining signal, and it is free — one fix
-    /// serves the whole pass.
-    ///
-    /// Foregrounds arrive in bursts, so a pass already running wins: a second concurrent scan reads
-    /// the same storage and the same fix and can only duplicate the location work. That covers only
-    /// a pass content with the fix in hand — a wake runs BECAUSE the device moved, and any pass in
-    /// flight works from a fix requested before that movement, so no wake yields, not even to
-    /// another wake, and nothing else would retry it. What running buys the second wake is bounded:
-    /// requests COALESCE inside `MovementFixResolver`, so it is answered by the in-flight one — a
-    /// fix it would never have seen, but not one postdating its own crossing. Giving each wake its
-    /// own fix means a request per wake: a design change, not a comment fix.
+    /// A pass already in flight wins unless this one requires a fresh fix. Foregrounds arrive in
+    /// bursts and a second scan would only repeat the work, but a wake runs BECAUSE the device
+    /// moved, so it never yields. Its request still coalesces inside `MovementFixResolver` with
+    /// any already in flight, so it may be answered by a fix that predates its own crossing.
     func evaluateAllPolygons(
         reason: PolygonEvaluationReason,
         requiresFreshFix: Bool = false,
@@ -242,10 +216,9 @@ final class PolygonMembershipResolver {
         let heldFixDecision = heldFixUse(heldFix)
         logger.geofencePolygonPassStarted(reason: reason, count: polygons.count, pass: pass, heldFix: heldFixDecision.use)
         guard polygons.isEmpty == false else { return }
-        // At most one request for the whole pass. Resolving per polygon would issue a fresh timed
-        // request for each whenever the cache stays empty, holding the main actor for minutes and
-        // still deciding nothing — and a failed fresh request would silently downgrade every
-        // polygon after the first to the pre-wake fix.
+        // At most one request for the whole pass: per-polygon requests would hold the main actor
+        // for a timeout each when the cache stays empty, and a failed fresh request would silently
+        // downgrade every later polygon to the pre-wake fix.
         guard let fix = await passFix(heldFix: heldFix, decision: heldFixDecision, requiringFresh: requiresFreshFix) else {
             for geofence in polygons {
                 logger.geofencePolygonUndecided(identifier: geofence.id, reason: .noUsableFix, pass: pass)
@@ -255,9 +228,7 @@ final class PolygonMembershipResolver {
         await runPass(geofenceIds: polygons.map(\.id), fix: fix, pass: pass, isStillCurrent: isStillCurrent)
     }
 
-    /// - Returns: the fix the pass ran against, or nil when none could be obtained. Callers use it
-    ///   to size work against where the device actually is; the pass's own verdicts are recorded
-    ///   here and are not part of the return.
+    /// - Returns: the fix the pass ran against, or nil when none could be obtained.
     @discardableResult
     private func evaluate(
         geofenceId: String,
@@ -275,15 +246,10 @@ final class PolygonMembershipResolver {
     }
 
     /// Takes an id, never a caller's `PolygonRegion`: resolving a fix suspends, and a refresh can
-    /// replace the fence under the same id while it does. A ring captured before the await would
-    /// decide against geometry the workspace has already moved off — no user switch required — so
-    /// the current one is read here and the stale copy is never in scope to be used by mistake.
-    ///
-    /// Registration is re-read with it, from the same load: a fence unregistered during the fix
-    /// must not be judged either, and sampling one before the await and the other after is how the
-    /// two come to disagree. Costs one state decode per polygon, which is the price of the pass's
-    /// verdicts being at most one hop stale rather than a whole location request stale — do not
-    /// trade it back for a single snapshot without knowing that is what is being traded.
+    /// replace the fence under the same id meanwhile. The ring and the registration are re-read
+    /// here from one load, so the verdict uses current geometry and a fence unregistered during
+    /// the fix is not judged. That costs one state decode per polygon; a single up-front snapshot
+    /// would make every verdict a whole location request stale.
     /// - Returns: a marginal arrival to corroborate in the pass's second phase, or nil when the
     ///   fix settled it or settled nothing.
     func evaluate(
@@ -332,23 +298,20 @@ final class PolygonMembershipResolver {
     }
 
     /// Applies a membership verdict and delivers the crossing when it changes the stored belief.
-    /// `evidence` is when the crossing happened — a fix's timestamp, or the OS event's date for a
-    /// covering-circle exit. Required, not optional: it both orders the write against the stored
-    /// belief and stamps the event, so omitting it would write an unordered belief AND report the
-    /// delivery time as the crossing — here a whole forced-fresh fix request later. `confirmedByFix`
-    /// says which of the two dates it was; the date alone cannot tell the log how it was decided.
     ///
-    /// `isStillCurrent` is re-checked here, immediately before the emit and with no await after it:
-    /// the tracker stamps whoever is current when it is entered, and the write below is an await of
-    /// its own. The write is left unguarded deliberately — a belief states geometry, true whoever
-    /// is signed in; an emit is an ATTRIBUTION, and attribution is what a switch invalidates.
+    /// `evidence` is when the crossing happened: a fix's timestamp, or the OS event's date for a
+    /// covering-circle exit. It orders the write against the stored belief and stamps the event.
+    /// `confirmedByFix` says which of the two it was, for the log.
     ///
-    /// `internal` rather than `private` only because the pass runner lives in a split file.
+    /// `evaluatedRing` / `evaluatedCircle` are the geometry the verdict rests on, and the write is
+    /// refused if the fence has moved off it since. A fix verdict passes the ring; a covering-circle
+    /// exit passes the circle it crossed, when known.
     ///
-    /// `evaluatedRing` is the geometry the verdict was computed from, and the write is refused if
-    /// the workspace has moved off it since. Nil from the covering-circle exit, and that is not an
-    /// omission: polygon ⊆ circle holds for whatever ring is current, so leaving the circle is a
-    /// verdict no replacement can invalidate. Only a ring-derived verdict can go stale with the ring.
+    /// `isStillCurrent` is checked immediately before the emit, with no await after it. The write
+    /// is unguarded on purpose: a belief is geometry, true whoever is signed in, while the emit
+    /// attributes it to a user.
+    ///
+    /// `internal` only because the pass runner lives in a split file.
     func apply(
         _ membership: PolygonMembership,
         to geofence: Geofence,
@@ -384,17 +347,4 @@ final class PolygonMembershipResolver {
     private func cachedGeofence(id: String) async -> Geofence? {
         await storage.getCachedGeofences().first { $0.id == id }
     }
-
-    /// Freshest fix obtainable, requesting one when the cache is stale. Mirrors the gate: the
-    /// completion's coordinates are discarded for `latestFix`, which carries accuracy and timestamp.
-    ///
-    /// "Fresh" here is a fix received in answer to THIS request and strictly newer than the last
-    /// one delivered — stricter than the `movementFixMaxAge` test `wakeRadius` is sized against,
-    /// which only needs an anchor roughly where the device is. Neither may be relaxed to the other.
-    ///
-    /// On the FIRST pass of a process the two collapse: nothing has been delivered to be newer
-    /// than, and CoreLocation may echo its cached fix as a manager's first delivery, so a cold wake
-    /// can be answered by a fix up to `movementFixMaxAge` older than itself — hundreds of metres at
-    /// speed. Tightening it needs the ≤17 wake radius's assumed-speed constant; the verdict line
-    /// logs fix age, which is what makes such a verdict identifiable.
 }

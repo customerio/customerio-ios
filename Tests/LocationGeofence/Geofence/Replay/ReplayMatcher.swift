@@ -6,20 +6,15 @@ import Foundation
 /// Two rules, and both are needed:
 ///
 /// 1. **Ordered between stimuli, unordered within one.** Every `then` must appear, and expectations
-///    triggered by *different* stimuli must appear in the recorded order. Expectations triggered by
-///    the *same* stimulus may arrive in any order, because `GeofenceMonitorBinder` dispatches the
-///    tracker and coordinator paths as concurrent fire-and-forget `Task`s — so whether
-///    `movement.exit` or `transition.accepted` lands first is a scheduling detail, not behaviour.
-///    Pinning it would make the suite flaky for a reason the SDK does not control. This is the
-///    `"group": n` semantics the format specified, derived from each record's `at` rather than
-///    authored into the file. Emissions the scenario does not mention are ignored, because the
-///    transform deliberately drops records and a new diagnostic line should not turn a drive red.
+///    triggered by *different* stimuli must appear in the recorded order. Within one stimulus the
+///    order is free: `GeofenceMonitorBinder` dispatches each callback on its own fire-and-forget
+///    `Task`, so which decision logs first is a scheduling detail. Emissions the scenario does not
+///    mention are ignored, so a new diagnostic line does not turn a drive red.
 /// 2. **Exact count per `ev`.** For each event name the scenario mentions, the number emitted must
-///    match exactly. Rule 1 alone would pass an SDK that emitted *two* `transition.accepted` where
-///    the drive saw one — a duplicate-delivery regression sailing through as a subsequence.
+///    match exactly, or a duplicate emission would pass rule 1 as a subsequence.
 ///
 /// A `then` asserts **only the keys it lists**. The transform already stripped the volatile ones
-/// (`ms`, `age`, `acc`), so anything still present is something the drive is entitled to pin.
+/// (`ms`, `age`, `acc`).
 enum ReplayMatcher {
     struct Mismatch: CustomStringConvertible {
         enum Kind {
@@ -44,14 +39,8 @@ enum ReplayMatcher {
 
     /// Both sequences side by side, for a failure message.
     ///
-    /// A list of mismatches says *what* did not line up; when the cause is ordering rather than
-    /// behaviour, only seeing the two sequences says *why*.
-    ///
-    /// **The replay column is narrowed to the event names the drive asserts.** `emitted` is the whole
-    /// diagnostic tail — every `fence.cataloged`, every `location.fix` — and against a `then` list of
-    /// nineteen rows that pushed the two sequences so far out of step that the columns lined up
-    /// nothing at all. The comparison itself still runs over the full tail; only this rendering is
-    /// filtered, so an emission the drive never mentions can still be read from the log.
+    /// The replay column is narrowed to the event names the drive asserts, or the full diagnostic
+    /// tail pushes the columns out of step. Only this rendering is filtered, not the comparison.
     static func diff(expected: [Scenario.Record], actual: [[String: String]]) -> String {
         func label(_ ev: String, _ id: String?, _ t: String?) -> String {
             [ev, id, t].compactMap { $0 }.joined(separator: "/")
@@ -144,8 +133,7 @@ enum ReplayMatcher {
 
     /// First unconsumed emission at or after `start` that satisfies `want`.
     ///
-    /// Consumed indices are skipped so two identical expectations cannot both match one emission —
-    /// which would hide a dropped duplicate.
+    /// Consumed indices are skipped so two identical expectations cannot both match one emission.
     private static func seek(
         _ want: Scenario.Record,
         in actual: [[String: String]],

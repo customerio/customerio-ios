@@ -17,11 +17,8 @@ final class GeofenceRefreshTrigger {
     private let explicitRefreshRequested: Synchronized<Bool>
     /// Armed when a refresh found no anchor; the next fix consumes it.
     private let lastSkippedForNoLocation = Synchronized<Bool>(false)
-    /// Guards the *pair* of arm flags, not either one of them.
-    ///
-    /// Both are individually thread-safe, which is not the same as consuming them together. A reset
-    /// landing between the two reads in `onLocationAcquired` left the first flag's pre-reset value
-    /// in hand and the second already cleared, and the signed-out user's refresh went ahead.
+    /// Guards the *pair* of arm flags. Each is thread-safe alone, but a reset must not land between
+    /// the two reads in `onLocationAcquired`, or a signed-out user's refresh can go ahead.
     private let armingLock = NSRecursiveLock()
 
     init(
@@ -90,9 +87,9 @@ final class GeofenceRefreshTrigger {
         logger.geofenceFirstRunRearm()
         Task { @MainActor [weak self] in
             guard let self else { return }
-            // The armed refresh belongs to whoever was current when the flag was consumed. A sign-out
-            // (or switch) racing this fix must not let it register for a gone session: the coordinator's
-            // reset is superseded while a user is signed in and would not undo this live-fix refresh.
+            // The armed refresh belongs to the user current when the flag was consumed. A sign-out or
+            // switch racing this fix must win: the coordinator's reset is skipped while any user is
+            // signed in, so it would not undo this refresh.
             guard self.contextStore.currentUserId == startedForUser else { return }
             _ = await self.coordinator().refresh(latitude: location.latitude, longitude: location.longitude, anchorIsLiveFix: true)
         }
@@ -109,11 +106,9 @@ final class GeofenceRefreshTrigger {
             let registrationCenter = await self.storage.getLastRegistrationCenter()
             let lastKnown = await self.lastKnownLocation()
             let anchor = registrationCenter ?? lastKnown
-            // Identity may have changed while those two reads were in flight. Compare against the
-            // CURRENT user, not an epoch counter: a late reset for a prior user must not abort this
-            // decision (that left the new user with no geofences), while a genuine sign-out or switch
-            // does. The arming write stays under `armingLock` so a concurrent `onReset` clearing the
-            // flags and this arming them cannot interleave.
+            // Compare against the CURRENT user, not an epoch counter: a late reset for a prior user
+            // must not abort this decision, while a real sign-out or switch does. Arming happens under
+            // `armingLock` so it cannot interleave with `onReset` clearing the flags.
             let isCurrent = self.armingLock.withLock { () -> Bool in
                 guard self.contextStore.currentUserId == startedForUser else { return false }
                 // Armed only here, after the reads, or an existing anchor would arm it falsely.

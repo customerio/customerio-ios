@@ -18,7 +18,6 @@ public protocol GeofenceServices {
     func refreshFromCurrentLocation()
 }
 
-/// Extension to expose the Geofence module through CustomerIO.
 public extension CustomerIO {
     /// Access the Geofence module. Register it via `SDKConfigBuilder.addModule(GeofenceModule())`
     /// (alongside `LocationModule`) before `CustomerIO.initialize(withConfig:)`.
@@ -29,9 +28,8 @@ public extension CustomerIO {
 
 struct GeofenceServicesImplementation: GeofenceServices {
     func refreshFromCurrentLocation() {
-        // Arm first so the returning fix drives a sync even without a prior no-location skip,
-        // then request a silent (no-analytics) fix. Safe when the Location module isn't
-        // registered — `CustomerIO.location` returns a no-op that only logs.
+        // Arm first so the returning fix drives a sync. Safe without the Location module:
+        // `CustomerIO.location` is then a no-op that only logs.
         GeofenceModuleState.shared.onRefreshRequested()
         CustomerIO.location.requestLocationUpdateSilently()
     }

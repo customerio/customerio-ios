@@ -3,18 +3,11 @@ import CoreLocation
 import Foundation
 
 /// Picks between the OS's cached fix and the freshest one `MovementFixResolver` has delivered.
-///
-/// One rule with three readers — both monitors' `bestKnownFixDetail()` and the resolver's own
-/// request baseline — which previously hand-rolled it and had already drifted: the monitors gave
-/// an equal timestamp to the cache, the resolver to its own fix. Same value either way, but a
-/// different `fixsrc` in the diagnostics that the field analysis reads.
+/// Shared by both monitors' `bestKnownFixDetail()` and the resolver's own reads, so the tie rule
+/// (and the logged `fixsrc`) cannot drift between them.
 enum FixSelection {
-    /// The newer of the two, and which one it was. A tie goes to the delivered fix: equal
-    /// timestamps mean the cache has caught up to it, and the delivered one is the fix whose
-    /// provenance is known rather than whatever the OS last happened to hold.
-    ///
-    /// So `fixsrc=resolver` in a log reads as "at least as new as the OS cache", not "newer than
-    /// it" — worth knowing before inferring provenance from a drive trace.
+    /// The newer of the two, and which one it was. A tie goes to the delivered fix, whose
+    /// provenance is known, so `fixsrc=resolver` means "at least as new as the OS cache".
     static func newest(
         cached: CLLocation?,
         delivered: CLLocation?
@@ -30,37 +23,27 @@ enum FixSelection {
     }
 }
 
-/// The one implementation of "which fix do we act on", shared by both monitors.
-///
-/// A protocol default rather than a helper each monitor calls: with a helper, a hand-rolled copy
-/// back inside either `bestKnownFixDetail()` is a silent drift, and neither monitor can be built
-/// in a unit test, so nothing would fail. Here, un-extracting means ADDING a shadowing method,
-/// which a reviewer sees.
+/// The one implementation of "which fix do we act on", shared by both monitors as a protocol
+/// default so a monitor cannot quietly hand-roll its own copy.
 @MainActor
 protocol GeofenceFixSelecting: AnyObject {
     /// The OS's own cached fix, from whichever manager this monitor owns.
     var osCachedFix: CLLocation? { get }
     var movementFixResolver: MovementFixResolver { get }
-    /// The selection is logged from the default below, so it is logged identically for both
-    /// monitors. Requirements rather than a shadowing override: a concrete `bestKnownFixDetail()`
-    /// would not be seen by `bestKnownFix()`, which dispatches statically inside this extension.
+    /// Required so the default below logs the selection identically for both monitors. A concrete
+    /// `bestKnownFixDetail()` would not be seen by `bestKnownFix()`, which dispatches statically.
     var logger: Logger { get }
     var dateUtil: DateUtil { get }
 }
 
 extension GeofenceFixSelecting {
     /// Newest usable fix across the OS cache and the resolver's requested fixes. The OS cache can
-    /// freeze at process start on a long-suspended process, so a fresher resolver fix must win
-    /// wherever cached position is read.
+    /// freeze at process start on a long-suspended process, so a fresher resolver fix must win.
     func bestKnownFix() -> CLLocation? {
         bestKnownFixDetail()?.fix
     }
 
     /// The same choice, reporting which source won.
-    ///
-    /// Worth carrying into diagnostics: a resolver fix was requested and delivered, while the OS
-    /// cache is whatever the system last happened to have — and on a long-suspended process that
-    /// can be hours old. Both produce a coordinate; only one of them means anything.
     func bestKnownFixDetail() -> (fix: CLLocation, source: GeofenceLog.FixSource)? {
         let selected = FixSelection.newest(cached: FixSelection.usable(osCachedFix), delivered: movementFixResolver.latestFix)
         // Every cache read is an input and is logged, repeated or not.

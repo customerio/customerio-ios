@@ -577,8 +577,8 @@ struct GeofenceStorageTests {
         defer { try? FileManager.default.removeItem(at: dir) }
         let storage = makeStorage(directory: dir)
         // Registered while the device is INSIDE the region → baseline seeded to the actual state
-        // (.enter). CLMonitor re-evaluating that same state is suppressed — the register-while-inside
-        // parity fix: no spurious enter at registration (classic is silent too).
+        // (.enter), so CLMonitor re-evaluating that same state is suppressed: no spurious enter at
+        // registration, matching classic.
         await storage.recordMonitorRegistration(identifier: "geo_1", transitionTypes: [.enter, .exit], initialState: .enter, center: LocationData(latitude: 10, longitude: 20), radius: 100)
         #expect(await storage.recordMonitorEvent(.enter, forIdentifier: "geo_1") == .suppressedNoChange)
         // The subsequent genuine exit delivers.
@@ -688,8 +688,8 @@ struct GeofenceStorageTests {
         let eventAt = Date(timeIntervalSince1970: 1789215260.147529)
         await storage.recordMonitorRegistration(identifier: "geo_1", transitionTypes: [.enter, .exit], initialState: .exit, center: center, radius: 100, now: eventAt.addingTimeInterval(-600))
         #expect(await storage.recordMonitorEvent(.enter, forIdentifier: "geo_1", osEventDate: eventAt) == .deliver)
-        // Copies are not always date-identical and not always delivered in date order (measured on
-        // device: sub-microsecond apart). An earlier-dated copy is still a copy.
+        // Copies are not always date-identical and not always delivered in date order. An
+        // earlier-dated copy is still a copy.
         #expect(await storage.recordMonitorEvent(.enter, forIdentifier: "geo_1", osEventDate: eventAt.addingTimeInterval(-0.000001)) == .suppressedRedelivery)
         // And a genuinely later event of the other state still delivers.
         #expect(await storage.recordMonitorEvent(.exit, forIdentifier: "geo_1", osEventDate: eventAt.addingTimeInterval(60)) == .deliver)
@@ -715,12 +715,12 @@ struct GeofenceStorageTests {
         let storage = makeStorage(directory: dir)
         let reshapedAt = Date(timeIntervalSince1970: 1789215260.748)
         await storage.recordMonitorRegistration(identifier: "trigger", transitionTypes: [.exit], initialState: .enter, center: LocationData(latitude: 10, longitude: 20), radius: 1000, now: reshapedAt.addingTimeInterval(-3600))
-        // The device exits the old circle; a movement pass re-centres the trigger on it.
+        // A business circle (not the movement trigger): the device exits it, then it is re-centred.
         #expect(await storage.recordMonitorEvent(.exit, forIdentifier: "trigger", osEventDate: reshapedAt.addingTimeInterval(-0.2)) == .deliver)
         await storage.recordMonitorRegistration(identifier: "trigger", transitionTypes: [.exit], initialState: .enter, center: LocationData(latitude: 10.02, longitude: 20), radius: 1000, now: reshapedAt)
-        // A corrective the daemon computed against the OLD circle, dated 42 ms before the new one
-        // was installed (drive 5). Its state differs from the fresh seed, so by state alone it is a
-        // crossing — and the phone only absorbed it because its queue happened to drain later.
+        // A corrective the daemon computed against the OLD circle, dated just before the new one
+        // was installed. Its state differs from the fresh seed, so by state alone it would read as
+        // a crossing.
         let oldExitAt = reshapedAt.addingTimeInterval(-0.042)
         #expect(await storage.recordMonitorEvent(
             .exit, forIdentifier: "trigger",
@@ -827,7 +827,7 @@ struct GeofenceStorageTests {
         let registeredAt = Date(timeIntervalSince1970: 1789215000)
         await storage.recordMonitorRegistration(identifier: "geo_1", transitionTypes: [.enter, .exit], initialState: .exit, center: center, radius: 100, now: registeredAt)
         // The OS gave the condition up and the SDK re-registered it, same circle. Events the daemon
-        // held from the dead incarnation (drive 5 delivered fifteen of them 49 minutes late) predate it.
+        // held from the dead incarnation can arrive late, and predate it.
         await storage.recordMonitorRegistration(identifier: "geo_1", transitionTypes: [.enter, .exit], initialState: .exit, center: center, radius: 100, forceReseed: true, now: registeredAt.addingTimeInterval(600))
         #expect(await storage.recordMonitorEvent(.enter, forIdentifier: "geo_1", osEventDate: registeredAt.addingTimeInterval(300)) == .suppressedPredatesRegistration)
     }
@@ -1055,10 +1055,10 @@ struct GeofenceStorageTests {
 
     @Test
     func revisit_givenRegionEvictedWhileInside_expectGenuineEnterStillDelivered() async {
-        // The regression. A region evicted while the device is inside keeps a `.enter` baseline that
-        // no EXIT ever balances, because it is no longer monitored. Re-registering the same circle
-        // later preserves that baseline, so the arrival on a genuine revisit reads as no change and
-        // is dropped. Pruning on eviction is what keeps the revisit deliverable.
+        // A region evicted while the device is inside keeps a `.enter` baseline that no EXIT ever
+        // balances, because it is no longer monitored. Re-registering the same circle later would
+        // preserve that baseline, so a genuine revisit reads as no change and is dropped. Pruning
+        // on eviction keeps the revisit deliverable.
         let dir = makeTempDirectory()
         defer { try? FileManager.default.removeItem(at: dir) }
         let storage = makeStorage(directory: dir)
@@ -1096,13 +1096,9 @@ struct GeofenceStorageTests {
 
     @Test
     func diagnosticReason_expectEverySuppressionNamedAndDeliverSilent() {
-        // The monitor logs this token when it discards a callback.
-        //
-        // A case added with no token at all is already a compile error — `diagnosticReason`
-        // switches exhaustively with no `default`. What the compiler cannot catch is a case wired
-        // to `nil`, which the caller's `if let` then swallows silently. Driven off `allCases` so
-        // that a newly added case is covered too; a hand-written list would simply not mention it.
-        // An unattributable disappearance is indistinguishable from the OS never delivering at all.
+        // The monitor logs this token when it discards a callback. A case with no token is a compile
+        // error (the switch has no `default`); a case wired to `nil` is not, and the caller's
+        // `if let` swallows it. Driven off `allCases` so a newly added case is covered too.
         let cases = GeofenceMonitorEventOutcome.allCases
         for outcome in cases {
             if case .deliver = outcome {

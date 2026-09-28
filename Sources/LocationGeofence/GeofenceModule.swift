@@ -33,29 +33,25 @@ public final class GeofenceModule: CustomerIOModule {
         self.config = config
     }
 
-    /// Setup runs on `GeofenceModuleState.shared`, which lives for the process lifetime — the
-    /// SDK does not retain this facade after `initialize()` returns, so the module's foreground
-    /// observer and first-run state must outlive it.
     public func initialize() {
         GeofenceModuleState.shared.setup(di: DIGraphShared.shared, locationMode: config.locationMode)
     }
 
-    /// Bootstraps geofence cold-wake delivery from the host's `AppDelegate`.
+    /// Bootstraps geofence cold-wake delivery. Call from the host's `AppDelegate`.
     ///
-    /// Wrapper SDKs (RN, Flutter) do not run `CustomerIO.initialize` in the cold-wake
-    /// process — there is no JS/Dart runtime. This entry reads all the state it needs
-    /// from persisted stores and wires up region monitoring and flushes any queued
-    /// transition deliveries without requiring any module's `initialize` to have run in
-    /// this process.
+    /// Wrapper SDKs (React Native, Flutter) don't run `CustomerIO.initialize` in a cold-wake
+    /// process, since no JS/Dart runtime starts. This reads persisted state, wires region
+    /// monitoring and flushes queued transitions without any module's `initialize` having run.
     ///
-    /// Safe to call on every launch. When the SDK has been initialized via
-    /// `CustomerIO.initialize(withConfig:)`, the same DI-resolved singletons are reused —
-    /// no double-init, no duplicate monitoring.
+    /// Safe to call on every launch. After `CustomerIO.initialize(withConfig:)` it reuses the
+    /// same instances, so nothing is initialized or monitored twice.
+    ///
+    /// - Parameter launchOptions: the launch options the app delegate received.
     @MainActor
     public static func bootstrapForBackgroundDelivery(launchOptions: [UIApplication.LaunchOptionsKey: Any]?) {
         let di = DIGraphShared.shared
-        // Only a cold wake is worth a record here; a normal launch is already covered by
-        // module.init, and this path is the only one that can see `launchOptions`.
+        // Only a cold wake is recorded here: a normal launch already logs `module.init`, and only
+        // this path sees `launchOptions`.
         if launchOptions?[.location] != nil {
             di.logger.geofenceModuleWoke(launchReason: .locationEvent)
         }

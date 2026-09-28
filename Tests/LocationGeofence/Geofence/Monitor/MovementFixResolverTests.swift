@@ -271,10 +271,9 @@ struct MovementFixResolverTests {
         #expect(received.map(\.?.latitude) == [32.7])
     }
 
-    /// CoreLocation's cache advances on its own between passes — other clients in the process keep
-    /// it moving — so it can hold a newer fix than anything this resolver has delivered. Preferring
-    /// `latestFix` by source rather than by age would request a fix that is already in hand and,
-    /// when that request fails, fall back to the older of the two.
+    /// CoreLocation's cache advances on its own between passes (other clients in the process), so
+    /// it can hold a newer fix than anything this resolver delivered. Preferring `latestFix` by
+    /// source would fall back to the older of the two when a request fails.
     @Test
     func cachedFix_givenSystemCacheNewerThanDeliveredFix_expectSystemCache() {
         let resolver = makeResolver()
@@ -295,9 +294,7 @@ struct MovementFixResolverTests {
         #expect(resolver.cachedFix?.coordinate.latitude == 31.1)
     }
 
-    /// An invalid cached coordinate must not win on age alone. It never becomes a verdict — the
-    /// consumers re-check — but as the freshness baseline it makes a genuinely newer delivered fix
-    /// look not-newer, and the verdict that fix was requested for is then refused.
+    /// An invalid system coordinate must not win on age alone over a usable delivered fix.
     @Test
     func cachedFix_givenSystemCacheNewerButInvalid_expectDeliveredFix() {
         let resolver = makeResolver()

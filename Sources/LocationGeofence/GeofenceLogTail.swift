@@ -2,10 +2,8 @@ import CioInternalCommon
 import CoreLocation
 import Foundation
 
-/// Whether a record is something the SDK was told, something the SDK decided, or neither.
-///
-/// Stated explicitly rather than inferred from the event name: replay feeds the `in` records back
-/// and compares the `out` records, so a naming convention getting this wrong invalidates a run.
+/// Whether a record is something the SDK was told, something it decided, or neither. Explicit
+/// rather than inferred from the name: replay feeds `in` records back and compares `out` records.
 enum GeofenceLogIO: String {
     case input = "in"
     case output = "out"
@@ -40,10 +38,8 @@ private final class DiagnosticsGate: @unchecked Sendable {
     }
 }
 
-/// Builds the machine-readable tail appended to a geofence log message.
-///
-/// Existing prose is unchanged. Records added by this work emit prose either way; only the tail
-/// is gated.
+/// Builds the machine-readable tail appended to a geofence log message. Only the tail is gated;
+/// the prose is emitted regardless, except on the few records gated whole.
 ///
 /// ```
 /// [Geofence] Accepted enter for geofence notl_core, queued 1 row(s) || ev=transition.accepted io=out id=notl_core t=enter n=1
@@ -52,10 +48,8 @@ enum GeofenceLog {
     /// A parser splits on the **last** occurrence, and only if the remainder is all `key=value`.
     static let delimiter = " || "
 
-    /// Why a condition was removed from `CLMonitor`, on `condition.removed`.
-    ///
-    /// A token rather than a bare string at the call sites: the two are read as a pair by anyone
-    /// timing the OS queue, and a third spelling of either would silently split the count.
+    /// Why a condition was removed from `CLMonitor`, on `condition.removed`. An enum so call sites
+    /// can't introduce a third spelling.
     enum RemovalOp: String {
         /// Clearing the way for an immediate re-add of the same identifier.
         case readd
@@ -79,31 +73,25 @@ enum GeofenceLog {
         var parts = ["ev=\(ev)", "io=\(io.rawValue)"]
         for (key, value) in fields() {
             guard let value else { continue }
-            // Sanitize by default; the few composed keys opt out. The reverse arrangement left
-            // every `id` call site unprotected, because nothing forced a new field to be wrapped.
+            // Sanitize by default so a new field can't forget to; composed keys opt out.
             let safe = composedKeys.contains(key) ? foldWhitespace(value) : sanitize(value)
             parts.append("\(key)=\(safe)")
         }
         return delimiter + parts.joined(separator: " ")
     }
 
-    /// The parser splits on whitespace, and workspace-authored ids can contain anything.
-    /// Every character the format itself uses to separate things. Applied to *untrusted tokens*
-    /// only — a workspace-authored id containing one of these would otherwise split a field: `=` a
-    /// pair, `,` a list, `:` an `id:distance` entry in `ranked`, `|` the tail delimiter.
-    ///
-    /// Deliberately not applied to a finished value: `list` and `ranked` compose their separators
-    /// on purpose, and folding those turns `a,b` into `a_b`.
+    /// Characters the format uses as separators: `=` a pair, `,` a list, `:` an `id:distance` entry
+    /// in `ranked`, `|` the tail delimiter. Folded out of untrusted tokens (workspace-authored ids
+    /// can contain anything), never out of a composed value, where `a,b` must not become `a_b`.
     static let separators: Set<Character> = ["=", ",", ":", "|"]
 
-    /// The only values that compose the format's separators on purpose. Everything else is an
-    /// untrusted token — region identifiers are workspace-authored and can hold anything.
+    /// Values that compose the format's separators on purpose. Everything else is untrusted.
     private static let composedKeys: Set<String> = [
         "ranked", "evicted", "ids", "gs", "tt", "ring", "missing", "extra"
     ]
 
-    /// Applied to every finished value. Only whitespace, which is what separates one `key=value`
-    /// from the next — the value's own structure is already the caller's business.
+    /// Used instead of `sanitize` for composed values: folds only whitespace, which separates one
+    /// `key=value` from the next.
     static func foldWhitespace(_ value: String) -> String {
         var out = ""
         out.reserveCapacity(value.count)
@@ -156,8 +144,7 @@ enum GeofenceLog {
     /// Comma-separated, capped; the count travels separately so truncation stays honest.
     static func list(_ values: [String], limit: Int = 25) -> String? {
         guard !values.isEmpty else { return nil }
-        // `prefix` traps on a negative length; no caller passes one, but a log must not be
-        // the thing that takes the process down.
+        // `prefix` traps on a negative length; a log must never crash the process.
         let head = values.prefix(max(0, limit)).map(sanitize).joined(separator: ",")
         return values.count > limit ? "\(head),+\(values.count - limit)" : head
     }
@@ -195,7 +182,7 @@ enum GeofenceLog {
 
     // MARK: - Fix quality and provenance (ungated)
 
-    /// Where a fix came from; the log previously said only that *a* position existed.
+    /// Where a fix came from.
     enum FixSource: String, CaseIterable {
         /// `CLLocationManager.location` — the OS's cached fix. Can freeze at process start on a
         /// long-suspended process, so this is the one that silently goes stale.
@@ -206,17 +193,15 @@ enum GeofenceLog {
         case freshRequest = "fresh_request"
         /// The contradiction gate's fix, taken inside a re-add replay window.
         case gate
-        /// Delivered by the Location module: an arrival, not a read. Same channel as Android's `bus`.
+        /// Delivered by the Location module: an arrival, not a read. Matches Android's `prov=bus`.
         case bus
         /// A synthesized transition, not an OS-delivered one.
         case synthetic
         case none
     }
 
-    /// How good the fix is and where it came from.
-    ///
-    /// `age` is the one to notice: `bestKnownFix()` can be hours old on a long-suspended process,
-    /// and an overshoot computed from one of those looks identical to a real measurement.
+    /// How good the fix is and where it came from. `age` matters most: `bestKnownFix()` can be
+    /// hours old on a long-suspended process.
     static func fixQuality(_ location: CLLocation?, source: FixSource, now: Date) -> [(String, String?)] {
         var fields: [(String, String?)] = [("fixsrc", source.rawValue)]
         guard let location else { return fields }
@@ -226,9 +211,8 @@ enum GeofenceLog {
         if location.verticalAccuracy > 0 {
             fields.append(("vacc", num(location.verticalAccuracy)))
         }
-        // Marks a fix injected by `devicectl simulate location` or Xcode. Without it a bench run
-        // and a real drive are indistinguishable once the files are pooled, which is exactly the
-        // sort of contamination nobody notices until a conclusion is already built on it.
+        // Marks a fix injected by `devicectl simulate location` or Xcode, so bench runs and real
+        // drives stay distinguishable once captures are pooled.
         if #available(iOS 15.0, *), let info = location.sourceInformation {
             fields.append(("sim", bool(info.isSimulatedBySoftware)))
             if info.isProducedByAccessory {
@@ -238,8 +222,8 @@ enum GeofenceLog {
         return fields
     }
 
-    /// How long an OS-dated event waited before the SDK processed it — "observed late" and
-    /// "observed on time, delivered late" are different faults that otherwise look the same.
+    /// How long an OS-dated event waited before the SDK processed it, separating "observed late"
+    /// from "observed on time, delivered late".
     static func eventTiming(_ eventDate: Date?, now: Date) -> [(String, String?)] {
         guard let eventDate else { return [] }
         return [
@@ -251,7 +235,6 @@ enum GeofenceLog {
 
     // MARK: - Device position
 
-    /// Device position. Gated with the rest of the tail; no per-field switch.
     static func position(_ location: CLLocation?) -> [(String, String?)] {
         guard let location else { return [] }
         return [
@@ -274,7 +257,6 @@ enum GeofenceLog {
 }
 
 extension Logger {
-    /// Call-site shim; keeps `GeofenceLog.` off ~40 call sites.
     func geofenceTail(
         _ ev: String,
         _ io: GeofenceLogIO,
@@ -284,12 +266,10 @@ extension Logger {
     }
 }
 
-/// Diagnostic vocabulary for the monitor's dedup decision. Lives with the rest of the tail
-/// rather than on the storage type: the token is a log contract, and `GeofenceStorage` is already
-/// at the module's file-length limit.
+/// Lives with the tail rather than with the type: the token is a log contract.
 extension GeofenceMonitorEventOutcome {
-    /// Stable token for the diagnostic tail. Without it every suppression here is indistinguishable
-    /// from the others — and from the OS never having delivered anything at all.
+    /// Stable token for the diagnostic tail, so each suppression is distinguishable from the
+    /// others and from the OS never delivering at all.
     var diagnosticReason: String? {
         switch self {
         case .deliver: return nil

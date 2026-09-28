@@ -11,9 +11,7 @@ enum GeofenceRegionDropReason: String, Error, CaseIterable {
     case unusableCircle = "invalid coordinates or radius"
     case unusablePolygon = "missing or undecodable polygon geometry"
 
-    /// Stable across rewording, unlike `rawValue`, which is the human sentence. Same split
-    /// `GeofenceSyncSkipReason` makes, and for the same reason: a script keying off the prose
-    /// breaks the day someone improves it.
+    /// Stable across rewording, unlike `rawValue`, which is the human sentence.
     var logToken: String {
         switch self {
         case .unknownShape: return "unknown_shape"

@@ -2,14 +2,13 @@ import CioInternalCommon
 import CoreLocation
 import Foundation
 
-/// How the resolver gets a position to judge against, split from its core so both stay under the
-/// file cap. `internal` rather than `private` only because of that split; it remains
-/// implementation detail of the resolver.
+/// How the resolver gets a position to judge against, split from its core for the file cap.
+/// Members are `internal` only because of the split.
 extension PolygonMembershipResolver {
     /// Whether a caller's fix can stand in for a request of our own. Recorded on the pass log so a
     /// drive can tell a reuse from a fall-through.
     enum HeldFixUse: String, CaseIterable {
-        /// The caller held none; the pass requests its own, as it always has.
+        /// The caller held none; the pass requests its own.
         case none
         case reused
         case tooOld = "too_old"
@@ -18,31 +17,17 @@ extension PolygonMembershipResolver {
         case newer
     }
 
-    /// A caller that already resolved a fix under the same freshness rule must not be made to ask
-    /// again, and not only to save the request. `resolveFix(requiringFresh:)` demands a fix
-    /// strictly newer than the last one this resolver delivered — which is the caller's — so the
-    /// second request is refused whenever CoreLocation echoes that fix, as it commonly does within
-    /// seconds of delivering it. Every polygon in the pass then records `no_usable_fix`: the whole
-    /// pass lost, not one request wasted.
+    /// Reusing a caller's fix matters for more than the saved request: `resolveFix(requiringFresh:)`
+    /// demands a fix strictly newer than the last one this resolver delivered, which is the
+    /// caller's, so a second request answered by a CoreLocation echo is refused and every polygon
+    /// in the pass records `no_usable_fix`.
     ///
-    /// Age is the limit. A movement deferred at the gate replays with the fix it was recorded
-    /// with, older by however long the holder ran — a remote refetch is seconds, and unbounded on
-    /// a slow network. `PolygonMembershipDecision` refuses anything past `movementFixMaxAge` as
-    /// `fix_too_old`, so reusing one there loses the same pass by the other route. Past the cap we
-    /// request instead, which also beats the stale baseline the guard above compares against.
-    /// A newer fix this resolver already holds WINS over the caller's, and is used in its place
-    /// rather than triggering a request.
+    /// Past `movementFixMaxAge` the held fix would be refused as `fix_too_old` (a movement deferred
+    /// at the gate replays with an older fix), so the pass requests instead.
     ///
-    /// The pass that handed this fix over can itself have spent a corroboration request and been
-    /// answered with a newer fix. If that answer contradicted — a marginal inside, refused because
-    /// the second fix read outside — then reusing the held fix re-proposes exactly the arrival the
-    /// entry pass correctly refused, and the corroboration it asks for is refused as an echo of
-    /// the newer fix, so it commits UNCONFIRMED on older evidence.
-    ///
-    /// Substituting rather than requesting, because REFUSING reuse is the over-correction: when
-    /// the corroboration AGREED, forcing a request hits the same echo refusal this whole path
-    /// exists to avoid, and loses every polygon in the pass to `no_usable_fix`. The newer fix is
-    /// both the better evidence and free, so take it and spend no request either way.
+    /// A newer fix this resolver already holds, such as a corroboration answer from the pass that
+    /// handed this fix over, is used in its place. Reusing the older fix could re-propose an
+    /// arrival that newer fix refused, and requesting would hit the same echo refusal.
     func heldFixUse(_ heldFix: ResolvedFix?) -> HeldFixDecision {
         guard let heldFix else { return HeldFixDecision(use: .none, age: 0, newerFix: nil) }
         if let latest = fixResolver.latestFix, latest.timestamp > heldFix.timestamp {
@@ -60,20 +45,17 @@ extension PolygonMembershipResolver {
         )
     }
 
-    /// The verdict on a caller's fix, carrying the age it was judged on so the pass does not ask
-    /// again. The two reads are not interchangeable: accepting at 29.9 s and re-reading the clock
-    /// at the start of the pass puts the fix past `movementFixMaxAge`, and every polygon then
-    /// records `fix_too_old` — while `.tooOld`, the branch that would have requested a usable
-    /// replacement, was never taken. Measured in the field at a 29.95 s held fix.
+    /// The verdict on a caller's fix, with the age it was judged on so the pass never re-reads the
+    /// clock. Re-reading can push a fix accepted just under `movementFixMaxAge` past it, so every
+    /// polygon records `fix_too_old` while the `.tooOld` branch that would have requested a
+    /// replacement never ran.
     struct HeldFixDecision {
         let use: HeldFixUse
         let age: TimeInterval
         /// Set only for `.newer`: the fix the pass judges on in place of the caller's.
         ///
-        /// A real `CLLocation`, and it must stay one. Rebuilding it as a `ResolvedFix` for
-        /// symmetry with the held path would zero the altitude and drop the vertical accuracy —
-        /// which is exactly the coarse-cell-fix signature our drive analysis reads, and which
-        /// `ResolvedFix` warns about on its own `location`.
+        /// Kept as the real `CLLocation`: rebuilding it as a `ResolvedFix` would zero the altitude
+        /// and drop vertical accuracy (see `ResolvedFix.location`).
         let newerFix: CLLocation?
     }
 
@@ -83,10 +65,9 @@ extension PolygonMembershipResolver {
         let age: TimeInterval
     }
 
-    /// The fix a pass judges against — see `heldFixUse` for when the caller's is taken.
+    /// The fix a pass judges against; see `heldFixUse` for when the caller's is taken.
     func passFix(heldFix: ResolvedFix?, decision: HeldFixDecision, requiringFresh: Bool) async -> PassFix? {
-        // The age always comes from the decision, never a new reading: that is the whole point of
-        // carrying it.
+        // The age always comes from the decision, never a new reading.
         switch decision.use {
         case .reused:
             guard let heldFix else { return await requestedPassFix(requiringFresh: requiringFresh) }
@@ -107,26 +88,33 @@ extension PolygonMembershipResolver {
         return PassFix(location: resolved, age: dateUtil.now.timeIntervalSince(resolved.timestamp))
     }
 
+    /// Freshest fix obtainable, requesting one when the cache is stale. The completion's
+    /// coordinates are discarded for `latestFix`, which carries accuracy and timestamp.
+    ///
+    /// With `requiringFresh`, only a fix received for THIS request and strictly newer than the last
+    /// one delivered counts. That is stricter than the coordinator's `wakeRadius` test, which only
+    /// needs a fix within `movementFixMaxAge`; neither may be relaxed to the other.
+    ///
+    /// On a process's first pass nothing has been delivered yet, and CoreLocation may echo its
+    /// cached fix as a new manager's first delivery, so a cold wake can be answered by a fix up to
+    /// `movementFixMaxAge` old. The verdict log's fix age identifies such a verdict.
     func resolveFix(requiringFresh: Bool = false) async -> CLLocation? {
-        // What this resolver has already DELIVERED, which is what a forced request must improve on.
-        // Deliberately not `cachedFix`: that reports the newest fix obtainable from either source,
-        // and CoreLocation's own cache advances on its own, so using it here makes the baseline as
-        // current as any answer a request can return and the guard below can never pass.
+        // What this resolver has DELIVERED, which a forced request must improve on. Not
+        // `cachedFix`: CoreLocation's cache advances on its own, so that baseline could be as new as
+        // any answer and the guard below would never pass.
         let priorTimestamp = fixResolver.latestFix?.timestamp
         return await withCheckedContinuation { continuation in
             fixResolver.resolve(cached: requiringFresh ? nil : fixResolver.cachedFix, purpose: .polygon) { [weak self] _, isFresh in
                 guard let self else { return continuation.resume(returning: nil) }
                 let resolved = fixResolver.latestFix
                 if requiringFresh {
-                    // `isFresh` is the resolver's own account of what it answered with: true only
-                    // for a fix it received in response to this request, which is what keeps a
-                    // failed or timed-out request from resuming on the held fix. It does NOT prove
-                    // the fix postdates the wake — an echoed cache fix inside `movementFixMaxAge`
-                    // clears it — so on a cold process the age gate is the whole bound. The
-                    // timestamp comparison then keeps each later wake strictly ahead of the one before.
+                    // `isFresh` is true only for a fix received for this request, so a failed or
+                    // timed-out request never resumes on the held fix. It does not prove the fix
+                    // postdates the wake (an echoed cache fix within `movementFixMaxAge` passes),
+                    // so the timestamp check keeps each later wake strictly ahead of the one before.
                     //
-                    // No fallback to the held fix here, on any branch: a wake fires BECAUSE the
-                    // device moved, so anything predating the request describes where it was.
+                    // No fallback to the held fix: a wake fires BECAUSE the device moved, so
+                    // anything predating the request describes where it was.
                     guard isFresh, let resolved,
                           priorTimestamp.map({ resolved.timestamp > $0 }) ?? true
                     else {
@@ -136,14 +124,11 @@ extension PolygonMembershipResolver {
                     continuation.resume(returning: resolved)
                     return
                 }
-                // Newest of whatever exists, which is what a pass content with a held fix wants.
-                // Not `latestFix` first: `resolve` answers from the caller's cached fix WITHOUT
-                // recording it when that fix is young enough, so `latestFix` can be much older than
-                // the system fix that let this pass proceed. Fixed here and not by recording on
-                // that fast path — letting `latestFix` absorb the system cache would make the
-                // forced-fresh baseline above unbeatable again, the defect this path was repaired
-                // from. It also covers a cold process whose request failed, where CoreLocation's
-                // cache is the only evidence and the monitor's dedup baseline has already advanced.
+                // Newest fix from either source. Not `latestFix`: `resolve` answers from a young
+                // cached fix WITHOUT recording it, so `latestFix` can be much older. Recording on
+                // that path instead would let the system cache advance the forced-fresh baseline
+                // above until nothing could beat it. Also covers a cold process whose request
+                // failed, where CoreLocation's cache is the only evidence.
                 continuation.resume(returning: fixResolver.cachedFix)
             }
         }

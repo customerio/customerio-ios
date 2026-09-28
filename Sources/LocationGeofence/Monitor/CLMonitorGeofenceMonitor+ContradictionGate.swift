@@ -2,30 +2,24 @@ import CioInternalCommon
 import CoreLocation
 import Foundation
 
-/// Contradiction gate for OS-delivered transitions, split out to keep the monitor's event
-/// plumbing readable (same convention as `+Registration`).
+/// Contradiction gate for OS-delivered transitions.
 ///
-/// CLMonitor re-adds (registration, adopt, rearm) replay the daemon's per-identifier belief as an
-/// immediate event computed WITHOUT a fresh evaluation. The belief can be stale by hours
-/// (crossings observed while the app was dead), predate the install (it persists across
-/// uninstalls), or default to unsatisfied for never-seen identifiers — producing false enters for
-/// far fences and false-exit storms when registering while inside (both field-observed; the
-/// daemon's own re-evaluation follows ~3 s later, measured).
+/// A CLMonitor (re)add replays the daemon's per-identifier belief as an immediate event computed
+/// without a fresh evaluation. That belief can be hours stale, predate the install (it survives
+/// uninstall), or default to unsatisfied for a never-seen identifier: false enters for far fences
+/// and false-exit storms when registering while inside. The daemon's own re-evaluation follows a
+/// few seconds later.
 ///
-/// The gate therefore vets only events landing inside a short window after our own (re)add of
-/// that identifier — where belief replays live — and refuses one that a fresh fix unambiguously
-/// contradicts, BEFORE the dedup baseline advances, so the daemon's re-evaluation lands as a
-/// duplicate against the untouched baseline and is absorbed silently. Everything outside the
-/// window flows exactly as before: a normal crossing is never delayed by a fix request, and a
-/// legitimate in-window corrective (rearm/wedged-crossing recovery) agrees with the fix and
-/// passes. Undecidable fixes — none, stale, or within the ambiguity margin — fail OPEN.
+/// So only events inside a short window after our own (re)add are vetted, and one a fresh fix
+/// unambiguously contradicts is refused BEFORE the baseline advances; the re-evaluation then dedups
+/// against the untouched baseline. Outside the window nothing waits on a fix request. Undecidable
+/// fixes (none, stale, or within the ambiguity margin) fail open.
 @available(iOS 17.0, *)
 extension CLMonitorGeofenceMonitor {
     /// A drained (re)add: when it landed at the OS and the circle it imposed there.
     struct ConditionReadd {
-        /// Stamped before the remove/add pair is issued. A replay is created by the add, so no
-        /// replay can be dated earlier — while an event dated before it (e.g. a catch-up buffered
-        /// in `pendingEvents` across the re-add) is provably not this add's replay.
+        /// Stamped before the remove/add pair is issued. No replay of this add can be dated
+        /// earlier, so an event dated before it (e.g. one buffered in `pendingEvents`) is not one.
         let start: Date
         /// Stamped after `add` returned; the replay window extends from here. Kept separate from
         /// `start` because a replay can be dated inside the remove→add gap, before `add` returns.
@@ -33,9 +27,8 @@ extension CLMonitorGeofenceMonitor {
         let center: LocationData
         let radius: Double
 
-        /// Whether an event's date falls inside this add's replay window. Both bounds matter:
-        /// without the lower one, any event dated before the add — however old — would be gated
-        /// and judged against geometry that may postdate it.
+        /// Without the lower bound, any older event would be judged against geometry that may
+        /// postdate it.
         func replayWindowCovers(_ eventDate: Date) -> Bool {
             eventDate >= start &&
                 eventDate.timeIntervalSince(added) <= GeofenceConstants.contradictionGateReplayWindow
@@ -43,15 +36,10 @@ extension CLMonitorGeofenceMonitor {
     }
 
     /// True when the event lands inside the identifier's replay window AND a trustworthy fix
-    /// confidently contradicts it (`BaselineHealDecision` with `lastState` = the incoming
-    /// transition — a non-nil result means the fix says the opposite of what the OS delivered).
-    /// Geometry comes from the drained add's stamp, not the ledger: the ledger updates
-    /// synchronously when a reshape is staged, so during its staging→drain gap an event the OS
-    /// computed on the old circle must still be judged against the old circle.
-    /// The window compares the EVENT's date to the add, not the processing time: an event can sit
-    /// in `pendingEvents` until the bootstrap binds the handler, and a belief replay must stay
-    /// gated no matter how late it drains — while a real crossing dated outside the window, before
-    /// the add or minutes after it, stays ungated no matter when it is processed.
+    /// contradicts it (`BaselineHealDecision` with `lastState` = the incoming transition; non-nil
+    /// means the fix says the opposite). Geometry comes from the drained add, not the ledger, which
+    /// already holds a staged reshape the OS has not taken yet. The window is keyed on the EVENT's
+    /// date, not processing time, since an event can sit in `pendingEvents` until the handler binds.
     func isEventContradictedByFreshFix(identifier: String, transition: GeofenceTransition, eventDate: Date) async -> Bool {
         guard let readd = conditionReadds[identifier] else { return false }
         let insideWindow = readd.replayWindowCovers(eventDate)
@@ -62,17 +50,13 @@ extension CLMonitorGeofenceMonitor {
             insideWindow: insideWindow
         )
         guard insideWindow else { return false }
-        // The movement trigger is judged on the cache alone. It is the one condition whose gate sits
-        // on the path that drives every sync, and this runs on the single serialized event consumer,
-        // so a one-shot request here stalls every later event behind it for up to
-        // `movementFixRequestTimeout`. It also has the least to gain: the trigger was added centred
-        // on the device from that same cache moments earlier, so the cached fix is the reference the
-        // staging already used. No cached fix means no judgement, and the gate fails open as always.
+        // `process(event:)` skips the gate for the movement trigger, so this branch does not run
+        // today. If it did, a fix request would stall the serial event consumer for up to
+        // `movementFixRequestTimeout`, hence cache only.
         let isMovementTrigger = identifier == GeofenceConstants.movementTriggerIdentifier
         let gateFix = isMovementTrigger ? bestKnownFix() : await resolveGateFix()
         guard let gateFix, CLLocationCoordinate2DIsValid(gateFix.coordinate) else {
-            // `gateFix` is the unbound optional in this branch, so the two causes stay
-            // distinguishable without a second guard.
+            // `gateFix` here is the unbound optional, so nil and invalid stay distinguishable.
             logger.geofenceContradictionNoFix(
                 identifier: identifier,
                 transition: transition,
@@ -112,19 +96,12 @@ extension CLMonitorGeofenceMonitor {
         return true
     }
 
-    /// Freshest fix obtainable for the gate: reuses the movement resolver (one-shot request when
-    /// the cache is stale, cached-fix fallback on timeout). In a replay burst the FIRST event pays
-    /// at most one request and every later event reads the fix it delivered from the cache — the
-    /// events loop awaits `process` serially, so the resolver's in-flight coalescing never engages
-    /// and repeated requests would stack instead. When an attempt fails to produce a fresh fix,
-    /// that failure is remembered for `movementFixMaxAge` and later events skip straight to the
-    /// cache (failing open, exactly as the timed-out attempt did) — otherwise a burst with no fix
-    /// obtainable would stall the single event consumer for one timeout per gated event. A late
-    /// fix from the failed request still reaches `latestFix` and serves the rest of the burst.
-    /// A cached fix is acceptable as-is: the gate only runs moments after an add that itself
-    /// positioned the staging off the same cache, so it cannot meaningfully predate the state the
-    /// event claims. Returns via `bestKnownFix()` so the freshest of the cache and the request
-    /// wins; the caller's decision applies the fix-age guard to the result.
+    /// Freshest fix for the gate, via the movement resolver. Events are processed serially, so the
+    /// resolver's coalescing never engages: in a replay burst the first event pays at most one
+    /// request and later ones read its fix from the cache. A failed attempt blocks new requests for
+    /// `movementFixMaxAge` (see `gateFixRequestBlocked`), or a burst with no fix obtainable would
+    /// stall the consumer one timeout per event. Returns `bestKnownFix()`; the caller's decision
+    /// applies the age guard.
     private func resolveGateFix() async -> CLLocation? {
         if Self.gateFixRequestBlocked(failedAt: gateFixRequestFailedAt, now: dateUtil.now) {
             return bestKnownFix()
@@ -134,18 +111,14 @@ extension CLMonitorGeofenceMonitor {
                 continuation.resume(returning: isFresh)
             }
         }
-        // The resolver's own verdict, not one recomputed from the age of whatever `bestKnownFix()`
-        // returns afterwards: a request that FAILED still leaves an OS cache that can be under
-        // `movementFixMaxAge`, and recomputing then read that as success and left the block unarmed
-        // — so every later event in the burst paid another full timeout.
+        // The resolver's verdict, not the age of `bestKnownFix()`: a failed request can leave an OS
+        // cache younger than `movementFixMaxAge`, which would read as success and skip the block.
         gateFixRequestFailedAt = isFresh ? nil : dateUtil.now
         return bestKnownFix()
     }
 
-    /// Whether a new gate-fix request is skipped because the last one recently came back without
-    /// a fresh fix. Blocked for `movementFixMaxAge` after the failure: within it a re-request at
-    /// the same conditions is unlikely to fare better, and a late fix from the failed request
-    /// still lands in `latestFix` where the cache read picks it up.
+    /// Whether a gate-fix request is skipped because one failed within `movementFixMaxAge`. A late
+    /// fix from the failed request still lands in `latestFix`, where the cache read picks it up.
     nonisolated static func gateFixRequestBlocked(failedAt: Date?, now: Date) -> Bool {
         guard let failedAt else { return false }
         return now.timeIntervalSince(failedAt) < GeofenceConstants.movementFixMaxAge

@@ -2,12 +2,8 @@ import CioInternalCommon
 import CoreLocation
 import Foundation
 
-/// Ensures the fix attached to a movement-trigger EXIT is fresh before it drives a sync pass.
-///
-/// Which decision asked for a fix. One resolver serves five call sites, so without this every
-/// `movement.fix.resolved` record joins one population — and the wake margin is calibrated from
-/// the movement one alone. No default: a new call site must say which it is, or it silently
-/// contaminates the sample.
+/// Which decision asked for a fix, so `movement.fix.resolved` records can be split by caller: the
+/// wake margin is calibrated from `movement` alone. No default, so a new call site must pick one.
 enum GeofenceFixPurpose: String, CaseIterable {
     case movement
     case contradictionGate = "gate"
@@ -16,13 +12,13 @@ enum GeofenceFixPurpose: String, CaseIterable {
     case polygon
 }
 
+/// Supplies a fresh fix to movement passes and the other decisions in `GeofenceFixPurpose`.
+///
 /// `CLLocationManager.location` on a long-suspended process can stay frozen at the fix cached
-/// around process start, anchoring every movement pass (re-rank point, trigger re-center, the
-/// moved-beyond check) to a stale position for a whole trip. A cached fix older than
-/// `GeofenceConstants.movementFixMaxAge` triggers a one-shot request; on failure or after
-/// `movementFixRequestTimeout` the pass falls back to the cached fix, so it is never worse off
-/// than without the resolver. Concurrent resolutions coalesce onto one in-flight request, and
-/// `latestFix` retains the freshest delivered fix for the monitor's other cached-fix reads.
+/// around process start, anchoring every movement pass to a stale position for a whole trip. A
+/// cached fix older than `movementFixMaxAge` triggers a one-shot request; on failure or after
+/// `movementFixRequestTimeout` the caller gets the cached fix back. Concurrent resolutions coalesce
+/// onto one request, and `latestFix` keeps the freshest delivered fix for other cached-fix reads.
 ///
 /// Owns its manager instead of routing through the Location module's provider: on a wrapper cold
 /// wake `CustomerIO.initialize` has not run, and movement passes must work in exactly that state.
@@ -50,21 +46,15 @@ final class MovementFixResolver: NSObject, @preconcurrency CLLocationManagerDele
     /// `CLLocationManager`. A seam returning nil answers nil; it does not fall through.
     var systemCachedFix: (() -> CLLocation?)?
 
-    /// Freshest usable fix obtainable without issuing a request: the newer of the two sources, not
-    /// whichever this resolver happens to have produced, which is how the monitors' `bestKnownFix`
-    /// reads too. On a cold process this resolver has delivered nothing, so CoreLocation's cached
-    /// fix is the only evidence available, and the decision's age gate is what keeps it honest.
-    /// That cache also moves on its own between passes, driven by other clients in the process, so
-    /// preferring `latestFix` by source would hand a stale fallback to a request that then fails.
+    /// Freshest usable fix obtainable without a request: the newer of CoreLocation's cache and
+    /// `latestFix`, as in the monitors' `bestKnownFix`. The cache moves on its own between passes, so
+    /// preferring `latestFix` by source would hand back a stale fallback.
     ///
-    /// Only the system fix is checked for a valid coordinate. `latestFix` reaches this class
-    /// through a delegate callback that already rejects invalid ones — which a test feeding
-    /// `handleResolvedFix` directly does not.
+    /// Only the system fix is validity-checked; the delegate already rejects invalid ones before
+    /// they reach `latestFix`.
     ///
-    /// This is a FALLBACK VALUE — the best position to act on when no request is made — and newest
-    /// is what makes it best. It is not a freshness baseline: a caller asking "is the answer newer
-    /// than what I had" must compare against `latestFix`, because this property tracks a cache that
-    /// advances on its own and would leave nothing able to beat it.
+    /// A fallback value, not a freshness baseline: to ask "is the answer newer than what I had",
+    /// compare against `latestFix`, since this tracks a cache nothing else can beat.
     var cachedFix: CLLocation? {
         FixSelection.newest(
             cached: FixSelection.usable(systemCachedFix.map { $0() } ?? manager.location),
@@ -80,8 +70,7 @@ final class MovementFixResolver: NSObject, @preconcurrency CLLocationManagerDele
     /// Purpose of the caller that started the in-flight request; see `resolve`.
     private var pendingPurpose: GeofenceFixPurpose?
     private var timeoutTask: Task<Void, Never>?
-    /// Monotonic start of the in-flight request, so a failure can report how long it waited —
-    /// "timed out after 10s" and "failed immediately" are different faults.
+    /// Monotonic start of the in-flight request, so a failure can report how long it waited.
     private var requestStartedAt: TimeInterval?
     /// Completed when the in-flight request resolves, releasing its background-time window.
     /// One signal per request cycle, so a window can never outlive its own cycle.
@@ -91,13 +80,8 @@ final class MovementFixResolver: NSObject, @preconcurrency CLLocationManagerDele
     /// `handleResolvedFix` / `handleRequestFailure` directly.
     var requestFreshFix: (() -> Void)?
 
-    /// How the timeout waits. The OS clock is the default; a caller driving a recorded timeline
-    /// supplies its own so the wait costs what the timeline says rather than real seconds.
-    ///
-    /// Settable rather than init-only, for the same reason as `requestFreshFix`: this resolver is
-    /// constructed inside `CLMonitorGeofenceMonitor`, so a caller has no way to reach the
-    /// initialiser. Without it the fallback fires ten real seconds after a replay that finished in
-    /// milliseconds of virtual time — long after the run it belonged to.
+    /// How the timeout waits. A replay supplies its own so the wait follows virtual time. Settable
+    /// because the monitors construct this resolver themselves, so a caller cannot reach `init`.
     var waitForTimeout: (TimeInterval) async -> Void
 
     init(
@@ -129,10 +113,8 @@ final class MovementFixResolver: NSObject, @preconcurrency CLLocationManagerDele
     /// `cached` should be the caller's best currently-known fix.
     ///
     /// The completion's `Bool` is whether those coordinates are current: true for a delivered fix or
-    /// a cached one still inside `maxAge`, false when the request failed or timed out and the answer
-    /// is `fallbackFix` — which is by definition the stale fix that prompted the request. A caller
-    /// that sizes anything to the coordinates needs that apart, and deriving it from the fix's age
-    /// at the call site would put this rule in two more places to get wrong.
+    /// a cached one inside `maxAge`, false when the request failed or timed out and the answer is
+    /// the stale fallback.
     func resolve(cached: CLLocation?, purpose: GeofenceFixPurpose, completion: @escaping (LocationData?, Bool) -> Void) {
         let age = cached.map { self.age(of: $0) }
         if let cached, let age, age <= maxAge {
@@ -141,13 +123,11 @@ final class MovementFixResolver: NSObject, @preconcurrency CLLocationManagerDele
             return
         }
         logger.geofenceMovementFixStale(ageSeconds: age)
-        // Same newest-of-two rule, and the same tie (the held fallback keeps it); provenance is
-        // not tracked here because this value never reaches a diagnostic.
+        // On a tie the held fallback wins.
         fallbackFix = FixSelection.newest(cached: cached, delivered: fallbackFix)?.fix
         pendingCompletions.append(completion)
         guard pendingCompletions.count == 1 else { return }
-        // The initiator labels the record. Later callers coalesce onto this request and return
-        // through `completeAll` without logging, so one request still yields exactly one record.
+        // The initiator labels the record; coalesced callers don't log, so one request, one record.
         pendingPurpose = purpose
         requestStartedAt = GeofenceLog.monotonicNow()
         startTimeout()

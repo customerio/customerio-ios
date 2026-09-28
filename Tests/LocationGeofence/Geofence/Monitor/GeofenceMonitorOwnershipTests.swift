@@ -48,9 +48,8 @@ struct GeofenceMonitorOwnershipTests {
 
     private static let hostIdentifier = "host_app_loyalty_store_4471"
 
-    /// The `ev=` tail only exists when diagnostics are on. Without this the assertions below match
-    /// nothing and pass against the very bug they are meant to catch — verified by running them
-    /// against the unfixed monitor.
+    /// The `ev=` tail only exists when diagnostics are on; without it the assertions below would
+    /// pass vacuously.
     private func withDiagnostics<T>(_ enabled: Bool, _ body: () throws -> T) rethrows -> T {
         try DiagnosticsGateTesting.withDiagnostics(enabled, body)
     }
@@ -114,10 +113,8 @@ struct GeofenceMonitorOwnershipTests {
         // Let the drain task run; it is dispatched onto the main actor.
         await Task.yield()
 
-        // Asserted on the identifier, like the unbuffered sibling above, rather than on the tail's
-        // `ev=`. The identifier rides in the prose, which is emitted whatever the diagnostics gate
-        // says, so this needs no gate — and it is the stronger check: it fails whether or not the
-        // tail happens to be on, where an `ev=` assertion passes vacuously with the gate off.
+        // Asserted on the identifier rather than `ev=`: the prose is emitted whatever the
+        // diagnostics gate says, so this cannot pass vacuously with the gate off.
         #expect(
             logger.messages.allSatisfy { !$0.contains(Self.hostIdentifier) },
             "drained a buffered crossing for a region we do not own: \(logger.messages)"

@@ -6,7 +6,7 @@ import Foundation
 import SharedTests
 import Testing
 
-// Nested for serialization only; the body keeps top-level indentation so the file's history stays readable.
+// Nested for serialization only; top-level indentation is kept so `git blame` stays useful.
 // swiftformat:disable indent
 extension SharedDIGraphSuites {
 @Suite("GeofenceBootstrap", .serialized)
@@ -67,8 +67,8 @@ struct GeofenceBootstrapTests {
 
     // MARK: - Visit arming
 
-    /// Arming is gated on identity, and setup runs BEFORE the host calls `identify`, so both
-    /// directions have to work on demand rather than once at launch.
+    /// Setup runs before the host calls `identify`, so arming must work on demand, not only at
+    /// launch.
     @Test
     func armVisitMonitoring_givenIdentifiedUser_expectStarted() {
         let di = DIGraphShared.shared
@@ -128,8 +128,8 @@ struct GeofenceBootstrapTests {
         #expect(visitMonitor.stopCallCount == 1)
     }
 
-    /// The counterpart: a config that DOES allow registration still arms, so the gate above is
-    /// the kill switch and not the presence of a config.
+    /// A config that allows registration still arms: the gate is the kill switch, not the presence
+    /// of a config.
     @Test
     func armVisitMonitoring_givenRegistrationEnabled_expectStarted() {
         let di = DIGraphShared.shared
@@ -149,12 +149,10 @@ struct GeofenceBootstrapTests {
         #expect(visitMonitor.stopCallCount == 0)
     }
 
-    /// Two arms started from different events must not interleave. The config read is a
-    /// suspension point, so without the chain an arm that read a pre-refresh config resumes AFTER
-    /// the reconcile disarmed and re-arms a kill-switched account.
+    /// The config read is a suspension point, so without the arm chain an arm that read a
+    /// pre-refresh config resumes after the refresh's disarm and re-arms a kill-switched account.
     ///
-    /// Asserts on the LAST call, not the counts: both orderings produce one start and one stop,
-    /// and only the order says which state the monitor was left in.
+    /// Asserts on the last call: both orderings produce one start and one stop.
     @Test
     func armVisitMonitoring_givenTwoArmsRace_expectTheLaterConfigToWin() async {
         let di = DIGraphShared.shared
@@ -178,9 +176,8 @@ struct GeofenceBootstrapTests {
         let reads = Synchronized<Int>(0)
         let killSwitched = Self.killSwitchedConfig
         GeofenceBootstrap.readCachedConfig = { graph in
-            // Keyed on THIS graph, because the seam is process-global while the suites are not:
-            // `GeofenceModuleSetupTests` runs on its own `DIGraphShared()` and reads the same
-            // static, and `.serialized` orders tests within a suite, never across suites.
+            // Keyed on this graph: the seam is process-global, and `GeofenceModuleSetupTests` (not
+            // under `SharedDIGraphSuites`) reads it from its own `DIGraphShared()` concurrently.
             guard graph === di else { return await realRead(graph) }
             let isFirst = reads.mutating { count in
                 count += 1
@@ -232,8 +229,8 @@ struct GeofenceBootstrapTests {
 
         #expect(monitor.setOnTransitionCallsCount == 1)
         #expect(coordinator.applyCachedRegistrationCallsCount == 1)
-        // First launch: the expected-owned set is never empty (it always names the movement
-        // trigger), so the adopt branch has to be ruled out by the OS holding nothing.
+        // First launch: expected-owned still names the movement trigger, so adopt is ruled out
+        // only because the OS holds nothing.
         #expect(monitor.adoptExistingRegionsCallsCount == 0)
         #expect(monitor.setOnAuthorizationChangedCallsCount == 1)
         #expect(monitor.onAuthorizationChanged != nil)
@@ -272,8 +269,8 @@ struct GeofenceBootstrapTests {
 
     @Test
     func wireMonitor_givenRegistrationCenterAndLastSync_expectAnchorFromRegistrationCenter() async {
-        // A local re-rank moved the registration center past the fetch anchor. Restore must use
-        // the registration center so cold boot reproduces the last-monitored set, not the older one.
+        // A local re-rank moved the registration center past the fetch anchor; restoring from the
+        // fetch anchor would revert to the older nearest-set.
         let di = DIGraphShared.shared
         let storage = GeofenceStorage(
             directoryURL: FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
@@ -318,8 +315,8 @@ struct GeofenceBootstrapTests {
 
     @Test
     func wireMonitor_givenCoordinatorReturnsRegistration_expectPersistedAsReference() async {
-        // The registration applyCachedRegistration reports is persisted as the ranking-staleness
-        // reference so a later refresh measures distance from the actually-registered set.
+        // Persisted as the ranking-staleness reference, so a later refresh measures distance from
+        // the set actually registered.
         let di = DIGraphShared.shared
         let storage = GeofenceStorage(
             directoryURL: FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
@@ -365,8 +362,8 @@ struct GeofenceBootstrapTests {
 
     @Test
     func wireMonitor_givenOsStillMonitorsOurRegions_expectAdoptedWithoutReregistering() async {
-        // Relaunch: the OS kept the regions we registered last session. Re-claim them instead of
-        // re-registering, and leave the persisted registration center untouched.
+        // Relaunch with the OS still holding last session's regions: re-claim them and leave the
+        // persisted registration center untouched.
         let di = DIGraphShared.shared
         let storage = GeofenceStorage(
             directoryURL: FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
@@ -397,15 +394,13 @@ struct GeofenceBootstrapTests {
         #expect(monitor.adoptedIdentifiers == ["g1", GeofenceConstants.movementTriggerIdentifier])
         #expect(coordinator.applyCachedRegistrationCallsCount == 0)
         #expect(await storage.getLastRegistrationCenter() == LocationData(latitude: 10, longitude: 20))
-        // Adopt skips startMonitoring, so wireMonitor itself must report the tier.
         #expect(monitor.reportPermissionTierCallsCount == 1)
     }
 
     @Test
     func wireMonitor_givenAdoptPath_expectPersistedMonitorRecordsHandedToAdopt() async {
-        // The CLMonitor path seeds its geometry bookkeeping from these records synchronously at
-        // adopt, so a sync landing before the queued re-arm drains reads carried-over regions as
-        // unchanged instead of re-registering them all.
+        // The CLMonitor path seeds geometry from these records at adopt, so a sync landing before
+        // the queued re-arm drains reads carried-over regions as unchanged.
         let di = DIGraphShared.shared
         let storage = GeofenceStorage(
             directoryURL: FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
@@ -448,8 +443,8 @@ struct GeofenceBootstrapTests {
 
     @Test
     func wireMonitor_givenOsAlsoMonitorsHostAppRegions_expectOnlyOwnRegionsAdopted() async {
-        // CLLocationManager.monitoredRegions is app-wide. Adoption must claim only the SDK's own
-        // regions (cached geofences + movement trigger), never the host app's.
+        // `CLLocationManager.monitoredRegions` is app-wide, so adoption must never claim the host
+        // app's regions.
         let di = DIGraphShared.shared
         let storage = GeofenceStorage(
             directoryURL: FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
@@ -482,10 +477,9 @@ struct GeofenceBootstrapTests {
 
     @Test
     func wireMonitor_givenOnlyMovementTriggerRegistered_expectTriggerAdopted() async {
-        // Relaunch after an empty nearby response: the cache and the business set are empty, but the
-        // trigger stayed armed and the OS still holds it. Without adopting it the process owns
-        // nothing, so its EXIT is dropped at the ownership filter — and the refresh decision skips
-        // (fresh cache, no movement), leaving the device dark until the cache ages out.
+        // Relaunch after an empty nearby response: only the trigger is held. Unadopted, its EXIT is
+        // dropped at the ownership filter and the refresh decision skips (fresh cache, no
+        // movement), leaving the device dark until the cache ages out.
         let di = DIGraphShared.shared
         let storage = GeofenceStorage(
             directoryURL: FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
@@ -507,8 +501,8 @@ struct GeofenceBootstrapTests {
 
     @Test
     func wireMonitor_givenKillSwitchedConfig_expectTriggerNotAdopted() async {
-        // Under the kill switch the trigger is not something we would register, so it is not
-        // something to reclaim either — expected-owned mirrors the register condition.
+        // Expected-owned mirrors the register condition: under the kill switch the trigger is not
+        // registered, so it is not reclaimed.
         let di = DIGraphShared.shared
         let storage = GeofenceStorage(
             directoryURL: FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
@@ -537,9 +531,7 @@ struct GeofenceBootstrapTests {
 
     @Test
     func wireMonitor_givenOsRetainedOnlyASubset_expectReregisterNotPartialAdopt() async {
-        // Partial drop: last session registered g1 + g2, but the OS now holds only g1 + the trigger
-        // (g2 dropped — a monitoring failure, or only some survived). Adopting the subset would leave
-        // g2 unmonitored, so fall through and re-register from cache instead.
+        // Partial drop: adopting the subset would leave g2 unmonitored, so re-register from cache.
         let di = DIGraphShared.shared
         let storage = GeofenceStorage(
             directoryURL: FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
@@ -564,8 +556,7 @@ struct GeofenceBootstrapTests {
         let di = DIGraphShared.shared
         let first = di.geofenceSyncCoordinator as? GeofenceSyncCoordinatorImpl
         let second = di.geofenceSyncCoordinator as? GeofenceSyncCoordinatorImpl
-        // Singleton-ness is load-bearing: the instance-level `refreshInProgress` dedup
-        // gate only deduplicates if every caller resolves to the same instance.
+        // The instance-level in-flight gate only deduplicates if every caller shares one instance.
         #expect(first === second)
     }
 
@@ -581,8 +572,6 @@ struct GeofenceBootstrapTests {
         await GeofenceBootstrap.wireMonitor(di: di)
         #expect(coordinator.applyCachedRegistrationCallsCount == 1)
 
-        // Simulate iOS reporting a permission change. The handler spawns a Task to re-run
-        // wireMonitor.
         monitor.onAuthorizationChanged?()
 
         await awaitRerun { coordinator.applyCachedRegistrationCallsCount == 2 }
@@ -601,8 +590,7 @@ struct GeofenceBootstrapTests {
         #expect(monitor.setOnReconciledCallsCount == 1)
         #expect(coordinator.applyCachedRegistrationCallsCount == 1)
 
-        // The CLMonitor path calls this once it has reconciled the mirror against the OS's live set.
-        // It must re-run wireMonitor so the adopt/re-register decision is re-made against live truth.
+        // The CLMonitor path fires this after reconciling its mirror against the OS's live set.
         monitor.onReconciled?()
 
         await awaitRerun { coordinator.applyCachedRegistrationCallsCount == 2 }
@@ -644,7 +632,7 @@ private final class StubProvider: BackgroundDeliveryCdpApiKeyProvider {
 // swiftformat:enable indent
 
 /// Waits for a re-run the handler spawned onto the process-global run chain. A fixed sleep races
-/// whatever else holds that chain, and a concurrent suite held it for 2 s on CI.
+/// whatever else holds that chain, which a concurrent suite can hold for seconds on CI.
 private func awaitRerun(
     _ condition: () -> Bool,
     within: TimeInterval = 10,

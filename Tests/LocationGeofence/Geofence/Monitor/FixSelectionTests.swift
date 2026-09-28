@@ -59,8 +59,7 @@ struct FixSelectionTests {
         #expect(result?.source == .resolver)
     }
 
-    /// The case the three hand-rolled copies disagreed on. The value is the same either way, but
-    /// `fixsrc` is what the field analysis reads, so the tie has to resolve one way everywhere.
+    /// Same fix either way, but `fixsrc` in diagnostics depends on which source wins the tie.
     @Test
     func newest_givenEqualTimestamps_expectTheDeliveredFix() {
         let sameMoment = Date(timeIntervalSince1970: 1700000000)

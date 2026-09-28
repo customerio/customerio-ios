@@ -7,9 +7,8 @@ private let geofenceTag = "Geofence"
 // MARK: - Movement trigger
 
 //
-// Split out of `Logger+Geofence.swift` for the file-length cap. The movement trigger is its own
-// mechanism — re-centring, the refetch tier, and the fix a pass runs on — and these records are
-// read together when calibrating the wake margin.
+// Re-centring, the refetch tier, and the fix a pass runs on; read together when calibrating the
+// wake margin.
 
 extension Logger {
     func geofenceMovementTrigger(tier: HandleMovementTier) {
@@ -20,9 +19,7 @@ extension Logger {
         )
     }
 
-    /// The re-centred bubble's own geometry. Region geometry is ungated — it is workspace
-    /// configuration, not user data — but this one is derived from the device's position, so it
-    /// travels with the same switch as a coordinate.
+    /// The re-centred trigger's geometry. Its centre is the device's position.
     func geofenceMovementTriggerRegistered(latitude: Double, longitude: Double, radius: Double) {
         let geometry: [(String, String?)] = [
             ("rlat", GeofenceLog.num(latitude, 5)),
@@ -43,9 +40,8 @@ extension Logger {
         )
     }
 
-    /// `spd` rides here and not only on `os.callback.received`: the wake margin is sized from how
-    /// far the device travels between passes, and this is the fix a pass actually uses. Speed at
-    /// OS-callback time is a different population — it only samples moments the OS chose to wake us.
+    /// `spd` rides here, not only on `os.callback.received`: the wake margin is sized from the fix a
+    /// pass actually uses, while callback-time speed samples only moments the OS chose to wake us.
     func geofenceMovementFixResolved(ageSeconds: TimeInterval, requested: Bool, speed: CLLocationSpeed? = nil, purpose: GeofenceFixPurpose? = nil) {
         let source = requested ? "freshly requested" : "cached"
         debug(
@@ -55,8 +51,7 @@ extension Logger {
                     ("prov", requested ? "requested" : "cached"),
                     // Negative means the fix carries no speed, which is not the same as stationary.
                     ("spd", speed.flatMap { $0 >= 0 ? GeofenceLog.num($0) : nil }),
-                    // Which decision asked. `prov` separates cached from requested; this separates
-                    // the five callers, whose speed samples are different populations.
+                    // Which caller asked; their speed samples are different populations.
                     ("for", purpose?.rawValue)
                 ]),
             geofenceTag

@@ -2,24 +2,21 @@ import CioInternalCommon
 import Foundation
 
 /// What the OS accepted for a registration sync: the identifiers actually monitored and the radius
-/// cap the OS clamps every region to. Both feed the initial-enter decision.
+/// cap it clamps every region to.
 struct GeofenceOsRegistration {
     let registeredIds: Set<String>
     let maxMonitoringRadius: Double
 
-    /// Whether the OS actually holds the movement trigger, which is the only thing that makes a
-    /// pass a re-centre. Read off what the monitor reports rather than off the caller's intent:
-    /// the trigger is skipped outright when `maxBusinessGeofences` kill-switches registration, and
-    /// the OS drops it silently for blocked permission or invalid coordinates. In both cases the
-    /// pass still succeeds, so a success-derived answer claims a move that never happened.
+    /// Whether the OS holds the movement trigger, which is what makes a pass a re-centre. Read off
+    /// the monitor, not intent or success: the kill switch skips the trigger, and blocked permission
+    /// or invalid coordinates drop it, while the pass still succeeds.
     var movementTriggerPlanted: Bool {
         registeredIds.contains(GeofenceConstants.movementTriggerIdentifier)
     }
 }
 
-/// OS registration + fetch plumbing, split out to keep the coordinator's core flow readable.
-/// Methods are `internal` (not `private`) only because they live in a separate file from their
-/// callers; they remain coordinator implementation detail.
+/// OS registration and fetch plumbing. Internal only because it lives in a separate file from its
+/// callers.
 extension GeofenceSyncCoordinatorImpl {
     /// Bridges the completion-based nearby fetch to async.
     func awaitApiFetch(latitude: Double, longitude: Double) async -> Result<GeofenceApiResponse, GeofenceApiError> {
@@ -28,13 +25,10 @@ extension GeofenceSyncCoordinatorImpl {
         }
     }
 
-    /// Reconciles the OS-monitored set to the new business set + movement trigger, leaving regions
-    /// that carry over registered untouched — see `setMonitoredRegions` for why re-adding them loses
-    /// transitions. Returns the OS-accepted identifiers (a region the monitor dropped for blocked
-    /// permission / invalid coordinates is absent) plus the radius cap, so `emitInitialEnters` won't
-    /// fire an unbalanced synthetic enter or one for a device outside the actually-monitored
-    /// (clamped) circle. `@MainActor`-isolated so a same-actor caller (e.g. `applyCachedRegistration`)
-    /// can register without yielding — see the protocol doc for why that matters.
+    /// Reconciles the OS-monitored set to the business set plus movement trigger (see
+    /// `setMonitoredRegions`). Returns what the OS accepted and its radius cap, so
+    /// `emitInitialEnters` skips regions the monitor dropped and judges against the clamped circle.
+    /// `@MainActor` so `applyCachedRegistration` can register without yielding.
     @MainActor
     @discardableResult
     func registerWithOsSync(
@@ -44,11 +38,9 @@ extension GeofenceSyncCoordinatorImpl {
         registerMovementTrigger: Bool
     ) -> GeofenceOsRegistration {
         var desired: [GeofenceRegionRequest] = []
-        // Order the movement trigger FIRST so it isn't starved when business regions fill the
-        // shared 20-region OS budget (e.g. a host app that also monitors regions): losing it freezes
-        // the set, since exiting the trigger is what re-ranks toward now-closer geofences. Kept even
-        // when the nearby set is empty (distance cap or an empty fetch) so the device keeps re-fetching
-        // as it moves back toward geofences; skipped only when kill-switched (`maxBusinessGeofences == 0`).
+        // Movement trigger FIRST so it isn't starved when the shared 20-region budget fills (e.g. a
+        // host app monitoring its own regions); losing it freezes the set. Kept even for an empty
+        // nearby set so the device keeps re-fetching; skipped only under the kill switch.
         if registerMovementTrigger {
             desired.append(GeofenceRegionRequest(
                 identifier: GeofenceConstants.movementTriggerIdentifier,
@@ -57,13 +49,10 @@ extension GeofenceSyncCoordinatorImpl {
                 transitionTypes: [.exit]
             ))
         }
-        // A polygon whose covering circle exceeds the OS cap must be DROPPED, not clamped. Both
-        // monitors clamp silently, and a clamped circle no longer contains the polygon — which
-        // turns the covering-circle exit from geometric certainty into a false exit, and lets the
-        // device enter through a part of the polygon no wake covers. Circles keep clamping: for
-        // them the monitored circle IS the fence, so a smaller one only reports later.
-        // Callers drop these before ranking so the slot is reused; this is the last-line guard for
-        // anything that reached here anyway, and it logs so the skip is never silent.
+        // A polygon whose covering circle exceeds the OS cap is DROPPED, not clamped: a clamped
+        // circle no longer contains the polygon, so its exit is no longer proof of leaving and part
+        // of the polygon has no wake. Circles still clamp. Callers already drop these before
+        // ranking (`monitorableRegions`); this is the last-line guard.
         let maximumRadius = monitor.maximumMonitoringRadius
         let registrable = businessRegions.filter { region in
             guard region.vertices != nil, region.radius > maximumRadius else { return true }
@@ -77,17 +66,13 @@ extension GeofenceSyncCoordinatorImpl {
                 identifier: region.id,
                 center: LocationData(latitude: region.latitude, longitude: region.longitude),
                 radius: region.radius,
-                // A polygon's covering circle is machinery, not the customer's fence: it must report
-                // BOTH edges so membership can advance. Registering it with the customer's types
-                // would starve the resolver of the filtered edge — an enter-only polygon would fire
-                // once and never again, an exit-only one never at all. The customer's filter is
-                // applied to the polygon verdict instead.
+                // A polygon's covering circle must report BOTH edges so membership can advance; the
+                // customer's transition filter applies to the polygon verdict instead.
                 transitionTypes: region.vertices == nil ? region.transitionTypes : [.enter, .exit]
             )
         })
         let diff = monitor.setMonitoredRegions(desired)
-        // Count against what the OS actually holds, not `desired`: a region dropped for blocked
-        // permission or invalid coordinates is in neither, and would otherwise read as unchanged.
+        // Against what the OS holds, not `desired`: a dropped region would otherwise read as unchanged.
         let registeredIds = monitor.monitoredRegionIdentifiers
         logger.geofenceRegistrationDiff(
             added: diff.added.count,

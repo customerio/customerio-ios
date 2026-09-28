@@ -131,7 +131,7 @@ struct GeofenceApiResponseTests {
 
     @Test
     func toDomainConfig_givenMaxMonitoringDistanceAbsent_expectDefaultCap() throws {
-        // The server omits the field today — apply the default cap, not "unlimited".
+        // Absent means the default cap, not "unlimited".
         let response = try decode("{\"config\":{\"local_refresh_trigger_radius\":3000},\"geofences\":[]}")
         #expect(response.toDomainConfig()?.maxMonitoringDistance == GeofenceConstants.defaultMaxMonitoringDistance)
     }

@@ -55,9 +55,8 @@ struct GeofenceApiServiceTests {
         let body = (try? JSONSerialization.jsonObject(with: params?.body ?? Data())) as? [String: Double]
         #expect(body?["latitude"] == 37.7749295)
         #expect(body?["longitude"] == -122.4194155)
-        // radius is no longer sent — the client omits it and the server applies its own coverage
-        // default, kept wider than remoteFetchRefreshTriggerRadius so the cached set always spans the
-        // refetch band. Documented so iOS/Android/CDP stay aligned if that contract changes.
+        // radius is omitted: the server applies its own coverage default, kept wider than
+        // remoteFetchRefreshTriggerRadius so the cached set always spans the refetch band.
         #expect(body?["radius"] == nil)
     }
 
@@ -217,8 +216,8 @@ struct GeofenceApiServiceTests {
         ("http://localhost:8080/v1", "http://localhost:8080/v2/geofences/nearest"),
         // Only a trailing version is a version. A host whose NAME contains one keeps it.
         ("v1.example.com/v1", "https://v1.example.com/v2/geofences/nearest"),
-        // Regression: `apiHost` is customer-supplied and a pasted trailing slash is ordinary.
-        // Splicing the path onto the host string produced a `//` here.
+        // `apiHost` is customer-supplied and a pasted trailing slash is ordinary. Splicing the path
+        // onto the host string would produce a `//` here.
         ("cdp.customer.io/", "https://cdp.customer.io/v2/geofences/nearest"),
         ("https://cdp.customer.io/", "https://cdp.customer.io/v2/geofences/nearest"),
         ("proxy.example.com/cio/", "https://proxy.example.com/cio/v2/geofences/nearest"),

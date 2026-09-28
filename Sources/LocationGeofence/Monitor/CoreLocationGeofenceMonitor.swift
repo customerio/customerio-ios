@@ -4,10 +4,8 @@ import Foundation
 
 /// CLLocationManager-backed geofence region monitor.
 ///
-/// `@MainActor`-isolated because CLLocationManager must be created and called on the main
-/// thread, and its delegate callbacks arrive on main. State and OS calls share one
-/// isolation domain, so the ownership-set update and the OS dispatch happen atomically with
-/// no reentrancy point between them — no locks, no fire-and-forget Tasks, no FIFO assumption.
+/// Registration calls CLLocationManager synchronously on the main actor, so the ownership-set
+/// update and the OS call happen with no reentrancy point between them.
 ///
 /// Tracks which regions this monitor owns so it does not interfere with regions
 /// registered by the host app or other SDKs (CLLocationManager.monitoredRegions is shared app-wide).
@@ -179,15 +177,9 @@ final class CoreLocationGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @pr
         logger.geofenceMonitoringFailed(region: identifier, error: error)
     }
 
-    // iOS 14+ fires this on delegate set with the current status, and again on every change.
-    // We surface it to callers so the bootstrap can re-attempt registration when permission
-    // improves mid-process (the initial fire after delegate-set is harmless — the bootstrap
-    // already read the current status synchronously before installing the handler).
-    //
-    // Surfaced UNFILTERED, in both directions. Improvement is not the only case that matters:
-    // `GeofenceBootstrap.armVisitMonitoring` disarms visit monitoring off this callback when
-    // Always is withdrawn, and nothing else notices a downgrade. Narrowing this to improvements
-    // would leave visits running against a permission that no longer backs them.
+    // iOS 14+ also fires this on delegate set; harmless, the bootstrap has already read the status.
+    // Surfaced UNFILTERED in both directions: an improvement re-attempts registration, and a
+    // downgrade is the only thing that makes `GeofenceBootstrap.armVisitMonitoring` disarm visits.
     func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
         onAuthorizationChanged?()
     }
@@ -230,7 +222,6 @@ final class CoreLocationGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @pr
         }
     }
 
-    /// `GeofenceFixSelecting`; `bestKnownFix()` and `bestKnownFixDetail()` come from its default.
     var osCachedFix: CLLocation? { manager.location }
 
     func currentLocationData() -> LocationData? {
@@ -244,9 +235,8 @@ final class CoreLocationGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @pr
 extension DIGraphShared {
     /// Process-wide singleton. Hand-written rather than via Sourcery's `InjectRegisterShared`
     /// because that template's eager-init resolution test references the property from a
-    /// non-isolated context, which clashes with `@MainActor` isolation propagated through
-    /// `GeofenceRegionMonitoring`. The override check below mirrors the generated DI accessors
-    /// so tests can still substitute via `di.override(value:forType:)`.
+    /// non-isolated context, which clashes with `@MainActor` isolation. The override check mirrors
+    /// the generated accessors so tests can substitute via `di.override(value:forType:)`.
     @MainActor
     var geofenceMonitor: GeofenceRegionMonitoring {
         // Explicit type on the optional pins the generic `T` in `getOverriddenInstance()` to
@@ -254,11 +244,9 @@ extension DIGraphShared {
         // from the `??` right-hand side and the override lookup misses by key.
         let overridden: GeofenceRegionMonitoring? = getOverriddenInstance()
         if let overridden { return overridden }
-        // iOS 18+ uses the CLMonitor-backed monitor: only there does `CLServiceSession` provide a
-        // documented way to keep background event delivery alive. iOS 13–17 keep the classic
-        // CLLocationManager monitor — the region APIs are deprecated on 17 but still deliver
-        // reliably in the background (OS relaunch), whereas iOS 17 CLMonitor has no session and
-        // no dependable background story. Revisit lowering this to 17 only if it proves reliable.
+        // iOS 18+ uses CLMonitor: only there does `CLServiceSession` offer a documented way to keep
+        // background delivery alive. iOS 13–17 keep the classic monitor, whose deprecated region
+        // APIs still deliver reliably in the background.
         if #available(iOS 18.0, *) {
             return CLMonitorGeofenceMonitor.shared
         }

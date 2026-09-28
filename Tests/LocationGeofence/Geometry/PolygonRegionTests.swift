@@ -24,8 +24,8 @@ struct PolygonRegionTests {
     }
 
     /// A bow-tie's lobes both read as inside under even-odd, at a signed distance decisive enough
-    /// to clear the delivery gate — measured +33 m — so it would fire an enter for ground the
-    /// polygon never covered. Rejected at construction, matching Android.
+    /// to clear the delivery gate, so it would fire an enter for ground the polygon never covered.
+    /// Rejected at construction, matching Android.
     @Test
     func init_givenSelfIntersectingRing_expectRejected() {
         let bowtie = [
@@ -50,8 +50,7 @@ struct PolygonRegionTests {
     }
 
     /// Two lobes joined at a single point: the bow-tie with its crossing degenerated to a vertex.
-    /// Android rejects touches as well as crossings, so a crossing-only test here would let this
-    /// through on iOS and drop it on Android.
+    /// Android rejects touches as well as crossings, so iOS must too.
     @Test
     func init_givenRingTouchingAtAVertex_expectRejected() {
         let touching = [
@@ -79,7 +78,7 @@ struct PolygonRegionTests {
         #expect(PolygonRegion(validating: repeated) == nil)
     }
 
-    /// Concave rings are the point of polygons and must survive the new rejection.
+    /// Concave rings are the point of polygons and must survive the self-intersection check.
     @Test
     func init_givenConcaveRing_expectAccepted() {
         let lShape = [
@@ -176,8 +175,8 @@ struct PolygonRegionTests {
     }
 
     /// Pins the half-open ray cast documented on the type: boundary points are NOT symmetric.
-    /// Nothing depends on the asymmetry (delivery never acts within the accuracy-gate floor), but
-    /// it is the rule the cross-SDK fixtures encode, so a silent flip would diverge from Android.
+    /// Nothing depends on the asymmetry, since a boundary point never yields a verdict. Android
+    /// differs here: it checks the edges first and reports a boundary point as undecided.
     @Test
     func contains_givenPointsExactlyOnBoundary_expectHalfOpenRule() throws {
         let square = try #require(polygonGeometryFixtures.first { $0.name == "square400" })
@@ -197,9 +196,9 @@ struct PolygonRegionTests {
         #expect(!region.contains(LocationData(latitude: maxLat, longitude: maxLon))) // NE vertex
     }
 
-    /// Translation invariance: the same shape must behave identically wherever it sits. Before the
-    /// unwrap, a fix mid-island on an antimeridian ring read `contains=false` at -4256 m — decisive
-    /// enough to clear the ambiguity gate, so the fence silently never fired.
+    /// Translation invariance: the same shape must behave identically wherever it sits. Without the
+    /// antimeridian unwrap, a fix inside a ring crossing it reads as decisively outside, so the fence
+    /// never fires.
     @Test
     func contains_givenRingCrossingAntimeridian_expectSameVerdictsAsAwayFromIt() throws {
         // Taveuni, Fiji — a real island on the antimeridian.
@@ -280,7 +279,7 @@ struct PolygonRegionTests {
     /// A ring on the antimeridian may legally close with the opposite sign to the one it opened
     /// with — +180 and -180 are one meridian. Compared raw, the closing vertex survives as a
     /// zero-length edge, `selfIntersects` reads that as a crossing, and the fence drops at decode.
-    /// Android canonicalises the same case away, so an unfixed iOS silently loses fences there.
+    /// Android canonicalises the same case away.
     @Test
     func init_givenRingClosedWithTheOppositeSign_expectClosureCollapsed() throws {
         let ring = [
@@ -297,8 +296,7 @@ struct PolygonRegionTests {
         #expect(PolygonRegion(vertices: ring)?.vertices.count == 4)
     }
 
-    /// Control: the same ring closed with the SAME sign must still collapse to four, so the fix is
-    /// recognising the meridian rather than dropping any trailing vertex.
+    /// Control: the same ring closed with the same sign also collapses to four.
     @Test
     func init_givenRingClosedWithTheSameSign_expectClosureCollapsed() throws {
         let ring = [

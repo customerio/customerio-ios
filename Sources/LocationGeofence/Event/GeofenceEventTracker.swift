@@ -58,11 +58,9 @@ final class GeofenceEventTracker: @unchecked Sendable {
     /// The cooldown is evaluated once per geofence, before fan-out, so all rows of one
     /// transition are suppressed or emitted together.
     ///
-    /// - Parameter occurredAt: when the crossing happened — an OS event's date, or the timestamp of
-    ///   the fix that decided a polygon verdict. It becomes the row's `timestamp`, the event time
-    ///   the customer sees, so it is required rather than defaulted: a caller allowed to omit it
-    ///   would report the moment of delivery, which trails the crossing by a whole wake-to-verdict
-    ///   pipeline on a polygon and by a whole suspension on a replayed one.
+    /// - Parameter occurredAt: when the crossing happened: an OS event's date, or the timestamp of
+    ///   the fix that decided a polygon verdict. It becomes the event time the customer sees, so it
+    ///   is required: the delivery time can trail the crossing by a fix request or a suspension.
     func trackTransition(
         geofenceId: String,
         transition: GeofenceTransition,
@@ -144,10 +142,8 @@ final class GeofenceEventTracker: @unchecked Sendable {
             await abandonUnpersisted(write, geofenceId: geofenceId, transition: transition, cooldownKey: cooldownKey)
             return []
         }
-        // The SDK has accepted the crossing and written it down; that is the fact replay asserts
-        // on, and it is complete here. What happens to the row afterwards is delivery's business
-        // and is reported by the `delivery.*` family — this record deliberately promises nothing
-        // about it.
+        // Accepted means persisted, which is what replay asserts on. Delivery outcomes are
+        // reported separately by the `delivery.*` records.
         logger.geofenceTransitionAccepted(geofenceId: geofenceId, transition: transition, rows: metrics.count)
 
         // Hold a background-task assertion across delivery so the OS doesn't suspend us mid-send when
@@ -181,7 +177,7 @@ final class GeofenceEventTracker: @unchecked Sendable {
         guard !metrics.isEmpty else { return }
         let persistedKey = contextStore.currentCdpApiKey
         if !contextStore.hasLiveCdpApiKeyProvider, let persistedKey, !persistedKey.isEmpty {
-            // Same assertion + concurrent fan-out rationale as the fresh send in `trackTransition`.
+            // Same assertion + fan-out rationale as the fresh send in `deliverCurrentCrossing`.
             await backgroundTaskRunner.withBackgroundTime { [self] in
                 await withTaskGroup(of: Void.self) { group in
                     for metric in metrics {
@@ -200,17 +196,13 @@ final class GeofenceEventTracker: @unchecked Sendable {
 
     /// Gives up a crossing whose rows never reached disk.
     ///
-    /// Nothing was written in either case, but they are not the same event and must not share a
-    /// record: one is a write that failed, the other a write refused before it was tried, so an
-    /// unreadable queue survives. Both release the just-claimed cooldown so the next crossing
-    /// retries from a clean state instead of being suppressed.
+    /// A failed write and a refused one (an unreadable queue, left intact) log separately. Both
+    /// release the just-claimed cooldown so the next crossing is not suppressed.
     ///
-    /// Both also skip delivery, for different reasons. On a failed write, sending anyway would let
-    /// the success-path `remove(key:)` drop a later same-second crossing's row (keys omit
-    /// transitionId). That hazard does NOT apply to a refusal — `remove` takes nothing out of a
-    /// file it cannot read — so this crossing is dropped by choice: the backlog we declined to
-    /// overwrite is worth more than one fresh row, and delivering un-persisted would make a failed
-    /// send unretryable and silent. The cost is real when the queue was in fact empty.
+    /// Both skip delivery. After a failed write, the success-path `remove(key:)` could drop a later
+    /// same-second crossing's row (keys omit transitionId). After a refusal, delivering un-persisted
+    /// would make a failed send unretryable and silent, and the unreadable backlog is worth more
+    /// than one fresh row.
     private func abandonUnpersisted(
         _ write: PendingGeofenceQueueWrite,
         geofenceId: String,
@@ -218,9 +210,8 @@ final class GeofenceEventTracker: @unchecked Sendable {
         cooldownKey: String
     ) async {
         switch write {
-        // Unreachable: the one call site guards on `.persisted`. Kept total rather than narrowed
-        // so the compiler still lists the arms, but it must stay a no-op only while that guard
-        // holds — reaching here would release no cooldown and log nothing.
+        // Unreachable: the one call site guards on `.persisted`. Reaching it would release no
+        // cooldown and log nothing.
         case .persisted: return
         case .writeFailed:
             logger.geofencePendingPersistFailed(geofenceId: geofenceId, transition: transition)
@@ -333,10 +324,10 @@ extension GeofenceEventTracker {
         #endif
     }
 
-    /// Lazily constructs and caches a process-wide singleton. Both `LocationModule.initialize`
-    /// (foreground) and `LocationModule.bootstrapForBackgroundDelivery` (cold-wake) resolve
-    /// through this DI accessor so they share the same tracker — same active-delivery dedup
-    /// set, same `PendingGeofenceMetricStore`, same cooldown actor.
+    /// Lazily constructs and caches a process-wide singleton. Both `GeofenceModule.initialize`
+    /// (foreground) and `GeofenceModule.bootstrapForBackgroundDelivery` (cold-wake) resolve
+    /// through this DI accessor so they share the same tracker: same active-delivery dedup
+    /// set, same `PendingGeofenceMetricStore`, same storage actor.
     static func shared(di: DIGraphShared) -> GeofenceEventTracker {
         sharedHolder.mutating { current in
             if let current { return current }

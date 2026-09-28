@@ -22,9 +22,6 @@ import UIKit
 ///   permission is the host's decision).
 /// - Conditions persist in the app container under our private monitor name → everything in it is
 ///   SDK-owned by construction (classic `monitoredRegions` is shared app-wide).
-///
-/// Not unit-tested directly — it adapts real, non-substitutable CoreLocation objects. The decision
-/// logic lives in `GeofenceStorage` (unit-tested); the adapter is validated on-device.
 @available(iOS 17.0, *)
 @MainActor
 final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring {
@@ -33,29 +30,22 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring {
     /// UserDefaults mirror of the monitor's condition identifiers. `CLMonitor` only exposes them
     /// async, but the bootstrap's adopt-vs-re-register decision needs a synchronous read right
     /// after construction — without the mirror that read is empty on every cold launch.
-    /// `internal` for the same reason as `userDefaults`.
     static let conditionMirrorKey = "io.customer.sdk.geofence.clmonitor.conditionIdentifiers"
 
-    /// Internal for the `+Registration` extension.
+    // Members used by the `+*` extensions are `internal` only because they live in other files.
     let logger: Logger
     /// Persists the per-condition dedup baseline + delivery filter (see `MonitorRegionRecord`).
-    /// Internal (not private) so the `+Rearm` extension can read it; immutable injected dependency.
     let storage: GeofenceStorage
-    /// `internal` only so `+ConditionMirror` can write the mirror it reads.
     let userDefaults: UserDefaults
-    /// Internal for the `+Registration` and `+Fixes` extensions.
     let authManager: GeofenceLocationAuthority
-    /// Freshens the fix behind movement-trigger EXIT dispatches (see `MovementFixResolver`).
-    /// Internal (not private) for the `+BaselineHeal` and `+ContradictionGate` extensions' fix resolution.
+    /// Fresh fixes for movement-trigger exits, the contradiction gate and the baseline heal.
     let movementFixResolver: MovementFixResolver
-    /// Internal (not private) for the `+BaselineHeal` extension's synthesized deliveries.
     var onTransition: GeofenceTransitionHandler?
     private var onAuthorizationChanged: GeofenceAuthorizationChangedHandler?
     private var onReconciled: GeofenceReconciledHandler?
     private var lastLoggedPermissionTier: CoreLocationGeofenceMonitor.PermissionTier?
 
     /// In-memory ownership filter, mirrors `ownedRegionIdentifiers` in the classic monitor.
-    /// The three below are internal for the `+Registration` extension.
     var ownedRegionIdentifiers: Set<String> = []
     /// Synchronous view of the monitor's condition identifiers: seeded from the mirror at init,
     /// reconciled against `CLMonitor.identifiers` by the pipeline's first operation, then maintained.
@@ -63,29 +53,21 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring {
     /// Geometry each condition was added with, post-clamp. `CLMonitor` exposes no way to read a
     /// condition back, so this is the only record `setMonitoredRegions` can diff against.
     ///
-    /// Deliberately NOT seeded from the mirror at init (which has no geometry anyway). A condition
-    /// inherited from a previous process may be a reboot zombie — still listed, no longer monitored
-    /// (see `rearmConditions`) — and only re-adding revives it. Leaving it absent here makes the
-    /// first pass re-register it; when the bootstrap adopts instead, `adoptExistingRegions` seeds it
-    /// from the persisted records the re-arm then imposes at the OS.
+    /// Not seeded at init: an inherited condition may be listed but no longer monitored (see
+    /// `rearmConditions`), and leaving it absent makes the first sync re-add it. Adoption seeds it
+    /// from the persisted records the re-arm imposes.
     var conditionLedger = RegisteredConditionLedger()
     /// Conditions the OS stopped monitoring since their last registration. The next registration
     /// reseeds their stored baseline instead of preserving it — see `recordMonitorRegistration`.
     var conditionsNeedingBaselineReseed: Set<String> = []
 
     /// When each condition was last (re)added at the OS and the circle that add imposed, stamped
-    /// at the add's drain time. The contradiction gate only vets events landing shortly after an
-    /// add — the daemon's belief replays — and judges them against this geometry, NOT the staged
-    /// ledger entry: a reshape updates the ledger synchronously, so during its
-    /// staging→drain gap an event computed on the old circle would otherwise be judged against
-    /// the new one (see `+ContradictionGate`).
+    /// at drain. The contradiction gate judges against this rather than the ledger, which already
+    /// holds any staged reshape the OS has not taken yet.
     var conditionReadds: [String: ConditionReadd] = [:]
-    /// When the last gate-fix request completed without producing a fresh fix. While recent, the
-    /// gate reads the cache instead of requesting again — see `resolveGateFix`. Internal (not
-    /// private) for the `+ContradictionGate` extension.
+    /// When the last gate-fix request completed without producing a fresh fix; see `resolveGateFix`.
     var gateFixRequestFailedAt: Date?
 
-    /// The circle a condition was added with.
     /// The one condition monitor, created once and shared by every caller: a second `CLMonitor`
     /// with the same name throws "Monitor named ... is already in use".
     private var monitorTask: Task<GeofenceConditionMonitoring, Never>?
@@ -100,10 +82,9 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring {
     private var isDrainingPendingEvents = false
     private static let maxPendingEvents = 64
     /// When the armed conditions were last rebuilt at the OS (init, adopt, or a foreground re-arm).
-    /// Internal for the `+Rearm` extension. Regular syncs don't reset it: they leave unchanged
-    /// conditions untouched, which is exactly what lets a wedged promotion record persist.
+    /// Regular syncs don't reset it: they leave unchanged conditions untouched, which is exactly
+    /// what lets a wedged promotion record persist.
     var lastRearmAt: Date
-    /// Internal for the `+Rearm` extension, which registers it.
     var foregroundObserverToken: NSObjectProtocol?
 
     /// Every timing decision in this wrapper reads this clock, never `Date()`.
@@ -175,8 +156,8 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring {
     }
 
     /// Runs `operation` after every previously enqueued operation has finished. All monitor
-    /// mutations go through here so caller-side ordering (stop-all, then re-register) is preserved
-    /// across the async hops to the `CLMonitor` actor. Internal (not private) for `+Rearm`.
+    /// mutations go through here so caller-side ordering (e.g. a remove before a re-add) is
+    /// preserved across the async hops to the `CLMonitor` actor.
     func enqueueMonitorOperation(_ operation: @escaping @MainActor (GeofenceConditionMonitoring) async -> Void) {
         let previous = lastQueuedOperation
         let monitorTask = monitorInstance()
@@ -231,11 +212,9 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring {
 
     private func handle(event: GeofenceConditionEvent) async {
         // Hold events until the bootstrap binds `onTransition`: processing earlier would advance the
-        // persisted dedup baseline and then drop the delivery on the nil handler, suppressing the
-        // later re-emission of the same state. New arrivals queue behind any backlog — including
-        // while the drain has popped its last event but is still awaiting `process`, where the queue
-        // reads empty — so per-condition order holds. Capped against a process that never binds —
-        // dropping oldest is safe because CLMonitor re-emits current state.
+        // baseline and drop the delivery, suppressing the later re-emission. New arrivals queue
+        // behind any backlog and an in-flight drain (whose queue can read empty), so per-condition
+        // order holds. Dropping the oldest past the cap is safe: CLMonitor re-emits current state.
         if onTransition == nil || !pendingEvents.isEmpty || isDrainingPendingEvents {
             pendingEvents.append(event)
             if pendingEvents.count > Self.maxPendingEvents { logOverflowedEvent(pendingEvents.removeFirst()) }
@@ -270,21 +249,18 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring {
         case .unknown:
             return logger.geofenceInfo("os_state_unusable", fields: [("id", identifier), ("state", "unknown")])
         case .unmonitored:
-            // CLMonitor gave up on the condition (budget exceeded). Drop the mirror entry and the
-            // recorded circle so the next sync re-registers it, and reseed the baseline then rather
-            // than preserve it — after the OS gave up, the stored state no longer matches reality.
-            // Ownership is KEPT: it only gates which events this process accepts, and a dropped
-            // condition stays listed and revives on its own once budget frees (measured); dropping
-            // the movement trigger's ownership would remove the only thing that restores it.
+            // CLMonitor gave up on the condition (budget exceeded). Drop the mirror entry and recorded
+            // circle so the next sync re-registers it with a reseeded baseline. Ownership is KEPT: a
+            // dropped condition stays listed and revives on its own once budget frees, and
+            // refusing the movement trigger's events would remove the only thing that restores it.
             logger.geofenceMonitorStoppedMonitoringRegion(identifier)
             knownConditionIdentifiers.remove(identifier)
             conditionLedger.forget(identifier)
             conditionReadds.removeValue(forKey: identifier)
             conditionsNeedingBaselineReseed.insert(identifier)
             persistConditionMirror()
-            // Skipped if a registration re-added the identifier since — deleting a baseline that add
-            // just wrote would cost the next crossing. Keyed on this monitor's own completed adds,
-            // not `CLMonitor.identifiers` (which still lists a dropped condition).
+            // Skipped if a registration re-added it since, or this would delete that add's baseline.
+            // Keyed on our own completed adds: `CLMonitor.identifiers` still lists a dropped condition.
             enqueueMonitorOperation { [weak self] _ in
                 guard let self, !self.knownConditionIdentifiers.contains(identifier) else { return }
                 await self.storage.clearMonitorRegionRecord(identifier: identifier)
@@ -293,22 +269,18 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring {
         @unknown default:
             return logger.geofenceInfo("os_state_unusable", fields: [("id", identifier), ("state", "unhandled")])
         }
-        // Logged before the gate and the dedup baseline: an event refused or deduped is still an
-        // event the OS delivered, and the drives worth explaining are usually the ones where
-        // something arrived and was then discarded.
+        // Logged before the gate and dedup: a refused or deduped event was still delivered by the OS.
         logReceivedCallback(identifier: identifier, transition: transition, eventDate: event.date)
-        // Runs BEFORE the baseline advance below: a refused event must leave the stored baseline
-        // untouched so the daemon's own re-evaluation dedups against it (see `+ContradictionGate`).
-        // The movement trigger is exempt: polygon wake-sizing shrinks it to `polygonWakeMinRadius`
-        // (100 m), so a genuine exit lands inside the gate's window while the cached fix still reads
-        // the centre — gating it would refuse the real crossing that drives the next polygon pass.
+        // Runs BEFORE the baseline advance below so the daemon's re-evaluation dedups against an
+        // untouched baseline. The movement trigger is exempt: polygon wake-sizing can shrink it to
+        // `polygonWakeMinRadius`, so a genuine exit lands inside the gate's window while the cached
+        // fix still reads the centre.
         if identifier != GeofenceConstants.movementTriggerIdentifier,
            await isEventContradictedByFreshFix(identifier: identifier, transition: transition, eventDate: event.date) {
             return
         }
-        // Dated by the OS, not by receipt: every guard below weighs OS dates, never the instant
-        // the SDK wrote, which made the old rule follow the queue's drain speed (drive 5). The
-        // evidence guard covers what the other two cannot see — see `enqueueBaselineHeal`.
+        // Dated by the OS, not by receipt, so no guard depends on drain speed. The evidence guard
+        // catches a newer heal; see `enqueueBaselineHeal`.
         let outcome = await storage.recordMonitorEvent(
             transition, forIdentifier: identifier,
             onlyIfBaselinePredates: event.date, osEventDate: event.date, now: event.date
@@ -318,12 +290,11 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring {
             return
         }
         // No ownership re-check after the await: the baseline already advanced, so dropping here
-        // loses the transition permanently — a sync's stop-all + re-add swap would eat a genuine
-        // crossing that raced it. A region truly removed in that window delivers one last gated event.
+        // would lose a genuine crossing that raced a sync's re-add. A region truly removed in that
+        // window delivers one last event.
         if identifier == GeofenceConstants.movementTriggerIdentifier, transition == .exit {
-            // The movement pass re-centers the trigger and measures displacement at these coords, so
-            // a frozen cached fix pins the whole pipeline to a stale point — freshen it first.
-            // Fire-and-forget so a slow fix can't stall the pending-event drain behind it.
+            // The movement pass re-centers on these coords, so a frozen cache would pin it to a stale
+            // point. Fire-and-forget so a slow fix can't stall the pending-event drain.
             movementFixResolver.resolve(cached: bestKnownFix(), purpose: .movement) { [weak self] location, isFresh in
                 self?.logger.geofenceCallbackDispatched(identifier: identifier, transition: transition)
                 self?.onTransition?(identifier, transition, location, event.date, isFresh, self?.eventCircle(for: identifier, raisedAt: event.date) ?? .unknown)
@@ -379,9 +350,8 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring {
 
     // MARK: - Authorization
 
-    // Fires once when the delegate is set (harmless) and again on every change, keeping the service
-    // session in step with the granted tier. Surfaced UNFILTERED in BOTH directions: an improvement
-    // lets the bootstrap re-attempt registration, and a downgrade is what disarms visit monitoring.
+    // Surfaced UNFILTERED in both directions: an improvement lets the bootstrap re-attempt
+    // registration, and a downgrade is what disarms visit monitoring.
     private func handleAuthorizationChange() {
         updateServiceSession()
         onAuthorizationChanged?()
@@ -389,10 +359,8 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring {
 
     // MARK: - Service session (iOS 18+)
 
-    /// On iOS 18+, `CLMonitor.events` stops yielding in the background unless a `CLServiceSession`
-    /// asserts continued interest — Always authorization alone no longer suffices. Held for the
-    /// monitor's lifetime, but only while Always is ALREADY granted: a session above the granted
-    /// tier can put up a permission prompt, and prompting is the host's decision, never the SDK's.
+    /// Held only while Always is ALREADY granted: a session above the granted tier can prompt, and
+    /// prompting is the host's decision. See the type doc for why iOS 18+ needs one.
     private func updateServiceSession() {
         authManager.updateServiceSession(isAlwaysAuthorized: authManager.authorizationStatus == .authorizedAlways)
     }

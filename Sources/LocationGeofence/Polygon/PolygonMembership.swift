@@ -19,16 +19,13 @@ enum PolygonMembership: String, Codable, Sendable {
 /// cold wake compares against the pre-kill belief rather than starting over.
 struct PolygonMembershipRecord: Codable, Equatable, Sendable {
     var membership: PolygonMembership
-    /// Evidence time of the belief currently held: the timestamp of the newest fix or OS event to
-    /// establish it OR confirm it, not only the one that last changed it. Lets a late evaluation
-    /// defer to a newer decision, the same way `MonitorRegionRecord.lastStateChangedAt` guards the
-    /// baseline heal.
+    /// Evidence time of the current belief: the newest fix or OS event that established OR
+    /// confirmed it, not only the one that last changed it. Lets a late evaluation defer to a
+    /// newer decision.
     ///
-    /// Do not rename without a `CodingKeys` case mapping back to the literal `"lastChangedAt"`. The
-    /// synthesized keys make the property name the stored key, and a record written by an earlier
-    /// build then fails the whole `GeofenceState` decode — which `loadFromDisk` swallows with
-    /// `try?`, taking the cached geofences, monitor baselines, registration set and cooldowns with
-    /// it on the next write.
+    /// The property name is the stored key. Renaming it without a `CodingKeys` mapping back to
+    /// `"lastChangedAt"` fails the whole `GeofenceState` decode for existing records, which
+    /// `loadFromDisk` swallows with `try?`, so the next write drops the rest of the state.
     var lastChangedAt: Date
 }
 

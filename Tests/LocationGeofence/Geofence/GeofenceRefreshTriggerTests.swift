@@ -8,27 +8,19 @@ import Testing
 
 /// Bound for every wait for something to happen.
 ///
-/// The default two seconds is enough on a quiet machine and not enough on CI, where the whole
-/// package's suites run in parallel and this one's decisions have to reach the main actor through
-/// that contention. It is not a stuck-versus-working question: on one CI run the refresh landed
-/// *after* its wait had given up and the mock had been reset, which is how
-/// `onLocationAcquired_givenNothingArmed_expectNoRefresh` came to see the call it asserts is absent.
-/// These are eventually-assertions, so the bound only decides how long a genuine failure takes to
-/// report — a passing wait returns as soon as the condition holds.
+/// `settle`'s 2 s default is too short on CI, where suites run in parallel and these decisions
+/// reach the main actor under contention. A late refresh can then land after the mock is reset.
+/// A passing wait returns as soon as the condition holds, so this only delays a genuine failure.
 private let waitForDetachedWork: TimeInterval = 10
 
 /// Window for every assertion that something does *not* happen.
 ///
-/// A negative cannot be waited for by outcome — it can only be given long enough that the thing it
-/// forbids would have happened. `settleQuietly`'s 0.3 s default is far shorter than the contention
-/// the bound above exists to absorb, so these were passing because nothing had arrived yet rather
-/// than because nothing would. Unlike the bound above, this one is paid on every green run.
+/// A negative can only be given long enough that the forbidden thing would have happened.
+/// `settleQuietly`'s 0.3 s default is far shorter than the contention above. Paid on every green run.
 private let windowForAbsence: TimeInterval = 2
 
 /// Nested under `SharedDIGraphSuites` because `GeofenceStorage.init` defaults its `dateUtil` to
-/// `DIGraphShared.shared.dateUtil`, so every `Harness` reads the shared graph. Running in parallel
-/// with the other suites that write it is what produced the contention these waits were widened
-/// for; taking turns is the fix, and the widened bound below is only the backstop.
+/// `DIGraphShared.shared.dateUtil`, so every `Harness` reads the shared graph.
 extension SharedDIGraphSuites {
     @Suite("GeofenceRefreshTrigger")
     struct GeofenceRefreshTriggerTests {
@@ -38,16 +30,15 @@ extension SharedDIGraphSuites {
             let storage: GeofenceStorage
             let explicitRefreshRequested = Synchronized<Bool>(false)
 
-            /// Read from the trigger's decision task and written from the test thread, so it is
-            /// guarded for the same reason `acquireCounter` below is.
+            /// Read from the trigger's decision task and written from the test, so synchronized.
             private let lastKnownBox = Synchronized<LocationData?>(nil)
             var lastKnown: LocationData? {
                 get { lastKnownBox.wrappedValue }
                 set { lastKnownBox.wrappedValue = newValue }
             }
 
-            /// Runs when the trigger's decision reads `lastKnownLocation` — the one point inside a
-            /// decision a test can interpose on, to land a reset mid-reads (see the late-reset test).
+            /// Runs when the decision reads `lastKnownLocation`, the one point a test can interpose
+            /// on to land a reset mid-decision.
             private let onLastKnownReadBox = Synchronized<(() -> Void)?>(nil)
             var onLastKnownRead: (() -> Void)? {
                 get { onLastKnownReadBox.wrappedValue }
@@ -56,22 +47,13 @@ extension SharedDIGraphSuites {
 
             private let root: URL
 
-            /// `acquireFix` is called from the trigger's decision task, not from the test's thread, and
-            /// every wait below polls this from a third. A plain `var` read and written across those is
-            /// a race whose usual symptom is a neighbouring read going wrong, not this counter.
+            /// Written from the decision task and polled from the test, so synchronized.
             private let acquireCounter = Synchronized<Int>(0)
             var acquireCount: Int { acquireCounter.wrappedValue }
 
-            /// Triggers this harness has built, held for its lifetime.
-            ///
-            /// `refreshIfPossible` does its work in `Task { @MainActor [weak self] }`, so a trigger owned
-            /// only by a local `let` can be released once a test makes its last direct use of it, before
-            /// that task's first hop resumes — the decision then finds `self` nil and silently returns.
-            /// Not what the CI failures in this file were: there the work arrived late, not never. The
-            /// hazard is real all the same, and one test used to guard against it by hand.
-            ///
-            /// Production ownership is exactly this — module state holds the trigger for the process —
-            /// so holding it here is the realistic arrangement, not a prop for the test.
+            /// Triggers this harness has built, held for its lifetime as module state holds one in
+            /// production. `refreshIfPossible` captures `[weak self]`, so a trigger owned only by a
+            /// local `let` can be released before its task runs, and the decision silently returns.
             private var triggers: [GeofenceRefreshTrigger] = []
 
             init() {
@@ -223,9 +205,8 @@ extension SharedDIGraphSuites {
             #expect(harness.coordinator.refreshReceivedArguments?.latitude == 44)
         }
 
-        /// The other half of `onReset`'s clear. `explicitRefreshRequested` is covered below; this
-        /// flag is armed by a different route — a decision that ran and found no anchor — and had
-        /// no coverage at all, so deleting the line that clears it left the suite green.
+        /// `onReset` clears two arm flags. This covers the one a no-anchor decision sets;
+        /// `explicitRefreshRequested` is covered below.
         @Test
         func onReset_givenArmedByAMissingAnchor_expectTheArmingDropped() async {
             let harness = Harness()
@@ -269,10 +250,8 @@ extension SharedDIGraphSuites {
         /// A late `ResetEvent` for a *prior* user must not abort the current user's decision.
         ///
         /// After `clearIdentify()` → `identify("B")`, the reset can arrive (unordered bus) while B's
-        /// decision is already running. The old identity-epoch counter bumped on every reset and
-        /// aborted here, leaving B with no geofences — while the coordinator's own reset was
-        /// superseded and would not register them either. Keying the guard on the current user
-        /// instead proceeds, because B is still the current user.
+        /// decision is running. Aborting would leave B with no geofences, since the coordinator's
+        /// own reset is superseded and would not register them either.
         @Test
         func onIdentified_givenLateResetForPriorUserMidDecision_expectRefreshStillRuns() async {
             let harness = Harness()

@@ -2,36 +2,23 @@
 @testable import CioLocationGeofence
 import Foundation
 
-/// Holds work the OS or the network had not finished yet, and lets it finish when the drive says it did.
+/// Holds work the network had not finished yet, and lets it finish when the drive says it did.
 ///
-/// The doubles this harness substitutes were faithful in *value* and instantaneous in *time*. The
-/// real ones were neither, and the gap matters: CoreLocation delivers every crossing twice about
-/// 10 ms apart, and on the 2026-09-10 iPhone drive the second copy arrived while a re-registration's
-/// baseline write was still in flight:
+/// Instantaneous doubles reorder a drive. CoreLocation can deliver a crossing twice, with the
+/// second copy arriving while a re-registration is still in flight, so it finds the old baseline
+/// and is dropped as no change. Letting the re-registration land before the next stimulus
+/// reverses that: the duplicate finds the *new* baseline, reads as a state change, and the drive
+/// diverges. Only fetches park today; see
+/// `load(fetchAnswers:)`.
 ///
-/// ```
-/// when  7581.379  os.callback cio_movement_trigger exit    ← first copy
-/// when  7581.391  os.callback cio_movement_trigger exit    ← duplicate, 12 ms later
-/// then  7581.393  os.callback.dropped why=no_state_change  ← duplicate finds the old baseline
-/// note  7581.395  movement.exit tier=localRerank
-/// then  7581.399  registration.applied                     ← reseed lands, 8 ms after the duplicate
-/// ```
-///
-/// A harness that lets the write land before the next stimulus reverses that: the duplicate finds
-/// the *new* baseline, reads as a state change, and the drive diverges from there. Every input that
-/// arrives while the SDK is mid-reaction is unreachable that way, and on a geofencing SDK that is
-/// most of the interesting behaviour.
-///
-/// **Nothing sleeps.** Release is driven by the scenario's own timestamps, so the outcome depends on
-/// the recording rather than on how fast the machine runs — which is the difference between this
-/// and replaying the recorded gaps in real time.
+/// **Nothing sleeps.** Release is driven by the scenario's timestamps, so the outcome depends on
+/// the recording rather than on machine speed.
 @MainActor
 final class ReplayBoundaryGate {
     /// A boundary whose answer is owed.
     ///
-    /// Carries an `id` because two boundaries can legitimately share a moment and a name — a drive
-    /// with two registrations at the same recorded `registration.applied` would otherwise have both
-    /// entries removed and only one of them answered, silently losing a baseline write.
+    /// Carries an `id` because two boundaries can share a moment and a name; removing by value
+    /// would drop both and answer one.
     private struct Parked {
         let id: Int
         let at: TimeInterval
@@ -42,10 +29,8 @@ final class ReplayBoundaryGate {
     private var parked: [Parked] = []
     private var nextId = 0
 
-    /// The moment this gate last moved the clock to.
-    ///
-    /// Held here so `park` can tell a future boundary from one whose moment has already passed.
-    /// Clamped the way `setClock` clamps, because that is the value the clock actually took.
+    /// The moment this gate last moved the clock to, so `park` can tell a future boundary from a
+    /// past one. Clamped like `setClock`.
     private var virtualNow: TimeInterval = 0
 
     /// Boundaries the scenario ended while still waiting on. Diagnostic, not a failure: a capture
@@ -56,29 +41,20 @@ final class ReplayBoundaryGate {
 
     /// When the network answered each fetch, in order — the `at` of every `fixture.api.fetch`.
     ///
-    /// That timestamp is stamped when the response *arrived*, which is why a fixture cannot be
-    /// placed on the timeline as a record: it always sits one round trip later in the capture than
-    /// the fetch that asked for it, and installing it there starves the fetch. As a *release* time
-    /// it is exactly right, and the 768 ms the iPhone drive spent waiting for its first response
-    /// becomes 768 ms of virtual time in which other inputs can land.
+    /// Stamped when the response *arrived*, so it is wrong as a fixture's install time but exactly
+    /// right as a release time: the round trip becomes virtual time in which other inputs can land.
     private var fetchAnswers: [TimeInterval] = []
 
-    /// **There is no registration answer list, deliberately.** An earlier cut released the
-    /// registration boundary at the `at` of each recorded `registration.applied`, which was wrong
-    /// twice over: that record is a `then`, so the input schedule was being derived from the answer
-    /// sheet, and it is stamped when the *coordinator finishes issuing* the registration, not when
-    /// CoreLocation finished applying it. The capture measured the OS round trip and
-    /// `capture2scenario.py` strips it as volatile (`ms`); until it stops, the honest position is
-    /// that a replay does not know how long a condition add took, so the OS answers immediately
-    /// rather than on a fabricated schedule.
+    /// Fetches only. `registration.applied` is a `then` stamped when the coordinator finishes
+    /// issuing, not when CoreLocation applied it, and the transform strips the OS round trip
+    /// (`ms`), so condition adds answer immediately rather than on a fabricated schedule.
     func load(fetchAnswers: [TimeInterval]) {
         self.fetchAnswers = fetchAnswers.sorted()
     }
 
     /// The next recorded answer at or after `now`, or `now` plus a fallback when none is left.
     ///
-    /// Answers already behind the clock are discarded rather than used: they belong to a call this
-    /// replay has already made, and honouring one would return in the past.
+    /// Answers already behind the clock are discarded: honouring one would return in the past.
     private func nextAnswer(_ answers: inout [TimeInterval], after now: TimeInterval, fallback: TimeInterval) -> TimeInterval {
         while let first = answers.first, first < now {
             answers.removeFirst()
@@ -99,10 +75,8 @@ final class ReplayBoundaryGate {
     /// A boundary whose moment has already passed answers immediately rather than parking, which is
     /// also what keeps `advance` from looping: work resumed inside it can only park in the future.
     func park(at: TimeInterval, what: String, answer: @escaping () async -> Void) async {
-        // The invariant `advance` leans on: everything owed is owed in the *future*, so answering a
-        // boundary can never re-offer the moment the clock already stands on. Unreachable from the
-        // one caller today — it takes its moment from `fetchAnswerTime`, which never looks back —
-        // but the round limit in `advance` is a backstop, not the reason it terminates.
+        // Unreachable from `fetchAnswerTime`, which never looks back; the round limit in `advance`
+        // is a backstop, not the reason it terminates.
         guard at > virtualNow else {
             await answer()
             return
@@ -111,8 +85,8 @@ final class ReplayBoundaryGate {
         parked.append(Parked(id: nextId, at: at, what: what, answer: answer))
     }
 
-    /// Moves the clock and remembers where it went. `setClock` clamps so time never runs backwards;
-    /// this clamps identically, or `park` would compare against a moment the clock never took.
+    /// Moves the clock and remembers where it went, clamped identically to `setClock` so `park`
+    /// never compares against a moment the clock never took.
     private func moveClock(to moment: TimeInterval, _ setClock: (TimeInterval) -> Void) {
         virtualNow = max(moment, virtualNow)
         setClock(moment)
@@ -120,11 +94,9 @@ final class ReplayBoundaryGate {
 
     /// Runs the clock forward to `target`, answering each boundary **at its own moment** on the way.
     ///
-    /// Advancing straight to the target and releasing everything there would date all the work a
-    /// boundary unblocks to whenever the next stimulus happened to be — 768 ms of the iPhone's
-    /// reaction squeezed into the instant of the input it was supposed to precede. So each release
-    /// steps the clock to the moment that boundary actually answered, and `settle` runs whatever it
-    /// made runnable before the next one is considered.
+    /// Releasing everything at the target would date the unblocked work to the next stimulus. So
+    /// each release steps the clock to that boundary's own moment, and `settle` runs what it made
+    /// runnable before the next is considered.
     func advance(
         to target: TimeInterval,
         setClock: (TimeInterval) -> Void,
@@ -159,13 +131,11 @@ final class ReplayBoundaryGate {
             await next.answer()
             try await settle()
         }
-        // Whatever the round limit cut short is still owed, and saying so is the whole point of
-        // this list: a break that reported only what it released would read as a clean end of drive.
+        // Includes what the round limit cut short, so a break does not read as a clean end.
         abandonedAtEnd = abandoned + parked.map(\.what)
     }
 
-    /// Whether anything is owed. The SDK reaches its boundaries asynchronously, so a caller that
-    /// wants to answer them all has to let it get there first — see `ReplayHarness.settleBoundaries`.
+    /// Whether anything is owed. See `ReplayHarness.settleBoundaries`.
     var hasParked: Bool { !parked.isEmpty }
 
     /// Between scenarios: a boundary parked by the previous drive would answer inside the next.
@@ -174,17 +144,14 @@ final class ReplayBoundaryGate {
         nextId = 0
         fetchAnswers.removeAll()
         abandonedAtEnd = []
-        // The clock goes back to the start with everything else. Left standing, the next drive's
-        // early boundaries would measure against the previous drive's final moment, read as
-        // already past, and answer immediately instead of parking.
+        // Left standing, the next drive's early boundaries would read as already past.
         virtualNow = 0
     }
 
     // MARK: - Fallbacks
 
-    /// Used only when a fetch has no recorded answer left to match — a replay that reached out
-    /// more often than the drive did. Deliberately non-zero so such a call still leaves a window
-    /// rather than closing instantly, and far below any interval the SDK gates on.
+    /// Used only when a fetch has no recorded answer left. Non-zero so the call still leaves a
+    /// window, and far below any interval the SDK gates on.
     static let fallbackNetworkSeconds: TimeInterval = 0.250
 
     private static let maxReleaseRounds = 512

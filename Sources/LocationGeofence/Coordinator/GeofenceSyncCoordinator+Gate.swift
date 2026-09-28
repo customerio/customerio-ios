@@ -1,8 +1,8 @@
 import CioInternalCommon
 import Foundation
 
-/// The refresh gate and the work that waits on it, split from the coordinator's core so both stay
-/// under the file cap. `internal` rather than `private` only because of that split.
+/// The refresh gate and the work that waits on it. Split out to stay under the file cap, which is
+/// the only reason members are internal.
 extension GeofenceSyncCoordinatorImpl {
     /// Coordinates for a movement pass awaiting its turn at the gate.
     struct DeferredMovement {
@@ -11,18 +11,13 @@ extension GeofenceSyncCoordinatorImpl {
         let anchorIsLiveFix: Bool
         /// Arrival order, carried so a replay can be discarded once a newer movement has run.
         let sequence: UInt64
-        /// Carried so the replay judges membership from where the crossing actually happened.
-        /// It ages while the holder runs, unbounded on a slow refetch, and a pass that had won
-        /// the gate would have REQUESTED rather than reused — so the resolver drops a held fix
-        /// past `movementFixMaxAge` and requests instead. See `heldFixUse`.
+        /// Carried so the replay judges membership from where the crossing happened. It ages while
+        /// the holder runs; the resolver requests a new one past `movementFixMaxAge` (`heldFixUse`).
         let heldFix: ResolvedFix?
     }
 
-    /// What a movement pass did, kept separate from whether it succeeded.
-    ///
-    /// Not the same thing: a failed remote refresh still re-arms the trigger from cache before
-    /// returning its failure, and it is the re-centre — not the result — that an older replay
-    /// must not undo.
+    /// What a movement pass did, kept separate from whether it succeeded: a failed remote refresh
+    /// still re-arms the trigger from cache, and it is the re-centre an older replay must not undo.
     struct MovementPassOutcome {
         let result: Result<Void, GeofenceSyncError>
         let reCentred: Bool
@@ -45,23 +40,19 @@ extension GeofenceSyncCoordinatorImpl {
         }
     }
 
-    /// Records that `sequence` has re-centred the trigger. Monotonic: passes complete out of
-    /// order, and an older one finishing last must not un-apply a newer one.
-    ///
-    /// Only ever called with a sequence issued by `nextMovementSequence`. That is what keeps a
-    /// fresh arrival ahead of everything applied, and so what keeps the staleness test in
-    /// `acquireGateOrDefer` from refusing real movements.
+    /// Records that `sequence` has re-centred the trigger. Monotonic: passes complete out of order.
+    /// Only pass sequences from `nextMovementSequence`, or the staleness test in
+    /// `acquireGateOrDefer` can refuse real movements.
     func noteMovementApplied(_ sequence: UInt64) {
         appliedMovementSequence.mutating { value in
             value = max(value, sequence)
         }
     }
 
-    /// After a cleanup for an identity change, the device monitors nothing — and the new user's own
-    /// refresh may already have been dropped on the gate this operation held. Re-run for whoever is
-    /// signed in now, with this operation's seconds-old coordinates, so a user switch converges to a
-    /// registered state instead of an outage lasting until the next launch. Loop-safe: a retry only
-    /// re-fires if the identity changes yet again during the retry itself.
+    /// After a cleanup for an identity change the device monitors nothing, and the new user's own
+    /// refresh may have been dropped on the gate this operation held. Re-runs for whoever is signed
+    /// in now so a user switch doesn't leave monitoring off until the next launch. Loop-safe: a
+    /// retry only re-fires if the identity changes again during it.
     func retryForCurrentUser(latitude: Double, longitude: Double, anchorIsLiveFix: Bool) {
         guard identifiedUserId != nil else { return }
         Task { [weak self] in
@@ -73,22 +64,17 @@ extension GeofenceSyncCoordinatorImpl {
 
     /// Replays a movement pass that lost the gate, once the holder has released it.
     ///
-    /// Taken and cleared in one step so a movement deferred DURING the replay is left for that
-    /// replay's own release rather than being lost or replayed twice. Fired on a Task for the same
-    /// reason `retryForCurrentUser` is: the gate is free but this call site is still unwinding the
-    /// pass that freed it.
-    ///
-    /// Dropped outright when the user changed under us — the coordinates belong to a profile this
-    /// coordinator no longer serves, and `retryForCurrentUser` has already queued the right work.
+    /// Taken and cleared in one step so a movement deferred during the replay is left for that
+    /// replay's own release, not lost or replayed twice. Dropped when the user changed: the
+    /// coordinates belong to the old profile, and `retryForCurrentUser` has queued the right work.
     func drainDeferredMovement(userChanged: Bool) {
         let pending = deferredMovement.mutating { value -> DeferredMovement? in
             defer { value = nil }
             return value
         }
         guard let pending, !userChanged, identifiedUserId != nil else { return }
-        // Not checked for staleness here. Clearing the queue frees the gate before this task
-        // starts, so anything decided at this point can be false by the time the replay acquires:
-        // `acquireGateOrDefer` makes the comparison and the acquisition one step instead.
+        // Staleness is judged in `acquireGateOrDefer`, atomically with acquisition; anything
+        // decided here can be false by the time the replay takes the gate.
         Task { [weak self] in
             _ = await self?.handleMovement(
                 latitude: pending.latitude, longitude: pending.longitude,
@@ -98,15 +84,12 @@ extension GeofenceSyncCoordinatorImpl {
         }
     }
 
-    /// - Parameter sequence: arrival order. A replay carries the sequence of the movement it is
-    ///   replaying rather than taking a new one, so being re-deferred cannot make stale
-    ///   coordinates look like the newest thing to arrive.
+    /// - Parameter replaySequence: a replay's original arrival sequence, or nil for a fresh movement.
+    ///   Re-using it means being re-deferred cannot make stale coordinates look newest.
     func handleMovement(
         latitude: Double, longitude: Double, anchorIsLiveFix: Bool, replaySequence: UInt64?,
         heldFix: ResolvedFix?
     ) async -> Result<Void, GeofenceSyncError> {
-        // Recorded, not dropped — see `deferredMovement`. Taking the gate, stamping the pass,
-        // judging staleness and recording the loss are one step: see `acquireGateOrDefer`.
         let sequence: UInt64
         switch acquireGateOrDefer(
             latitude: latitude, longitude: longitude,
@@ -126,10 +109,8 @@ extension GeofenceSyncCoordinatorImpl {
             expectedUserId: expectedUserId, latitude: latitude, longitude: longitude,
             anchorIsLiveFix: anchorIsLiveFix, heldFix: heldFix
         )
-        // Keyed on the re-centre, not on success, and before the release so a replay draining off
-        // it compares against this pass. A pass that moved nothing must not retire a deferral that
-        // is still the best information available; a pass that moved the trigger must, even when
-        // it reports failure.
+        // Keyed on the re-centre, not success, and noted before the release so a replay draining
+        // off it compares against this pass.
         if outcome.reCentred { noteMovementApplied(sequence) }
         let cleaned = await cleanupIfUserChanged(expectedUserId: expectedUserId)
         releaseGate()
@@ -138,37 +119,26 @@ extension GeofenceSyncCoordinatorImpl {
         return outcome.result
     }
 
-    /// Takes the gate, or records the movement for replay — in ONE critical section.
+    /// Takes the gate, or records the movement for replay, in ONE critical section.
     ///
-    /// Doing it in two steps loses the movement. Between `acquireGate()` answering false and the
-    /// record landing, the holder can both release AND drain; the record then arrives with the gate
-    /// already free and nothing left that will drain it, and the trigger stays on the circle the
-    /// device just exited — the exact loss `deferredMovement` exists to prevent, reached through
-    /// its own window.
+    /// In two steps the holder can release AND drain between a failed acquire and the record
+    /// landing, leaving a record nothing will drain. Inside one section, either the holder's
+    /// release drains the record or this call acquires the gate itself.
     ///
-    /// Serialising both against `refreshInProgress` closes it: either the record lands while the
-    /// holder still holds the gate, so that holder's release drains it, or the release got there
-    /// first and this call acquires the gate instead of deferring.
-    ///
-    /// Lock order is one-way. This takes `refreshInProgress` then `deferredMovement`; nothing takes
-    /// them the other way round — `drainDeferredMovement` reads `deferredMovement` alone and fires
-    /// its replay outside the critical section.
-    /// - Parameter replaySequence: a replay's original sequence, or nil for a fresh arrival.
-    ///   Fresh arrivals are stamped in HERE rather than by the caller. Minting before the gate
-    ///   lets a pass that acquires LATER hold an earlier number: a movement paused between its
-    ///   allocation and this call is overtaken by a refresh that takes the free gate meanwhile,
-    ///   and the live movement is then dropped — work the pre-sequence code would have run.
+    /// Lock order is one-way: `refreshInProgress` then `deferredMovement`. `drainDeferredMovement`
+    /// reads `deferredMovement` alone and replays outside the section.
+    /// - Parameter replaySequence: a replay's original sequence, or nil for a fresh arrival. Fresh
+    ///   arrivals are stamped here, not by the caller: minting before the gate lets a pass that
+    ///   acquires later hold an earlier number, so a refresh taking the free gate meanwhile would
+    ///   mark the live movement overtaken.
     func acquireGateOrDefer(
         latitude: Double, longitude: Double, anchorIsLiveFix: Bool, replaySequence: UInt64?,
         heldFix: ResolvedFix?
     ) -> GateOutcome {
         refreshInProgress.mutating { inProgress in
-            // Only a replay can be overtaken. A fresh arrival is by definition the newest thing to
-            // reach the gate, and it has not taken its number yet.
-            //
-            // Judged in here, not by the caller: a newer movement can take the gate, re-centre and
-            // publish its sequence between a check made outside and the acquisition below, so a
-            // replay that read "not overtaken" would still run at coordinates already superseded.
+            // Only a replay can be overtaken; a fresh arrival is the newest by definition. Judged
+            // inside the section because a newer movement can re-centre between an outside check
+            // and the acquisition.
             if let replaySequence, appliedMovementSequence.wrappedValue >= replaySequence {
                 return .overtaken
             }
@@ -178,27 +148,18 @@ extension GeofenceSyncCoordinatorImpl {
                 anchorIsLiveFix: anchorIsLiveFix, sequence: sequence, heldFix: heldFix
             )
             if inProgress {
-                // Highest sequence wins rather than last writer. A replay carries its ORIGINAL
-                // sequence and can lose the gate after a newer arrival has already queued;
-                // overwriting would put the older coordinates back in front.
+                // Highest sequence wins, not last writer: a replay carries its original sequence
+                // and can lose the gate after a newer arrival has queued.
                 if (deferredMovement.wrappedValue?.sequence ?? 0) < movement.sequence {
                     deferredMovement.wrappedValue = movement
                 }
                 return .deferred
             }
             inProgress = true
-            // A movement that actually runs supersedes any older one still queued: both describe
-            // the same journey and this one's coordinates are newer. Without it, a deferral
-            // recorded before this pass replays after it and moves the trigger BACK.
-            //
-            // Cleared in here, not after the guard. Outside the section it is the same two-step
-            // shape this method exists to close: a movement that lost the gate and recorded itself
-            // correctly would then be wiped by the winner, and in that ordering the record it
-            // wipes is the NEWER one — the premise above inverted.
-            //
-            // Only what this pass outranks, for the same reason the deferring branch keeps the
-            // highest: a replay can acquire a briefly free gate while a NEWER arrival waits behind
-            // it, and clearing unconditionally would drop that arrival entirely.
+            // A running pass supersedes an older queued one, which would otherwise replay after it
+            // and move the trigger back. Cleared inside the section so a newer movement recording
+            // itself meanwhile isn't wiped, and only when outranked: a replay can take a briefly
+            // free gate while a newer arrival waits behind it.
             if (deferredMovement.wrappedValue?.sequence ?? 0) <= movement.sequence {
                 deferredMovement.wrappedValue = nil
             }
@@ -206,13 +167,9 @@ extension GeofenceSyncCoordinatorImpl {
         }
     }
 
-    /// Drops any queued movement and frees the gate in ONE critical section.
-    ///
-    /// Two steps let a movement publish between them: it finds the gate still held, queues itself,
-    /// and the clear has already run — so a movement belonging to the profile a reset is clearing
-    /// survives it, and a later drain re-centres the trigger to that old position. Inside the
-    /// section a movement either lands before the clear and is discarded with the rest, or after
-    /// the release and takes the gate on its own terms.
+    /// Drops any queued movement and frees the gate in ONE critical section. In two steps a
+    /// movement could queue itself after the clear, survive a reset, and later re-centre the
+    /// trigger for the cleared profile.
     func discardDeferredAndReleaseGate() {
         refreshInProgress.mutating { inProgress in
             deferredMovement.wrappedValue = nil
@@ -221,11 +178,8 @@ extension GeofenceSyncCoordinatorImpl {
     }
 
     /// Takes the gate and stamps the pass with its arrival order, in ONE critical section.
-    ///
-    /// Allocating after the acquisition inverts the ordering it exists to express: a movement
-    /// arriving in the gap allocates FIRST and so carries a LOWER sequence than the pass that was
-    /// already holding the gate, and is then retired as overtaken by coordinates that are in fact
-    /// older. Whoever takes the gate first must hold the earlier sequence.
+    /// Allocating afterwards lets a movement arriving in the gap take a lower sequence than the
+    /// holder, and then be retired as overtaken by older coordinates.
     ///
     /// - Returns: the sequence to record on completion, or nil when another call holds the gate.
     func acquireGateWithSequence() -> UInt64? {

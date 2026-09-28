@@ -2,14 +2,12 @@
 """Decides the geofence corpus replay check from the xcresult test tree.
 
 xcodebuild's exit code is not enough: with no corpus the replay test is *skipped* by its
-`.enabled(if: Scenarios.isAvailable)` trait, and a skipped suite exits 0 — a pass that replayed
-nothing. So this requires at least one recorded drive to have actually run.
+`.enabled(if:)` trait, and a skipped suite exits 0. So this requires at least one drive to have
+actually run.
 
-The corpus is private, and this repo's Actions logs are public. Failure messages carry fence names
-and coordinates, so this prints only test and drive names with their outcome, never a message.
-
-Failure messages of *authored* scenarios (synthetic data, see `authored_names`) are printed so a
-CI failure can be diagnosed; recorded drives' are not.
+The corpus is private and this repo's Actions logs are public. A recorded drive's failure messages
+carry fence names and coordinates, so only test and drive names with their outcome are printed.
+Authored scenarios (synthetic data, see `authored_names`) also get their failure messages.
 
 Usage: xcrun xcresulttool get test-results tests --path R.xcresult > tests.json
        geofence_replay_gate.py tests.json [scenarios-dir]
@@ -71,9 +69,9 @@ def main(path, scenarios_dir=None):
         if not name.startswith(REPLAY_CASE):
             others.append((name, outcome(case)))
             continue
-        # One `Arguments` child per drive, and only those count as replays. A case with none either
-        # skipped or had no drives to expand — a corpus holding only the other platform's scenarios
-        # "passes" that way having replayed nothing — so it is reported but never counted.
+        # One `Arguments` child per drive, and only those count as replays. A case with none
+        # skipped or had nothing to expand (e.g. a corpus of only the other platform's scenarios),
+        # so it is reported but never counted.
         arguments = [c for c in case.get("children", []) if c.get("nodeType") == "Arguments"]
         if arguments:
             for a in arguments:

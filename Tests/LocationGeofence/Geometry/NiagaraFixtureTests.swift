@@ -6,14 +6,14 @@ import Testing
 
 @Suite("Niagara fixture")
 struct NiagaraFixtureTests {
-    /// Closed ring as supplied; the kernel unclosees it.
+    /// Closed ring as supplied; `PolygonRegion` drops the closing vertex.
     private static let ring = [
         (43.2620, -79.0750), (43.2600, -79.0200), (43.2200, -79.0550), (43.1600, -79.0550),
         (43.1500, -79.1200), (43.1800, -79.1800), (43.2300, -79.1500), (43.2620, -79.0750)
     ].map { LocationData(latitude: $0.0, longitude: $0.1) }
 
-    /// Minimum enclosing circle of the ring, radius measured on WGS84 — the farthest vertex sits
-    /// 7877.1 m out, which is what the server computes (PostGIS `geography`).
+    /// Minimum enclosing circle on WGS84: the farthest vertex sits 7877.1 m out, matching the
+    /// server's PostGIS `geography` value.
     private static let covering = (latitude: 43.219062, longitude: -79.099117, radius: 7878.0)
 
     @Test
@@ -47,7 +47,7 @@ struct NiagaraFixtureTests {
         #expect(domain.polygonRegion != nil)
     }
 
-    /// Well inside the town: the verdict must be decisive at any realistic accuracy.
+    /// Well inside the town: the margin must exceed any realistic fix accuracy.
     @Test
     func niagaraRing_expectInteriorPointDecisivelyInside() {
         let region = PolygonRegion(vertices: Self.ring)
@@ -55,12 +55,11 @@ struct NiagaraFixtureTests {
         let signed = region?.signedEdgeDistance(to: inland) ?? 0
         #expect(region?.contains(inland) == true)
         #expect(signed > 0)
-        // Decisive past any realistic fix accuracy, so the membership layer can act on it.
         #expect(signed > 65)
     }
 
     /// The reflex notch: inside the covering circle, outside the town. A convex hull would
-    /// wrongly call this inside, which is the whole reason the ring cannot be convexified.
+    /// wrongly call this inside.
     @Test
     func niagaraRing_expectNotchPointOutside() {
         let region = PolygonRegion(vertices: Self.ring)

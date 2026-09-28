@@ -33,9 +33,8 @@ struct PolygonMembershipDecisionTests {
         ) == nil)
     }
 
-    /// The retail case, and the reason the heal-sized 20 m floor was removed rather than lowered:
-    /// a 15 m edge on a 5 m fix is a real position inside a venue whose deepest point is 24 m, and
-    /// under any floor at or above 15 it decided nothing.
+    /// No margin floor: a 15 m edge on a 5 m fix is a real position inside a retail venue only 24 m
+    /// deep, and any floor at or above 15 m would leave it undecided.
     @Test
     func resolvedMembership_givenRetailDepthOnAGoodFix_expectInside() {
         #expect(PolygonMembershipDecision.resolvedMembership(
@@ -82,7 +81,7 @@ struct PolygonMembershipDecisionTests {
         ) == nil)
     }
 
-    /// The guard is on age, not on the fix being at the very edge of the window.
+    /// The age bound is inclusive.
     @Test
     func resolvedMembership_givenFixAtMaxAge_expectVerdict() {
         #expect(PolygonMembershipDecision.resolvedMembership(
@@ -112,9 +111,8 @@ struct PolygonMembershipDecisionTests {
         ) == .needsCorroboration(.inside))
     }
 
-    /// The asymmetry, and the reason departures need no separate rule: an equally marginal fix on
-    /// the OUTSIDE is not a verdict and is never corroborated, so an ambiguous fix can never end a
-    /// visit early.
+    /// The asymmetry: an equally marginal fix on the OUTSIDE is not a verdict and is never
+    /// corroborated, so an ambiguous fix can never end a visit early.
     @Test
     func resolvedOutcome_givenMarginalOutside_expectUndecidedNotCorroboration() {
         #expect(PolygonMembershipDecision.resolvedOutcome(
@@ -132,9 +130,8 @@ struct PolygonMembershipDecisionTests {
 
     // MARK: - The per-fence ceiling
 
-    /// Tim Hortons, measured: scale 24.2 m. A 30 m fix cannot say anything about a venue that
-    /// shallow, so it is refused outright rather than corroborated — a second equally blind fix
-    /// adds nothing.
+    /// A small retail ring with scale 24.2 m. A 30 m fix says nothing about a venue that shallow,
+    /// so it is refused rather than corroborated: a second equally blind fix adds nothing.
     @Test
     func resolvedOutcome_givenAccuracyWiderThanTheVenue_expectAccuracyTooLow() {
         #expect(PolygonMembershipDecision.resolvedOutcome(
@@ -142,11 +139,10 @@ struct PolygonMembershipDecisionTests {
         ) == .undecided(.accuracyTooLow))
     }
 
-    /// The ceiling gates ARRIVALS only. Shahroz's case: a 400 m x 20 m ring has a scale of about
-    /// 19 m, so a fix 30 m clear of the long edge with 25 m accuracy used to be refused as
-    /// `accuracyTooLow` despite being decisively outside. The point still sits inside the far
-    /// larger covering circle, so no circle exit closes the visit either, and the next return
-    /// misses its enter.
+    /// The ceiling gates ARRIVALS only. A 400 m x 20 m ring has a scale of ~19 m, and a fix 30 m
+    /// clear of it at 25 m accuracy is decisively outside. Refusing it would leave the visit open:
+    /// the point is still inside the covering circle, so no circle exit closes it, and the next
+    /// return misses its enter.
     @Test
     func resolvedOutcome_givenClearOfAThinVenueByMoreThanAccuracy_expectDecidedOutside() {
         #expect(PolygonMembershipDecision.resolvedOutcome(
@@ -154,10 +150,9 @@ struct PolygonMembershipDecisionTests {
         ) == .decided(.outside))
     }
 
-    /// The other side of that split: clearance is measured against the fix's own accuracy, so a
-    /// fix that does NOT clear the ring is still refused on a thin venue rather than called
-    /// outside. Without this, the fix above would pass for a rule that skipped the ceiling
-    /// entirely for anything negative.
+    /// Clearance is measured against the fix's own accuracy, so a fix that does NOT clear a thin
+    /// ring is still refused. Without this, the test above would pass for a rule that skipped the
+    /// ceiling for anything negative.
     @Test
     func resolvedOutcome_givenInsideAThinVenuesAccuracyBand_expectStillRefused() {
         #expect(PolygonMembershipDecision.resolvedOutcome(
@@ -192,8 +187,8 @@ struct PolygonMembershipDecisionTests {
         ) == .undecided(.fixTooOld))
     }
 
-    /// `resolvedMembership` is the narrow door for callers that cannot corroborate, so a marginal
-    /// inside must read as "no verdict" there rather than silently deciding.
+    /// `resolvedMembership` has no corroboration step, so a marginal inside must read as no verdict
+    /// rather than silently deciding.
     @Test
     func resolvedMembership_givenMarginalInside_expectNil() {
         #expect(PolygonMembershipDecision.resolvedMembership(
@@ -203,7 +198,7 @@ struct PolygonMembershipDecisionTests {
 
     // MARK: - PolygonRegion.scale (the per-fence ceiling)
 
-    /// Metres-per-degree at the equator, close enough for a shape test: these assert ratios and
+    /// At the equator, so the tests can use a fixed metres-per-degree: they assert ratios and
     /// tolerances, not absolute geodesy.
     private func square(sideDegrees: Double) -> PolygonRegion? {
         PolygonRegion(vertices: [
@@ -214,8 +209,7 @@ struct PolygonMembershipDecisionTests {
         ])
     }
 
-    /// For a square, `2A/P` is exactly half the side — which is also its true inradius, so the
-    /// approximation is exact for the shape retail rings most resemble.
+    /// For a square, `2A/P` is exactly half the side, which is also its true inradius.
     @Test
     func scale_givenASquare_expectHalfTheSide() throws {
         let region = try #require(square(sideDegrees: 0.001))
@@ -238,9 +232,8 @@ struct PolygonMembershipDecisionTests {
         #expect(abs(open.scale - closed.scale) < 0.5)
     }
 
-    /// A degenerate ring measures 0, so every fix reads `accuracyTooLow` and the fence is
-    /// permanently undecidable rather than accidentally wide open. Asserted because the ceiling
-    /// failing OPEN here would be the dangerous direction.
+    /// A degenerate ring measures 0, so no arrival can be decided: the ceiling fails closed, not
+    /// open.
     @Test
     func scale_givenCollinearVertices_expectZeroSoNothingDecides() throws {
         let sliver = try #require(PolygonRegion(vertices: [
@@ -254,8 +247,8 @@ struct PolygonMembershipDecisionTests {
         ) == .undecided(.accuracyTooLow))
     }
 
-    /// A long thin ring is where `2A/P` is least like the inradius, and it still errs HIGH rather
-    /// than low — it widens what we accept instead of silently refusing a real venue.
+    /// A long thin ring is where `2A/P` is least like the inradius. It must still err HIGH, widening
+    /// what we accept instead of refusing a real venue.
     @Test
     func scale_givenAThinRectangle_expectAtLeastHalfTheShortSide() throws {
         let region = try #require(PolygonRegion(vertices: [

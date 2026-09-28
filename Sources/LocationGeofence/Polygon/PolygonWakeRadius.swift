@@ -4,16 +4,12 @@ import Foundation
 /// Sizes the movement trigger so it doubles as the wake source for polygon membership: crossing a
 /// polygon boundary produces no OS event, so something has to wake us to re-evaluate.
 enum PolygonWakeRadius {
-    /// Sized to the nearest polygon boundary, wherever the device stands relative to the covering
-    /// circles. Falls back to the configured refresh radius, so a device with no polygon boundary
-    /// closer than that behaves exactly as before.
+    /// Sized to the nearest polygon boundary, capped at the configured refresh radius, which is
+    /// also the answer when no polygon is registered.
     ///
-    /// Deliberately NOT restricted to circles the device is already inside. A covering-circle enter
-    /// does not re-arm the trigger, so a device that entered a circle while still inside a wide
-    /// trigger would carry that wide trigger across the polygon boundary: no OS event, no wake, and
-    /// on the way out an exit over an unchanged `outside` belief — the whole visit silent rather
-    /// than late. Sizing to the boundary from outside makes the trigger tighten as the device
-    /// approaches, so the wake arrives before the crossing.
+    /// Deliberately NOT restricted to circles the device is already inside: sizing to the boundary
+    /// from outside tightens the trigger as the device approaches, so the wake arrives before the
+    /// crossing instead of depending on a covering-circle enter to re-arm it.
     static func radius(
         at location: LocationData,
         registeredPolygons: [Geofence],

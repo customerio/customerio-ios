@@ -21,7 +21,7 @@ struct GeofencePolygonDecodeTests {
 
     private static let centre = (latitude: 31.36896, longitude: 74.169508)
 
-    /// 400 m square around the centre, closed, longitude-first — the cross-SDK fixture family.
+    /// 400 m square around the centre, closed, longitude-first.
     private static let squareRing = """
     [[
       [74.1674038, 31.3671634],
@@ -62,8 +62,7 @@ struct GeofencePolygonDecodeTests {
         "{\"geofences\":[\(regions.joined(separator: ","))]}"
     }
 
-    /// A ring of `count` distinct positions well inside the enclosing circle, so a cap test fails
-    /// on the cap and not incidentally on the coverage guarantee.
+    /// A ring of `count` distinct positions ~90 m from the centre, well inside the enclosing circle.
     private static func ringInsideCircle(count: Int, repeatingFirstPosition: Bool = false) -> String {
         var positions = (0 ..< count).map { i -> String in
             let angle = 2 * Double.pi * Double(i) / Double(count)
@@ -114,8 +113,8 @@ struct GeofencePolygonDecodeTests {
         #expect(!polygon.contains(LocationData(latitude: 31.38, longitude: Self.centre.longitude)))
     }
 
-    /// Longitude comes first on the wire. If the two were ever swapped the ring would land off the
-    /// coast of Somalia, so assert the decoded corner rather than just the count.
+    /// Longitude comes first on the wire. If the two were ever swapped the ring would land in the
+    /// Barents Sea, so assert the decoded corner rather than just the count.
     @Test
     func toDomain_givenGeoJsonOrdering_expectLongitudeFirst() throws {
         let regions = try decode(responseJson([polygonJson()])).toDomainRegions()
@@ -226,8 +225,7 @@ struct GeofencePolygonDecodeTests {
         #expect(reasons["1"] == .undescribedShape)
     }
 
-    /// An explicit null is the server saying "no polygon here", which a v1 circle payload may carry
-    /// once the field ships. It must stay a circle.
+    /// An explicit null is the server saying "no polygon here", so it must stay a circle.
     @Test
     func toDomain_givenNullPolygonFieldsWithoutShape_expectCircleAccepted() throws {
         let nulled = """

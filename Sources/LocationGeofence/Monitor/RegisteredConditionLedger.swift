@@ -9,16 +9,13 @@ struct RegisteredCondition: Equatable {
     /// When this condition was STAGED. Registration records geometry synchronously so a sync
     /// landing before the queued add drains still diffs against it.
     var registeredAt: Date = .distantPast
-    /// When the OS began evaluating this circle — the instant its queued add was issued, not when
-    /// that add returned. The daemon starts evaluating as the add lands and dates its corrective
-    /// event then, so the later stamp would put that event before the generation that produced it.
-    /// Nil until the add is reached; until then the OS still holds the circle this one replaces,
-    /// so an event raised in between belongs to that one and not to this.
+    /// When the OS began evaluating this circle: the instant its queued add was issued, since the
+    /// daemon dates its corrective event as the add lands. Nil until then, while the OS still holds
+    /// the circle this one replaces.
     var liveFrom: Date?
 
-    /// Geometry only. `registeredAt` is bookkeeping about WHEN, and the baseline heal compares
-    /// conditions to ask whether the circle still matches — a re-registration of the same circle
-    /// must not read as a change there.
+    /// Geometry only: callers compare conditions to ask whether the circle still matches, and a
+    /// re-registration of the same circle must not read as a change.
     static func == (lhs: Self, rhs: Self) -> Bool {
         lhs.center == rhs.center && lhs.radius == rhs.radius
             && lhs.transitionTypes == rhs.transitionTypes
@@ -27,8 +24,8 @@ struct RegisteredCondition: Equatable {
 
 /// What the ledger can say about the circle an event was raised against.
 ///
-/// `noneHeld` and `expired` are kept apart because a consumer must answer them differently, and
-/// collapsing both to nil is what let a stale exit be treated as current.
+/// `noneHeld` and `expired` are kept apart because a consumer must answer them differently;
+/// collapsing them would let a stale exit be treated as current.
 enum EventAttribution: Equatable {
     /// The circle the OS was evaluating when the event was raised.
     case generation(RegisteredCondition)
@@ -44,16 +41,10 @@ enum EventAttribution: Equatable {
 
 /// What this process has asked the OS to monitor, and what the OS is actually monitoring.
 ///
-/// Those are different things, and attribution depends on the second: registrations are recorded
-/// synchronously but reach the OS through a serial queue, so between staging and drain the OS is
-/// still evaluating the circle being replaced. Staged generations are therefore held until their
-/// own add drains rather than replacing each other, because two can stage before the first drains
-/// and the one the OS takes next is the OLDEST queued, not the newest staged.
-///
-/// A plain value type so the register → replace → late-event sequence can be exercised directly:
-/// `CLMonitorGeofenceMonitor` builds a `CLLocationManager` and cannot be created in a unit test, and
-/// testing the selection in isolation is how a version of this shipped where nothing ever populated
-/// the previous generation.
+/// Attribution depends on the second: registrations are recorded synchronously but reach the OS
+/// through a serial queue, so between staging and drain the OS still evaluates the old circle.
+/// Staged generations are held until their own add drains, because two can stage before the first
+/// drains and the OS takes the OLDEST queued next, not the newest staged.
 struct RegisteredConditionLedger {
     private struct Entry {
         /// The latest staged registration — what geometry comparisons diff against. Cleared by
@@ -125,13 +116,13 @@ struct RegisteredConditionLedger {
     }
 
     /// The OS gave the condition up. `.unmonitored` arrives on the same sequential event stream as
-    /// the crossings, so every earlier event for this id has already been dequeued and none can be
-    /// in flight — and dropping everything is also what stops a stale circle surviving a teardown
-    /// to misattribute the next session's events.
+    /// the crossings, so no earlier event for this id can still be in flight.
     mutating func forget(_ identifier: String) {
         entries[identifier] = nil
     }
 
+    /// Teardown: drops live generations too, so a stale circle cannot misattribute the next
+    /// session's events.
     mutating func forgetAll() {
         entries.removeAll()
     }
@@ -149,13 +140,9 @@ struct RegisteredConditionLedger {
         Set(entries.filter { $0.value.staged != nil }.keys)
     }
 
-    /// The circle an event raised at `raisedAt` was evaluated against, chosen by the event's own
-    /// date rather than by what is registered now: `CLMonitor` events are read off an async stream
-    /// and the handler awaits a fix request and a storage write before asking, so registrations can
-    /// drain in between and the current one need not be the one the event crossed.
-    ///
-    /// Read from the live generations only. A staged circle the OS has not taken yet has never
-    /// produced an event, so attributing one to it is the mistake this exists to prevent.
+    /// The circle an event raised at `raisedAt` was evaluated against, chosen by the event's date:
+    /// events are read off an async stream and the handler awaits before asking, so registrations
+    /// can drain in between. Live generations only; a staged circle has never produced an event.
     func attribution(for identifier: String, raisedAt: Date) -> EventAttribution {
         guard let entry = entries[identifier] else { return .noneHeld }
         if let live = entry.live, let liveFrom = live.liveFrom, raisedAt >= liveFrom {
@@ -165,10 +152,9 @@ struct RegisteredConditionLedger {
            raisedAt >= previousFrom {
             return .generation(previous)
         }
-        // Only a generation that has been REPLACED can be known stale. With no previous one, an
-        // event predating `liveFrom` was raised against a condition the OS held before this
-        // process registered anything — a re-register where adoption did not run. Its circle may
-        // well be the one in force now, so refusing it would drop a genuine crossing.
+        // Only a REPLACED generation can be known stale. With no previous one, an earlier event
+        // was raised against a condition held before this process registered anything (adoption
+        // did not run), whose circle may well be the current one.
         guard entry.previouslyLive != nil else { return .noneHeld }
         return .expired
     }

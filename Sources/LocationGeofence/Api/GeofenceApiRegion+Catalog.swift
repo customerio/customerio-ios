@@ -15,9 +15,8 @@ enum GeofenceCatalogShape: String, CaseIterable {
 
 /// What the fence catalog records, resolved per shape so a polygon is placeable.
 extension GeofenceApiRegion {
-    /// Normalized exactly as `toDomain` normalizes it — trimmed, lowercased, blank treated as
-    /// absent — because a capture is only interpretable if `sh` names the shape the SDK actually
-    /// monitored. `carriesPolygonFields` alone disagreed on mixed payloads.
+    /// Normalized exactly as `toDomain` normalizes it (trimmed, lowercased, blank treated as
+    /// absent), so `sh` names the shape the SDK actually monitored.
     private var normalizedShape: String? {
         let named = shape?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
         return named?.isEmpty == true ? nil : named
@@ -51,18 +50,16 @@ extension GeofenceApiRegion {
         catalogShape == .polygon || catalogShape == .undescribed
     }
 
-    /// Outer ring as `lat_lon` pairs — the SDK's order, not GeoJSON's reversed one — and the
-    /// CANONICAL ring: consecutive duplicates collapsed and the closing vertex dropped, which is
-    /// what membership is computed against and what Android's `nv` counts. Counting the wire ring
-    /// instead would report one extra vertex for every closed GeoJSON ring, and a consumer applying
-    /// the "fewer pairs than `nv` means truncated" rule would then refuse every correct polygon
-    /// from one platform.
+    /// Outer ring as `lat_lon` pairs (the SDK's order, not GeoJSON's) in CANONICAL form:
+    /// consecutive duplicates collapsed and the closing vertex dropped, matching what membership
+    /// uses and what Android's `nv` counts. The wire ring would count one extra vertex per closed
+    /// GeoJSON ring.
     ///
-    /// Placement and eyeballing only, never a membership input: the field truncates, and a partial
-    /// ring is still a valid-looking polygon. `nv` is the authoritative vertex count.
+    /// Placement and eyeballing only, never a membership input: the field truncates. `nv` is the
+    /// authoritative vertex count.
     ///
-    /// Must stay in `GeofenceLog.composedKeys`. `_` is not a style choice — `list` sanitizes every
-    /// element before joining, so it is the only intra-pair character that survives the pipeline.
+    /// `ring` must stay in `GeofenceLog.composedKeys`. The `_` joiner survives `list`, which
+    /// sanitizes every element and would rewrite `:` or `,` to `_` anyway.
     var catalogRing: [String]? {
         guard let ring = geometry?.coordinates.first, !ring.isEmpty else { return nil }
         // The geometry kernel's own list when the region resolves, so the catalog can never report
@@ -80,15 +77,14 @@ extension GeofenceApiRegion {
         }
     }
 
-    /// The same two steps `PolygonRegion.init(vertices:)` applies — collapse consecutive
-    /// duplicates, drop a closing vertex — but deliberately without its validity rejection: a ring
-    /// the SDK will not monitor is exactly the one worth recording.
+    /// The same two steps as `PolygonRegion.init(vertices:)` (collapse consecutive duplicates, drop
+    /// a closing vertex) without its validity rejection: a ring the SDK refuses is the one worth
+    /// recording.
     ///
-    /// Compares the positions rather than the rendered pairs, so two different unreadable
-    /// positions stay two. Its exact equality DOES disagree with the kernel's wrap-tolerant
-    /// `samePosition` — a ring closing at +180 that opened at -180 keeps its closing vertex here
-    /// and loses it there. That is safe only because an accepted fence takes the kernel's list
-    /// above and never reaches this function; it is not a property of the comparison.
+    /// Compares positions, not rendered pairs, so two different unreadable positions stay two.
+    /// Exact equality, unlike the kernel's wrap-tolerant `samePosition`, so a ring closing at +180
+    /// that opened at -180 keeps its closing vertex here. Safe only because an accepted fence uses
+    /// the kernel's list above and never reaches this.
     private static func canonicalised(_ ring: [[Double]]) -> [[Double]] {
         var open: [[Double]] = []
         open.reserveCapacity(ring.count)

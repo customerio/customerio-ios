@@ -2,45 +2,26 @@ import CioInternalCommon
 import CoreLocation
 import Foundation
 
-/// Baseline heal for the CLMonitor path, split out to keep the monitor's event and lifecycle
-/// plumbing readable (same convention as `+Registration`).
 @available(iOS 17.0, *)
 extension CLMonitorGeofenceMonitor {
-    /// Synthesizes crossings the OS never delivered: for each candidate (registered-unchanged by
-    /// the sync that calls this), compares the stored dedup baseline against a fix resolved at
-    /// drain time and delivers the transition when they unambiguously contradict
-    /// (`BaselineHealDecision`).
+    /// Synthesizes crossings the OS never delivered: for each registered-unchanged candidate,
+    /// compares the stored baseline against a fix resolved at drain time (`BaselineHealDecision`).
     ///
-    /// Runs as a pipeline operation ENQUEUED BEHIND the calling sync's own registration ops —
-    /// baselines are read after those ops' rewrites have drained. The state-space model confirms
-    /// this ordering (v5 run, 2026-08-08: removes ~21k lost-crossing orderings, adds only
-    /// cooldown-absorbed duplicates; the read-at-sync variant races its own sync's queued
-    /// rewrites). Delivery reuses `recordMonitorEvent`, so the dedup flip and transition-type
-    /// filter are identical to the OS event path, and a later OS delivery of the same crossing
-    /// dedups against the healed baseline.
+    /// Enqueued behind the calling sync's own registration ops, so baselines are read after those
+    /// rewrites drain. Delivery goes through `recordMonitorEvent`, so dedup and the transition-type
+    /// filter match the OS event path, and a later OS copy of the same crossing dedups against it.
     ///
-    /// Each candidate's registered circle is CAPTURED here, synchronously with the calling sync's
-    /// unchanged-diff, and re-verified when the operation drains: a later sync can stage a reshape
-    /// (updating the ledger synchronously) while its storage rewrite is still queued
-    /// behind this heal, and judging the old baseline against the new circle would synthesize a
-    /// wrong transition. A candidate whose staged geometry or stored record no longer matches the
-    /// capture is skipped — the reshape reseeds its baseline anyway.
+    /// Each candidate's circle is captured now and re-checked at drain: a later sync can stage a
+    /// reshape while its storage rewrite is still queued behind this heal, and judging the old
+    /// baseline against the new circle would synthesize a wrong transition.
     ///
-    /// The write is additionally guarded on the baseline's age (`onlyIfBaselinePredates`): a
-    /// genuine OS crossing recorded after the fix was taken — while the heal waited in the queue,
-    /// or within the fix's own age — must win over a decision made from an older position, which
-    /// would otherwise synthesize the reverse transition and dedup away the real one.
-    ///
-    /// **The OS event path passes the same guard, for the mirror of this reason.** A heal writes a
-    /// baseline without advancing `registeredAt` or `lastEventDate`, so the two OS-dated checks in
-    /// `recordMonitorEvent` cannot see it: an event dated BEFORE a heal that already synthesized
-    /// the opposite state clears both and reverses newer evidence. That path passes the event's
-    /// own date — and stamps the baseline with it via `now:` — so the comparison stays on the OS
-    /// clock at both ends and does not reintroduce the drain-order dependence drive 5 measured,
-    /// which came from weighing a reseed's wall-clock write time against an event's OS date.
+    /// `onlyIfBaselinePredates` lets a genuine OS crossing recorded after the fix was taken win over
+    /// this older decision. The OS path passes the same guard with its event date, because a heal
+    /// advances neither `registeredAt` nor `lastEventDate` and an older OS event would otherwise
+    /// reverse it. Both sides stamp OS/fix time, never drain time, so the result does not depend on
+    /// how fast the queue drains.
     func enqueueBaselineHeal(candidates: [String]) {
-        // Captured before the enqueue: the ledger at this instant is what the calling
-        // sync just diffed as unchanged.
+        // The ledger at this instant is what the calling sync just diffed as unchanged.
         let expectedConditions = candidates.reduce(into: [String: RegisteredCondition]()) {
             $0[$1] = conditionLedger.condition(for: $1)
         }
@@ -60,19 +41,13 @@ extension CLMonitorGeofenceMonitor {
                     distanceFromCenter: fix.distance(from: center),
                     radius: condition.radius,
                     horizontalAccuracy: fix.horizontalAccuracy,
-                    // Age at drain time, so a delayed drain disqualifies the fix instead of
-                    // trusting a snapshot that has gone stale in the queue.
+                    // Age at drain time, so a delayed drain disqualifies a fix gone stale in the queue.
                     fixAge: self.dateUtil.now.timeIntervalSince(fix.timestamp),
                     lastState: record.lastState
                 ) else { continue }
-                // A heal that decides a crossing is real and is then refused by the baseline used
-                // to vanish. Reported as `baseline.refused`, not `os.callback.dropped`: nothing
-                // arrived from the OS on this path. The OS path passes an evidence timestamp too,
-                // so `.suppressedNewerBaseline` can print from either side: there it means a heal
-                // outran an older OS copy, here that a genuine crossing outran this heal.
-                // Stamped with the fix's time, not the drain time, so the baseline records when the
-                // evidence was taken rather than when the queue reached it. Only this path reads
-                // that stamp back.
+                // Stamped with the fix's time, not drain time, so the baseline records when the
+                // evidence was taken. A refusal logs `baseline.refused`, not `os.callback.dropped`:
+                // nothing arrived from the OS on this path.
                 let outcome = await self.storage.recordMonitorEvent(
                     transition,
                     forIdentifier: identifier,
@@ -93,8 +68,7 @@ extension CLMonitorGeofenceMonitor {
                     fix.timestamp,
                     // A heal only synthesizes off a fix it just gated as fresh.
                     true,
-                    // Synthesized against the condition in hand, so the circle is known outright
-                    // rather than looked up by date.
+                    // Judged against this condition, so the circle is known rather than looked up by date.
                     .circle(MonitoredCircle(
                         center: condition.center, radius: condition.radius,
                         maximumRadius: self.authManager.maximumRegionMonitoringDistance
@@ -104,15 +78,11 @@ extension CLMonitorGeofenceMonitor {
         }
     }
 
-    /// Freshest fix obtainable for the heal, resolved when the operation drains: reuses the
-    /// movement resolver (one-shot request when the cache is stale, cached-fix fallback on
-    /// timeout), so a sync whose originating fix never reaches this monitor — app-launch, manual,
-    /// and foreground refreshes acquire theirs upstream and hand over coordinates only — still
-    /// heals off a fix with a real timestamp and accuracy instead of silently skipping. Movement
-    /// syncs pay nothing: the movement pass resolved through this same resolver moments earlier,
-    /// so the cache is fresh. At most one request per sync, on the operation pipeline — never on
-    /// the event path. Returns via `bestKnownFix()` so the freshest of the cache and the request
-    /// wins; the decision's fix-age guard applies to the result.
+    /// Resolved at drain through the movement resolver, because non-movement syncs (launch, manual,
+    /// foreground) hand this monitor coordinates only, with no timestamp or accuracy to judge.
+    /// Movement syncs just resolved through the same resolver, so their cache is already fresh.
+    /// Returns `bestKnownFix()` so the newer of cache and request wins; the decision's age guard
+    /// applies to the result.
     private func resolveHealFix() async -> CLLocation? {
         await withCheckedContinuation { continuation in
             movementFixResolver.resolve(cached: bestKnownFix(), purpose: .baselineHeal) { [weak self] _, _ in

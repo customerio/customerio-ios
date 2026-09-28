@@ -359,8 +359,8 @@ struct PendingGeofenceMetricStoreTests {
         try Data(json.utf8).write(to: queueFile(in: directory))
     }
 
-    /// A row missing `user_id` — the schema-evolution case, since `userId` is non-optional here
-    /// while Android's is nullable. One of these used to discard every other row with it.
+    /// A row missing `user_id`, the schema-evolution case: `userId` is non-optional here while
+    /// Android's is nullable. One such row must not discard the others.
     private static let oneGoodOneBadRow = """
     [
       {"geofence_id":"geo_1","transition":"enter","timestamp":1700000000,"user_id":"user_store","transition_id":"txn_store"},
@@ -368,9 +368,8 @@ struct PendingGeofenceMetricStoreTests {
     ]
     """
 
-    /// The one branch that returns `unreadable` without touching a file. It was silent, which in
-    /// this state means every append and every flush fails for the life of the process with
-    /// nothing in the log to say why.
+    /// The one branch that returns `unreadable` without touching a file. Logged, because in this
+    /// state every append and every flush fails for the life of the process.
     @Test
     func read_givenNoResolvableFileLocation_expectUnreadableAndLogged() async {
         let logger = LoggerMock()
@@ -423,11 +422,10 @@ struct PendingGeofenceMetricStoreTests {
         #expect(await store.rows().map(\.geofenceId) == ["geo_1", "geo_3"])
     }
 
-    /// The defect this ticket exists for. The file carries
-    /// `completeUntilFirstUserAuthentication`, so a geofence wake before the first unlock after a
-    /// reboot cannot read it — and an append that treats that as an empty queue overwrites rows
-    /// that were never lost. Modelled with a file the process may not read but whose directory it
-    /// may still write, which is the same shape: an atomic write would otherwise succeed.
+    /// An append that treats an unreadable queue as empty overwrites rows that were never lost.
+    /// Suspected on device via `completeUntilFirstUserAuthentication` before first unlock (not
+    /// verified). Modelled with a file the process may not read but whose directory it may still
+    /// write, so an atomic write would otherwise succeed.
     @Test
     func append_givenAnUnreadableFile_expectRefusedAndTheQueueUntouched() async throws {
         let dir = makeTempDirectory()

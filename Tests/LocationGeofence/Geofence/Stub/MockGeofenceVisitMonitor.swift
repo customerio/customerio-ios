@@ -4,16 +4,15 @@ import Foundation
 
 /// Lets a test drive the visit wake without a `CLLocationManager`.
 ///
-/// `simulateVisit` returns what the bound handler answered, because that answer is not just a
-/// side effect — it is the disarm decision, and a test asserting only on `stopCallCount` would
-/// pass against a handler that returned the wrong value and never got asked.
+/// `simulateVisit` returns the handler's answer because that answer is the disarm decision; this
+/// mock does not stop on `false`, so `stopCallCount` alone cannot see it.
 @MainActor
 final class MockGeofenceVisitMonitor: GeofenceVisitMonitoring {
     private(set) var startCallCount = 0
     private(set) var stopCallCount = 0
     private(set) var onVisit: GeofenceVisitHandler?
-    /// Call ORDER, not just counts. Two arms racing can each land once, so the counts are equal
-    /// either way and only the last call says which state the monitor was left in.
+    /// Call order, not just counts: two racing arms can each land once, so only the last call
+    /// says which state the monitor was left in.
     private(set) var calls: [Call] = []
 
     enum Call: Equatable {

@@ -12,8 +12,8 @@ extension SharedDIGraphSuites {
 
         @Test
         func initialize_givenDefaultConfig_expectNoCrash() {
-            // Runs the real bootstrap against `DIGraphShared.shared` on a detached task, which is why
-            // this suite is nested under `SharedDIGraphSuites`.
+            // Runs the real bootstrap against `DIGraphShared.shared` on an unawaited task, which is
+            // why this suite is nested under `SharedDIGraphSuites`.
             GeofenceModule().initialize()
         }
 

@@ -2,8 +2,8 @@ import CioInternalCommon
 import CoreLocation
 import Foundation
 
-// The OS objects `CLMonitorGeofenceMonitor` talks to, behind protocols it can be handed. Between
-// them these cover every OS call the wrapper makes; everything above them is SDK decision.
+// The OS objects `CLMonitorGeofenceMonitor` talks to, behind protocols it can be handed, so the
+// wrapper itself can run against doubles.
 
 // MARK: - Condition monitoring (CLMonitor)
 
@@ -79,8 +79,7 @@ extension GeofenceConditionState {
     }
 }
 
-/// Adapts `CLMonitor` to `GeofenceConditionMonitoring`. Holds the one monitor: a second with the
-/// same name throws "already in use".
+/// Adapts `CLMonitor` to `GeofenceConditionMonitoring`.
 @available(iOS 17.0, *)
 final class CoreLocationConditionMonitor: GeofenceConditionMonitoring, @unchecked Sendable {
     private let monitor: CLMonitor
@@ -93,7 +92,6 @@ final class CoreLocationConditionMonitor: GeofenceConditionMonitoring, @unchecke
         get async { await monitor.identifiers }
     }
 
-    /// Cancelled on termination: two live consumers would split the events between them.
     var events: AsyncThrowingStream<GeofenceConditionEvent, Error> {
         get async {
             let underlying = await monitor.events
@@ -108,11 +106,9 @@ final class CoreLocationConditionMonitor: GeofenceConditionMonitoring, @unchecke
                                     date: event.date
                                 )
                             )
-                            // The downstream stream is gone. `onTermination` cancels this task, but
-                            // that relies on the cancellation reaching `CLMonitor.Events`, which is
-                            // Apple's code; leaving the loop on the yield's own answer does not.
-                            // Without it a pump that outlives its consumer is a second live reader
-                            // of `monitor.events`, which the class comment says must never happen.
+                            // `onTermination` cancels this task, but that relies on cancellation
+                            // reaching Apple's `CLMonitor.Events`. Breaking on the yield's answer
+                            // guarantees a dead consumer leaves no second live reader behind.
                             if case .terminated = delivered { break }
                         }
                         continuation.finish()

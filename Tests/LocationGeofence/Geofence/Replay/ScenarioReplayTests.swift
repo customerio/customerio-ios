@@ -4,23 +4,17 @@ import Foundation
 import SharedTests
 import Testing
 
-/// **The tests the feature is verified with, on a laptop.**
+/// Loads each recorded drive, installs its `given`, dispatches each `when` on the virtual clock,
+/// and asserts the SDK's decisions still match the ones it made in the car. Adding a drive adds a
+/// test — there is no per-drive code.
 ///
-/// One funnel: load a recorded drive, install its `given`, dispatch each `when` on the virtual
-/// clock, and assert the SDK's decisions still match the ones it made in the car. Adding a drive
-/// adds a test — there is no per-drive code.
-///
-/// Everything the SDK decides is real. Only the OS region monitor and the clock are substituted,
-/// so a failure here is a change in geofence behaviour, not in the scaffolding.
+/// Everything the SDK decides is real; only the OS, the network and the clock are substituted
+/// (see `ReplayHarness`), so a failure here is a change in geofence behaviour.
 @Suite("Scenario replay", .serialized)
 @MainActor
 struct ScenarioReplayTests {
-    /// Provenance must not default to `recorded`.
-    ///
-    /// It did, and an authored scenario whose header omitted `source` was then counted as a phone
-    /// capture — enough on its own to satisfy the "did discovery find any drives?" guard, which is
-    /// the emptiness check inverted. Reproduced by deleting `source` from an authored scenario and
-    /// running a one-file corpus: discovery and replay both passed over zero drives.
+    /// Provenance must not default to `recorded`: an authored scenario without `source` would then
+    /// satisfy the "did discovery find any drives?" guard on its own, over zero real drives.
     @Test
     func load_givenHeaderWithoutSource_expectUnknownProvenance() throws {
         let scenario = try ScenarioLoader.parse("""
@@ -53,17 +47,11 @@ struct ScenarioReplayTests {
     }
 
     /// The runner's stimulus list must be ordered the way the runner *delivered*, not the way the
-    /// file happened to be written.
+    /// file happened to be written: `ReplayMatcher.groups` finds a decision's stimulus with
+    /// `lastIndex { $0 <= record.at }`, which needs an ascending list.
     ///
-    /// `ReplayMatcher.groups` locates a decision's stimulus with `lastIndex { $0 <= record.at }`,
-    /// which is only meaningful on an ascending list. Inputs go through `stableByTime`, so a
-    /// capture whose lines are not already sorted was being graded against boundaries that never
-    /// happened in that order. No recorded drive is out of order today, which is exactly why this
-    /// case is written rather than waited for.
-    ///
-    /// The out-of-order pair is `identity.changed` and `app.foreground`, both stimuli. It used to
-    /// be `app.background`, which no longer bounds a window — leaving it as the unsorted line
-    /// would have kept this test green while asserting nothing about order.
+    /// The out-of-order pair is `identity.changed` and `app.foreground`, both stimuli.
+    /// `app.background` does not bound a window, so it cannot be the unsorted line.
     @Test(.enabled(if: ReplayRuntime.isMonitorAvailable))
     @available(iOS 17.0, *)
     func run_givenScenarioLinesOutOfOrder_expectStimuliAscending() async throws {
@@ -87,13 +75,11 @@ struct ScenarioReplayTests {
 
     /// A record the runner accepts as a no-op must not bound a window.
     ///
-    /// `device.state` and `app.background` change nothing the SDK decides — `deliverAppInput`
-    /// takes both and does nothing with them. They were still splitting the fix-provider's
-    /// windows and the matcher's groups, so a battery line landing inside work the previous real
-    /// input started moved that work's cache read or decision into a phase the SDK never had.
+    /// `device.state` and `app.background` change nothing the SDK decides. Letting one split the
+    /// fix-provider's windows or the matcher's groups would move the previous input's cache read or
+    /// decision into a phase the SDK never had.
     ///
-    /// `app.foreground` is the control: it looks like the same class of record and is not one,
-    /// because it drives the re-arm.
+    /// `app.foreground` is the control: it looks inert but drives the re-arm.
     @Test(.enabled(if: ReplayRuntime.isMonitorAvailable))
     @available(iOS 17.0, *)
     func run_givenInertRecords_expectNoStimulusBoundary() async throws {
@@ -115,12 +101,9 @@ struct ScenarioReplayTests {
         #expect(result.stimuli == [0.0, 3.0], "inert records bounded a window: \(result.stimuli)")
     }
 
-    /// A recorded pull whose position cannot be rebuilt fails the run instead of vanishing.
-    ///
-    /// The pull timeline dropped it and `deliverFix` returned true for the same record — a pull is
-    /// not delivered, so it has nothing to refuse — and the run stayed green one recorded cache
-    /// read short. `prov=none` is the one pull that legitimately carries no position: it is a read
-    /// that found nothing, which is an answer.
+    /// A recorded pull whose position cannot be rebuilt fails the run instead of vanishing and
+    /// leaving the run one recorded cache read short. `prov=none` is the one pull that legitimately
+    /// carries no position: a read that found nothing.
     @Test(.enabled(if: ReplayRuntime.isMonitorAvailable))
     @available(iOS 17.0, *)
     func run_givenPullMissingPosition_expectReportedUnsupported() async throws {
@@ -143,11 +126,9 @@ struct ScenarioReplayTests {
 
     /// The read a callback carries fails closed on the same shapes a standalone pull does.
     ///
-    /// `logReceivedCallback` reads the cache and then logs, so a callback carries the position it
-    /// read in its own fields. That read is the only answer the provider has for the window the
-    /// callback lands in, so turning an incomplete one into an empty pull handed the SDK a nil the
-    /// drive never recorded — and left `unsupported` and the pull accounting both clean, which is
-    /// the same false green the standalone path was fixed for.
+    /// It can be the only answer the provider has for the callback's window, so treating an
+    /// incomplete one as an empty pull would hand the SDK a nil the drive never recorded while
+    /// `unsupported` and the pull accounting both stayed clean.
     @Test(.enabled(if: ReplayRuntime.isMonitorAvailable))
     @available(iOS 17.0, *)
     func run_givenCallbackCarriedReadMissingPosition_expectReportedUnsupported() async throws {
@@ -162,9 +143,8 @@ struct ScenarioReplayTests {
         }
         defer { harness.detachFromBootstrap() }
 
-        // The callback itself is deliverable — it names a fence and a transition — so the only
-        // finding is the read it could not carry. Tagged with `fixsrc` to say which of the two
-        // it is, since one record can fail on either.
+        // The callback itself is deliverable, so the only finding is its read; `fixsrc` in the
+        // tag says which of the two failed.
         #expect(
             result.unsupported == ["when os.callback@1.0 fixsrc=manager_cache"],
             "a callback-carried read that lost its position was not reported: \(result.unsupported)"
@@ -215,70 +195,55 @@ struct ScenarioReplayTests {
     )
     func replay_givenRecordedDrive_expectRecordedDecisions(_ name: String) async throws {
         guard #available(iOS 17.0, *) else {
-            // Unreachable: the trait above skips this runtime. Recorded rather than returned
-            // quietly, because a silent return is a green test that asserted nothing.
+            // Unreachable: the trait above skips this runtime. Recorded, not returned quietly,
+            // so it cannot pass having asserted nothing.
             Issue.record("replay needs iOS 17+ — the availability trait should have skipped")
             return
         }
         let scenario = try ScenarioLoader.load(path: #require(Scenarios.path(name)))
 
-        // **The harness is built inside the binding, not before it.** `withTail` forces the
-        // diagnostic tail on through a task-local, and a task inherits one only if it was created
-        // inside the scope. The SDK's event consumer is started by the monitor's initialiser, so a
-        // harness constructed out here leaves that one task writing untagged prose: the whole
-        // registration path still matched, every OS callback silently produced nothing, and the
-        // drive read as "the SDK stopped reacting" rather than "the log lost its tail".
+        // The harness is built inside `withTail`, not before it: the tail is a task-local, and the
+        // monitor's event consumer task is started by its initialiser. Built outside, that task
+        // logs untagged prose and every OS callback appears to produce nothing.
         let (harness, result) = try await ReplayHarness.withTail { () -> (ReplayHarness, ReplayRunner.Result) in
             let harness = ReplayHarness()
             return try (harness, await ReplayRunner.run(scenario, on: harness))
         }
-        // Detached after the run, so a composition nobody is reading any more stops answering the
-        // bootstrap on a late reconcile or authorization change. It does not free the monitor —
-        // see `detachFromBootstrap` for why that needs an SDK-side cancel — so dead monitors from
-        // earlier drives still react to `enterForeground()`. Harmless to a live drive's
-        // assertions, which read this harness's own logger and OS double.
+        // Stops a finished composition answering the bootstrap. It does not free the monitor; see
+        // `detachFromBootstrap`.
         defer { harness.detachFromBootstrap() }
 
-        // An input the harness cannot drive means the run never earned its expectations, so this is
-        // checked before the match rather than after.
+        // An input the harness cannot drive means the run never earned its expectations.
         #expect(
             result.unsupported.isEmpty,
             "\(name): no seam for \(result.unsupported.count) inputs — \(result.unsupported.prefix(5).joined(separator: ", "))"
         )
 
-        // Ahead of the per-decision report: fixtures are queued up front, so a replay that syncs a
-        // different number of times than the drive still gets plausible answers and diverges
-        // quietly. When this fires, every mismatch below is downstream of the wrong catalogue and
-        // reading them is wasted effort.
+        // Fixtures are queued up front, so a replay that syncs a different number of times still
+        // gets plausible answers. When this fires, every mismatch below is downstream of it.
         #expect(harness.fetchAccounting() == nil, "\(name): \(harness.fetchAccounting() ?? "")")
 
-        // Same class of check as the fetch accounting: a replay that consults a position the drive
-        // never captured is guessing, and the guess surfaces later as a wrong baseline rather than
-        // as an obviously missing input.
+        // A replay that reads a position the drive never captured is guessing, and the guess
+        // surfaces later as a wrong baseline rather than as a missing input.
         #expect(harness.pullAccounting() == nil, "\(name): \(harness.pullAccounting() ?? "")")
 
-        // And the same class again for the OS side. The wrapper subscribes to the event stream
-        // asynchronously at init, so a crossing pushed before it attaches goes nowhere — which
-        // reads downstream as the SDK ignoring a callback rather than as one never arriving.
+        // The wrapper subscribes to the event stream asynchronously at init, so a crossing pushed
+        // before it attaches goes nowhere and reads as the SDK ignoring a callback.
         #expect(
             harness.conditionMonitor.deliveredWithNoSubscriber == 0,
             "\(name): \(harness.conditionMonitor.deliveredWithNoSubscriber) OS callback(s) delivered before the SDK was listening"
         )
 
-        // The same guard for visits, which arm asynchronously off `identify`: a visit pushed before
-        // the SDK subscribed reaches no handler, and reporting it handled asserts nothing.
+        // The same guard for visits: one pushed with no handler bound reaches nothing.
         #expect(
             harness.visitMonitor.deliveredWithNoSubscriber == 0,
             "\(name): \(harness.visitMonitor.deliveredWithNoSubscriber) visit(s) delivered before the SDK was listening"
         )
 
-        // Every expectation the drive recorded. There is no exclusion list: a decision replay cannot
-        // reproduce is a finding about the seam, not a row to skip.
+        // No exclusion list: a decision replay cannot reproduce is a finding about the seam.
         //
-        // A scenario must decide something, but the count is not a proxy for how good a drive is —
-        // a stationary sign-in legitimately produces three decisions, and the guard against a
-        // vacuous pass is `unsupported.isEmpty` plus the matcher's per-`ev` count check, not a
-        // threshold. Whether a capture is a real drive is a human call, not one a floor can make.
+        // Non-empty, not a threshold: a stationary sign-in legitimately produces three decisions.
+        // The guard against a vacuous pass is `unsupported.isEmpty` plus the per-`ev` count check.
         let expected = scenario.then
         #expect(!expected.isEmpty, "\(name): the drive recorded no decisions at all")
 
@@ -300,24 +265,20 @@ struct ScenarioReplayTests {
 
     /// Every scenario file on disk was readable.
     ///
-    /// Discovery drops what it cannot parse, because a `@Test` argument list is built before any
-    /// test runs and cannot throw. Without this case that drop is invisible: the suite reports a
-    /// clean pass over the drives it *could* read and says nothing about the ones it could not.
+    /// Discovery drops what it cannot parse (a `@Test` argument list cannot throw), so without this
+    /// case the suite passes over the drives it could read and says nothing about the rest.
     ///
-    /// Enabled on `isAvailable` alone — a corpus that is present but entirely unreadable must fail
-    /// here rather than skip, which is exactly the case a `replayable`-gated trait would miss.
+    /// Enabled on `isAvailable` alone, so a corpus that is present but entirely unreadable fails
+    /// here rather than skipping.
     @Test(.enabled(if: Scenarios.isAvailable))
     func discover_givenScenarioFilesOnDisk_expectEveryOneReadable() {
-        // `unreadable` is populated as a side effect of discovery, and both halves contribute, so
-        // force the full list before reading it.
+        // `unreadable` is populated as a side effect of discovery, so force it before reading.
         _ = Scenarios.replayable
         let found = Scenarios.recorded
 
-        // A corpus that resolves to a directory holding no drives is the failure mode this whole
-        // test exists to refuse, and asserting only on `unreadable` misses it: point the override
-        // one level too high — `geofence-scenarios` instead of `geofence-scenarios/recorded`, the
-        // exact mistake this file's own documentation warns about — and every check below passes
-        // over zero drives. `isAvailable` is true because the parent is a directory.
+        // Asserting only on `unreadable` misses a corpus path that resolves to a directory with no
+        // drives: point the override at `mobile-replay-harness` instead of
+        // `mobile-replay-harness/scenarios` and `isAvailable` is still true.
         #expect(
             !found.isEmpty,
             "the corpus at \(Scenarios.root?.path ?? "?") holds no recorded drive — check the path points at the directory containing the .scenario.ndjson files. Asserted on recorded drives alone: the authored conformance scenarios resolve from a sibling directory, so they would satisfy this guard while zero drives were graded."

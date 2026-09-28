@@ -1,43 +1,32 @@
 import CioInternalCommon
 import Foundation
 
-/// A geofence transition queued for delivery — fresh over direct HTTP, or replayed via
-/// EventBus → DataPipeline. Always carries the userId identified at capture; geofencing is
-/// identified-only, so anonymous crossings are dropped before a row is ever created.
+/// A geofence transition queued for delivery. Always carries the userId identified at capture;
+/// anonymous crossings are dropped before a row is created.
 struct PendingGeofenceMetric: Codable, Equatable, Sendable, GeofenceMetric {
     let geofenceId: String
     let transition: GeofenceTransition
     let timestamp: Date
-    /// The userId identified at capture time.
     let userId: String
-    /// The geofence's name, resolved at capture time, or `nil` when unavailable. Travels with the
-    /// metric so a delayed flush still has it even after the geofence leaves the cache.
+    /// Resolved at capture so a delayed flush has it after the geofence leaves the cache.
     let name: String?
     let transitionId: String
-    /// The geoset this row was fanned out for, or `nil` when the geofence is in no geoset.
-    /// One physical transition of a geofence in N geosets produces N rows, one per geoset.
-    /// Optional so rows persisted by pre-geoset SDK versions still decode.
+    /// The geoset this row was fanned out for (one row per geoset), or `nil` for none. Optional so
+    /// rows persisted by pre-geoset SDK versions still decode.
     let geosetId: String?
-    /// Snapshot of the geofence's metadata at transition, the fallback when the geofence isn't in
-    /// cache at send. Optional so rows persisted before metadata still decode.
+    /// Metadata at transition, the fallback when the geofence isn't cached at send. Optional so
+    /// rows persisted before metadata still decode.
     let metadata: [String: GeofenceMetadataValue]?
 
-    /// Composite key over `(geofenceId, transition, timestamp_sec, userId, geosetId)` used for
-    /// storage-layer dedup. Seconds (not ms) — the cooldown gate dedups by
-    /// `(geofenceId, transition)` upstream, so finer precision adds nothing. The geoset suffix
-    /// keeps the fan-out rows of one transition from colliding with each other.
+    /// Dedup key over `(geofenceId, transition, timestamp_sec, userId, geosetId)`. Seconds suffice
+    /// because the cooldown already dedups by `(geofenceId, transition)` upstream.
     ///
-    /// `userId` is load-bearing. `timestamp` is the CROSSING time, and one crossing's evidence can
-    /// be applied twice under different users: the cooldown is per user and sign-out clears it,
-    /// while this queue deliberately survives sign-out. Keyed without the userId, the second user's
-    /// row is dropped as a duplicate and its successful send then removes the first user's — one
-    /// event lost, the other misattributed. Diverges from Android's `PendingGeofenceDelivery.key`,
-    /// which carries a userId on the row but not in the key and so still has that gap.
+    /// `userId` is required: the queue survives sign-out while the cooldown doesn't, so one crossing
+    /// can be queued under two users, and without it one row would be lost and the other
+    /// misattributed. Android's `PendingGeofenceDelivery.key` omits the userId.
     ///
-    /// Components are escaped before joining, so a value holding the separator cannot imitate a
-    /// component boundary: user `a_42` with no geoset and user `a` in geoset `42` would otherwise
-    /// key the same, and one row's successful send would remove the other's. The key is always
-    /// recomputed, never persisted, so the escaping needs no migration.
+    /// Components are escaped so a value containing `_` can't imitate a boundary (user `a_42` vs
+    /// user `a` in geoset `42`). Never persisted, so the escaping needs no migration.
     var key: String {
         let sec = Int(timestamp.timeIntervalSince1970)
         var components = [geofenceId, transition.rawValue, "\(sec)", userId]
@@ -45,7 +34,7 @@ struct PendingGeofenceMetric: Codable, Equatable, Sendable, GeofenceMetric {
         return components.map(Self.escapedForKey).joined(separator: "_")
     }
 
-    /// `%` first, so an escape this introduces is not escaped again by the next replacement.
+    /// `%` first, so the next replacement doesn't re-escape it.
     private static func escapedForKey(_ component: String) -> String {
         component
             .replacingOccurrences(of: "%", with: "%25")
@@ -83,8 +72,7 @@ struct PendingGeofenceMetric: Codable, Equatable, Sendable, GeofenceMetric {
         case metadata
     }
 
-    /// Returns a copy with `name`/`metadata` replaced (used to prefer live cached values at send).
-    /// All other fields, including the dedup `key` inputs, are unchanged.
+    /// A copy with `name`/`metadata` replaced by live cached values at send; `key` is unchanged.
     func withResolved(name: String?, metadata: [String: GeofenceMetadataValue]?) -> PendingGeofenceMetric {
         PendingGeofenceMetric(
             geofenceId: geofenceId,
