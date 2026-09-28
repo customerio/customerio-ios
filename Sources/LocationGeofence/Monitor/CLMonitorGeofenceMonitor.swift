@@ -286,6 +286,12 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring {
             conditionReadds.removeValue(forKey: identifier)
             conditionsNeedingBaselineReseed.insert(identifier)
             persistConditionMirror()
+            // The fence went unwatched, so a stored entry time can no longer vouch for a continuous
+            // stay — matching the classic monitor's `monitoringDidFailFor`. The movement trigger
+            // carries no visit.
+            if identifier != GeofenceConstants.movementTriggerIdentifier {
+                onMonitoringInterrupted?(identifier)
+            }
             // Skipped if a registration re-added the identifier since — deleting a baseline that add
             // just wrote would cost the next crossing. Keyed on this monitor's own completed adds,
             // not `CLMonitor.identifiers` (which still lists a dropped condition).

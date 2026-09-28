@@ -44,7 +44,12 @@ extension GeofenceDwellCoordinator {
             cancelEvidence(for: geofenceId)
             return
         }
-        if geofence.vertices != nil {
+        if visit.dwellReservation != nil {
+            // A reserved dwell whose delivery did not complete — a failed write, or a relaunch —
+            // is repeated as reserved; fresh evidence would describe a different instant.
+            await deliverReservedDwell(geofence: geofence, visit: visit, userId: expectedUserId)
+            await retryIfStillPending(geofence: geofence, visitId: visit.visitId, expectedUserId: expectedUserId)
+        } else if geofence.vertices != nil {
             await requestPolygonEvidence(geofence: geofence, visit: visit, expectedUserId: expectedUserId)
         } else {
             await requestCircleEvidence(geofence: geofence, visit: visit, expectedUserId: expectedUserId)

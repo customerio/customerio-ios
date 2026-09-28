@@ -204,6 +204,69 @@ struct ReplayHarnessTests {
         }
     }
 
+    /// `.unmonitored` means the OS stopped watching the fence, so the stored entry can no longer
+    /// vouch for a continuous stay. Kept, a later EXIT or dwell would measure across the gap.
+    @Test
+    @available(iOS 17.0, *)
+    func deliverMonitorStopped_givenOpenDwellVisit_expectVisitInvalidated() async throws {
+        try await ReplayHarness.withTail {
+            let harness = ReplayHarness()
+            defer { harness.detachFromBootstrap() }
+            try await registered(harness, fenceId: "A", dwellThresholdSeconds: 60)
+            try await enterAndAwaitVisit(harness, fenceId: "A")
+
+            harness.deliverMonitorStopped(fence: "A")
+
+            var visit = await harness.storedVisit(fence: "A")
+            for _ in 0 ..< 200 where visit != nil {
+                try await Task.sleep(nanoseconds: 10000000)
+                visit = await harness.storedVisit(fence: "A")
+            }
+            #expect(visit == nil, "an unmonitored fence kept its visit")
+        }
+    }
+
+    /// The movement trigger carries no visit; its loss must not end a business fence's stay.
+    @Test
+    @available(iOS 17.0, *)
+    func deliverMonitorStopped_givenMovementTrigger_expectBusinessVisitKept() async throws {
+        try await ReplayHarness.withTail {
+            let harness = ReplayHarness()
+            defer { harness.detachFromBootstrap() }
+            try await registered(harness, fenceId: "A", dwellThresholdSeconds: 60)
+            let visit = try await enterAndAwaitVisit(harness, fenceId: "A")
+
+            harness.deliverMonitorStopped(fence: GeofenceConstants.movementTriggerIdentifier)
+            #expect(
+                await settleOnMain {
+                    harness.emitted(ev: "os.monitor.stopped")
+                        .contains { $0["id"] == GeofenceConstants.movementTriggerIdentifier }
+                },
+                "the trigger's stop was never processed, so this test proves nothing"
+            )
+            try await harness.settleBoundaries()
+            for _ in 0 ..< 10 {
+                await Task.yield()
+            }
+
+            #expect(await harness.storedVisit(fence: "A") == visit)
+        }
+    }
+
+    @discardableResult
+    private func enterAndAwaitVisit(_ harness: ReplayHarness, fenceId: String) async throws -> GeofenceDwellVisit? {
+        harness.deliverCrossing(fence: fenceId, transition: .enter)
+        await Task.yield()
+        await settleOnMain { harness.emitted(ev: "transition.accepted").count == 1 }
+        var visit = await harness.storedVisit(fence: fenceId)
+        for _ in 0 ..< 200 where visit == nil {
+            try await Task.sleep(nanoseconds: 10000000)
+            visit = await harness.storedVisit(fence: fenceId)
+        }
+        #expect(visit != nil, "the ENTER never recorded a visit")
+        return visit
+    }
+
     /// **The spike's central assumption.**
     ///
     /// §5 of the format decision claims the iOS clock gap does not block replay, because the raw
