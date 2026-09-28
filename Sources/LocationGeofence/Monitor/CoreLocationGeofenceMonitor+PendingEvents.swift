@@ -125,12 +125,13 @@ extension CoreLocationGeofenceMonitor {
                 // failed request, so it can never be reported as current.
                 self?.onTransition?(
                     identifier, transition, location ?? capturedLocation, occurredAt,
-                    isFresh && location != nil, .circle(circle)
+                    isFresh && location != nil, .circle(circle), true
                 )
             }
             return
         }
         logger.geofenceCallbackDispatched(identifier: identifier, transition: transition)
-        onTransition?(identifier, transition, capturedLocation, occurredAt, false, .circle(circle))
+        // Classic monitoring is silent at registration, so every region event is a crossing.
+        onTransition?(identifier, transition, capturedLocation, occurredAt, false, .circle(circle), true)
     }
 }

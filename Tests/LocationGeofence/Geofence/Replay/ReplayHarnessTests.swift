@@ -38,24 +38,30 @@ struct ReplayHarnessTests {
     /// Brings the SDK to a registered state the only way a real app can: answer its fetch, give it
     /// a position, sign a user in. Nothing is written to the SDK's own state by the test — the
     /// registration, and the dedup baseline behind it, are the SDK's own work.
+    ///
+    /// `registrationFixAge` is how old the cached position the registration reads is; nil for none
+    /// at all, which leaves the SDK assuming the device is outside rather than knowing it.
     @available(iOS 17.0, *)
     private func registered(
         _ harness: ReplayHarness,
         fenceId: String,
-        dwellThresholdSeconds: Int? = nil
+        dwellThresholdSeconds: Int? = nil,
+        registrationFixAge: TimeInterval? = 0
     ) async throws {
         try harness.enqueueFetch(bodyJSON: catalogue(fenceId, dwellThresholdSeconds: dwellThresholdSeconds))
         // A `manager_cache` position is something the SDK *pulls*, so it is loaded as the cache's
         // value from t0 rather than delivered as an event. Handing it over as a stimulus would
         // model a fix arriving, which is not what reading `CLLocationManager.location` is.
         harness.loadPulledFixes(stimuli: [0, Self.arrivalAt], samples: [
-            harness.pulledFix(
-                latitude: Self.awayLatitude,
-                longitude: Self.longitude,
-                accuracy: 10,
-                age: 0,
-                at: 0
-            ),
+            registrationFixAge.map {
+                harness.pulledFix(
+                    latitude: Self.awayLatitude,
+                    longitude: Self.longitude,
+                    accuracy: 10,
+                    age: $0,
+                    at: 0
+                )
+            } ?? harness.emptyPull(at: 0),
             // Where the device is once it has driven in. The SDK reads this — it is not told it —
             // so every decision that follows sees the position a phone at the fence would report.
             harness.pulledFix(
@@ -204,6 +210,30 @@ struct ReplayHarnessTests {
         }
     }
 
+    /// Registered with no fix, or one too old to settle the side, the condition is added ASSUMING
+    /// the device is outside. `CLMonitor` answers a wrong assumption with the real state, so the
+    /// ENTER that follows may describe a device that was inside all along: still delivered, but the
+    /// visit it starts is a candidate whose start is not reported as an entry.
+    @Test(arguments: [nil, 600] as [TimeInterval?])
+    @available(iOS 17.0, *)
+    func deliverCrossing_givenAssumedOutsideBaseline_expectEnterDeliveredAndVisitCandidate(
+        registrationFixAge: TimeInterval?
+    ) async throws {
+        try await ReplayHarness.withTail {
+            let harness = ReplayHarness()
+            defer { harness.detachFromBootstrap() }
+            try await registered(
+                harness, fenceId: "A", dwellThresholdSeconds: 60, registrationFixAge: registrationFixAge
+            )
+
+            let visit = try await enterAndAwaitVisit(harness, fenceId: "A")
+
+            #expect(harness.emitted(ev: "transition.accepted").first?["t"] == "enter")
+            #expect(visit != nil, "the ENTER started no visit, so this test proves nothing")
+            #expect(visit?.entryObserved == false, "an assumption's correction was dated as an entry")
+        }
+    }
+
     /// `.unmonitored` means the OS stopped watching the fence, so the stored entry can no longer
     /// vouch for a continuous stay. Kept, a later EXIT or dwell would measure across the gap.
     @Test
@@ -254,6 +284,7 @@ struct ReplayHarnessTests {
     }
 
     @discardableResult
+    @available(iOS 17.0, *)
     private func enterAndAwaitVisit(_ harness: ReplayHarness, fenceId: String) async throws -> GeofenceDwellVisit? {
         harness.deliverCrossing(fence: fenceId, transition: .enter)
         await Task.yield()

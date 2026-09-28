@@ -30,6 +30,53 @@ struct GeofenceDwellCoordinatorTests {
         #expect(secondVisit == firstVisit)
     }
 
+    /// An ENTER that is no observed crossing — the OS correcting an assumed outside, or an initial
+    /// enter discovered at registration — still qualifies a dwell, but its start is discovery:
+    /// neither it nor the time since it is reported.
+    @Test
+    func unobservedCircleEnterSupportsDwellWithoutReportingEntry() async {
+        let fix = CLLocation(
+            coordinate: CLLocationCoordinate2D(latitude: 0.5, longitude: 0.5),
+            altitude: 0,
+            horizontalAccuracy: 5,
+            verticalAccuracy: 10,
+            timestamp: Date()
+        )
+        let setup = await makeSetup(isPolygon: false, freshFixProvider: { fix })
+        await setup.coordinator.handleBoundary(
+            geofence: setup.geofence,
+            transition: .enter,
+            occurredAt: Date().addingTimeInterval(-120),
+            entryObserved: false
+        )
+        #expect(await setup.storage.getDwellVisit(geofenceId: setup.geofence.id)?.entryObserved == false)
+
+        await setup.coordinator.requestQualifyingEvidence(geofenceId: setup.geofence.id)
+
+        let dwells = await setup.emitter.dwells()
+        #expect(dwells.count == 1)
+        #expect(dwells.first?.context.enteredAt == nil)
+        #expect(dwells.first?.context.durationSeconds == nil)
+    }
+
+    /// A correction racing the visit an earlier ENTER already opened keeps that visit as it is.
+    @Test
+    func unobservedEnterForAnOpenVisitKeepsIt() async {
+        let setup = await makeSetup(isPolygon: false)
+        let enteredAt = Date(timeIntervalSince1970: 1000)
+        await setup.coordinator.handleBoundary(
+            geofence: setup.geofence, transition: .enter, occurredAt: enteredAt, entryObserved: false
+        )
+        let first = await setup.storage.getDwellVisit(geofenceId: setup.geofence.id)
+
+        await setup.coordinator.handleBoundary(
+            geofence: setup.geofence, transition: .enter, occurredAt: enteredAt.addingTimeInterval(1)
+        )
+
+        #expect(await setup.storage.getDwellVisit(geofenceId: setup.geofence.id) == first)
+        #expect(first?.entryObserved == false)
+    }
+
     @Test
     func circleExitThenEnterStartsANewVisit() async {
         let setup = await makeSetup(isPolygon: false)
@@ -222,7 +269,7 @@ struct GeofenceDwellCoordinatorTests {
     }
 
     @Test
-    func failedOutboxWriteLeavesVisitRetryable() async {
+    func failedOutboxWriteLeavesVisitRetryable() async throws {
         let emitter = DwellEmitterSpy(results: [false, true])
         let setup = await makeSetup(emitter: emitter)
         let enteredAt = Date(timeIntervalSince1970: 1000)
@@ -241,8 +288,18 @@ struct GeofenceDwellCoordinatorTests {
             source: "location_evidence"
         )
 
+        // A due evidence retry can already be in flight when the second explicit evidence arrives.
+        // Wait for its write and the visit mark rather than observing the intermediate first attempt.
+        for _ in 0 ..< 200 {
+            let attempts = await emitter.dwells()
+            if attempts.count >= 2,
+               await setup.storage.getDwellVisit(geofenceId: setup.geofence.id)?.emitted == true {
+                break
+            }
+            try await Task.sleep(nanoseconds: 10000000)
+        }
         let attempts = await emitter.dwells()
-        #expect(attempts.count == 2)
+        try #require(attempts.count == 2)
         #expect(attempts[0].context.visitId == attempts[1].context.visitId)
         // The retry repeats the reserved occurrence, not the later evidence that prompted it.
         #expect(attempts[1].occurredAt == attempts[0].occurredAt)

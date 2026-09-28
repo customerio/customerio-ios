@@ -273,7 +273,7 @@ struct CLMonitorRelaunchTests {
                 initialState: .exit, center: Self.center, radius: Self.radius
             )
             let delivered = DeliveredTransitions()
-            fixture.monitor.setOnTransition { identifier, transition, _, _, _, _ in
+            fixture.monitor.setOnTransition { identifier, transition, _, _, _, _, _ in
                 delivered.record(identifier, transition)
             }
             let reEmittedAt = fixture.clock.now.addingTimeInterval(300)
@@ -314,7 +314,7 @@ struct CLMonitorRelaunchTests {
                 )
             }
             let delivered = DeliveredTransitions()
-            fixture.monitor.setOnTransition { identifier, transition, _, _, _, _ in
+            fixture.monitor.setOnTransition { identifier, transition, _, _, _, _, _ in
                 delivered.record(identifier, transition)
             }
 

@@ -108,19 +108,22 @@ extension PolygonMembershipResolver {
     /// ENTER's user check still runs first. An EXIT overtaking the write is caught by the dwell
     /// coordinator, which refuses a visit that started before an EXIT it has seen.
     ///
-    /// An EXIT has to read its visit first — the duration travels on the event — and is bound to
-    /// the receiving user, so a switch meanwhile drops rather than misattributes it.
+    /// An EXIT reads and ends its visit before delivery because the duration travels on the event.
+    /// A user switch meanwhile drops rather than misattributes it. An ENTER that is not
+    /// `entryObserved` is still delivered, but its visit is a candidate that reports no entry.
     func forwardCircleTransition(
         geofence: Geofence,
         transition: GeofenceTransition,
         occurredAt: Date,
-        receivedForUserId: String
+        receivedForUserId: String,
+        entryObserved: Bool = true
     ) async {
         switch transition {
         case .enter:
             let dwellCoordinator = dwellCoordinator
             async let visitRecorded: GeofenceExitContext? = dwellCoordinator?.handleBoundary(
-                geofence: geofence, transition: .enter, occurredAt: occurredAt, expectedUserId: receivedForUserId
+                geofence: geofence, transition: .enter, occurredAt: occurredAt, expectedUserId: receivedForUserId,
+                entryObserved: entryObserved
             )
             if geofence.transitionTypes.contains(.enter) {
                 await forwardEnter(identifier: geofence.id, occurredAt: occurredAt, receivedForUserId: receivedForUserId)

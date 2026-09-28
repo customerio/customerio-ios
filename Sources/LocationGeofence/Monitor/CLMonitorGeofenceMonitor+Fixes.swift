@@ -71,9 +71,17 @@ extension CLMonitorGeofenceMonitor: GeofenceFixSelecting {
 
     /// Whether the device is inside the circle per the last known location; `nil` without a usable
     /// fix. No accuracy padding: a wrong guess costs one corrective event, absorbed by the baseline.
-    func isDeviceInside(center: CLLocationCoordinate2D, radius: CLLocationDistance) -> Bool? {
+    /// `isSettled` says the fix is recent and clear of the edge by more than its accuracy (the
+    /// heal's rule), so the side is observed rather than a guess.
+    func deviceSide(center: CLLocationCoordinate2D, radius: CLLocationDistance) -> (isInside: Bool, isSettled: Bool)? {
         guard let location = bestKnownFix() else { return nil }
-        let centerLocation = CLLocation(latitude: center.latitude, longitude: center.longitude)
-        return location.distance(from: centerLocation) <= radius
+        let distance = location.distance(from: CLLocation(latitude: center.latitude, longitude: center.longitude))
+        let isInside = distance <= radius
+        let settled = BaselineHealDecision.settledSide(
+            distanceFromCenter: distance, radius: radius,
+            horizontalAccuracy: location.horizontalAccuracy,
+            fixAge: dateUtil.now.timeIntervalSince(location.timestamp)
+        )
+        return (isInside, settled == (isInside ? .enter : .exit))
     }
 }

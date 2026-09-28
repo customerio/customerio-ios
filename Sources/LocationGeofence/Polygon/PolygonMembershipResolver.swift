@@ -103,6 +103,8 @@ final class PolygonMembershipResolver {
     /// covering-circle-shaped one. It carries no visit context, having no fence to measure against.
     /// - Parameter receivedForUserId: who was identified when the OS delivered the callback, read
     ///   synchronously in that callback; `""` when anonymous. Nil reads it on entry instead.
+    /// - Parameter entryObserved: whether a circle fence's ENTER may start an observed visit; see
+    ///   `GeofenceTransitionHandler`.
     /// - Returns: whether the caller should re-arm the wake against this crossing, and the fix to
     ///   size it with. See ``PolygonTransitionOutcome`` for why the fix travels with the answer.
     @discardableResult
@@ -111,7 +113,8 @@ final class PolygonMembershipResolver {
         transition: GeofenceTransition,
         occurredAt: Date,
         eventCircle: GeofenceEventCircle = .unknown,
-        receivedForUserId: String? = nil
+        receivedForUserId: String? = nil,
+        entryObserved: Bool = true
     ) async -> PolygonTransitionOutcome {
         // A switch during the awaits below must not relabel this crossing or its visit. Anonymous
         // maps to "" so no later sign-in can claim it either.
@@ -132,7 +135,7 @@ final class PolygonMembershipResolver {
         guard geofence.vertices != nil else {
             await forwardCircleTransition(
                 geofence: geofence, transition: transition, occurredAt: occurredAt,
-                receivedForUserId: receivedForUserId
+                receivedForUserId: receivedForUserId, entryObserved: entryObserved
             )
             // A circle fence's own event IS the answer, so there is no boundary left to wake for.
             return .nothingToRearm

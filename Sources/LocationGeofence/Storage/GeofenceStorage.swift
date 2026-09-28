@@ -54,6 +54,9 @@ actor GeofenceStorage {
     /// the condition since the last registration: the device can cross while unmonitored, so the
     /// persisted state is no longer known to match reality and keeping it would suppress the next
     /// genuine crossing. Polygon belief is NOT reseeded with it — see `clearMonitorRegionRecord`.
+    ///
+    /// `initialStateObserved` says a fix settled `initialState` rather than it being assumed; see
+    /// `MonitorRegionRecord.lastStateObserved`. Preserved with the baseline.
     func recordMonitorRegistration(
         identifier: String,
         transitionTypes: Set<GeofenceTransition>,
@@ -61,6 +64,7 @@ actor GeofenceStorage {
         center: LocationData,
         radius: Double,
         forceReseed: Bool = false,
+        initialStateObserved: Bool = false,
         now: Date? = nil // nil rather than `Date()`: a default expression cannot reach `dateUtil`.
     ) {
         var state = loadFromDisk() ?? GeofenceState()
@@ -80,7 +84,8 @@ actor GeofenceStorage {
             registeredAt: preserved ? existing?.registeredAt : stamp,
             // The movement trigger keeps its identity across routine radius changes. Remember
             // OS events already handled for it, even when the new geometry reseeds the state.
-            lastEventDate: (preserved || identifier == GeofenceConstants.movementTriggerIdentifier) ? existing?.lastEventDate : nil
+            lastEventDate: (preserved || identifier == GeofenceConstants.movementTriggerIdentifier) ? existing?.lastEventDate : nil,
+            lastStateObserved: preserved ? existing?.lastStateObserved : initialStateObserved
         )
         state.monitorRegionRecords = records
         saveToDisk(state)
@@ -112,41 +117,50 @@ actor GeofenceStorage {
         osEventDate: Date? = nil,
         now: Date? = nil
     ) -> GeofenceMonitorEventOutcome {
+        recordMonitorTransition(
+            transition, forIdentifier: identifier,
+            onlyIfBaselinePredates: evidenceTimestamp, osEventDate: osEventDate, now: now
+        ).outcome
+    }
+
+    /// `recordMonitorEvent`, also answering whether a delivered ENTER left an OBSERVED `.exit`.
+    /// Only then is it a crossing since registration; out of an assumed one it may be `CLMonitor`
+    /// correcting its `assuming:` for a device that never left. False for every other outcome.
+    func recordMonitorTransition(
+        _ transition: GeofenceTransition,
+        forIdentifier identifier: String,
+        onlyIfBaselinePredates evidenceTimestamp: Date? = nil,
+        osEventDate: Date? = nil,
+        now: Date? = nil
+    ) -> (outcome: GeofenceMonitorEventOutcome, entryObserved: Bool) {
         var state = loadFromDisk() ?? GeofenceState()
         var records = state.monitorRegionRecords ?? [:]
         guard var record = records[identifier] else {
             // No registration record (condition predates this bookkeeping). Establish the baseline
             // without delivering — mirrors classic registration, which is silent about the initial state.
             records[identifier] = MonitorRegionRecord(
-                lastState: transition, transitionTypes: [.enter, .exit], lastStateChangedAt: now ?? dateUtil.now, lastEventDate: osEventDate
+                lastState: transition, transitionTypes: [.enter, .exit], lastStateChangedAt: now ?? dateUtil.now,
+                lastEventDate: osEventDate, lastStateObserved: true
             )
             state.monitorRegionRecords = records
             saveToDisk(state)
-            return .suppressedNoBaseline
+            return (.suppressedNoBaseline, false)
         }
-        // A movement-trigger exit can arrive just after its circle was re-planted while carrying
-        // the old circle's OS date. Only the untouched re-plant baseline is exempt: a later heal
-        // or crossing is newer evidence and must keep its normal ordering guard.
-        let delayedMovementExit: Bool
-        if identifier == GeofenceConstants.movementTriggerIdentifier, transition == .exit,
-           let osEventDate, let registeredAt = record.registeredAt,
-           let changedAt = record.lastStateChangedAt {
-            delayedMovementExit = osEventDate < registeredAt && changedAt == registeredAt
-        } else {
-            delayedMovementExit = false
-        }
+        let delayedMovementExit = Self.isDelayedMovementExit(
+            transition, identifier: identifier, osEventDate: osEventDate, record: record
+        )
         if let osEventDate {
             // A genuine exit dated just before a routine trigger re-plant still wakes a movement
             // pass, but only while that re-plant remains the newest baseline. The redelivery guard
             // below rejects an exit already handled before the re-plant.
             if !delayedMovementExit,
-               let registeredAt = record.registeredAt, osEventDate < registeredAt { return .suppressedPredatesRegistration }
-            if let lastEventDate = record.lastEventDate, osEventDate <= lastEventDate { return .suppressedRedelivery }
+               let registeredAt = record.registeredAt, osEventDate < registeredAt { return (.suppressedPredatesRegistration, false) }
+            if let lastEventDate = record.lastEventDate, osEventDate <= lastEventDate { return (.suppressedRedelivery, false) }
             record.lastEventDate = osEventDate
         }
         if !delayedMovementExit,
            let evidenceTimestamp, let changedAt = record.lastStateChangedAt, changedAt > evidenceTimestamp {
-            return .suppressedNewerBaseline
+            return (.suppressedNewerBaseline, false)
         }
         if delayedMovementExit {
             // Deliver the old circle's wake once, but leave the new circle's seeded state intact.
@@ -155,7 +169,7 @@ actor GeofenceStorage {
             records[identifier] = record
             state.monitorRegionRecords = records
             saveToDisk(state)
-            return record.transitionTypes.contains(transition) ? .deliver : .suppressedFilteredType
+            return (record.transitionTypes.contains(transition) ? .deliver : .suppressedFilteredType, false)
         }
         guard record.lastState != transition else {
             // Nothing to deliver, but the event is now seen: persist its date so a later copy is refused.
@@ -164,14 +178,36 @@ actor GeofenceStorage {
                 state.monitorRegionRecords = records
                 saveToDisk(state)
             }
-            return .suppressedNoChange
+            // Not an observation of an assumed state: `CLMonitor` may just be echoing `assuming:`.
+            return (.suppressedNoChange, false)
         }
+        let leftObservedState = record.lastStateObserved ?? false
         record.lastState = transition
         record.lastStateChangedAt = now ?? dateUtil.now
+        record.lastStateObserved = true
         records[identifier] = record
         state.monitorRegionRecords = records
         saveToDisk(state)
-        return record.transitionTypes.contains(transition) ? .deliver : .suppressedFilteredType
+        return (
+            record.transitionTypes.contains(transition) ? .deliver : .suppressedFilteredType,
+            transition == .enter && leftObservedState
+        )
+    }
+
+    /// A movement-trigger exit can arrive just after its circle was re-planted while carrying the
+    /// old circle's OS date. Only the untouched re-plant baseline is exempt: a later heal or
+    /// crossing is newer evidence and must keep its normal ordering guard.
+    private static func isDelayedMovementExit(
+        _ transition: GeofenceTransition,
+        identifier: String,
+        osEventDate: Date?,
+        record: MonitorRegionRecord
+    ) -> Bool {
+        guard identifier == GeofenceConstants.movementTriggerIdentifier, transition == .exit,
+              let osEventDate, let registeredAt = record.registeredAt,
+              let changedAt = record.lastStateChangedAt
+        else { return false }
+        return osEventDate < registeredAt && changedAt == registeredAt
     }
 
     /// Snapshot of every per-condition monitor record — the adopt-time re-arm rebuilds conditions

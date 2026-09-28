@@ -21,7 +21,12 @@ import Foundation
 /// The last parameter is the circle the OS was monitoring when it RAISED this event — not the one
 /// registered now, which a refresh may already have replaced. A consumer reasoning about what the
 /// crossing PROVES needs it, since the guarantee a covering circle gives only holds for its own ring.
-typealias GeofenceTransitionHandler = @Sendable (String, GeofenceTransition, LocationData?, Date, Bool, GeofenceEventCircle) -> Void
+///
+/// `entryObserved` says an ENTER is a crossing since registration, so a visit may date from it.
+/// False when it is the OS correcting a state the SDK assumed — `CLMonitor` answers a wrong
+/// `assuming:` with the real one, for a device that may have been inside all along — or a heal
+/// dated when the SDK noticed. The ENTER is delivered either way; only the visit's start differs.
+typealias GeofenceTransitionHandler = @Sendable (String, GeofenceTransition, LocationData?, Date, Bool, GeofenceEventCircle, Bool) -> Void
 
 /// Callback when iOS reports a change to the location authorization status.
 /// Invoked on the main actor — same isolation domain as `CLLocationManagerDelegate`.

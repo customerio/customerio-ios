@@ -66,8 +66,9 @@ final class GeofenceDwellCoordinator {
     }
 
     /// - Parameter entryObserved: for an ENTER, whether it is a crossing the OS observed. False for
-    ///   one synthesized for a fence registered around a device already inside: the visit it starts
-    ///   supports dwell, but its start is discovery, so neither it nor its EXIT reports a duration.
+    ///   one synthesized for a fence registered around a device already inside, or an OS correction
+    ///   of an assumed state: the visit it starts supports dwell, but its start is discovery, so
+    ///   neither it nor its EXIT reports a duration.
     @discardableResult
     func handleBoundary(
         geofence: Geofence,
