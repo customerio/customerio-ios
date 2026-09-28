@@ -35,8 +35,8 @@ private final class DiagnosticsGate: @unchecked Sendable {
     }
 }
 
-/// Only the tail is gated; the prose is emitted regardless, except the few records gated whole
-/// (`fence.cataloged`, `location.fix`).
+/// Only the tail is gated; the prose is emitted regardless, except records behind their own
+/// `GeofenceDiagnostics.isEnabled` guard.
 ///
 /// ```
 /// [Geofence] Accepted enter for geofence notl_core, queued 1 row(s) || ev=transition.accepted io=out id=notl_core t=enter n=1
