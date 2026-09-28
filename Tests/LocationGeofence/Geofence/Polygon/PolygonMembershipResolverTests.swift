@@ -27,10 +27,34 @@ struct PolygonMembershipResolverTests {
             let occurredAt: Date
         }
 
+        struct Exit: Sendable {
+            let expectedUserId: String?
+            let context: GeofenceExitContext?
+        }
+
         private(set) var delivered: [Delivered] = []
+        private(set) var exits: [Exit] = []
 
         func trackTransition(geofenceId: String, transition: GeofenceTransition, occurredAt: Date) async {
             delivered.append(Delivered(id: geofenceId, transition: transition, occurredAt: occurredAt))
+        }
+
+        func trackDwell(
+            geofenceId: String, occurredAt: Date, context: GeofenceDwellContext, expectedUserId: String?
+        ) async -> Bool {
+            delivered.append(Delivered(id: geofenceId, transition: .dwell, occurredAt: occurredAt))
+            return true
+        }
+
+        func trackExit(
+            geofenceId: String, occurredAt: Date, context: GeofenceExitContext?, expectedUserId: String?
+        ) async {
+            delivered.append(Delivered(id: geofenceId, transition: .exit, occurredAt: occurredAt))
+            exits.append(Exit(expectedUserId: expectedUserId, context: context))
+        }
+
+        func exitSnapshot() -> [Exit] {
+            exits
         }
 
         func snapshot() -> [Delivered] {
@@ -182,6 +206,28 @@ struct PolygonMembershipResolverTests {
         #expect(decision.use == .tooOld)
     }
 
+    /// user-1 was identified when the OS delivered this exit and owns the open visit; user-2 signed
+    /// in before routing. Neither the crossing nor user-1's visit may reach delivery as user-2's.
+    @Test
+    func circleExit_givenUserSwitchedAfterDelivery_expectDeliveryBoundToTheReceivingUser() async {
+        let setup = await makeSetup(fix: nil, withDwellCoordinator: true)
+        let circle = circleGeofence()
+        await setup.storage.setCachedGeofences([circle])
+        await setup.resolver.handleTransition(
+            identifier: circle.id, transition: .enter, occurredAt: clock.now.addingTimeInterval(-75)
+        )
+        setup.contextStore.setUserId("user-2")
+
+        await setup.resolver.handleTransition(
+            identifier: circle.id, transition: .exit, occurredAt: clock.now, receivedForUserId: "user-1"
+        )
+
+        let exits = await setup.emitter.exitSnapshot()
+        #expect(exits.count == 1)
+        #expect(exits.first?.expectedUserId == "user-1")
+        #expect(exits.first?.context == nil)
+    }
+
     private struct Setup {
         let resolver: PolygonMembershipResolver
         let storage: GeofenceStorage
@@ -196,7 +242,8 @@ struct PolygonMembershipResolverTests {
         fix: CLLocation?,
         logger: LoggerMock = LoggerMock(),
         contextStore: BackgroundDeliveryContextStore? = nil,
-        onFixDelivered: (@Sendable () -> Void)? = nil
+        onFixDelivered: (@Sendable () -> Void)? = nil,
+        withDwellCoordinator: Bool = false
     ) async -> Setup {
         // Its own centre: `willEnterForeground` posted on the default one reaches every other
         // test's live resolver, whose pass then consumes their fix requests and writes their beliefs.
@@ -223,6 +270,13 @@ struct PolygonMembershipResolverTests {
             fixResolver?.handleResolvedFix(fix)
             onFixDelivered?()
         }
+        let dwellCoordinator = withDwellCoordinator ? GeofenceDwellCoordinator(
+            storage: storage,
+            transitionEmitter: emitter,
+            contextStore: contextStore,
+            logger: logger,
+            notificationCenter: notificationCenter
+        ) : nil
         return Setup(
             resolver: PolygonMembershipResolver(
                 storage: storage,
@@ -231,7 +285,8 @@ struct PolygonMembershipResolverTests {
                 contextStore: contextStore,
                 dateUtil: clock,
                 fixResolver: fixResolver,
-                notificationCenter: notificationCenter
+                notificationCenter: notificationCenter,
+                dwellCoordinator: dwellCoordinator
             ),
             storage: storage,
             emitter: emitter,
@@ -449,18 +504,74 @@ struct PolygonMembershipResolverTests {
         #expect(delivered.first?.transition == .enter)
     }
 
-    /// A sync can drop a geofence the OS still holds a condition for. Forwarding beats dropping:
-    /// losing a real crossing is worse than one shaped like its covering circle.
+    /// A sync can drop a geofence while the OS still holds its condition. Without the cached
+    /// configuration, the callback cannot be filtered or distinguished from a polygon covering
+    /// circle, so emitting it could leak an ENTER from an exit-only fence.
     @Test
-    func handleTransition_givenUncachedGeofence_expectForwarded() async {
+    func handleTransition_givenUncachedGeofence_expectDropped() async {
         let setup = await makeSetup(fix: nil)
 
         await setup.resolver.handleTransition(identifier: "999", transition: .exit, occurredAt: clock.now)
 
-        #expect(await setup.emitter.snapshot().count == 1)
+        #expect(await setup.emitter.snapshot().isEmpty)
     }
 
     // MARK: - Covering-circle enter
+
+    @Test
+    func applyGivenPolygonMembershipChangesStartsOnlyConfirmedVisits() async {
+        let setup = await makeSetup(fix: nil, withDwellCoordinator: true)
+        let geofence = polygonGeofence(transitionTypes: [.exit])
+        await setup.storage.setCachedGeofences([geofence])
+        let firstEntry = Date(timeIntervalSince1970: 1_000)
+
+        await setup.resolver.apply(.inside, to: geofence, evidence: firstEntry, confirmedByFix: true)
+        let firstVisit = await setup.storage.getDwellVisit(geofenceId: geofence.id)
+        await setup.resolver.apply(
+            .inside,
+            to: geofence,
+            evidence: firstEntry.addingTimeInterval(10),
+            confirmedByFix: true
+        )
+        #expect(await setup.storage.getDwellVisit(geofenceId: geofence.id) == firstVisit)
+
+        await setup.resolver.apply(
+            .outside,
+            to: geofence,
+            evidence: firstEntry.addingTimeInterval(20),
+            confirmedByFix: true
+        )
+        let secondEntry = firstEntry.addingTimeInterval(30)
+        await setup.resolver.apply(.inside, to: geofence, evidence: secondEntry, confirmedByFix: true)
+
+        let secondVisit = await setup.storage.getDwellVisit(geofenceId: geofence.id)
+        #expect(secondVisit?.visitId != firstVisit?.visitId)
+        #expect(secondVisit?.enteredAt == secondEntry)
+    }
+
+    /// Continuity was lost mid-visit while the stored belief stayed inside. The next inside fix is
+    /// `suppressedNoChange`, not an entry, so the EXIT that follows must carry no visit duration.
+    @Test
+    func applyGivenVisitLostWhileBeliefStaysInside_expectExitWithoutVisitContext() async {
+        let setup = await makeSetup(fix: nil, withDwellCoordinator: true)
+        let geofence = polygonGeofence(transitionTypes: [.exit])
+        await setup.storage.setCachedGeofences([geofence])
+        let entry = Date(timeIntervalSince1970: 1_000)
+        await setup.resolver.apply(.inside, to: geofence, evidence: entry, confirmedByFix: true)
+        await setup.storage.removeDwellVisit(geofenceId: geofence.id)
+
+        await setup.resolver.apply(
+            .inside, to: geofence, evidence: entry.addingTimeInterval(10), confirmedByFix: true
+        )
+        await setup.resolver.apply(
+            .outside, to: geofence, evidence: entry.addingTimeInterval(20), confirmedByFix: true
+        )
+
+        let exits = await setup.emitter.exitSnapshot()
+        #expect(exits.count == 1)
+        #expect(exits.first?.context == nil)
+        #expect(await setup.storage.getDwellVisit(geofenceId: geofence.id) == nil)
+    }
 
     @Test
     func handleTransition_givenPolygonEnterAndFixInside_expectEnterDelivered() async {
@@ -1067,6 +1178,20 @@ struct PolygonMembershipResolverTests {
         #expect(await setup.storage.getPolygonMembership()["1"] == nil)
     }
 
+    @Test
+    func handleTransitionGivenUncachedFenceDoesNotLeakAnUnconfiguredEnter() async {
+        let setup = await makeSetup(fix: nil)
+        await setup.storage.setCachedGeofences([])
+
+        await setup.resolver.handleTransition(
+            identifier: "1",
+            transition: .enter,
+            occurredAt: Date()
+        )
+
+        #expect(await setup.emitter.snapshot().isEmpty)
+    }
+
     /// Foregrounding resolves a fix like any other pass, and a foregrounding app's cached fix is
     /// normally stale — the app was suspended — so the request suspends for real. The observer has
     /// no caller to take an expected user from, so it samples one itself.
@@ -1126,7 +1251,9 @@ struct PolygonMembershipResolverTests {
             return asked.count == 1
         })
 
-        #expect(asked.count == 2)
+        // Dwell adds a second post-write attribution boundary before the existing transition
+        // delivery boundary. Both refuse work after this simulated user switch.
+        #expect(asked.count == 3)
         // The write said deliver, so the refusal is the switch and not an unchanged belief.
         #expect(logged(setup.logger, "delivered nothing: user_changed"))
         #expect(await setup.emitter.snapshot().isEmpty)

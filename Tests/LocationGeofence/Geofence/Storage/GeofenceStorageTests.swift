@@ -498,14 +498,102 @@ struct GeofenceStorageTests {
     }
 
     @Test
+    func recordRegistration_givenEvictedFence_expectDwellVisitPruned() async {
+        let dir = makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let storage = makeStorage(directory: dir)
+        let geofence = Geofence(
+            id: "g1",
+            latitude: 1,
+            longitude: 2,
+            radius: 100,
+            name: "g1",
+            transitionTypes: [.exit],
+            lastUpdated: Date(timeIntervalSince1970: 1)
+        )
+        await storage.setCachedGeofences([geofence])
+        #expect(await storage.saveDwellVisit(
+            GeofenceDwellVisit(
+                visitId: "visit-1",
+                enteredAt: Date(timeIntervalSince1970: 100),
+                geometryRevision: geofence.dwellRevision,
+                userId: "user-1",
+                emitted: false
+            ),
+            geofenceId: geofence.id
+        ))
+
+        await storage.recordRegistration(
+            center: LocationData(latitude: 1, longitude: 2),
+            businessIds: []
+        )
+
+        #expect(await storage.getDwellVisit(geofenceId: geofence.id) == nil)
+    }
+
+    @Test
+    func getDwellVisit_givenVisitPersistedBeforeEntryObserved_expectObservedEntry() async throws {
+        let dir = makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let legacyState = """
+        {"dwellVisits":{"g1":{"visitId":"visit-1","enteredAt":100,"geometryRevision":"rev","userId":"user-1","emitted":false}}}
+        """
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        try Data(legacyState.utf8).write(to: dir.appendingPathComponent("geofenceState.json"))
+        let storage = makeStorage(directory: dir)
+
+        let visit = await storage.getDwellVisit(geofenceId: "g1")
+
+        #expect(visit?.visitId == "visit-1")
+        #expect(visit?.entryObserved == true)
+    }
+
+    @Test
+    func saveDwellVisit_givenUnobservedEntry_expectPersisted() async {
+        let dir = makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let storage = makeStorage(directory: dir)
+        let geofence = Geofence(
+            id: "g1", latitude: 1, longitude: 2, radius: 100, name: "g1",
+            transitionTypes: [.exit], lastUpdated: Date(timeIntervalSince1970: 1)
+        )
+        await storage.setCachedGeofences([geofence])
+        #expect(await storage.saveDwellVisit(
+            GeofenceDwellVisit(
+                visitId: "visit-1",
+                enteredAt: Date(timeIntervalSince1970: 100),
+                geometryRevision: geofence.dwellRevision,
+                userId: "user-1",
+                emitted: false,
+                entryObserved: false
+            ),
+            geofenceId: geofence.id
+        ))
+
+        #expect(await makeStorage(directory: dir).getDwellVisit(geofenceId: geofence.id)?.entryObserved == false)
+    }
+
+    @Test
     func clearUserScopedState_expectCooldownsLastSyncAndRegistrationCleared_workspaceCachePreserved() async {
         let dir = makeTempDirectory()
         defer { try? FileManager.default.removeItem(at: dir) }
         let storage = makeStorage(directory: dir)
         _ = await storage.tryAcquireCooldown(key: "g1:enter", now: Date(timeIntervalSince1970: 100), interval: 3600)
-        await storage.setCachedGeofences([
-            Geofence(id: "g1", latitude: 0, longitude: 0, radius: 100, name: "g1", transitionTypes: [.enter], lastUpdated: Date(timeIntervalSince1970: 0))
-        ])
+        let geofence = Geofence(
+            id: "g1", latitude: 0, longitude: 0, radius: 100, name: "g1",
+            transitionTypes: [.enter, .exit], lastUpdated: Date(timeIntervalSince1970: 0)
+        )
+        await storage.setCachedGeofences([geofence])
+        #expect(await storage.saveDwellVisit(
+            GeofenceDwellVisit(
+                visitId: "visit-1",
+                enteredAt: Date(timeIntervalSince1970: 50),
+                geometryRevision: geofence.dwellRevision,
+                userId: "user-1",
+                emitted: false
+            ),
+            geofenceId: geofence.id
+        ))
         await storage.setCachedConfig(.fallback)
         await storage.recordSync(timestamp: Date(timeIntervalSince1970: 100), location: LocationData(latitude: 1, longitude: 2))
         await storage.recordRegistration(center: LocationData(latitude: 1, longitude: 2), businessIds: ["g1"])
@@ -522,6 +610,7 @@ struct GeofenceStorageTests {
         // Registration is user-scoped — cleared so the next user re-registers from their own refresh.
         #expect(await storage.getLastRegistrationCenter() == nil)
         #expect(await storage.getRegisteredBusinessIds().isEmpty)
+        #expect(await storage.getDwellVisit(geofenceId: geofence.id) == nil)
         // Monitor baseline is dropped: a post-clear event for the same id finds no record (no stale
         // baseline inherited), so it re-establishes silently instead of comparing to the old state.
         #expect(await storage.recordMonitorEvent(.enter, forIdentifier: "g1") == .suppressedNoBaseline)

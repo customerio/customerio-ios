@@ -273,6 +273,7 @@ actor GeofenceStorage {
         state.monitoredGeofenceIds = nil
         state.monitorRegionRecords = nil
         state.polygonMembership = nil
+        state.dwellVisits = nil
         saveToDisk(state)
     }
 
@@ -285,6 +286,67 @@ actor GeofenceStorage {
     func setCachedGeofences(_ geofences: [Geofence]) {
         var state = loadFromDisk() ?? GeofenceState()
         state.cachedGeofences = geofences
+        let current = Dictionary(uniqueKeysWithValues: geofences.map { ($0.id, $0) })
+        state.dwellVisits = state.dwellVisits?.filter { id, visit in
+            guard let geofence = current[id] else { return false }
+            return (geofence.dwellThresholdSeconds > 0 || geofence.transitionTypes.contains(.exit)) &&
+                geofence.dwellRevision == visit.geometryRevision
+        }
+        saveToDisk(state)
+    }
+
+    func getDwellVisit(geofenceId: String) -> GeofenceDwellVisit? {
+        loadFromDisk()?.dwellVisits?[geofenceId]
+    }
+
+    @discardableResult
+    func saveDwellVisit(_ visit: GeofenceDwellVisit, geofenceId: String) -> Bool {
+        var state = loadFromDisk() ?? GeofenceState()
+        guard let geofence = state.cachedGeofences?.first(where: { $0.id == geofenceId }),
+              geofence.dwellRevision == visit.geometryRevision,
+              geofence.dwellThresholdSeconds > 0 || geofence.transitionTypes.contains(.exit)
+        else { return false }
+        var visits = state.dwellVisits ?? [:]
+        visits[geofenceId] = visit
+        state.dwellVisits = visits
+        return saveToDisk(state)
+    }
+
+    /// Outcome of recording that a visit's dwell was persisted for delivery.
+    enum DwellEmissionMark: Equatable {
+        case marked
+        /// The visit ended, was replaced, or no longer matches its user or geometry. Nothing was
+        /// written: the delivered dwell described that visit, not whatever is stored now.
+        case superseded
+        case writeFailed
+    }
+
+    /// Compare-and-set: marks `visit` emitted only while it is still the stored visit for this
+    /// fence with the same id, user, and geometry revision, and that revision is still current.
+    func markDwellVisitEmitted(_ visit: GeofenceDwellVisit, geofenceId: String) -> DwellEmissionMark {
+        var state = loadFromDisk() ?? GeofenceState()
+        guard var stored = state.dwellVisits?[geofenceId],
+              stored.visitId == visit.visitId,
+              stored.userId == visit.userId,
+              stored.geometryRevision == visit.geometryRevision,
+              state.cachedGeofences?.first(where: { $0.id == geofenceId })?.dwellRevision == visit.geometryRevision
+        else { return .superseded }
+        guard !stored.emitted else { return .marked }
+        stored.emitted = true
+        state.dwellVisits?[geofenceId] = stored
+        return saveToDisk(state) ? .marked : .writeFailed
+    }
+
+    func removeDwellVisit(geofenceId: String) {
+        var state = loadFromDisk() ?? GeofenceState()
+        guard state.dwellVisits?.removeValue(forKey: geofenceId) != nil else { return }
+        saveToDisk(state)
+    }
+
+    func clearDwellVisits() {
+        var state = loadFromDisk() ?? GeofenceState()
+        guard state.dwellVisits != nil else { return }
+        state.dwellVisits = nil
         saveToDisk(state)
     }
 
@@ -337,11 +399,12 @@ actor GeofenceStorage {
         return try? Self.makeDecoder().decode(GeofenceState.self, from: data)
     }
 
-    func saveToDisk(_ state: GeofenceState) {
+    @discardableResult
+    func saveToDisk(_ state: GeofenceState) -> Bool {
         guard let data = try? Self.makeEncoder().encode(state),
               let url = stateFileURL()
         else {
-            return
+            return false
         }
         let directory = url.deletingLastPathComponent()
         try? fileManager.createDirectory(
@@ -357,8 +420,9 @@ actor GeofenceStorage {
                 ofItemAtPath: url.path
             )
             setExcludedFromBackup(on: url)
+            return true
         } catch {
-            // Persistence is best-effort.
+            return false
         }
     }
 

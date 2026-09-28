@@ -38,6 +38,7 @@ struct GeofenceSyncCoordinatorTests {
         monitor: MockGeofenceRegionMonitor? = nil,
         contextStore: BackgroundDeliveryContextStore? = nil,
         emitter: TransitionEmitterSpy = TransitionEmitterSpy(),
+        dwellCoordinator: GeofenceDwellCoordinator? = nil,
         dateUtil: DateUtilStub = DateUtilStub()
     ) -> Setup {
         let resolvedContextStore = contextStore ?? makeContextStore()
@@ -48,6 +49,7 @@ struct GeofenceSyncCoordinatorTests {
             monitor: resolvedMonitor,
             contextStore: resolvedContextStore,
             transitionEmitter: emitter,
+            dwellCoordinator: dwellCoordinator,
             dateUtil: dateUtil,
             logger: LoggerMock()
         )
@@ -3076,6 +3078,58 @@ struct GeofenceSyncCoordinatorTests {
     }
 
     @Test
+    func refresh_givenNewExitOnlyCircleInside_expectVisitObservedWithoutEnterEvent() async {
+        let anchor = LocationData(latitude: 1.0, longitude: 2.0)
+        let storage = makeStorage()
+        let contextStore = makeContextStore()
+        let emitter = TransitionEmitterSpy()
+        let dwellCoordinator = GeofenceDwellCoordinator(
+            storage: storage,
+            transitionEmitter: emitter,
+            contextStore: contextStore,
+            logger: LoggerMock()
+        )
+        let dateUtil = DateUtilStub()
+        await storage.recordSync(
+            timestamp: dateUtil.givenNow.addingTimeInterval(-25 * 60 * 60),
+            location: LocationData(latitude: 0, longitude: 0)
+        )
+        let region = Geofence(
+            id: "exit-only",
+            latitude: anchor.latitude,
+            longitude: anchor.longitude,
+            radius: 100,
+            name: "Exit only",
+            transitionTypes: [.exit],
+            lastUpdated: Date(timeIntervalSince1970: 1)
+        )
+        let api = GeofenceApiServiceMock()
+        api.fetchNearbyGeofencesClosure = { _, _, completion in
+            completion(.success(makeApiResponse(regions: [region])))
+        }
+        let setup = makeCoordinator(
+            api: api,
+            storage: storage,
+            contextStore: contextStore,
+            emitter: emitter,
+            dwellCoordinator: dwellCoordinator,
+            dateUtil: dateUtil
+        )
+
+        _ = await setup.coordinator.refresh(
+            latitude: anchor.latitude,
+            longitude: anchor.longitude,
+            anchorIsLiveFix: true
+        )
+        for _ in 0 ..< 50 {
+            await Task.yield()
+        }
+
+        #expect(emitter.calls.wrappedValue.isEmpty)
+        #expect(await storage.getDwellVisit(geofenceId: region.id) != nil)
+    }
+
+    @Test
     func refresh_givenNewAndAlreadyRegisteredInside_expectOnlyNewEmitted() async {
         let anchor = LocationData(latitude: 1.0, longitude: 2.0)
         // Both inside; gOld is already registered (a wholesale re-registration) → excluded by the diff;
@@ -3523,6 +3577,19 @@ private final class TransitionEmitterSpy: GeofenceTransitionEmitting, @unchecked
             return calls.count - 1
         }
         onEmit?(index)
+    }
+
+    func trackDwell(
+        geofenceId: String, occurredAt: Date, context: GeofenceDwellContext, expectedUserId: String?
+    ) async -> Bool {
+        await trackTransition(geofenceId: geofenceId, transition: .dwell, occurredAt: occurredAt)
+        return true
+    }
+
+    func trackExit(
+        geofenceId: String, occurredAt: Date, context: GeofenceExitContext?, expectedUserId: String?
+    ) async {
+        await trackTransition(geofenceId: geofenceId, transition: .exit, occurredAt: occurredAt)
     }
 }
 

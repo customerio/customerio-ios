@@ -30,6 +30,7 @@ final class CoreLocationGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @pr
     let movementFixResolver: MovementFixResolver
     var onTransition: GeofenceTransitionHandler?
     private var onAuthorizationChanged: GeofenceAuthorizationChangedHandler?
+    private var onMonitoringInterrupted: GeofenceMonitoringInterruptedHandler?
     private var lastLoggedPermissionTier: PermissionTier?
     var ownedRegionIdentifiers: Set<String> = []
 
@@ -79,6 +80,10 @@ final class CoreLocationGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @pr
 
     func setOnAuthorizationChanged(_ handler: GeofenceAuthorizationChangedHandler?) {
         onAuthorizationChanged = handler
+    }
+
+    func setOnMonitoringInterrupted(_ handler: GeofenceMonitoringInterruptedHandler?) {
+        onMonitoringInterrupted = handler
     }
 
     func startMonitoring(identifier: String, center: LocationData, radius: Double, transitionTypes: Set<GeofenceTransition>) {
@@ -173,10 +178,16 @@ final class CoreLocationGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @pr
     }
 
     func locationManager(_ manager: CLLocationManager, monitoringDidFailFor region: CLRegion?, withError error: Error) {
-        guard let identifier = region?.identifier,
-              ownedRegionIdentifiers.remove(identifier) != nil
-        else { return }
+        guard let identifier = region?.identifier else {
+            // Core Location did not say which region stopped, so no fence can vouch for having been
+            // watched throughout. Ownership is left alone: nothing identifies which entry to drop.
+            logger.geofenceMonitoringFailed(region: "unknown", error: error)
+            onMonitoringInterrupted?(nil)
+            return
+        }
+        guard ownedRegionIdentifiers.remove(identifier) != nil else { return }
         logger.geofenceMonitoringFailed(region: identifier, error: error)
+        onMonitoringInterrupted?(identifier)
     }
 
     // iOS 14+ fires this on delegate set with the current status, and again on every change.

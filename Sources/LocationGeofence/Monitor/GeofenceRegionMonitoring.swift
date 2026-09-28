@@ -31,6 +31,10 @@ typealias GeofenceAuthorizationChangedHandler = @MainActor () -> Void
 /// Invoked on the main actor.
 typealias GeofenceReconciledHandler = @MainActor () -> Void
 
+/// Called when the OS stops monitoring one condition, or when the monitor's event stream is
+/// interrupted globally. A nil identifier means continuity is unknown for every active visit.
+typealias GeofenceMonitoringInterruptedHandler = @MainActor (String?) -> Void
+
 /// What the monitor can say about the circle an event was raised against.
 ///
 /// `unknown` and `expired` must not collapse into one "no circle" case. `unknown` is a cold wake:
@@ -150,6 +154,8 @@ protocol GeofenceRegionMonitoring: AnyObject, Sendable {
     /// that decision. The classic monitor reads `monitoredRegions` synchronously — default no-op.
     func setOnReconciled(_ handler: GeofenceReconciledHandler?)
 
+    func setOnMonitoringInterrupted(_ handler: GeofenceMonitoringInterruptedHandler?)
+
     /// Starts monitoring a circular geofence region.
     /// - Parameters:
     ///   - identifier: Unique identifier for the region.
@@ -207,4 +213,5 @@ protocol GeofenceRegionMonitoring: AnyObject, Sendable {
 extension GeofenceRegionMonitoring {
     /// Default no-op: only the CLMonitor path reconciles asynchronously against live OS truth.
     func setOnReconciled(_ handler: GeofenceReconciledHandler?) {}
+    func setOnMonitoringInterrupted(_ handler: GeofenceMonitoringInterruptedHandler?) {}
 }

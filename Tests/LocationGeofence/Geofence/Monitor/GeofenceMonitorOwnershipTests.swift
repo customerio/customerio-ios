@@ -102,6 +102,44 @@ struct GeofenceMonitorOwnershipTests {
         )
     }
 
+    private final class InterruptionRecorder {
+        var identifiers: [String?] = []
+    }
+
+    /// Core Location may report a failure without saying which region stopped. No active visit can
+    /// then prove it was watched throughout, so continuity is invalidated for all of them.
+    @Test
+    func monitoringFailure_givenNoRegion_expectGlobalContinuityInvalidation() {
+        let monitor = CoreLocationGeofenceMonitor(logger: CapturingLogger())
+        let recorder = InterruptionRecorder()
+        monitor.setOnMonitoringInterrupted { recorder.identifiers.append($0) }
+
+        monitor.locationManager(
+            CLLocationManager(),
+            monitoringDidFailFor: nil,
+            withError: CLError(.regionMonitoringFailure)
+        )
+
+        #expect(recorder.identifiers.count == 1)
+        #expect(recorder.identifiers.first == .some(nil))
+    }
+
+    /// A host app's region failing says nothing about ours.
+    @Test
+    func monitoringFailure_givenRegionNotOurs_expectNoInvalidation() {
+        let monitor = CoreLocationGeofenceMonitor(logger: CapturingLogger())
+        let recorder = InterruptionRecorder()
+        monitor.setOnMonitoringInterrupted { recorder.identifiers.append($0) }
+
+        monitor.locationManager(
+            CLLocationManager(),
+            monitoringDidFailFor: hostRegion(),
+            withError: CLError(.regionMonitoringFailure)
+        )
+
+        #expect(recorder.identifiers.isEmpty)
+    }
+
     /// Buffered path: with no handler bound the crossing queues, and ownership is only checked when
     /// the queue drains. Nothing may be recorded in the meantime.
     @Test

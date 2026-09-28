@@ -20,11 +20,13 @@ enum MockMonitorOperation: Sendable, Equatable {
 @MainActor
 final class MockGeofenceRegionMonitor: GeofenceRegionMonitoring {
     private var onTransition: GeofenceTransitionHandler?
+    private var onMonitoringInterrupted: GeofenceMonitoringInterruptedHandler?
     private(set) var onAuthorizationChanged: GeofenceAuthorizationChangedHandler?
     private(set) var onReconciled: GeofenceReconciledHandler?
     private(set) var setOnTransitionCallsCount = 0
     private(set) var setOnAuthorizationChangedCallsCount = 0
     private(set) var setOnReconciledCallsCount = 0
+    private(set) var setOnMonitoringInterruptedCallsCount = 0
     private(set) var startedRegions: [MonitoredRegionRecord] = []
     private(set) var stoppedIdentifiers: [String] = []
     private(set) var stopAllCallCount = 0
@@ -115,6 +117,11 @@ final class MockGeofenceRegionMonitor: GeofenceRegionMonitoring {
     func setOnReconciled(_ handler: GeofenceReconciledHandler?) {
         onReconciled = handler
         setOnReconciledCallsCount += 1
+    }
+
+    func setOnMonitoringInterrupted(_ handler: GeofenceMonitoringInterruptedHandler?) {
+        onMonitoringInterrupted = handler
+        setOnMonitoringInterruptedCallsCount += 1
     }
 
     /// Runs inside `startMonitoring`, so a test can land work in the window a real OS
@@ -256,5 +263,9 @@ final class MockGeofenceRegionMonitor: GeofenceRegionMonitoring {
             )
         } ?? .unknown
         onTransition?(identifier, transition, location, occurredAt, locationIsFresh, circle)
+    }
+
+    func simulateMonitoringInterrupted(identifier: String?) {
+        onMonitoringInterrupted?(identifier)
     }
 }

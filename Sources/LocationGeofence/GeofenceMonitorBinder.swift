@@ -20,8 +20,12 @@ enum GeofenceMonitorBinder {
         resolver: PolygonMembershipResolver,
         coordinator: GeofenceSyncCoordinator,
         logger: Logger,
+        dwellCoordinator: GeofenceDwellCoordinator? = nil,
         backgroundTaskRunner: BackgroundTaskRunner = GeofenceBackgroundTime.runner(name: "io.customer.geofence.movement-pass")
     ) {
+        monitor.setOnMonitoringInterrupted { geofenceId in
+            Task { await dwellCoordinator?.invalidateContinuity(geofenceId: geofenceId) }
+        }
         monitor.setOnTransition { [weak resolver, weak coordinator] identifier, transition, location, occurredAt, locationIsFresh, eventCircle in
             // CLLocationManager delivers on main; both handlers below are async with their
             // own serialization (tracker active-delivery dedup, coordinator refresh gate),
@@ -54,13 +58,17 @@ enum GeofenceMonitorBinder {
                 }
                 return
             }
+            // Before the Task hop: a sign-in switch can run before the task does, and the crossing
+            // belongs to whoever was identified when the OS delivered it.
+            let receivedForUserId = resolver?.identifiedUserId ?? ""
             // One Task, not two: the follow-up depends on what the resolver decided, and the two
             // share the coordinator's gate — dispatched in parallel, one of them loses it and
             // logs `refresh_in_progress` for work that was never redundant.
             Task {
                 let outcome = await resolver?.handleTransition(
                     identifier: identifier, transition: transition,
-                    occurredAt: occurredAt, eventCircle: eventCircle
+                    occurredAt: occurredAt, eventCircle: eventCircle,
+                    receivedForUserId: receivedForUserId
                 ) ?? .nothingToRearm
 
                 await dispatchFollowUp(

@@ -468,7 +468,7 @@ struct GeofenceLogTailTests {
     func rawValueTokens_expectThePinnedSetPerEnum() {
         // Not only a log token: this raw value is the tracked event's `transition` property, the
         // Codable form of a persisted pending row, and part of the pending and cooldown keys.
-        expectTokens(GeofenceTransition.self, ["enter", "exit"])
+        expectTokens(GeofenceTransition.self, ["enter", "dwell", "exit"])
         // The only camelCase tokens in the vocabulary, pinned as they are on purpose: Android
         // emits neither, so there is nothing to diverge from and renaming them buys nothing.
         expectTokens(HandleMovementTier.self, ["localRerank", "remoteRefresh"])

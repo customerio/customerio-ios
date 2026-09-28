@@ -66,7 +66,13 @@ enum GeofenceBootstrap {
         let monitor = di.geofenceMonitor
         let coordinator = di.geofenceSyncCoordinator
         let resolver = di.polygonMembershipResolver
-        GeofenceMonitorBinder.bind(monitor: monitor, resolver: resolver, coordinator: coordinator, logger: di.logger)
+        GeofenceMonitorBinder.bind(
+            monitor: monitor,
+            resolver: resolver,
+            coordinator: coordinator,
+            logger: di.logger,
+            dwellCoordinator: di.geofenceDwellCoordinator
+        )
         // Wired here, with the transition handler, for the same reason: a cold wake can deliver a
         // visit immediately and an unwired handler drops it. Arming is deferred to the tail of
         // this function, once the adopt-or-register decision has settled what we actually monitor.
@@ -99,6 +105,10 @@ enum GeofenceBootstrap {
         } else if !expectedOwnedRegions.isEmpty, expectedOwnedRegions.isSubset(of: monitor.osMonitoredRegionIdentifiers) {
             monitor.adoptExistingRegions(matching: expectedOwnedRegions, records: monitorRecords)
         } else {
+            let missingBusinessRegions = lastRegisteredBusinessIds.subtracting(monitor.osMonitoredRegionIdentifiers)
+            for geofenceId in missingBusinessRegions {
+                await di.geofenceDwellCoordinator.invalidateContinuity(geofenceId: geofenceId)
+            }
             // First launch after install, the OS dropped our regions (e.g. permission revoked then
             // re-granted, which clears `monitoredRegions`), or a partial drop. Register fresh from cache.
             let registration = coordinator.applyCachedRegistration(
@@ -122,6 +132,7 @@ enum GeofenceBootstrap {
         // The adopt path above skips `startMonitoring` (the other tier-log site), so without this
         // a relaunch that re-claims OS-persisted regions would report nothing about delivery readiness.
         monitor.reportPermissionTier()
+        await di.geofenceDwellCoordinator.resumePendingVisits(geofences: cachedRegions)
 
         // The ASYNC form on purpose, though `cachedConfig` is in scope: that value was read in
         // phase 1 and this run has awaited storage and OS registration since. A refresh landing a

@@ -1,6 +1,21 @@
 import CioInternalCommon
 import Foundation
 
+struct GeofenceDwellContext: Sendable {
+    let visitId: String
+    let enteredAt: Date
+    let thresholdSeconds: Int
+    let durationSeconds: Int
+    let detectionSource: String
+}
+
+struct GeofenceExitContext: Sendable, Equatable {
+    let visitId: String
+    let enteredAt: Date
+    let durationSeconds: Int
+    let detectionSource: String
+}
+
 // sourcery: InjectRegisterShared = "GeofenceEventTracker"
 // sourcery: InjectCustomShared
 /// Delivers geofence transition events. Anonymous crossings are dropped (geofencing is
@@ -68,16 +83,50 @@ final class GeofenceEventTracker: @unchecked Sendable {
         transition: GeofenceTransition,
         occurredAt: Date
     ) async {
+        _ = await trackTransition(
+            geofenceId: geofenceId, transition: transition, occurredAt: occurredAt,
+            dwell: nil, exit: nil, expectedUserId: nil
+        )
+    }
+
+    func trackDwell(
+        geofenceId: String, occurredAt: Date, context: GeofenceDwellContext, expectedUserId: String?
+    ) async -> Bool {
+        await trackTransition(
+            geofenceId: geofenceId, transition: .dwell, occurredAt: occurredAt,
+            dwell: context, exit: nil, expectedUserId: expectedUserId
+        )
+    }
+
+    func trackExit(
+        geofenceId: String, occurredAt: Date, context: GeofenceExitContext?, expectedUserId: String?
+    ) async {
+        _ = await trackTransition(
+            geofenceId: geofenceId, transition: .exit, occurredAt: occurredAt,
+            dwell: nil, exit: context, expectedUserId: expectedUserId
+        )
+    }
+
+    private func trackTransition(
+        geofenceId: String,
+        transition: GeofenceTransition,
+        occurredAt: Date,
+        dwell: GeofenceDwellContext?,
+        exit: GeofenceExitContext?,
+        expectedUserId: String?
+    ) async -> Bool {
         // Persist and send the current crossing before any backlog work: the monitor's dedup
         // baseline has already advanced, so a crossing suspended away un-persisted can never
         // re-emit — its durability must not wait on a slow replay.
         let freshKeys = await deliverCurrentCrossing(
-            geofenceId: geofenceId, transition: transition, occurredAt: occurredAt
+            geofenceId: geofenceId, transition: transition, occurredAt: occurredAt,
+            dwell: dwell, exit: exit, expectedUserId: expectedUserId
         )
         // Then retry the backlog: queued rows are self-contained (stamped userId), so this
         // crossing's gates don't apply. Excluding the rows just written keeps a failed fresh
         // send on disk for the next trigger instead of re-attempting it on the same network.
         await flushPending(excluding: freshKeys)
+        return !freshKeys.isEmpty
     }
 
     /// Gates, fans out, persists, and sends the crossing's rows over direct HTTP; returns the
@@ -85,12 +134,22 @@ final class GeofenceEventTracker: @unchecked Sendable {
     private func deliverCurrentCrossing(
         geofenceId: String,
         transition: GeofenceTransition,
-        occurredAt: Date
+        occurredAt: Date,
+        dwell: GeofenceDwellContext?,
+        exit: GeofenceExitContext?,
+        expectedUserId: String?
     ) async -> Set<String> {
         // Identified-only: the backend rejects anonymous geofence tracks, so drop before cooldown or
         // persist. Snapshot the userId so a later sign-out/sign-in can't reattribute the row.
         guard let stampedUserId = contextStore.currentUserId, !stampedUserId.isEmpty else {
             logger.geofenceTransitionDroppedAnonymous(geofenceId: geofenceId, transition: transition)
+            return []
+        }
+        // Checked against the same snapshot the row is stamped with. A caller that observed the
+        // crossing, or built its visit context, for one user must not have it delivered as the
+        // next user's after a switch landed during its awaits.
+        if let expectedUserId, expectedUserId != stampedUserId {
+            logger.geofenceTransitionDroppedUserChanged(geofenceId: geofenceId, transition: transition)
             return []
         }
 
@@ -105,7 +164,9 @@ final class GeofenceEventTracker: @unchecked Sendable {
         // an SDK release; constructor default applies otherwise.
         let interval = await storage.getCachedConfig()?.duplicateEventsExpiry ?? cooldownInterval
 
-        if let remaining = await storage.tryAcquireCooldown(key: cooldownKey, now: now, interval: interval) {
+        if transition != .dwell,
+           let remaining = await storage.tryAcquireCooldown(key: cooldownKey, now: now, interval: interval)
+        {
             logger.geofenceEventSuppressed(geofenceId: geofenceId, transition: transition, cooldownRemaining: remaining)
             return []
         }
@@ -122,7 +183,9 @@ final class GeofenceEventTracker: @unchecked Sendable {
         let geosetIds: [String?] = memberGeosetIds.isEmpty ? [nil] : memberGeosetIds
         // One transitionId for the whole crossing so downstream correlates the fan-out as one
         // transition; geosetId distinguishes the rows.
-        let transitionId = UUID().uuidString
+        // A dwell retry belongs to the same continuous visit. Reusing its ID keeps a crash
+        // between outbox persistence and the emitted-state write idempotent downstream.
+        let transitionId = dwell?.visitId ?? UUID().uuidString
         let metrics = geosetIds.map { geosetId in
             PendingGeofenceMetric(
                 geofenceId: geofenceId,
@@ -133,7 +196,13 @@ final class GeofenceEventTracker: @unchecked Sendable {
                 transitionId: transitionId,
                 geosetId: geosetId,
                 // Snapshot as the fallback for an evicted geofence; delivery prefers the live cache.
-                metadata: cachedGeofence?.metadata
+                metadata: cachedGeofence?.metadata,
+                visitId: dwell?.visitId ?? exit?.visitId,
+                enteredAt: dwell?.enteredAt ?? exit?.enteredAt,
+                dwellThresholdSeconds: dwell?.thresholdSeconds,
+                dwellDurationSeconds: dwell?.durationSeconds,
+                visitDurationSeconds: exit?.durationSeconds,
+                detectionSource: dwell?.detectionSource ?? exit?.detectionSource
             )
         }
         // Persist all rows in one atomic write: a per-row loop could save some and lose the rest on
@@ -295,7 +364,13 @@ final class GeofenceEventTracker: @unchecked Sendable {
             transitionId: metric.transitionId,
             userId: metric.userId,
             geosetId: metric.geosetId,
-            metadata: metric.metadata
+            metadata: metric.metadata,
+            visitId: metric.visitId,
+            enteredAt: metric.enteredAt,
+            dwellThresholdSeconds: metric.dwellThresholdSeconds,
+            dwellDurationSeconds: metric.dwellDurationSeconds,
+            visitDurationSeconds: metric.visitDurationSeconds,
+            detectionSource: metric.detectionSource
         ))
         logger.geofenceDeliveryQueued(geofenceId: metric.geofenceId, transition: metric.transition, via: "event_bus")
     }
@@ -309,6 +384,16 @@ final class GeofenceEventTracker: @unchecked Sendable {
 protocol GeofenceTransitionEmitting: Sendable {
     /// See `GeofenceEventTracker.trackTransition(geofenceId:transition:occurredAt:)`.
     func trackTransition(geofenceId: String, transition: GeofenceTransition, occurredAt: Date) async
+    /// Delivers a dwell for one visit. Returns whether its rows were persisted. Dropped when
+    /// `expectedUserId` is set and is no longer the identified user.
+    func trackDwell(
+        geofenceId: String, occurredAt: Date, context: GeofenceDwellContext, expectedUserId: String?
+    ) async -> Bool
+    /// Delivers an exit with its optional visit context. Dropped when `expectedUserId` is set and
+    /// is no longer the identified user.
+    func trackExit(
+        geofenceId: String, occurredAt: Date, context: GeofenceExitContext?, expectedUserId: String?
+    ) async
 }
 
 extension GeofenceEventTracker: GeofenceTransitionEmitting {}

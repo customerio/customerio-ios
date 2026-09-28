@@ -82,7 +82,11 @@ extension GeofenceSyncCoordinatorImpl {
                 // would starve the resolver of the filtered edge — an enter-only polygon would fire
                 // once and never again, an exit-only one never at all. The customer's filter is
                 // applied to the polygon verdict instead.
-                transitionTypes: region.vertices == nil ? region.transitionTypes : [.enter, .exit]
+                transitionTypes: region.vertices == nil
+                    ? (region.dwellThresholdSeconds > 0 || region.transitionTypes.contains(.exit)
+                        ? [.enter, .exit]
+                        : region.transitionTypes.intersection([.enter, .exit]))
+                    : [.enter, .exit]
             )
         })
         let diff = monitor.setMonitoredRegions(desired)

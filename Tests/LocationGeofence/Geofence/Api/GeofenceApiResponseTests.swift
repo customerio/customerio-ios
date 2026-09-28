@@ -198,6 +198,46 @@ struct GeofenceApiResponseTests {
         #expect(region?.name == nil)
         #expect(region?.transitionTypes == [.enter, .exit])
         #expect(region?.lastUpdated == Date(timeIntervalSince1970: 0))
+        #expect(region?.dwellThresholdSeconds == 0)
+    }
+
+    @Test
+    func toDomainRegions_givenDwellThreshold_expectPreserved() throws {
+        let response = try decode(
+            """
+            {"geofences":[{"id":"g1","latitude":1,"longitude":2,"radius":100,"dwell_threshold_seconds":300}]}
+            """
+        )
+
+        #expect(response.toDomainRegions().first?.dwellThresholdSeconds == 300)
+    }
+
+    @Test
+    func toDomainRegions_givenPositiveDwellThresholdBoundaries_expectPreserved() throws {
+        let response = try decode(
+            """
+            {"geofences":[
+              {"id":"low","latitude":1,"longitude":2,"radius":100,"dwell_threshold_seconds":1},
+              {"id":"high","latitude":1,"longitude":2,"radius":100,"dwell_threshold_seconds":\(GeofenceDwellLimits.maxThresholdSeconds)}
+            ]}
+            """
+        )
+
+        #expect(response.toDomainRegions().map(\.dwellThresholdSeconds) == [1, GeofenceDwellLimits.maxThresholdSeconds])
+    }
+
+    @Test
+    func toDomainRegions_givenUnrepresentableDwellThreshold_expectDisabled() throws {
+        let response = try decode(
+            """
+            {"geofences":[
+              {"id":"zero","latitude":1,"longitude":2,"radius":100,"dwell_threshold_seconds":0},
+              {"id":"overflow","latitude":1,"longitude":2,"radius":100,"dwell_threshold_seconds":\(GeofenceDwellLimits.maxThresholdSeconds + 1)}
+            ]}
+            """
+        )
+
+        #expect(response.toDomainRegions().map(\.dwellThresholdSeconds) == [0, 0])
     }
 
     @Test
@@ -210,7 +250,7 @@ struct GeofenceApiResponseTests {
     }
 
     @Test
-    func toDomainRegions_givenAllUnknownTransitionTypes_expectDefaults() throws {
+    func toDomainRegions_givenDwellAndUnknownTransitionTypes_expectDefaults() throws {
         let json = """
         {"geofences":[{"id":"g1","latitude":1,"longitude":2,"radius":100,"transition_types":["dwell","loiter"]}]}
         """
@@ -219,7 +259,7 @@ struct GeofenceApiResponseTests {
     }
 
     @Test
-    func toDomainRegions_givenMixedValidAndUnknownTransitionTypes_expectValidSubset() throws {
+    func toDomainRegions_givenEnterAndDwellTransitionTypes_expectEnterOnly() throws {
         let json = """
         {"geofences":[{"id":"g1","latitude":1,"longitude":2,"radius":100,"transition_types":["enter","dwell"]}]}
         """

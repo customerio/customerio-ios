@@ -52,6 +52,7 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring {
     var onTransition: GeofenceTransitionHandler?
     private var onAuthorizationChanged: GeofenceAuthorizationChangedHandler?
     private var onReconciled: GeofenceReconciledHandler?
+    private var onMonitoringInterrupted: GeofenceMonitoringInterruptedHandler?
     private var lastLoggedPermissionTier: CoreLocationGeofenceMonitor.PermissionTier?
 
     /// In-memory ownership filter, mirrors `ownedRegionIdentifiers` in the classic monitor.
@@ -220,6 +221,7 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring {
                 } catch {
                     self.logger.geofenceMonitorEventStreamFailed(error: error)
                 }
+                self.onMonitoringInterrupted?(nil)
                 // A sequence that ENDS rather than throws took this path in silence, and that is
                 // indistinguishable in a capture from the OS having nothing to report.
                 self.logger.geofenceInfo("event_stream_resubscribing", fields: [("s", String(backoffNanos / 1000000000))])
@@ -360,6 +362,10 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring {
 
     func setOnReconciled(_ handler: GeofenceReconciledHandler?) {
         onReconciled = handler
+    }
+
+    func setOnMonitoringInterrupted(_ handler: GeofenceMonitoringInterruptedHandler?) {
+        onMonitoringInterrupted = handler
     }
 
     func reportPermissionTier() {
