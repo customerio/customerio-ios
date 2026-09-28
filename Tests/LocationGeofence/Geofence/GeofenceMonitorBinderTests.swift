@@ -187,6 +187,83 @@ struct GeofenceMonitorBinderTests {
         withExtendedLifetime(resolver) {}
     }
 
+    /// A due circle visit whose in-process deadline could not run (suspended app) or ran out of
+    /// retries. Stored directly, so no deadline is armed and only a wake can request evidence.
+    private func makeUnarmedDueCircleVisit(
+        storage: GeofenceStorage,
+        contextStore: BackgroundDeliveryContextStore
+    ) async -> GeofenceDwellCoordinator {
+        let dwellCoordinator = GeofenceDwellCoordinator(
+            storage: storage,
+            transitionEmitter: makeTracker(deliveryTracker: makeDeliveryMock()),
+            contextStore: contextStore,
+            logger: LoggerMock(),
+            notificationCenter: NotificationCenter(),
+            freshFixProvider: { Self.insideFix },
+            maxEvidenceRetryAttempts: 0
+        )
+        let geofence = Geofence(
+            id: "business-1", latitude: 0, longitude: 0, radius: 100, name: nil,
+            transitionTypes: [.enter, .exit], lastUpdated: Date(), dwellThresholdSeconds: 60
+        )
+        await storage.setCachedGeofences([geofence])
+        await storage.recordRegistration(center: LocationData(latitude: 0, longitude: 0), businessIds: [geofence.id])
+        let visit = GeofenceDwellVisit(
+            visitId: "visit-1", enteredAt: Date().addingTimeInterval(-600),
+            geometryRevision: geofence.dwellRevision, userId: "user-1", emitted: false
+        )
+        #expect(await storage.saveDwellVisit(visit, geofenceId: geofence.id))
+        return dwellCoordinator
+    }
+
+    /// Any region callback is a wake, and the only chance a due circle visit gets while the app is
+    /// otherwise suspended: it must request the evidence that qualifies the dwell.
+    @Test
+    func bind_givenUnrelatedCrossingWakesTheApp_expectDueCircleVisitRequestsEvidence() async {
+        let monitor = MockGeofenceRegionMonitor()
+        let storage = makeStorage()
+        let contextStore = makeContextStore(userId: "user-1")
+        let dwellCoordinator = await makeUnarmedDueCircleVisit(storage: storage, contextStore: contextStore)
+        let tracker = makeTracker(deliveryTracker: makeDeliveryMock())
+        let resolver = makeResolver(tracker: tracker, storage: storage, contextStore: contextStore)
+        GeofenceMonitorBinder.bind(
+            monitor: monitor, resolver: resolver, coordinator: makeCoordinatorMock(),
+            logger: LoggerMock(), dwellCoordinator: dwellCoordinator
+        )
+
+        monitor.simulateTransition(identifier: "uncached-fence", transition: .enter, location: nil)
+        for _ in 0 ..< 300 where await storage.getDwellVisit(geofenceId: "business-1")?.emitted != true {
+            try? await Task.sleep(nanoseconds: 10000000)
+        }
+
+        #expect(await storage.getDwellVisit(geofenceId: "business-1")?.emitted == true)
+        withExtendedLifetime(resolver) {}
+    }
+
+    /// A CLVisit reports the device stayed somewhere — exactly when a circle dwell is due.
+    @Test
+    func bindVisits_givenVisitWakesTheApp_expectDueCircleVisitRequestsEvidence() async {
+        let visitMonitor = MockGeofenceVisitMonitor()
+        let storage = makeStorage()
+        let contextStore = makeContextStore(userId: "user-1")
+        let dwellCoordinator = await makeUnarmedDueCircleVisit(storage: storage, contextStore: contextStore)
+        let resolver = makeResolver(
+            tracker: makeTracker(deliveryTracker: makeDeliveryMock()), storage: storage, contextStore: contextStore
+        )
+        GeofenceMonitorBinder.bindVisits(
+            visitMonitor: visitMonitor, resolver: resolver, contextStore: contextStore,
+            dwellCoordinator: dwellCoordinator
+        )
+
+        visitMonitor.simulateVisit()
+        for _ in 0 ..< 300 where await storage.getDwellVisit(geofenceId: "business-1")?.emitted != true {
+            try? await Task.sleep(nanoseconds: 10000000)
+        }
+
+        #expect(await storage.getDwellVisit(geofenceId: "business-1")?.emitted == true)
+        withExtendedLifetime(resolver) {}
+    }
+
     @Test
     func bind_givenMonitoringInterruptedWithoutRegion_expectEveryVisitInvalidated() async {
         let monitor = MockGeofenceRegionMonitor()

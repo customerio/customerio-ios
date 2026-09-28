@@ -95,9 +95,25 @@ extension GeofenceSyncCoordinatorImpl {
             removed: diff.removed.count,
             unchanged: registeredIds.count - diff.added.count
         )
+        endDwellContinuity(unregistered: diff.removed)
         return GeofenceOsRegistration(
             registeredIds: registeredIds,
             maxMonitoringRadius: monitor.maximumMonitoringRadius
         )
+    }
+
+    /// A fence the SDK stops monitoring gets no EXIT, so nothing would ever close its visit. Left
+    /// in place, the ENTER synthesized when a later re-rank registers it again would adopt that
+    /// visit, and its dwell and EXIT would report a stay spanning all the time nothing watched the
+    /// fence. Its continuity ends with the registration, as Android's registration incarnation does.
+    @MainActor
+    private func endDwellContinuity(unregistered identifiers: Set<String>) {
+        let geofenceIds = identifiers.subtracting([GeofenceConstants.movementTriggerIdentifier])
+        guard let dwellCoordinator, !geofenceIds.isEmpty else { return }
+        Task {
+            for geofenceId in geofenceIds {
+                await dwellCoordinator.invalidateContinuity(geofenceId: geofenceId)
+            }
+        }
     }
 }

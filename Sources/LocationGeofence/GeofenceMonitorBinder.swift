@@ -26,10 +26,11 @@ enum GeofenceMonitorBinder {
         monitor.setOnMonitoringInterrupted { geofenceId in
             Task { await dwellCoordinator?.invalidateContinuity(geofenceId: geofenceId) }
         }
-        monitor.setOnTransition { [weak resolver, weak coordinator] identifier, transition, location, occurredAt, locationIsFresh, eventCircle in
+        monitor.setOnTransition { [weak resolver, weak coordinator, weak dwellCoordinator] identifier, transition, location, occurredAt, locationIsFresh, eventCircle in
             // CLLocationManager delivers on main; both handlers below are async with their
             // own serialization (tracker active-delivery dedup, coordinator refresh gate),
             // so fire-and-forget Tasks are safe.
+            rearmDwellEvidence(dwellCoordinator)
             if identifier == GeofenceConstants.movementTriggerIdentifier {
                 // EXIT is the only registered transition for the movement trigger; the
                 // guard defends against an unexpected ENTER reaching this dispatch.
@@ -178,12 +179,16 @@ enum GeofenceMonitorBinder {
         visitMonitor: GeofenceVisitMonitoring,
         resolver: PolygonMembershipResolver,
         contextStore: BackgroundDeliveryContextStore,
+        dwellCoordinator: GeofenceDwellCoordinator? = nil,
         backgroundTaskRunner: BackgroundTaskRunner = GeofenceBackgroundTime.runner(name: "io.customer.geofence.visit-pass")
     ) {
-        visitMonitor.setOnVisit { [weak resolver] _ in
+        visitMonitor.setOnVisit { [weak resolver, weak dwellCoordinator] _ in
             // Read synchronously, before the Task: this is also the disarm answer, and it has to
             // be the identity in force at the wake rather than whatever it becomes later.
             guard let expectedUserId = contextStore.currentUserId else { return false }
+            // A visit reports the device stayed somewhere, which is exactly when a circle dwell
+            // that came due during suspension needs its evidence.
+            rearmDwellEvidence(dwellCoordinator)
             Task {
                 // The wake window is short and the pass resolves a fix, which suspends. Without
                 // the assertion a visit landing on a suspended app can lose the pass with no
@@ -209,5 +214,13 @@ enum GeofenceMonitorBinder {
             }
             return true
         }
+    }
+
+    /// A background wake is the only chance a circle deadline gets while the app is suspended;
+    /// see `GeofenceDwellCoordinator.rearmPendingEvidence`. Polygons are left to the resolver's own
+    /// passes. Nonisolated because the OS callbacks calling it are.
+    private nonisolated static func rearmDwellEvidence(_ dwellCoordinator: GeofenceDwellCoordinator?) {
+        guard let dwellCoordinator else { return }
+        Task { await dwellCoordinator.rearmPendingEvidence(includePolygons: false) }
     }
 }

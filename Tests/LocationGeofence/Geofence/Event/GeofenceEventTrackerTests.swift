@@ -129,6 +129,42 @@ struct GeofenceEventTrackerTests {
         #expect(properties?["detectionSource"] as? String == "location_evidence")
     }
 
+    /// Chosen behavior, matching Android: the cooldown dedupes ENTER and EXIT only. A dwell is
+    /// deduped per visit instead, so a re-entry whose ENTER the cooldown suppressed still gets its
+    /// dwell — self-describing through its own `visitId` and `enteredAt` — while that visit's EXIT
+    /// inside the window stays suppressed exactly as it was before dwell existed.
+    @Test
+    func trackDwell_givenReentryEnterSuppressedByCooldown_expectDwellStillDeliveredAndExitStillSuppressed() async {
+        let dir = makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let delivery = GeofenceDeliveryTrackerMock()
+        delivery.trackMetricClosure = { _, _, onComplete in onComplete(.success(())) }
+        let tracker = makeTracker(
+            storage: makeStorage(directory: dir),
+            pendingStore: makePendingStore(directory: dir),
+            deliveryTracker: delivery,
+            contextStore: makeContextStore(userId: "user_42")
+        )
+
+        await tracker.trackTransition(geofenceId: "geo_1", transition: .enter, occurredAt: crossedAt)
+        await tracker.trackExit(geofenceId: "geo_1", occurredAt: crossedAt.addingTimeInterval(300), expectedUserId: nil)
+        await tracker.trackTransition(geofenceId: "geo_1", transition: .enter, occurredAt: crossedAt.addingTimeInterval(600))
+        let persisted = await tracker.trackDwell(
+            geofenceId: "geo_1",
+            occurredAt: crossedAt.addingTimeInterval(1200),
+            context: GeofenceDwellContext(
+                visitId: "visit-2", enteredAt: crossedAt.addingTimeInterval(600), thresholdSeconds: 600,
+                durationSeconds: 600, detectionSource: "location_evidence"
+            ),
+            expectedUserId: "user_42"
+        )
+        await tracker.trackExit(geofenceId: "geo_1", occurredAt: crossedAt.addingTimeInterval(3000), expectedUserId: nil)
+
+        #expect(persisted)
+        #expect(delivery.trackMetricReceivedInvocations.map(\.metric.transition) == [.enter, .exit, .dwell])
+        #expect(delivery.trackMetricReceivedInvocations.last?.metric.visitId == "visit-2")
+    }
+
     @Test
     func trackExit_givenUserChangedSinceTheVisitWasRead_expectNothingDeliveredOrQueued() async {
         let dir = makeTempDirectory()

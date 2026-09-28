@@ -87,9 +87,12 @@ struct Geofence: Codable, Equatable, Sendable {
         return osTransitionTypes.subtracting(transitionTypes)
     }
 
+    /// What a visit is measured against: the shape and the threshold, nothing else. `lastUpdated`
+    /// is deliberately left out — the backend bumps it for a name, metadata or geoset edit too, and
+    /// a refresh carrying one must not end a live visit. Matches Android's `transitionRevision`.
     var dwellRevision: String {
         let ring = vertices?.map { "\($0.latitude),\($0.longitude)" }.joined(separator: ";") ?? "circle"
-        return "\(id)|\(latitude)|\(longitude)|\(radius)|\(lastUpdated.timeIntervalSince1970)|\(ring)|\(dwellThresholdSeconds)"
+        return "\(id)|\(latitude)|\(longitude)|\(radius)|\(ring)|\(dwellThresholdSeconds)"
     }
 
     /// Custom decode so geofences cached by SDK versions predating `geosetIds` / `metadata` still
