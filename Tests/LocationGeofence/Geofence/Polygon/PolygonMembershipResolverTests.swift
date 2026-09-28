@@ -34,6 +34,8 @@ struct PolygonMembershipResolverTests {
 
         private(set) var delivered: [Delivered] = []
         private(set) var exits: [Exit] = []
+        /// The dwell payload exactly as the tracker receives it.
+        private(set) var dwellContexts: [GeofenceDwellContext] = []
 
         func trackTransition(geofenceId: String, transition: GeofenceTransition, occurredAt: Date) async {
             delivered.append(Delivered(id: geofenceId, transition: transition, occurredAt: occurredAt))
@@ -43,6 +45,7 @@ struct PolygonMembershipResolverTests {
             geofenceId: String, occurredAt: Date, context: GeofenceDwellContext, expectedUserId: String?
         ) async -> Bool {
             delivered.append(Delivered(id: geofenceId, transition: .dwell, occurredAt: occurredAt))
+            dwellContexts.append(context)
             return true
         }
 
@@ -51,6 +54,10 @@ struct PolygonMembershipResolverTests {
         ) async {
             delivered.append(Delivered(id: geofenceId, transition: .exit, occurredAt: occurredAt))
             exits.append(Exit(expectedUserId: expectedUserId, context: context))
+        }
+
+        func dwellContextSnapshot() -> [GeofenceDwellContext] {
+            dwellContexts
         }
 
         func exitSnapshot() -> [Exit] {
@@ -1854,6 +1861,65 @@ struct PolygonMembershipResolverTests {
         #expect(visit?.entryObserved == true)
         #expect(visit?.dwellReservation?.enteredAt == entry)
         #expect(visit?.dwellReservation?.durationSeconds == 120)
+        let payload = await setup.emitter.dwellContextSnapshot()
+        #expect(payload.map(\.enteredAt) == [entry])
+        #expect(payload.map(\.durationSeconds) == [120])
+    }
+
+    /// An outside belief for the same ring, but proven hours before the arrival: the crossing
+    /// happened somewhere in those hours, not at the inside fix. The ENTER is still delivered and
+    /// the stay still qualifies a DWELL, but the payload the tracker receives carries no
+    /// `enteredAt` or duration — the stale proof must not date the entry to the inside fix.
+    @Test
+    func apply_givenStaleOutsideThenInsideOnTheSameRing_expectEnterAndDwellWithoutEnteredAtOrDuration() async {
+        let setup = await makeSetup(fix: nil, withDwellCoordinator: true)
+        let geofence = polygonGeofence(dwellThresholdSeconds: 60)
+        await setup.storage.setCachedGeofences([geofence])
+        let entry = Date(timeIntervalSince1970: 100000)
+
+        await setup.resolver.apply(
+            .outside, to: geofence, evidence: entry.addingTimeInterval(-3 * 60 * 60), confirmedByFix: true
+        )
+        await setup.resolver.apply(.inside, to: geofence, evidence: entry, confirmedByFix: true)
+        await setup.resolver.apply(
+            .inside, to: geofence, evidence: entry.addingTimeInterval(120), confirmedByFix: true
+        )
+
+        #expect(await setup.emitter.snapshot().map(\.transition) == [.enter, .dwell])
+        #expect(await setup.emitter.snapshot().first?.occurredAt == entry)
+        let visit = await setup.storage.getDwellVisit(geofenceId: geofence.id)
+        #expect(visit?.entryObserved == false)
+        let payload = await setup.emitter.dwellContextSnapshot()
+        #expect(payload.count == 1)
+        #expect(payload.first?.enteredAt == nil)
+        #expect(payload.first?.durationSeconds == nil)
+        #expect(payload.first?.thresholdSeconds == 60)
+    }
+
+    /// The stale proof re-established just before the arrival — a later outside fix confirming the
+    /// held belief — makes the entry observed again, and its payload is dated from the inside fix.
+    @Test
+    func apply_givenStaleOutsideReconfirmedBeforeInside_expectDwellCarriesObservedEntryAndDuration() async {
+        let setup = await makeSetup(fix: nil, withDwellCoordinator: true)
+        let geofence = polygonGeofence(dwellThresholdSeconds: 60)
+        await setup.storage.setCachedGeofences([geofence])
+        let entry = Date(timeIntervalSince1970: 100000)
+
+        await setup.resolver.apply(
+            .outside, to: geofence, evidence: entry.addingTimeInterval(-3 * 60 * 60), confirmedByFix: true
+        )
+        await setup.resolver.apply(
+            .outside, to: geofence, evidence: entry.addingTimeInterval(-15), confirmedByFix: true
+        )
+        await setup.resolver.apply(.inside, to: geofence, evidence: entry, confirmedByFix: true)
+        await setup.resolver.apply(
+            .inside, to: geofence, evidence: entry.addingTimeInterval(120), confirmedByFix: true
+        )
+
+        #expect(await setup.emitter.snapshot().map(\.transition) == [.enter, .dwell])
+        let payload = await setup.emitter.dwellContextSnapshot()
+        #expect(payload.map(\.enteredAt) == [entry])
+        #expect(payload.map(\.durationSeconds) == [120])
     }
 
     // MARK: - Transition-type filter
