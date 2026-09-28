@@ -14,7 +14,9 @@ extension GeofenceStorage {
     /// while a first fix placing it outside simply establishes the belief. That enter is
     /// `.discoveredInside`, not `.deliver(.enter)`: the device was never seen outside, so the stay
     /// was already in progress and its start is unknown. Only an `outside` belief stamped with the
-    /// same ring makes inside an observed crossing. Because the record survives re-registration, a
+    /// same ring and proven within `polygonOutsideProofMaxAge` before the inside evidence makes
+    /// inside an observed crossing; an older one still flips the belief and delivers the ENTER, as
+    /// `.discoveredInside`. Because the record survives re-registration, a
     /// wholesale re-register stays silent without needing a diff.
     ///
     /// `onlyIfBeliefPredates` makes the write conditional on the belief's age, atomically with the
@@ -106,14 +108,31 @@ extension GeofenceStorage {
         state.polygonMembership = records
         saveToDisk(state)
         guard membership == .inside else { return .deliver(.exit) }
-        return Self.observesEntry(from: existing, currentRing: currentRing) ? .deliver(.enter) : .discoveredInside
+        let observed = Self.observesEntry(
+            from: existing, provenAt: existingStamp, insideAt: evidenceTimestamp, currentRing: currentRing
+        )
+        return observed ? .deliver(.enter) : .discoveredInside
     }
 
     /// Whether `outside` → inside is an observed crossing: only when the outside belief was formed
-    /// against the ring the inside verdict is judged by.
-    private static func observesEntry(from outside: PolygonMembershipRecord, currentRing: [LocationData]?) -> Bool {
-        guard let ring = outside.ring else { return false }
-        return ring == currentRing
+    /// against the ring the inside verdict is judged by, AND was last proven shortly before it.
+    ///
+    /// The time bound is what makes the entry's date meaningful. An outside belief from hours ago
+    /// says the crossing happened at some point since, not that it happened at the inside fix, so
+    /// reporting that fix as `entered_at` would be a guess. Every unknown fails closed: no inside
+    /// evidence time, a stored stamp discarded as future (`provenAt` is then `distantPast`), or
+    /// proof not strictly older than the inside fix. Records written by earlier builds carry
+    /// whatever stamp they held — at worst the last change rather than the last confirmation,
+    /// which is older, so it can only demote an entry, never promote one.
+    private static func observesEntry(
+        from outside: PolygonMembershipRecord,
+        provenAt: Date?,
+        insideAt: Date?,
+        currentRing: [LocationData]?
+    ) -> Bool {
+        guard let ring = outside.ring, ring == currentRing else { return false }
+        guard let provenAt, let insideAt, provenAt < insideAt else { return false }
+        return insideAt.timeIntervalSince(provenAt) <= GeofenceConstants.polygonOutsideProofMaxAge
     }
 
     private static func matchesEvaluatedGeometry(

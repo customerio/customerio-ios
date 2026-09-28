@@ -80,4 +80,10 @@ enum GeofenceConstants {
     /// Floor on the movement trigger's radius once polygons shrink it: below this the OS promotes
     /// crossings too unreliably to be worth a wake, so a nearer boundary is reached late.
     static let polygonWakeMinRadius: Double = 100
+
+    /// How long an `outside` polygon belief may precede the inside verdict it vouches for as an
+    /// observed crossing. The crossing happened somewhere in that gap, so it bounds how early the
+    /// real entry could be; an older proof leaves the entry time honestly unknown. Matches Android's
+    /// `MAX_OUTSIDE_PROOF_AGE_MS`.
+    static let polygonOutsideProofMaxAge: TimeInterval = 2 * 60
 }

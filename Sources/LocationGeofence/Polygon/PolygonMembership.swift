@@ -42,8 +42,9 @@ enum PolygonMembershipOutcome: Equatable {
     /// Membership changed; the caller delivers this transition, subject to the geofence's own
     /// transition-type filter.
     case deliver(GeofenceTransition)
-    /// The belief moved to inside with no outside belief for the same ring before it: the first
-    /// decision for this polygon, or the first after its ring was replaced. The caller still
+    /// The belief moved to inside with no recent outside belief for the same ring before it: the
+    /// first decision for this polygon, the first after its ring was replaced, or one whose outside
+    /// proof is older than `GeofenceConstants.polygonOutsideProofMaxAge`. The caller still
     /// delivers an ENTER (enter-when-inside), but no crossing was observed, so the stay it begins
     /// has no known start and must not report `entered_at` or a visit duration.
     case discoveredInside
