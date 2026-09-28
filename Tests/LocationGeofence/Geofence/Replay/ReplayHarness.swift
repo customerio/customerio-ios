@@ -295,10 +295,12 @@ final class ReplayHarness {
             contextStore: contextStore
         )
 
-        // Everything `GeofenceBootstrap` resolves — plus `DateUtil`, which it does not read today
-        // and which would answer with the wall clock if a later change made it. The
-        // adopt-vs-re-register decision and the two re-run handlers are its work alone; see
-        // `wireMonitor()`.
+        overrideBootstrapDependencies()
+    }
+
+    /// Everything `GeofenceBootstrap` resolves, plus the replay clock. Keeping these overrides
+    /// together ensures a new process uses this composition's stores, handlers and dwell visits.
+    private func overrideBootstrapDependencies() {
         di.override(value: logger as Logger, forType: Logger.self)
         di.override(value: clock as DateUtil, forType: DateUtil.self)
         di.override(value: storage, forType: GeofenceStorage.self)
