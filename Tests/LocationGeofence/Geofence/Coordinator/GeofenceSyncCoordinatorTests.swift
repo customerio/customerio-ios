@@ -3269,6 +3269,42 @@ struct GeofenceSyncCoordinatorTests {
         #expect(await storage.getDwellVisit(geofenceId: "kept")?.visitId == "visit-kept")
     }
 
+    /// The post-refresh polygon pass runs on the resolver the coordinator was given. Read from
+    /// `DIGraphShared.shared` instead, a replay drive built the production resolver — and with it a
+    /// production dwell coordinator — mid-drive and ran the pass against the process-wide graph.
+    @Test
+    func refresh_expectPostRefreshPolygonPassUsesTheInjectedResolver() async {
+        let storage = makeStorage()
+        let contextStore = makeContextStore()
+        let emitter = TransitionEmitterSpy()
+        let resolver = PolygonMembershipResolver(
+            storage: storage, transitionEmitter: emitter, logger: LoggerMock(), contextStore: contextStore,
+            fixResolver: MovementFixResolver(logger: LoggerMock()), notificationCenter: NotificationCenter()
+        )
+        let requested = Synchronized<Int>(0)
+        let api = GeofenceApiServiceMock()
+        api.fetchNearbyGeofencesClosure = { _, _, completion in
+            completion(.success(makeApiResponse(regions: [makeRegion(id: "g1", latitude: 1.0, longitude: 2.0)])))
+        }
+        let dateUtil = DateUtilStub()
+        await storage.recordSync(
+            timestamp: dateUtil.givenNow.addingTimeInterval(-25 * 60 * 60), location: LocationData(latitude: 0, longitude: 0)
+        )
+        let coordinator = GeofenceSyncCoordinatorImpl(
+            apiService: api, storage: storage, monitor: MockGeofenceRegionMonitor(), contextStore: contextStore,
+            transitionEmitter: emitter,
+            polygonResolver: {
+                requested.mutating { $0 += 1 }
+                return resolver
+            },
+            dateUtil: dateUtil, logger: LoggerMock()
+        )
+
+        _ = await coordinator.refresh(latitude: 1.0, longitude: 2.0, anchorIsLiveFix: true)
+
+        #expect(await settleOnMain(timeout: 5) { requested.wrappedValue >= 1 })
+    }
+
     /// `makeCoordinator` is typed to `TransitionEmitterSpy`; this wires the stalling emitter instead.
     /// Storage and identity come from `dwellCoordinator`, so all three share one store.
     private func makeStallingEnterCoordinator(

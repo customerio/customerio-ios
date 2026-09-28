@@ -86,11 +86,11 @@ extension GeofenceSyncCoordinatorImpl {
     /// resolver delivered, which the held fix has just advanced, so the second request answers
     /// nothing and every polygon in the pass records `no_usable_fix`.
     func evaluatePolygonsAfterMovement(expectedUserId: String, heldFix: ResolvedFix? = nil) {
-        Task { @MainActor [contextStore] in
+        Task { @MainActor [contextStore, polygonResolver] in
             guard contextStore.currentUserId == expectedUserId else { return }
             // Re-checked inside, after the fix resolves and again before the emit: a forced-fresh
             // request is the longest await in the feature, and the polygon set was read before it.
-            await DIGraphShared.shared.polygonMembershipResolver.evaluateAllPolygons(
+            await polygonResolver().evaluateAllPolygons(
                 reason: .movement,
                 requiresFreshFix: true,
                 heldFix: heldFix,
@@ -100,11 +100,11 @@ extension GeofenceSyncCoordinatorImpl {
     }
 
     private func evaluateNewPolygons(_ polygons: [Geofence], expectedUserId: String) {
-        Task { @MainActor [contextStore] in
+        Task { @MainActor [contextStore, polygonResolver] in
             guard contextStore.currentUserId == expectedUserId else { return }
             // Also re-checked inside, per polygon, after the fix resolves: that await is the window
             // where a user switch would otherwise land an event on the wrong profile.
-            await DIGraphShared.shared.polygonMembershipResolver.evaluateNewlyRegistered(
+            await polygonResolver().evaluateNewlyRegistered(
                 geofenceIds: polygons.map(\.id),
                 isStillCurrent: { contextStore.currentUserId == expectedUserId }
             )

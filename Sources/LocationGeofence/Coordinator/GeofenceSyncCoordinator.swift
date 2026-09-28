@@ -74,6 +74,11 @@ final class GeofenceSyncCoordinatorImpl: GeofenceSyncCoordinator, @unchecked Sen
     let transitionEmitter: GeofenceTransitionEmitting
     let contextStore: BackgroundDeliveryContextStore
     let dwellCoordinator: GeofenceDwellCoordinator?
+    /// The resolver the post-refresh polygon passes run on. Injected, not read from
+    /// `DIGraphShared.shared` at the call: a composition with its own resolver (replay) otherwise
+    /// had every such pass — and, through the singleton's construction, a production dwell
+    /// coordinator — run against the process-wide graph mid-drive.
+    let polygonResolver: @MainActor @Sendable () -> PolygonMembershipResolver
     // `internal`, not `private`, only because the gate helpers live in a split extension file.
     let refreshInProgress = Synchronized<Bool>(false)
 
@@ -109,6 +114,9 @@ final class GeofenceSyncCoordinatorImpl: GeofenceSyncCoordinator, @unchecked Sen
         contextStore: BackgroundDeliveryContextStore,
         transitionEmitter: GeofenceTransitionEmitting,
         dwellCoordinator: GeofenceDwellCoordinator? = nil,
+        polygonResolver: @escaping @MainActor @Sendable () -> PolygonMembershipResolver = {
+            DIGraphShared.shared.polygonMembershipResolver
+        },
         distanceFilter: GeofenceDistanceFilter = GeofenceDistanceFilter(),
         dateUtil: DateUtil,
         logger: Logger
@@ -119,6 +127,7 @@ final class GeofenceSyncCoordinatorImpl: GeofenceSyncCoordinator, @unchecked Sen
         self.contextStore = contextStore
         self.transitionEmitter = transitionEmitter
         self.dwellCoordinator = dwellCoordinator
+        self.polygonResolver = polygonResolver
         self.distanceFilter = distanceFilter
         self.dateUtil = dateUtil
         self.logger = logger

@@ -260,6 +260,7 @@ final class ReplayHarness {
 
         monitor = makeMonitor()
 
+        let polygonResolver: PolygonMembershipResolver = resolver
         coordinator = GeofenceSyncCoordinatorImpl(
             apiService: api,
             storage: storage,
@@ -267,6 +268,8 @@ final class ReplayHarness {
             contextStore: contextStore,
             transitionEmitter: tracker,
             dwellCoordinator: dwellCoordinator,
+            // The post-refresh polygon passes run here too, not on the process-wide singleton.
+            polygonResolver: { polygonResolver },
             dateUtil: clock,
             logger: logger
         )
