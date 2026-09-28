@@ -32,7 +32,7 @@ extension GeofenceSyncCoordinatorImpl {
         let newPolygons = newlyRegistered.filter { $0.vertices != nil }
         let newInside = newlyRegistered.filter { region in
             region.vertices == nil
-                && region.transitionTypes.contains(.enter)
+                && (region.transitionTypes.contains(.enter) || region.dwellThresholdSeconds > 0)
                 && region.distanceTo(anchor) <= min(region.radius, osRegistration.maxMonitoringRadius)
         }
         if !newPolygons.isEmpty {
@@ -46,19 +46,31 @@ extension GeofenceSyncCoordinatorImpl {
         // the Task because `DateUtil` is a non-Sendable protocol with a non-final implementation,
         // and the Swift 5 language mode does not diagnose capturing one into a @Sendable closure.
         let discoveredAt = dateUtil.now
-        Task { [transitionEmitter, contextStore, logger] in
+        // Not main-actor bound, as before dwell: the ENTER must not queue behind main-actor work, a
+        // sign-out included. Only the visit bookkeeping hops, in a child that runs alongside the
+        // emit: awaited after it, a stalled send left the visit unwritten past a real EXIT.
+        Task { [transitionEmitter, contextStore, logger, dwellCoordinator] in
             for region in newInside {
                 // Re-check per iteration: the diff was computed for `expectedUserId`, and each awaited
                 // send can span a sign-out/switch that the tracker would otherwise stamp to whoever is
                 // current — so stop the batch the moment identity changes.
                 guard contextStore.currentUserId == expectedUserId else { return }
-                // Marked before the emit: downstream this is an ordinary crossing, so without a
-                // record here nothing distinguishes an enter the SDK invented from one the person
-                // drove through.
-                logger.geofenceTransitionSynthesized(geofenceId: region.id, transition: .enter)
-                await transitionEmitter.trackTransition(
-                    geofenceId: region.id, transition: .enter, occurredAt: discoveredAt
+                async let visitRecorded: Void? = dwellCoordinator?.handleBoundary(
+                    geofence: region,
+                    transition: .enter,
+                    occurredAt: discoveredAt,
+                    expectedUserId: expectedUserId
                 )
+                if region.transitionTypes.contains(.enter) {
+                    // Marked before the emit: downstream this is an ordinary crossing, so without a
+                    // record here nothing distinguishes an enter the SDK invented from one the person
+                    // drove through.
+                    logger.geofenceTransitionSynthesized(geofenceId: region.id, transition: .enter)
+                    await transitionEmitter.trackTransition(
+                        geofenceId: region.id, transition: .enter, occurredAt: discoveredAt
+                    )
+                }
+                _ = await visitRecorded
             }
         }
     }

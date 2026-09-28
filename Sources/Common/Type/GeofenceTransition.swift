@@ -15,5 +15,6 @@ import Foundation
 /// `CaseIterable` is here to let the raw-value pin test do it.
 public enum GeofenceTransition: String, Codable, Sendable, CaseIterable {
     case enter
+    case dwell
     case exit
 }

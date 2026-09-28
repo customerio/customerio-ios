@@ -1,6 +1,11 @@
 import CioInternalCommon
 import Foundation
 
+enum GeofenceDwellLimits {
+    /// Shared with Android: GMS represents loitering delay as signed 32-bit milliseconds.
+    static let maxThresholdSeconds = Int(Int32.max) / 1000
+}
+
 /// A geofence region returned by the server.
 struct Geofence: Codable, Equatable, Sendable {
     let id: String
@@ -25,6 +30,8 @@ struct Geofence: Codable, Equatable, Sendable {
     /// server-guaranteed covering circle — the shape registered at the OS as the wake trigger —
     /// and membership decisions come from the polygon, never the circle.
     let vertices: [LocationData]?
+    /// Seconds required inside for one dwell event per visit. Zero disables dwell.
+    let dwellThresholdSeconds: Int
 
     init(
         id: String,
@@ -36,7 +43,8 @@ struct Geofence: Codable, Equatable, Sendable {
         lastUpdated: Date,
         geosetIds: [String] = [],
         metadata: [String: GeofenceMetadataValue] = [:],
-        vertices: [LocationData]? = nil
+        vertices: [LocationData]? = nil,
+        dwellThresholdSeconds: Int = 0
     ) {
         self.id = id
         self.latitude = latitude
@@ -48,6 +56,7 @@ struct Geofence: Codable, Equatable, Sendable {
         self.geosetIds = geosetIds
         self.metadata = metadata
         self.vertices = vertices
+        self.dwellThresholdSeconds = dwellThresholdSeconds
     }
 
     /// Geometry kernel for a polygon geofence. Built on demand — callers on a hot path should hold
@@ -58,6 +67,29 @@ struct Geofence: Codable, Equatable, Sendable {
     /// tightens, since cached rings decode without re-validation.
     var polygonRegion: PolygonRegion? {
         vertices.flatMap(PolygonRegion.init(vertices:))
+    }
+
+    /// The edges registered with the OS. A circle that tracks a visit needs both — ENTER starts the
+    /// visit, EXIT ends it — whatever the customer configured. A polygon's covering circle is
+    /// machinery and always reports both, so membership can advance; its filter applies to the
+    /// verdict instead.
+    var osTransitionTypes: Set<GeofenceTransition> {
+        guard vertices == nil else { return [.enter, .exit] }
+        return dwellThresholdSeconds > 0
+            ? [.enter, .exit]
+            : transitionTypes.intersection([.enter, .exit])
+    }
+
+    /// A circle's OS edges registered only for visit bookkeeping, which the customer never
+    /// configured and must never receive. Empty for a polygon, whose OS edges are never its events.
+    var unconfiguredOsTransitions: Set<GeofenceTransition> {
+        guard vertices == nil else { return [] }
+        return osTransitionTypes.subtracting(transitionTypes)
+    }
+
+    var dwellRevision: String {
+        let ring = vertices?.map { "\($0.latitude),\($0.longitude)" }.joined(separator: ";") ?? "circle"
+        return "\(id)|\(latitude)|\(longitude)|\(radius)|\(lastUpdated.timeIntervalSince1970)|\(ring)|\(dwellThresholdSeconds)"
     }
 
     /// Custom decode so geofences cached by SDK versions predating `geosetIds` / `metadata` still
@@ -75,5 +107,6 @@ struct Geofence: Codable, Equatable, Sendable {
         self.geosetIds = try container.decodeIfPresent([String].self, forKey: .geosetIds) ?? []
         self.metadata = try container.decodeIfPresent([String: GeofenceMetadataValue].self, forKey: .metadata) ?? [:]
         self.vertices = try container.decodeIfPresent([LocationData].self, forKey: .vertices)
+        self.dwellThresholdSeconds = try container.decodeIfPresent(Int.self, forKey: .dwellThresholdSeconds) ?? 0
     }
 }

@@ -27,6 +27,38 @@ struct GeofenceState: Codable, Equatable, Sendable {
     /// `nil` on the classic CLLocationManager path, which needs neither: its delegate fires only on
     /// real crossings (no dedup needed) and filters transition types at the OS level.
     var monitorRegionRecords: [String: MonitorRegionRecord]?
+    /// One durable continuous visit per fence. Cleared on exit, user change, or geometry change.
+    var dwellVisits: [String: GeofenceDwellVisit]?
+    /// Per circle, the OS edges registered only for visit bookkeeping (see
+    /// `Geofence.unconfiguredOsTransitions`). Outlives the fence's cache entry, which is the point:
+    /// an OS callback for a fence the cache has dropped carries no configuration of its own.
+    var unconfiguredOsTransitions: [String: Set<GeofenceTransition>]?
+}
+
+struct GeofenceDwellVisit: Codable, Equatable, Sendable {
+    let visitId: String
+    let enteredAt: Date
+    let geometryRevision: String
+    let userId: String
+    var emitted: Bool
+    /// False for a candidate started from mid-visit inside evidence after continuity was lost: it
+    /// can still support a best-effort dwell, but its start is not an entry, so the dwell reports
+    /// neither `enteredAt` nor a duration.
+    var entryObserved = true
+}
+
+extension GeofenceDwellVisit {
+    /// Custom decode so visits persisted before `entryObserved` still decode; those were only ever
+    /// started from an observed entry.
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.visitId = try container.decode(String.self, forKey: .visitId)
+        self.enteredAt = try container.decode(Date.self, forKey: .enteredAt)
+        self.geometryRevision = try container.decode(String.self, forKey: .geometryRevision)
+        self.userId = try container.decode(String.self, forKey: .userId)
+        self.emitted = try container.decode(Bool.self, forKey: .emitted)
+        self.entryObserved = try container.decodeIfPresent(Bool.self, forKey: .entryObserved) ?? true
+    }
 }
 
 /// Bookkeeping the CLMonitor (iOS 17+) monitor keeps per registered condition.

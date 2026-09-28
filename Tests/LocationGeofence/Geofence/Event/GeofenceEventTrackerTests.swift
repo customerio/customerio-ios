@@ -90,6 +90,99 @@ struct GeofenceEventTrackerTests {
     }
 
     @Test
+    func trackDwellGivenVisitAddsDwellPropertiesAndReusesVisitIdAsTransitionId() async {
+        let dir = makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let pending = makePendingStore(directory: dir)
+        let delivery = GeofenceDeliveryTrackerMock()
+        delivery.trackMetricClosure = { _, _, onComplete in onComplete(.success(())) }
+        let tracker = makeTracker(
+            storage: makeStorage(directory: dir),
+            pendingStore: pending,
+            deliveryTracker: delivery,
+            contextStore: makeContextStore(userId: "user_42")
+        )
+        let enteredAt = crossedAt.addingTimeInterval(-75)
+
+        let persisted = await tracker.trackDwell(
+            geofenceId: "geo_1",
+            occurredAt: crossedAt,
+            context: GeofenceDwellContext(
+                visitId: "visit-1",
+                enteredAt: enteredAt,
+                thresholdSeconds: 60,
+                durationSeconds: 75,
+                detectionSource: "location_evidence"
+            ),
+            expectedUserId: "user_42"
+        )
+
+        let metric = delivery.trackMetricReceivedArguments?.metric
+        let properties = metric?.trackEventProperties
+        #expect(persisted)
+        #expect(metric?.transition == .dwell)
+        #expect(metric?.transitionId == "visit-1")
+        #expect(properties?["visitId"] as? String == "visit-1")
+        #expect(properties?["enteredAt"] as? Int == Int(enteredAt.timeIntervalSince1970))
+        #expect(properties?["dwellThresholdSeconds"] as? Int == 60)
+        #expect(properties?["dwellDurationSeconds"] as? Int == 75)
+        #expect(properties?["detectionSource"] as? String == "location_evidence")
+    }
+
+    @Test
+    func trackExit_givenUserChangedSinceTheVisitWasRead_expectNothingDeliveredOrQueued() async {
+        let dir = makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let pending = makePendingStore(directory: dir)
+        let delivery = GeofenceDeliveryTrackerMock()
+        delivery.trackMetricClosure = { _, _, onComplete in onComplete(.success(())) }
+        let tracker = makeTracker(
+            storage: makeStorage(directory: dir),
+            pendingStore: pending,
+            deliveryTracker: delivery,
+            contextStore: makeContextStore(userId: "user_B")
+        )
+
+        // user_A's crossing, reaching the tracker after user_B signed in.
+        await tracker.trackExit(geofenceId: "geo_1", occurredAt: crossedAt, expectedUserId: "user_A")
+
+        #expect(delivery.trackMetricCallsCount == 0)
+        #expect(await pending.rows().isEmpty)
+    }
+
+    @Test
+    func trackDwell_givenUserChangedSinceTheVisitWasRead_expectNotPersisted() async {
+        let dir = makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let pending = makePendingStore(directory: dir)
+        let delivery = GeofenceDeliveryTrackerMock()
+        delivery.trackMetricClosure = { _, _, onComplete in onComplete(.success(())) }
+        let tracker = makeTracker(
+            storage: makeStorage(directory: dir),
+            pendingStore: pending,
+            deliveryTracker: delivery,
+            contextStore: makeContextStore(userId: "user_B")
+        )
+
+        let persisted = await tracker.trackDwell(
+            geofenceId: "geo_1",
+            occurredAt: crossedAt,
+            context: GeofenceDwellContext(
+                visitId: "visit-of-A",
+                enteredAt: crossedAt.addingTimeInterval(-61),
+                thresholdSeconds: 60,
+                durationSeconds: 61,
+                detectionSource: "location_evidence"
+            ),
+            expectedUserId: "user_A"
+        )
+
+        #expect(!persisted)
+        #expect(delivery.trackMetricCallsCount == 0)
+        #expect(await pending.rows().isEmpty)
+    }
+
+    @Test
     func trackTransition_givenDeliveryFailure_expectQueueRetainedNoEventBus() async {
         let dir = makeTempDirectory()
         defer { try? FileManager.default.removeItem(at: dir) }

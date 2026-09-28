@@ -21,6 +21,11 @@ struct PendingGeofenceMetric: Codable, Equatable, Sendable, GeofenceMetric {
     /// Snapshot of the geofence's metadata at transition, the fallback when the geofence isn't in
     /// cache at send. Optional so rows persisted before metadata still decode.
     let metadata: [String: GeofenceMetadataValue]?
+    let visitId: String?
+    let enteredAt: Date?
+    let dwellThresholdSeconds: Int?
+    let dwellDurationSeconds: Int?
+    let detectionSource: String?
 
     /// Composite key over `(geofenceId, transition, timestamp_sec, userId, geosetId)` used for
     /// storage-layer dedup. Seconds (not ms) — the cooldown gate dedups by
@@ -60,7 +65,12 @@ struct PendingGeofenceMetric: Codable, Equatable, Sendable, GeofenceMetric {
         name: String?,
         transitionId: String,
         geosetId: String? = nil,
-        metadata: [String: GeofenceMetadataValue]? = nil
+        metadata: [String: GeofenceMetadataValue]? = nil,
+        visitId: String? = nil,
+        enteredAt: Date? = nil,
+        dwellThresholdSeconds: Int? = nil,
+        dwellDurationSeconds: Int? = nil,
+        detectionSource: String? = nil
     ) {
         self.geofenceId = geofenceId
         self.transition = transition
@@ -70,6 +80,11 @@ struct PendingGeofenceMetric: Codable, Equatable, Sendable, GeofenceMetric {
         self.transitionId = transitionId
         self.geosetId = geosetId
         self.metadata = metadata
+        self.visitId = visitId
+        self.enteredAt = enteredAt
+        self.dwellThresholdSeconds = dwellThresholdSeconds
+        self.dwellDurationSeconds = dwellDurationSeconds
+        self.detectionSource = detectionSource
     }
 
     enum CodingKeys: String, CodingKey {
@@ -81,6 +96,11 @@ struct PendingGeofenceMetric: Codable, Equatable, Sendable, GeofenceMetric {
         case transitionId = "transition_id"
         case geosetId = "geoset_id"
         case metadata
+        case visitId = "visit_id"
+        case enteredAt = "entered_at"
+        case dwellThresholdSeconds = "dwell_threshold_seconds"
+        case dwellDurationSeconds = "dwell_duration_seconds"
+        case detectionSource = "detection_source"
     }
 
     /// Returns a copy with `name`/`metadata` replaced (used to prefer live cached values at send).
@@ -94,7 +114,12 @@ struct PendingGeofenceMetric: Codable, Equatable, Sendable, GeofenceMetric {
             name: name,
             transitionId: transitionId,
             geosetId: geosetId,
-            metadata: metadata
+            metadata: metadata,
+            visitId: visitId,
+            enteredAt: enteredAt,
+            dwellThresholdSeconds: dwellThresholdSeconds,
+            dwellDurationSeconds: dwellDurationSeconds,
+            detectionSource: detectionSource
         )
     }
 }

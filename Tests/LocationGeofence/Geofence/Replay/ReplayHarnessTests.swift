@@ -28,9 +28,10 @@ struct ReplayHarnessTests {
     private static let arrivalAt: TimeInterval = 30
 
     /// One fence, as the API would return it.
-    private func catalogue(_ fenceId: String) -> String {
-        """
-        [{"id":"\(fenceId)","name":"F","latitude":\(Self.latitude),"longitude":\(Self.longitude),"radius":250,"transitionTypes":["enter","exit"],"geosetIds":["7"]}]
+    private func catalogue(_ fenceId: String, dwellThresholdSeconds: Int? = nil) -> String {
+        let dwell = dwellThresholdSeconds.map { ",\"dwellThresholdSeconds\":\($0)" } ?? ""
+        return """
+        [{"id":"\(fenceId)","name":"F","latitude":\(Self.latitude),"longitude":\(Self.longitude),"radius":250,"transitionTypes":["enter","exit"],"geosetIds":["7"]\(dwell)}]
         """
     }
 
@@ -38,8 +39,12 @@ struct ReplayHarnessTests {
     /// a position, sign a user in. Nothing is written to the SDK's own state by the test — the
     /// registration, and the dedup baseline behind it, are the SDK's own work.
     @available(iOS 17.0, *)
-    private func registered(_ harness: ReplayHarness, fenceId: String) async throws {
-        try harness.enqueueFetch(bodyJSON: catalogue(fenceId))
+    private func registered(
+        _ harness: ReplayHarness,
+        fenceId: String,
+        dwellThresholdSeconds: Int? = nil
+    ) async throws {
+        try harness.enqueueFetch(bodyJSON: catalogue(fenceId, dwellThresholdSeconds: dwellThresholdSeconds))
         // A `manager_cache` position is something the SDK *pulls*, so it is loaded as the cache's
         // value from t0 rather than delivered as an event. Handing it over as a stimulus would
         // model a fix arriving, which is not what reading `CLLocationManager.location` is.
@@ -168,6 +173,34 @@ struct ReplayHarnessTests {
             #expect(accepted.count == 1, "emitted: \(harness.emitted.map { $0["ev"] ?? "?" })")
             #expect(accepted.first?["id"] == "A")
             #expect(accepted.first?["t"] == "enter")
+        }
+    }
+
+    /// Replay composes dwell as production does. Left to the DI default, bootstrap resolved
+    /// `GeofenceDwellCoordinator.shared` — built from whichever harness touched it first — and
+    /// awaited it inside the process-global run chain, while this composition's resolver and
+    /// coordinator ran the pre-dwell paths production no longer takes.
+    @Test
+    @available(iOS 17.0, *)
+    func deliverCrossing_givenArmedDwellCircle_expectVisitRecordedByThisComposition() async throws {
+        try await ReplayHarness.withTail {
+            let harness = ReplayHarness()
+            defer { harness.detachFromBootstrap() }
+            #expect(harness.bootstrapResolvesOwnDwellCoordinator)
+            try await registered(harness, fenceId: "A", dwellThresholdSeconds: 60)
+
+            harness.deliverCrossing(fence: "A", transition: .enter)
+            await Task.yield()
+            await settleOnMain { harness.emitted(ev: "transition.accepted").count == 1 }
+
+            #expect(harness.emitted(ev: "transition.accepted").first?["t"] == "enter")
+            // Recorded after the ENTER is tracked, so it can trail the acceptance by a hop or two.
+            var visit = await harness.storedVisit(fence: "A")
+            for _ in 0 ..< 200 where visit == nil {
+                try await Task.sleep(nanoseconds: 10000000)
+                visit = await harness.storedVisit(fence: "A")
+            }
+            #expect(visit?.entryObserved == true)
         }
     }
 

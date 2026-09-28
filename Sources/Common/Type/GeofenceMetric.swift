@@ -19,6 +19,11 @@ public protocol GeofenceMetric {
     /// Workspace-defined metadata, or `nil` when none carried. Emitted as a nested `metadata`
     /// object on the event (empty when absent).
     var metadata: [String: GeofenceMetadataValue]? { get }
+    var visitId: String? { get }
+    var enteredAt: Date? { get }
+    var dwellThresholdSeconds: Int? { get }
+    var dwellDurationSeconds: Int? { get }
+    var detectionSource: String? { get }
 }
 
 public extension GeofenceMetric {
@@ -42,6 +47,11 @@ public extension GeofenceMetric {
         if let geosetId {
             properties["geosetId"] = geosetId
         }
+        if let visitId { properties["visitId"] = visitId }
+        if let enteredAt { properties["enteredAt"] = Int(enteredAt.timeIntervalSince1970) }
+        if let dwellThresholdSeconds { properties["dwellThresholdSeconds"] = dwellThresholdSeconds }
+        if let dwellDurationSeconds { properties["dwellDurationSeconds"] = dwellDurationSeconds }
+        if let detectionSource { properties["detectionSource"] = detectionSource }
         return properties
     }
 }

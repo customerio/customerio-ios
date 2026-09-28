@@ -544,8 +544,38 @@ struct GeofenceBootstrapTests {
         let storage = GeofenceStorage(
             directoryURL: FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         )
+        let retained = Geofence(
+            id: "g1", latitude: 1, longitude: 2, radius: 100, name: nil,
+            transitionTypes: [.exit], lastUpdated: Date(timeIntervalSince1970: 1),
+            dwellThresholdSeconds: 60
+        )
+        let dropped = Geofence(
+            id: "g2", latitude: 3, longitude: 4, radius: 100, name: nil,
+            transitionTypes: [.exit], lastUpdated: Date(timeIntervalSince1970: 1),
+            dwellThresholdSeconds: 60
+        )
+        await storage.setCachedGeofences([retained, dropped])
         await storage.recordRegistration(center: LocationData(latitude: 10, longitude: 20), businessIds: ["g1", "g2"])
+        for geofence in [retained, dropped] {
+            #expect(await storage.saveDwellVisit(
+                GeofenceDwellVisit(
+                    visitId: "visit-\(geofence.id)",
+                    enteredAt: Date(timeIntervalSince1970: 100),
+                    geometryRevision: geofence.dwellRevision,
+                    userId: "user-1",
+                    emitted: false
+                ),
+                geofenceId: geofence.id
+            ))
+        }
         di.override(value: storage, forType: GeofenceStorage.self)
+        let contextStore = BackgroundDeliveryContextStore(
+            fileManager: .default,
+            directoryURL: FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        )
+        contextStore.setUserId("user-1")
+        let dwellCoordinator = makeDwellCoordinator(storage: storage, contextStore: contextStore)
+        di.override(value: dwellCoordinator, forType: GeofenceDwellCoordinator.self)
         let monitor = MockGeofenceRegionMonitor()
         monitor.osMonitoredRegions = ["g1", GeofenceConstants.movementTriggerIdentifier]
         di.override(value: monitor as GeofenceRegionMonitoring, forType: GeofenceRegionMonitoring.self)
@@ -554,9 +584,74 @@ struct GeofenceBootstrapTests {
         defer { di.reset() }
 
         await GeofenceBootstrap.wireMonitor(di: di)
+        // Continuity is reconciled off the run chain, so setup never waits on dwell storage.
+        await GeofenceBootstrap.awaitPendingWorkForTesting()
 
         #expect(monitor.adoptExistingRegionsCallsCount == 0)
         #expect(coordinator.applyCachedRegistrationCallsCount == 1)
+        #expect(await storage.getDwellVisit(geofenceId: "g1") != nil)
+        #expect(await storage.getDwellVisit(geofenceId: "g2") == nil)
+    }
+
+    /// Dropping continuity for OS-dropped fences awaits storage. Doing that before registering let
+    /// a sign-out queued after the identity check run first, so bootstrap registered for a user who
+    /// had already signed out.
+    @Test
+    func wireMonitor_givenDroppedRegionsAndSignOutQueuedAfterBind_expectRegisteredBeforeSignOutRuns() async {
+        let di = DIGraphShared.shared
+        let storage = GeofenceStorage(
+            directoryURL: FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        )
+        let dropped = Geofence(
+            id: "g1", latitude: 1, longitude: 2, radius: 100, name: nil,
+            transitionTypes: [.exit], lastUpdated: Date(timeIntervalSince1970: 1),
+            dwellThresholdSeconds: 60
+        )
+        await storage.setCachedGeofences([dropped])
+        await storage.recordRegistration(center: LocationData(latitude: 10, longitude: 20), businessIds: ["g1"])
+        di.override(value: storage, forType: GeofenceStorage.self)
+        let contextStore = BackgroundDeliveryContextStore(
+            fileManager: .default,
+            directoryURL: FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        )
+        contextStore.setUserId("user-1")
+        di.override(value: contextStore, forType: BackgroundDeliveryContextStore.self)
+        let dwellCoordinator = makeDwellCoordinator(storage: storage, contextStore: contextStore)
+        di.override(value: dwellCoordinator, forType: GeofenceDwellCoordinator.self)
+        let monitor = MockGeofenceRegionMonitor()
+        // The OS kept nothing, so bootstrap takes the re-register branch with g1 missing.
+        monitor.onSetOnTransition = {
+            Task { @MainActor in contextStore.clearUserId() }
+        }
+        di.override(value: monitor as GeofenceRegionMonitoring, forType: GeofenceRegionMonitoring.self)
+        let coordinator = GeofenceSyncCoordinatorMock()
+        var userAtRegistration: String?
+        coordinator.applyCachedRegistrationClosure = { _, _, _, _ in
+            userAtRegistration = contextStore.currentUserId
+            return nil
+        }
+        di.override(value: coordinator as GeofenceSyncCoordinator, forType: GeofenceSyncCoordinator.self)
+        defer { di.reset() }
+
+        await GeofenceBootstrap.wireMonitor(di: di)
+
+        #expect(coordinator.applyCachedRegistrationCallsCount == 1)
+        #expect(userAtRegistration == "user-1")
+    }
+
+    private func makeDwellCoordinator(
+        storage: GeofenceStorage,
+        contextStore: BackgroundDeliveryContextStore
+    ) -> GeofenceDwellCoordinator {
+        GeofenceDwellCoordinator(
+            storage: storage,
+            transitionEmitter: BootstrapTransitionEmitter(),
+            contextStore: contextStore,
+            logger: LoggerMock(),
+            notificationCenter: NotificationCenter(),
+            // Resumed deadlines must not reach CoreLocation from a unit test.
+            freshFixProvider: { nil }
+        )
     }
 
     @Test
@@ -672,5 +767,16 @@ private actor AsyncSignal {
         fired = true
         continuation?.resume()
         continuation = nil
+    }
+}
+
+private actor BootstrapTransitionEmitter: GeofenceTransitionEmitting {
+    func trackTransition(geofenceId: String, transition: GeofenceTransition, occurredAt: Date) async {}
+    func trackExit(geofenceId: String, occurredAt: Date, expectedUserId: String?) async {}
+
+    func trackDwell(
+        geofenceId: String, occurredAt: Date, context: GeofenceDwellContext, expectedUserId: String?
+    ) async -> Bool {
+        true
     }
 }

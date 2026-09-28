@@ -73,6 +73,7 @@ final class GeofenceSyncCoordinatorImpl: GeofenceSyncCoordinator, @unchecked Sen
     let dateUtil: DateUtil
     let transitionEmitter: GeofenceTransitionEmitting
     let contextStore: BackgroundDeliveryContextStore
+    let dwellCoordinator: GeofenceDwellCoordinator?
     // `internal`, not `private`, only because the gate helpers live in a split extension file.
     let refreshInProgress = Synchronized<Bool>(false)
 
@@ -107,6 +108,7 @@ final class GeofenceSyncCoordinatorImpl: GeofenceSyncCoordinator, @unchecked Sen
         monitor: GeofenceRegionMonitoring,
         contextStore: BackgroundDeliveryContextStore,
         transitionEmitter: GeofenceTransitionEmitting,
+        dwellCoordinator: GeofenceDwellCoordinator? = nil,
         distanceFilter: GeofenceDistanceFilter = GeofenceDistanceFilter(),
         dateUtil: DateUtil,
         logger: Logger
@@ -116,6 +118,7 @@ final class GeofenceSyncCoordinatorImpl: GeofenceSyncCoordinator, @unchecked Sen
         self.monitor = monitor
         self.contextStore = contextStore
         self.transitionEmitter = transitionEmitter
+        self.dwellCoordinator = dwellCoordinator
         self.distanceFilter = distanceFilter
         self.dateUtil = dateUtil
         self.logger = logger
@@ -330,6 +333,7 @@ extension GeofenceSyncCoordinatorImpl {
         monitor: DIGraphShared.shared.geofenceMonitor,
         contextStore: DIGraphShared.shared.backgroundDeliveryContextStore,
         transitionEmitter: DIGraphShared.shared.geofenceEventTracker,
+        dwellCoordinator: DIGraphShared.shared.geofenceDwellCoordinator,
         dateUtil: DIGraphShared.shared.dateUtil,
         logger: DIGraphShared.shared.logger
     )
