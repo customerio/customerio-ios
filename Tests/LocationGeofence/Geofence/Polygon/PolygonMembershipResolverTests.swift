@@ -443,7 +443,7 @@ struct PolygonMembershipResolverTests {
 
         async let first: Void = setup.resolver.evaluateAllPolygons(reason: .foreground)
         async let second: Void = setup.resolver.evaluateAllPolygons(reason: .foreground)
-        _ = await (first, second)
+        _ = await(first, second)
 
         #expect(counter.count == 1)
     }
@@ -467,7 +467,7 @@ struct PolygonMembershipResolverTests {
         async let wake: Void = setup.resolver.evaluateAllPolygons(reason: .foreground, requiresFreshFix: true)
         await settle()
         gate.releaseAll()
-        _ = await (foreground, wake)
+        _ = await(foreground, wake)
 
         #expect(skipCount(logger) == 0)
     }
@@ -493,7 +493,7 @@ struct PolygonMembershipResolverTests {
         // is "it gets an answer", not "it gets a fix of its own".
         #expect(gate.releases.count == 1, "expected the second wake to coalesce, got \(gate.releases.count) requests")
         gate.releaseAll()
-        _ = await (firstWake, secondWake)
+        _ = await(firstWake, secondWake)
 
         #expect(skipCount(logger) == 0)
     }
@@ -511,7 +511,7 @@ struct PolygonMembershipResolverTests {
         async let foreground: Void = setup.resolver.evaluateAllPolygons(reason: .foreground)
         await settle()
         gate.releaseAll()
-        _ = await (wake, foreground)
+        _ = await(wake, foreground)
 
         #expect(skipCount(logger) == 1)
     }
