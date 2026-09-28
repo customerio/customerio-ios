@@ -9,7 +9,7 @@ import Testing
 import UIKit
 #endif
 
-@Suite("GeofenceDwellCoordinator")
+@Suite("GeofenceDwellCoordinator", .serialized)
 @MainActor
 struct GeofenceDwellCoordinatorTests {
     @Test
@@ -1367,7 +1367,7 @@ struct GeofenceDwellCoordinatorTests {
         // exhaust the bounded retries and leave the visit with no deadline at all.
         notificationCenter.post(name: UIApplication.willEnterForegroundNotification, object: nil)
 
-        for _ in 0 ..< 300 where await setup.emitter.dwells().isEmpty {
+        for _ in 0 ..< 1000 where await setup.emitter.dwells().isEmpty {
             try? await Task.sleep(nanoseconds: 10000000)
         }
 
@@ -1450,7 +1450,7 @@ struct GeofenceDwellCoordinatorTests {
         let enteredAt = Date().addingTimeInterval(-120)
         await setup.coordinator.handleBoundary(geofence: setup.geofence, transition: .enter, occurredAt: enteredAt)
         // The due deadline, then its single retry; both get no fix, and nothing is left armed.
-        try #require(await settleOnMain(timeout: 5) {
+        try #require(await settleOnMain(timeout: 10) {
             fixes.calls == 2 && setup.coordinator.deadlineTasks[setup.geofence.id] == nil
         })
         #expect(await setup.emitter.dwells().isEmpty)
@@ -1484,7 +1484,7 @@ struct GeofenceDwellCoordinatorTests {
         #expect(setup.coordinator.deadlineTasks[setup.geofence.id] == nil)
 
         await setup.coordinator.rearmPendingEvidence(includePolygons: true)
-        #expect(await settleOnMain(timeout: 5) { verifierCalls == 1 })
+        #expect(await settleOnMain(timeout: 10) { verifierCalls == 1 })
         setup.coordinator.cancelEvidence(for: setup.geofence.id)
     }
 

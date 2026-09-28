@@ -1771,6 +1771,91 @@ struct PolygonMembershipResolverTests {
         #expect(await setup.emitter.snapshot().isEmpty)
     }
 
+    // MARK: - Observed entry vs discovered inside
+
+    /// The first verdict for a polygon placing the device inside is discovery: it was never seen
+    /// outside, so the stay began at some unknown earlier time. The configured ENTER is still owed,
+    /// and the stay still qualifies a DWELL, but that DWELL reports no `enteredAt` or duration.
+    @Test
+    func apply_givenFirstVerdictInside_expectEnterAndDwellWithoutEnteredAtOrDuration() async {
+        let setup = await makeSetup(fix: nil, withDwellCoordinator: true)
+        let geofence = polygonGeofence(dwellThresholdSeconds: 60)
+        await setup.storage.setCachedGeofences([geofence])
+        let discovered = Date(timeIntervalSince1970: 1000)
+
+        await setup.resolver.apply(.inside, to: geofence, evidence: discovered, confirmedByFix: true)
+        await setup.resolver.apply(
+            .inside, to: geofence, evidence: discovered.addingTimeInterval(120), confirmedByFix: true
+        )
+
+        #expect(await setup.emitter.snapshot().map(\.transition) == [.enter, .dwell])
+        let visit = await setup.storage.getDwellVisit(geofenceId: geofence.id)
+        #expect(visit?.entryObserved == false)
+        #expect(visit?.dwellReservation != nil)
+        #expect(visit?.dwellReservation?.enteredAt == nil)
+        #expect(visit?.dwellReservation?.durationSeconds == nil)
+    }
+
+    /// Outside the OLD ring says nothing about when the device came to be inside the new one: the
+    /// replacement may have been drawn around it. The ENTER is still delivered, but the stay it
+    /// begins is discovered, so its DWELL reports no `enteredAt` or duration.
+    @Test
+    func apply_givenOutsideTheReplacedRingThenInsideTheNewOne_expectEnterAndDwellWithoutEnteredAtOrDuration() async {
+        let setup = await makeSetup(fix: nil, withDwellCoordinator: true)
+        let original = polygonGeofence(dwellThresholdSeconds: 60)
+        await setup.storage.setCachedGeofences([original])
+        let entry = Date(timeIntervalSince1970: 1000)
+        await setup.resolver.apply(
+            .outside, to: original, evidence: entry.addingTimeInterval(-60), confirmedByFix: true
+        )
+        let shifted = Self.squareVertices.map { LocationData(latitude: $0.latitude, longitude: $0.longitude + 0.005) }
+        let replacement = Geofence(
+            id: original.id, latitude: 0, longitude: 0.005, radius: 300, name: "poly",
+            transitionTypes: [.enter, .exit], lastUpdated: clock.now, vertices: shifted,
+            dwellThresholdSeconds: 60
+        )
+        await setup.storage.setCachedGeofences([replacement])
+
+        await setup.resolver.apply(
+            .inside, to: replacement, evidence: entry, confirmedByFix: true, evaluatedRing: shifted
+        )
+        await setup.resolver.apply(
+            .inside, to: replacement, evidence: entry.addingTimeInterval(120), confirmedByFix: true,
+            evaluatedRing: shifted
+        )
+
+        #expect(await setup.emitter.snapshot().map(\.transition) == [.enter, .dwell])
+        let visit = await setup.storage.getDwellVisit(geofenceId: replacement.id)
+        #expect(visit?.entryObserved == false)
+        #expect(visit?.dwellReservation != nil)
+        #expect(visit?.dwellReservation?.enteredAt == nil)
+        #expect(visit?.dwellReservation?.durationSeconds == nil)
+    }
+
+    /// Control for the two above: seen outside the same ring first, the arrival is a real crossing
+    /// and its DWELL carries the observed entry and the time since it.
+    @Test
+    func apply_givenOutsideThenInsideOnTheSameRing_expectDwellCarriesObservedEntryAndDuration() async {
+        let setup = await makeSetup(fix: nil, withDwellCoordinator: true)
+        let geofence = polygonGeofence(dwellThresholdSeconds: 60)
+        await setup.storage.setCachedGeofences([geofence])
+        let entry = Date(timeIntervalSince1970: 1000)
+
+        await setup.resolver.apply(
+            .outside, to: geofence, evidence: entry.addingTimeInterval(-60), confirmedByFix: true
+        )
+        await setup.resolver.apply(.inside, to: geofence, evidence: entry, confirmedByFix: true)
+        await setup.resolver.apply(
+            .inside, to: geofence, evidence: entry.addingTimeInterval(120), confirmedByFix: true
+        )
+
+        #expect(await setup.emitter.snapshot().map(\.transition) == [.enter, .dwell])
+        let visit = await setup.storage.getDwellVisit(geofenceId: geofence.id)
+        #expect(visit?.entryObserved == true)
+        #expect(visit?.dwellReservation?.enteredAt == entry)
+        #expect(visit?.dwellReservation?.durationSeconds == 120)
+    }
+
     // MARK: - Transition-type filter
 
     @Test
