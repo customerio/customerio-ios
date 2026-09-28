@@ -103,8 +103,8 @@ final class PolygonMembershipResolver {
     /// covering-circle-shaped one. It carries no visit context, having no fence to measure against.
     /// - Parameter receivedForUserId: who was identified when the OS delivered the callback, read
     ///   synchronously in that callback; `""` when anonymous. Nil reads it on entry instead.
-    /// - Parameter entryObserved: whether a circle fence's ENTER may start an observed visit; see
-    ///   `GeofenceTransitionHandler`.
+    /// - Parameter crossingObserved: whether `occurredAt` is when the boundary was crossed, so the
+    ///   visit this event starts or ends may be timed by it; see `GeofenceTransitionHandler`.
     /// - Returns: whether the caller should re-arm the wake against this crossing, and the fix to
     ///   size it with. See ``PolygonTransitionOutcome`` for why the fix travels with the answer.
     @discardableResult
@@ -114,7 +114,7 @@ final class PolygonMembershipResolver {
         occurredAt: Date,
         eventCircle: GeofenceEventCircle = .unknown,
         receivedForUserId: String? = nil,
-        entryObserved: Bool = true
+        crossingObserved: Bool = true
     ) async -> PolygonTransitionOutcome {
         // A switch during the awaits below must not relabel this crossing or its visit. Anonymous
         // maps to "" so no later sign-in can claim it either.
@@ -135,7 +135,7 @@ final class PolygonMembershipResolver {
         guard geofence.vertices != nil else {
             await forwardCircleTransition(
                 geofence: geofence, transition: transition, occurredAt: occurredAt,
-                receivedForUserId: receivedForUserId, entryObserved: entryObserved
+                receivedForUserId: receivedForUserId, crossingObserved: crossingObserved
             )
             // A circle fence's own event IS the answer, so there is no boundary left to wake for.
             return .nothingToRearm
@@ -146,7 +146,9 @@ final class PolygonMembershipResolver {
             // resolver supplies fresh, real-shape membership evidence to the dwell coordinator.
             return .nothingToRearm
         case .exit:
-            await applyCoveringCircleExit(geofence: geofence, eventCircle: eventCircle, occurredAt: occurredAt)
+            await applyCoveringCircleExit(
+                geofence: geofence, eventCircle: eventCircle, occurredAt: occurredAt, crossingObserved: crossingObserved
+            )
             // Boundary now behind us; the next registration re-sizes from wherever the device is.
             return .nothingToRearm
         case .enter:

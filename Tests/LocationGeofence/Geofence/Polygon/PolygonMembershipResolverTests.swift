@@ -231,6 +231,62 @@ struct PolygonMembershipResolverTests {
         #expect(exits.first?.context == nil)
     }
 
+    /// A circle EXIT the OS only discovered — a heal of a crossing it missed, or its correction of an
+    /// assumed inside — is dated when it was noticed, not when the device left. The EXIT is still
+    /// delivered and closes the visit; only the duration measured to that date is withheld. The
+    /// observed case is the control that the visit was otherwise timed.
+    @Test(arguments: [true, false])
+    func circleExit_givenObservedVisit_expectDurationOnlyWhenExitObserved(crossingObserved: Bool) async {
+        let setup = await makeSetup(fix: nil, withDwellCoordinator: true)
+        let circle = circleGeofence(dwellThresholdSeconds: 60)
+        await setup.storage.setCachedGeofences([circle])
+        // Whole seconds, so the persisted `enteredAt` round-trips exactly.
+        let entry = Date(timeIntervalSince1970: clock.now.timeIntervalSince1970.rounded(.down) - 7200)
+        await setup.resolver.handleTransition(
+            identifier: circle.id, transition: .enter, occurredAt: entry, receivedForUserId: "user-1"
+        )
+        #expect(await setup.storage.getDwellVisit(geofenceId: circle.id)?.entryObserved == true)
+
+        await setup.resolver.handleTransition(
+            identifier: circle.id, transition: .exit, occurredAt: entry.addingTimeInterval(7200),
+            receivedForUserId: "user-1", crossingObserved: crossingObserved
+        )
+
+        #expect(await setup.emitter.snapshot().map(\.transition) == [.enter, .exit])
+        let exits = await setup.emitter.exitSnapshot()
+        #expect(exits.count == 1)
+        #expect(exits.first?.context?.durationSeconds == (crossingObserved ? 7200 : nil))
+        #expect(exits.first?.context?.detectionSource == (crossingObserved ? "native" : nil))
+        #expect(await setup.storage.getDwellVisit(geofenceId: circle.id) == nil)
+    }
+
+    /// The same rule on a polygon's covering circle: leaving the circle still proves the device left
+    /// the polygon, so the EXIT is delivered, but a discovered circle exit cannot time the stay.
+    @Test(arguments: [true, false])
+    func coveringCircleExit_givenObservedPolygonVisit_expectDurationOnlyWhenExitObserved(crossingObserved: Bool) async {
+        let setup = await makeSetup(fix: nil, withDwellCoordinator: true)
+        let geofence = polygonGeofence(transitionTypes: [.enter, .exit])
+        await setup.storage.setCachedGeofences([geofence])
+        let entry = Date(timeIntervalSince1970: 1000)
+        await setup.resolver.apply(
+            .outside, to: geofence, evidence: entry.addingTimeInterval(-60), confirmedByFix: true
+        )
+        await setup.resolver.apply(.inside, to: geofence, evidence: entry, confirmedByFix: true)
+        #expect(await setup.storage.getDwellVisit(geofenceId: geofence.id)?.entryObserved == true)
+
+        await setup.resolver.handleTransition(
+            identifier: geofence.id, transition: .exit, occurredAt: entry.addingTimeInterval(600),
+            crossingObserved: crossingObserved
+        )
+
+        #expect(await setup.emitter.snapshot().map(\.transition) == [.enter, .exit])
+        let exits = await setup.emitter.exitSnapshot()
+        #expect(exits.count == 1)
+        #expect(exits.first?.context?.durationSeconds == (crossingObserved ? 600 : nil))
+        #expect(exits.first?.context?.detectionSource == (crossingObserved ? "covering_circle" : nil))
+        #expect(await setup.storage.getDwellVisit(geofenceId: geofence.id) == nil)
+    }
+
     /// Holds the first ENTER inside the tracker — an HTTP send stalled offline or behind a backlog
     /// flush — until released, and records every EXIT's visit context.
     private actor StalledEnterEmitter: GeofenceTransitionEmitting {

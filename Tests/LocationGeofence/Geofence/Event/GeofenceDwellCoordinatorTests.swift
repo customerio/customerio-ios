@@ -47,7 +47,7 @@ struct GeofenceDwellCoordinatorTests {
             geofence: setup.geofence,
             transition: .enter,
             occurredAt: Date().addingTimeInterval(-120),
-            entryObserved: false
+            crossingObserved: false
         )
         #expect(await setup.storage.getDwellVisit(geofenceId: setup.geofence.id)?.entryObserved == false)
 
@@ -65,7 +65,7 @@ struct GeofenceDwellCoordinatorTests {
         let setup = await makeSetup(isPolygon: false)
         let enteredAt = Date(timeIntervalSince1970: 1000)
         await setup.coordinator.handleBoundary(
-            geofence: setup.geofence, transition: .enter, occurredAt: enteredAt, entryObserved: false
+            geofence: setup.geofence, transition: .enter, occurredAt: enteredAt, crossingObserved: false
         )
         let first = await setup.storage.getDwellVisit(geofenceId: setup.geofence.id)
 
@@ -686,6 +686,35 @@ struct GeofenceDwellCoordinatorTests {
         #expect(context?.durationSeconds == 75)
         #expect(context?.detectionSource == "location_evidence")
         #expect(await setup.storage.getDwellVisit(geofenceId: setup.geofence.id) == nil)
+    }
+
+    /// A discovered EXIT still ends the observed visit it closes, but withholds the duration: its
+    /// date is when the exit was noticed. Nothing of that visit lingers, so the next stay is timed.
+    @Test
+    func discoveredExitEndsObservedVisitWithoutDurationAndNextVisitIsTimed() async {
+        let setup = await makeSetup(dwellThresholdSeconds: 0, transitionTypes: [.exit], isPolygon: false)
+        let enteredAt = Date(timeIntervalSince1970: 1000)
+        await setup.coordinator.handleBoundary(geofence: setup.geofence, transition: .enter, occurredAt: enteredAt)
+        let first = await setup.storage.getDwellVisit(geofenceId: setup.geofence.id)
+
+        let discovered = await setup.coordinator.handleBoundary(
+            geofence: setup.geofence,
+            transition: .exit,
+            occurredAt: enteredAt.addingTimeInterval(7200),
+            crossingObserved: false
+        )
+        #expect(first?.entryObserved == true)
+        #expect(discovered == nil)
+        #expect(await setup.storage.getDwellVisit(geofenceId: setup.geofence.id) == nil)
+
+        let reentry = enteredAt.addingTimeInterval(9000)
+        await setup.coordinator.handleBoundary(geofence: setup.geofence, transition: .enter, occurredAt: reentry)
+        let observed = await setup.coordinator.handleBoundary(
+            geofence: setup.geofence, transition: .exit, occurredAt: reentry.addingTimeInterval(90)
+        )
+        #expect(observed?.visitId != first?.visitId)
+        #expect(observed?.enteredAt == reentry)
+        #expect(observed?.durationSeconds == 90)
     }
 
     @Test

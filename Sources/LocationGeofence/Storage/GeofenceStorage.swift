@@ -123,16 +123,17 @@ actor GeofenceStorage {
         ).outcome
     }
 
-    /// `recordMonitorEvent`, also answering whether a delivered ENTER left an OBSERVED `.exit`.
-    /// Only then is it a crossing since registration; out of an assumed one it may be `CLMonitor`
-    /// correcting its `assuming:` for a device that never left. False for every other outcome.
+    /// `recordMonitorEvent`, also answering whether a delivered transition left an OBSERVED state.
+    /// Only then is it a crossing timed by its event: out of an assumed state it may be `CLMonitor`
+    /// correcting its `assuming:` — an ENTER for a device that never left, an EXIT for one that was
+    /// never inside or left at some unknown earlier time. False for every other outcome.
     func recordMonitorTransition(
         _ transition: GeofenceTransition,
         forIdentifier identifier: String,
         onlyIfBaselinePredates evidenceTimestamp: Date? = nil,
         osEventDate: Date? = nil,
         now: Date? = nil
-    ) -> (outcome: GeofenceMonitorEventOutcome, entryObserved: Bool) {
+    ) -> (outcome: GeofenceMonitorEventOutcome, crossingObserved: Bool) {
         var state = loadFromDisk() ?? GeofenceState()
         var records = state.monitorRegionRecords ?? [:]
         guard var record = records[identifier] else {
@@ -188,10 +189,7 @@ actor GeofenceStorage {
         records[identifier] = record
         state.monitorRegionRecords = records
         saveToDisk(state)
-        return (
-            record.transitionTypes.contains(transition) ? .deliver : .suppressedFilteredType,
-            transition == .enter && leftObservedState
-        )
+        return (record.transitionTypes.contains(transition) ? .deliver : .suppressedFilteredType, leftObservedState)
     }
 
     /// A movement-trigger exit can arrive just after its circle was re-planted while carrying the

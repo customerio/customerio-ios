@@ -234,6 +234,81 @@ struct ReplayHarnessTests {
         }
     }
 
+    /// When the device is next seen, well after it left the fence the OS entered it for.
+    private static let leftAt: TimeInterval = 600
+
+    /// The OS saw the device arrive and missed it leaving; a later sync's heal finds it outside and
+    /// synthesizes the EXIT, dated to the fix that noticed. The EXIT is still delivered and ends the
+    /// visit, but its date is when the SDK looked, not when the device left: a duration measured to
+    /// it would report a stay as long as the gap between the crossing and the next sync.
+    @Test
+    @available(iOS 17.0, *)
+    func baselineHeal_givenObservedVisitAndMissedOsExit_expectExitClosesVisitWithoutDuration() async throws {
+        try await ReplayHarness.withTail {
+            let harness = ReplayHarness()
+            defer { harness.detachFromBootstrap() }
+            try await registered(harness, fenceId: "A")
+            let visit = try await enterAndAwaitVisit(harness, fenceId: "A")
+            #expect(visit?.entryObserved == true, "the stay must be timed for its EXIT to be able to report one")
+            await moveAway(harness)
+
+            // What a sync leaving the fence registered-unchanged enqueues behind its own ops.
+            harness.monitor.enqueueBaselineHeal(candidates: ["A"])
+            let exit = try await awaitExit(harness, fenceId: "A")
+
+            #expect(harness.emitted(ev: "baseline.healed").count == 1, "\(harness.emitted.map { $0["ev"] ?? "?" })")
+            #expect(exit != nil, "the healed EXIT was not delivered")
+            #expect(exit?.visitDurationSeconds == nil, "a discovered exit was timed as a crossing")
+            #expect(exit?.visitId == nil)
+            #expect(exit?.enteredAt == nil)
+            #expect(exit?.detectionSource == nil)
+            #expect(await harness.storedVisit(fence: "A") == nil, "the healed EXIT left the visit open")
+        }
+    }
+
+    /// The control for the heal above: the same stay ended by an EXIT the OS delivered is a timed
+    /// crossing, and reports its duration as a native one.
+    @Test
+    @available(iOS 17.0, *)
+    func deliverCrossing_givenObservedVisitAndOsExit_expectExitReportsNativeDuration() async throws {
+        try await ReplayHarness.withTail {
+            let harness = ReplayHarness()
+            defer { harness.detachFromBootstrap() }
+            try await registered(harness, fenceId: "A")
+            let visit = try await enterAndAwaitVisit(harness, fenceId: "A")
+            await moveAway(harness)
+
+            harness.deliverCrossing(fence: "A", transition: .exit)
+            let exit = try await awaitExit(harness, fenceId: "A")
+
+            #expect(exit?.visitId == visit?.visitId)
+            #expect(exit?.visitDurationSeconds == Int(Self.leftAt - Self.arrivalAt))
+            #expect(exit?.detectionSource == "native")
+            #expect(await harness.storedVisit(fence: "A") == nil)
+        }
+    }
+
+    /// The device, now well outside the fence, as the cache reads it from `leftAt` on.
+    @available(iOS 17.0, *)
+    private func moveAway(_ harness: ReplayHarness) async {
+        harness.loadPulledFixes(stimuli: [Self.leftAt], samples: [
+            harness.pulledFix(latitude: Self.awayLatitude, longitude: Self.longitude, accuracy: 10, age: 0, at: Self.leftAt)
+        ])
+        await harness.advance(to: Self.leftAt)
+    }
+
+    /// The EXIT row the tracker sent for `fenceId`, once it has.
+    @available(iOS 17.0, *)
+    private func awaitExit(_ harness: ReplayHarness, fenceId: String) async throws -> PendingGeofenceMetric? {
+        func sent() -> PendingGeofenceMetric? {
+            harness.deliveredMetrics.first { $0.geofenceId == fenceId && $0.transition == .exit }
+        }
+        for _ in 0 ..< 200 where sent() == nil {
+            try await Task.sleep(nanoseconds: 10000000)
+        }
+        return sent()
+    }
+
     /// `.unmonitored` means the OS stopped watching the fence, so the stored entry can no longer
     /// vouch for a continuous stay. Kept, a later EXIT or dwell would measure across the gap.
     @Test

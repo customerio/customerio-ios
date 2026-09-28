@@ -25,6 +25,10 @@ extension PolygonMembershipResolver {
     /// the workspace has moved off it since. Nil from the covering-circle exit, and that is not an
     /// omission: polygon ⊆ circle holds for whatever ring is current, so leaving the circle is a
     /// verdict no replacement can invalidate. Only a ring-derived verdict can go stale with the ring.
+    ///
+    /// `crossingObserved` is false only for a covering-circle exit whose circle crossing was itself
+    /// discovered rather than observed (see `GeofenceTransitionHandler`): the EXIT is still delivered,
+    /// but `evidence` is not when the device left, so it reports no visit duration.
     func apply(
         _ membership: PolygonMembership,
         to geofence: Geofence,
@@ -32,6 +36,7 @@ extension PolygonMembershipResolver {
         confirmedByFix: Bool,
         evaluatedRing: [LocationData]? = nil,
         evaluatedCircle: MonitoredCircle? = nil,
+        crossingObserved: Bool = true,
         isStillCurrent: (@Sendable () -> Bool)? = nil
     ) async {
         let outcome = await storage.recordPolygonMembership(
@@ -44,11 +49,13 @@ extension PolygonMembershipResolver {
         var exitContext: GeofenceExitContext?
         let expectedUserId = contextStore.currentUserId
         if isStillCurrent?() ?? true {
-            exitContext = await forwardDwellEvidence(
+            let visitContext = await forwardDwellEvidence(
                 PolygonDwellEvidence(membership: membership, outcome: outcome),
                 geofence: geofence, at: evidence, confirmedByFix: confirmedByFix,
                 expectedUserId: expectedUserId
             )
+            // The visit is closed either way; a discovered exit only withholds its duration.
+            exitContext = crossingObserved ? visitContext : nil
         }
         guard let transition = outcome.deliveredTransition else {
             logger.geofencePolygonNotDelivered(identifier: geofence.id, reason: .outcome(outcome))
@@ -85,12 +92,23 @@ extension PolygonMembershipResolver {
     /// `expired` is refused rather than forwarded: the circle crossed is gone, so the write has
     /// nothing to check the ring against, and "cannot say" would store `outside` for a device
     /// inside the replacement polygon. The next pass re-derives it.
-    func applyCoveringCircleExit(geofence: Geofence, eventCircle: GeofenceEventCircle, occurredAt: Date) async {
+    func applyCoveringCircleExit(
+        geofence: Geofence,
+        eventCircle: GeofenceEventCircle,
+        occurredAt: Date,
+        crossingObserved: Bool = true
+    ) async {
         switch eventCircle {
         case .circle(let crossed):
-            await apply(.outside, to: geofence, evidence: occurredAt, confirmedByFix: false, evaluatedCircle: crossed)
+            await apply(
+                .outside, to: geofence, evidence: occurredAt, confirmedByFix: false,
+                evaluatedCircle: crossed, crossingObserved: crossingObserved
+            )
         case .unknown:
-            await apply(.outside, to: geofence, evidence: occurredAt, confirmedByFix: false, evaluatedCircle: nil)
+            await apply(
+                .outside, to: geofence, evidence: occurredAt, confirmedByFix: false,
+                evaluatedCircle: nil, crossingObserved: crossingObserved
+            )
         case .expired:
             logger.geofencePolygonUndecided(identifier: geofence.id, reason: .circleExpired, pass: nil)
         }
@@ -109,21 +127,22 @@ extension PolygonMembershipResolver {
     /// coordinator, which refuses a visit that started before an EXIT it has seen.
     ///
     /// An EXIT reads and ends its visit before delivery because the duration travels on the event.
-    /// A user switch meanwhile drops rather than misattributes it. An ENTER that is not
-    /// `entryObserved` is still delivered, but its visit is a candidate that reports no entry.
+    /// A user switch meanwhile drops rather than misattributes it. A transition that is not
+    /// `crossingObserved` is still delivered: an ENTER's visit is a candidate that reports no entry,
+    /// and an EXIT ends its visit without reporting a duration.
     func forwardCircleTransition(
         geofence: Geofence,
         transition: GeofenceTransition,
         occurredAt: Date,
         receivedForUserId: String,
-        entryObserved: Bool = true
+        crossingObserved: Bool = true
     ) async {
         switch transition {
         case .enter:
             let dwellCoordinator = dwellCoordinator
             async let visitRecorded: GeofenceExitContext? = dwellCoordinator?.handleBoundary(
                 geofence: geofence, transition: .enter, occurredAt: occurredAt, expectedUserId: receivedForUserId,
-                entryObserved: entryObserved
+                crossingObserved: crossingObserved
             )
             if geofence.transitionTypes.contains(.enter) {
                 await forwardEnter(identifier: geofence.id, occurredAt: occurredAt, receivedForUserId: receivedForUserId)
@@ -131,7 +150,8 @@ extension PolygonMembershipResolver {
             _ = await visitRecorded
         case .exit:
             let exitContext = await dwellCoordinator?.handleBoundary(
-                geofence: geofence, transition: .exit, occurredAt: occurredAt, expectedUserId: receivedForUserId
+                geofence: geofence, transition: .exit, occurredAt: occurredAt, expectedUserId: receivedForUserId,
+                crossingObserved: crossingObserved
             )
             guard geofence.transitionTypes.contains(.exit) else { return }
             await transitionEmitter.trackExit(

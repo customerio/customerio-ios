@@ -295,7 +295,7 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring {
         // Dated by the OS, not by receipt: every guard below weighs OS dates, never the instant
         // the SDK wrote, which made the old rule follow the queue's drain speed (drive 5). The
         // evidence guard covers what the other two cannot see — see `enqueueBaselineHeal`.
-        let (outcome, entryObserved) = await storage.recordMonitorTransition(
+        let (outcome, crossingObserved) = await storage.recordMonitorTransition(
             transition, forIdentifier: identifier,
             onlyIfBaselinePredates: event.date, osEventDate: event.date, now: event.date
         )
@@ -312,7 +312,7 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring {
             // Fire-and-forget so a slow fix can't stall the pending-event drain behind it.
             movementFixResolver.resolve(cached: bestKnownFix(), purpose: .movement) { [weak self] location, isFresh in
                 self?.logger.geofenceCallbackDispatched(identifier: identifier, transition: transition)
-                self?.onTransition?(identifier, transition, location, event.date, isFresh, self?.eventCircle(for: identifier, raisedAt: event.date) ?? .unknown, entryObserved)
+                self?.onTransition?(identifier, transition, location, event.date, isFresh, self?.eventCircle(for: identifier, raisedAt: event.date) ?? .unknown, crossingObserved)
             }
             return
         }
@@ -320,7 +320,7 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring {
         // Business events carry the captured location for context only; nothing sizes to it.
         onTransition?(
             identifier, transition, currentLocationData(), event.date, false,
-            eventCircle(for: identifier, raisedAt: event.date), entryObserved
+            eventCircle(for: identifier, raisedAt: event.date), crossingObserved
         )
     }
 

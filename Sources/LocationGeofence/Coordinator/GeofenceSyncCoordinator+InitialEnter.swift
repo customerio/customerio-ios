@@ -66,7 +66,7 @@ extension GeofenceSyncCoordinatorImpl {
                     expectedUserId: expectedUserId,
                     // Discovery, not a crossing: the stay began at some unknown earlier time, so
                     // `discoveredAt` may anchor the dwell threshold but never a reported duration.
-                    entryObserved: false
+                    crossingObserved: false
                 )
                 if region.transitionTypes.contains(.enter) {
                     // Marked before the emit: downstream this is an ordinary crossing, so without a
