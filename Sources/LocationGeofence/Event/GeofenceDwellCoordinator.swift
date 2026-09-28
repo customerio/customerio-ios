@@ -5,8 +5,9 @@ import Foundation
 /// Owns durable continuous visits. A deadline only requests evidence; it never proves membership.
 @MainActor
 final class GeofenceDwellCoordinator {
-    private let transitionEmitter: GeofenceTransitionEmitting
-    private var dwellEmissionsInFlight: Set<String> = []
+    // `internal`, not `private`, only because the `+Emission` extension file uses them.
+    let transitionEmitter: GeofenceTransitionEmitting
+    var dwellEmissionsInFlight: Set<String> = []
     /// The latest EXIT each fence has seen in this process, recorded before any await. An ENTER's
     /// visit write is not ordered against a later EXIT — the two arrive on separate tasks — so a
     /// write landing after that EXIT would leave a visit open for a device already outside, and it
@@ -140,49 +141,6 @@ final class GeofenceDwellCoordinator {
         return visit
     }
 
-    private func emitDwellIfQualified(
-        geofence: Geofence,
-        visit: GeofenceDwellVisit,
-        observedAt: Date,
-        source: String,
-        userId: String
-    ) async {
-        guard geofence.dwellThresholdSeconds > 0, !visit.emitted, observedAt >= visit.enteredAt,
-              Self.wholeSeconds(from: visit.enteredAt, to: observedAt) >= geofence.dwellThresholdSeconds
-        else { return }
-        let duration = Self.reportedSeconds(from: visit.enteredAt, to: observedAt)
-        // A candidate's start is its first inside evidence, not an entry, so neither it nor the
-        // time since it is reported as observed — matching Android. It still qualifies the dwell.
-        let observed = visit.entryObserved
-        guard contextStore.currentUserId == userId else { return }
-        guard dwellEmissionsInFlight.insert(visit.visitId).inserted else { return }
-        defer { dwellEmissionsInFlight.remove(visit.visitId) }
-        let persisted = await transitionEmitter.trackDwell(
-            geofenceId: geofence.id,
-            occurredAt: observedAt,
-            context: GeofenceDwellContext(
-                visitId: visit.visitId,
-                enteredAt: observed ? visit.enteredAt : nil,
-                thresholdSeconds: geofence.dwellThresholdSeconds,
-                durationSeconds: observed ? duration : nil,
-                detectionSource: source
-            ),
-            expectedUserId: userId
-        )
-        guard persisted else { return }
-        // The emitter suspends, so an EXIT and a re-entry may have replaced this visit meanwhile.
-        // Writing the captured copy back would resurrect the old visit over the new one.
-        switch await storage.markDwellVisitEmitted(visit, geofenceId: geofence.id) {
-        case .marked:
-            cancelEvidence(for: geofence.id)
-        case .writeFailed:
-            scheduleEvidenceRetry(for: geofence, visit: visit)
-        case .superseded:
-            // Evidence scheduling now belongs to whatever visit replaced this one.
-            break
-        }
-    }
-
     private func startVisitIfNeeded(
         geofence: Geofence,
         enteredAt: Date,
@@ -287,14 +245,6 @@ final class GeofenceDwellCoordinator {
     /// of slack absorbs that and rounds up no fraction anyone could observe.
     static func wholeSeconds(from start: Date, to end: Date) -> Int {
         Int((end.timeIntervalSince(start) + 0.000_001).rounded(.down))
-    }
-
-    /// The duration an event reports: the difference of the two whole epoch seconds, so it equals
-    /// the event's whole-second timestamp minus the `enteredAt` it carries, which is serialized by
-    /// truncation too. Can be a second more than `wholeSeconds` (100.9 s → 160.1 s reports 60, not
-    /// 59); qualifying stays on `wholeSeconds`, the elapsed time actually observed.
-    static func reportedSeconds(from start: Date, to end: Date) -> Int {
-        max(0, Int(end.timeIntervalSince1970) - Int(start.timeIntervalSince1970))
     }
 
     private func tracksVisit(_ geofence: Geofence) -> Bool {

@@ -45,11 +45,36 @@ struct GeofenceDwellVisit: Codable, Equatable, Sendable {
     /// can still support a best-effort dwell, but its start is not an entry, so the dwell reports
     /// neither `enteredAt` nor a duration.
     var entryObserved = true
+    /// The dwell this visit qualified, fixed before its outbox write. Every attempt to deliver the
+    /// dwell sends exactly this, so a retry after a failed `emitted` write or a relaunch repeats
+    /// the first attempt's row rather than describing a later instant under the same visit id.
+    var dwellReservation: GeofenceDwellReservation?
+}
+
+/// A dwell occurrence, stored as integer epoch milliseconds so a disk round trip cannot move it: a
+/// `Date` read back through `.secondsSince1970` can land one ulp off, which on a whole second
+/// changes the outbox key and the reported seconds.
+struct GeofenceDwellReservation: Codable, Equatable, Sendable {
+    /// The event's timestamp in epoch milliseconds, the precision the wire carries.
+    let occurredAtEpochMilliseconds: Int64
+    /// The reported entry; nil when the entry was not observed.
+    let enteredAtEpochMilliseconds: Int64?
+    let durationSeconds: Int?
+    let thresholdSeconds: Int
+    let detectionSource: String
+
+    var occurredAt: Date {
+        Date(timeIntervalSince1970: TimeInterval(occurredAtEpochMilliseconds) / 1000)
+    }
+
+    var enteredAt: Date? {
+        enteredAtEpochMilliseconds.map { Date(timeIntervalSince1970: TimeInterval($0) / 1000) }
+    }
 }
 
 extension GeofenceDwellVisit {
     /// Custom decode so visits persisted before `entryObserved` still decode; those were only ever
-    /// started from an observed entry.
+    /// started from an observed entry. Visits persisted before `dwellReservation` hold none.
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         self.visitId = try container.decode(String.self, forKey: .visitId)
@@ -58,6 +83,7 @@ extension GeofenceDwellVisit {
         self.userId = try container.decode(String.self, forKey: .userId)
         self.emitted = try container.decode(Bool.self, forKey: .emitted)
         self.entryObserved = try container.decodeIfPresent(Bool.self, forKey: .entryObserved) ?? true
+        self.dwellReservation = try container.decodeIfPresent(GeofenceDwellReservation.self, forKey: .dwellReservation)
     }
 }
 

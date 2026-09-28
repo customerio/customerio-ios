@@ -244,7 +244,138 @@ struct GeofenceDwellCoordinatorTests {
         let attempts = await emitter.dwells()
         #expect(attempts.count == 2)
         #expect(attempts[0].context.visitId == attempts[1].context.visitId)
+        // The retry repeats the reserved occurrence, not the later evidence that prompted it.
+        #expect(attempts[1].occurredAt == attempts[0].occurredAt)
+        #expect(attempts[1].context.durationSeconds == 60)
         #expect(await setup.storage.getDwellVisit(geofenceId: setup.geofence.id)?.emitted == true)
+    }
+
+    @Test
+    func failedEmittedWriteRetryRepeatsTheOutboxRowItAlreadyWrote() async throws {
+        let outbox = makeOutbox()
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        let emitter = OutboxDwellEmitter(store: outbox) { attempt in
+            // The row is in the outbox; make the `emitted` write that follows it fail.
+            if attempt == 1 { Self.setWritable(false, directory) }
+        }
+        // No fix ever arrives, so only the reservation can make the retry emit.
+        let setup = await makeSetup(
+            transitionEmitter: emitter, isPolygon: false, freshFixProvider: { nil }, directory: directory
+        )
+        defer { Self.setWritable(true, directory) }
+        let enteredAt = Date(timeIntervalSince1970: 1000)
+        await setup.coordinator.handleBoundary(geofence: setup.geofence, transition: .enter, occurredAt: enteredAt)
+
+        await setup.coordinator.recordInsideEvidence(
+            geofence: setup.geofence, at: enteredAt.addingTimeInterval(60.25), source: "location_evidence"
+        )
+        Self.setWritable(true, setup.directory)
+        let pending = await setup.storage.getDwellVisit(geofenceId: setup.geofence.id)
+        #expect(pending?.emitted == false)
+        #expect(pending?.dwellReservation != nil)
+
+        await setup.coordinator.requestQualifyingEvidence(geofenceId: setup.geofence.id)
+
+        // The ENTER's own due deadline may add an attempt; every one must be the first's twin.
+        let attempts = await emitter.dwells()
+        try #require(attempts.count >= 2)
+        for attempt in attempts.dropFirst() {
+            #expect(attempt.occurredAt == attempts[0].occurredAt)
+            #expect(attempt.context.enteredAt == attempts[0].context.enteredAt)
+            #expect(attempt.context.durationSeconds == 60)
+            #expect(attempt.context.detectionSource == attempts[0].context.detectionSource)
+        }
+        #expect(await Self.rows(in: outbox).count == 1, "the retry must dedup against the row already queued")
+        #expect(await setup.storage.getDwellVisit(geofenceId: setup.geofence.id)?.emitted == true)
+    }
+
+    /// The process dies after the outbox write and before `emitted` is stored. The relaunch's
+    /// retry sees later evidence, yet queues nothing new, and after the row was sent re-sends an
+    /// identical one.
+    @Test(arguments: [false, true])
+    func relaunchAfterOutboxWriteRepeatsTheReservedDwell(rowAlreadyDelivered: Bool) async throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        let outbox = makeOutbox()
+        let dying = OutboxDwellEmitter(store: outbox, suspendsAfterWrite: true)
+        let first = await makeSetup(
+            transitionEmitter: dying, isPolygon: false, freshFixProvider: { nil }, directory: directory
+        )
+        let enteredAt = Date(timeIntervalSince1970: Date().timeIntervalSince1970.rounded(.down) - 300)
+        await first.coordinator.handleBoundary(geofence: first.geofence, transition: .enter, occurredAt: enteredAt)
+        let emission = Task { @MainActor in
+            await first.coordinator.recordInsideEvidence(
+                geofence: first.geofence, at: enteredAt.addingTimeInterval(61.5), source: "location_evidence"
+            )
+        }
+        await dying.waitUntilSuspended()
+        let original = try #require(await Self.rows(in: outbox).first)
+        if rowAlreadyDelivered { #expect(await outbox.remove(key: original.key)) }
+
+        let relaunchEmitter = OutboxDwellEmitter(store: outbox)
+        let relaunched = await makeSetup(
+            transitionEmitter: relaunchEmitter,
+            isPolygon: false,
+            freshFixProvider: { Self.insideFix(at: Date()) },
+            directory: directory
+        )
+        await relaunched.coordinator.resumePendingVisits(geofences: [relaunched.geofence])
+        for _ in 0 ..< 200 where await relaunchEmitter.dwells().isEmpty {
+            try await Task.sleep(nanoseconds: 10000000)
+        }
+
+        let rows = await Self.rows(in: outbox)
+        #expect(rows == [original])
+        #expect(rows.first?.dwellDurationSeconds == 61)
+        #expect(await relaunched.storage.getDwellVisit(geofenceId: relaunched.geofence.id)?.emitted == true)
+        await dying.resume(returning: false)
+        await emission.value
+    }
+
+    @Test
+    func reservationKeepsTheFirstOccurrenceAndRefusesAReplacedVisit() async {
+        let setup = await makeSetup()
+        let visit = GeofenceDwellVisit(
+            visitId: "visit-1",
+            enteredAt: Date(timeIntervalSince1970: 1000),
+            geometryRevision: setup.geofence.dwellRevision,
+            userId: "user-1",
+            emitted: false
+        )
+        #expect(await setup.storage.saveDwellVisit(visit, geofenceId: setup.geofence.id))
+        let first = Self.reservation(occurredAtMilliseconds: 1060000)
+
+        #expect(await setup.storage.reserveDwellEmission(first, for: visit, geofenceId: setup.geofence.id) == .reserved(first))
+        let later = Self.reservation(occurredAtMilliseconds: 1090000)
+        #expect(await setup.storage.reserveDwellEmission(later, for: visit, geofenceId: setup.geofence.id) == .reserved(first))
+
+        let replacement = GeofenceDwellVisit(
+            visitId: "visit-2", enteredAt: visit.enteredAt, geometryRevision: visit.geometryRevision,
+            userId: visit.userId, emitted: false
+        )
+        #expect(await setup.storage.saveDwellVisit(replacement, geofenceId: setup.geofence.id))
+        #expect(await setup.storage.reserveDwellEmission(later, for: visit, geofenceId: setup.geofence.id) == .superseded)
+
+        #expect(await setup.storage.markDwellVisitEmitted(replacement, geofenceId: setup.geofence.id) == .marked)
+        #expect(await setup.storage.reserveDwellEmission(later, for: replacement, geofenceId: setup.geofence.id) == .superseded)
+    }
+
+    @Test
+    func reservedWholeSecondOccurrenceSurvivesADiskRoundTrip() async throws {
+        let setup = await makeSetup()
+        let visit = GeofenceDwellVisit(
+            visitId: "visit-1",
+            enteredAt: Date(timeIntervalSince1970: 1700000000),
+            geometryRevision: setup.geofence.dwellRevision,
+            userId: "user-1",
+            emitted: false
+        )
+        #expect(await setup.storage.saveDwellVisit(visit, geofenceId: setup.geofence.id))
+        let reservation = Self.reservation(occurredAtMilliseconds: 1700000060000)
+        _ = await setup.storage.reserveDwellEmission(reservation, for: visit, geofenceId: setup.geofence.id)
+
+        let stored = try #require(await setup.storage.getDwellVisit(geofenceId: setup.geofence.id)?.dwellReservation)
+        #expect(stored == reservation)
+        #expect(Int(stored.occurredAt.timeIntervalSince1970) == 1700000060)
     }
 
     @Test
@@ -976,9 +1107,11 @@ struct GeofenceDwellCoordinatorTests {
         // Private by default: suites running alongside post `willEnterForeground` on `.default` (the
         // replay harness does), and each post re-arms every live coordinator — resetting retry
         // budgets and spending scripted fixes mid-test.
-        notificationCenter: NotificationCenter = NotificationCenter()
+        notificationCenter: NotificationCenter = NotificationCenter(),
+        // Shared by two setups to model a relaunch over the same persisted state.
+        directory: URL? = nil
     ) async -> Setup {
-        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        let directory = directory ?? FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         let storage = GeofenceStorage(fileManager: .default, directoryURL: directory)
         let contextStore = BackgroundDeliveryContextStore(
             fileManager: .default,
@@ -1015,7 +1148,9 @@ struct GeofenceDwellCoordinatorTests {
             evidenceRetryDelay: evidenceRetryDelay,
             maxEvidenceRetryAttempts: maxEvidenceRetryAttempts
         )
-        return Setup(storage: storage, emitter: emitter, coordinator: coordinator, geofence: geofence)
+        return Setup(
+            storage: storage, emitter: emitter, coordinator: coordinator, geofence: geofence, directory: directory
+        )
     }
 
     private struct Setup {
@@ -1023,6 +1158,44 @@ struct GeofenceDwellCoordinatorTests {
         let emitter: DwellEmitterSpy
         let coordinator: GeofenceDwellCoordinator
         let geofence: Geofence
+        let directory: URL
+    }
+
+    private func makeOutbox() -> PendingGeofenceMetricStore {
+        PendingGeofenceMetricStore(
+            logger: LoggerMock(),
+            directoryURL: FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        )
+    }
+
+    private static func rows(in outbox: PendingGeofenceMetricStore) async -> [PendingGeofenceMetric] {
+        guard case .rows(let rows) = await outbox.read() else { return [] }
+        return rows
+    }
+
+    /// Wholly inside the circle `makeSetup` builds.
+    private static func insideFix(at timestamp: Date) -> CLLocation {
+        CLLocation(
+            coordinate: CLLocationCoordinate2D(latitude: 0.5, longitude: 0.5),
+            altitude: 0, horizontalAccuracy: 5, verticalAccuracy: 5, timestamp: timestamp
+        )
+    }
+
+    private static func reservation(occurredAtMilliseconds: Int64) -> GeofenceDwellReservation {
+        GeofenceDwellReservation(
+            occurredAtEpochMilliseconds: occurredAtMilliseconds,
+            enteredAtEpochMilliseconds: 1000000,
+            durationSeconds: 60,
+            thresholdSeconds: 60,
+            detectionSource: "location_evidence"
+        )
+    }
+
+    /// A read-only directory refuses the atomic write's temporary file, failing the state save.
+    private static func setWritable(_ writable: Bool, _ directory: URL) {
+        try? FileManager.default.setAttributes(
+            [.posixPermissions: writable ? 0o755 : 0o555], ofItemAtPath: directory.path
+        )
     }
 }
 
@@ -1114,6 +1287,64 @@ private actor DwellEmitterSpy: GeofenceTransitionEmitting {
     }
 
     func dwells() -> [Invocation] {
+        invocations
+    }
+}
+
+/// Writes each dwell's rows to a real outbox, as the tracker does before it returns. Optionally
+/// suspends after the write forever — a process that died before `emitted` was stored.
+private actor OutboxDwellEmitter: GeofenceTransitionEmitting {
+    private let store: PendingGeofenceMetricStore
+    private let suspendsAfterWrite: Bool
+    private let afterWrite: @MainActor (Int) -> Void
+    private var invocations: [DwellEmitterSpy.Invocation] = []
+    private var pending: CheckedContinuation<Bool, Never>?
+    private var suspensionWaiters: [CheckedContinuation<Void, Never>] = []
+
+    init(
+        store: PendingGeofenceMetricStore,
+        suspendsAfterWrite: Bool = false,
+        afterWrite: @escaping @MainActor (Int) -> Void = { _ in }
+    ) {
+        self.store = store
+        self.suspendsAfterWrite = suspendsAfterWrite
+        self.afterWrite = afterWrite
+    }
+
+    func trackTransition(geofenceId: String, transition: GeofenceTransition, occurredAt: Date) async {}
+
+    func trackExit(geofenceId: String, occurredAt: Date, expectedUserId: String?) async {}
+
+    func trackDwell(
+        geofenceId: String, occurredAt: Date, context: GeofenceDwellContext, expectedUserId: String?
+    ) async -> Bool {
+        let crossing = GeofenceCrossing(
+            geofenceId: geofenceId, transition: .dwell, occurredAt: occurredAt,
+            dwell: context, expectedUserId: expectedUserId
+        )
+        guard await store.append(crossing.pendingMetrics(userId: "user-1", cachedGeofence: nil)) == .persisted
+        else { return false }
+        invocations.append(DwellEmitterSpy.Invocation(geofenceId: geofenceId, occurredAt: occurredAt, context: context))
+        await afterWrite(invocations.count)
+        guard suspendsAfterWrite else { return true }
+        return await withCheckedContinuation { continuation in
+            pending = continuation
+            suspensionWaiters.forEach { $0.resume() }
+            suspensionWaiters.removeAll()
+        }
+    }
+
+    func waitUntilSuspended() async {
+        guard pending == nil else { return }
+        await withCheckedContinuation { suspensionWaiters.append($0) }
+    }
+
+    func resume(returning persisted: Bool) {
+        pending?.resume(returning: persisted)
+        pending = nil
+    }
+
+    func dwells() -> [DwellEmitterSpy.Invocation] {
         invocations
     }
 }

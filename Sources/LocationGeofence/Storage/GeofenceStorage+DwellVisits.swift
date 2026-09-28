@@ -66,6 +66,38 @@ extension GeofenceStorage {
         return saveToDisk(state) ? .marked : .writeFailed
     }
 
+    /// Outcome of fixing a visit's dwell before it is delivered.
+    enum DwellReservationResult: Equatable {
+        /// The reservation the dwell must be delivered with: `proposed`, or the one an earlier
+        /// attempt already stored, which always wins.
+        case reserved(GeofenceDwellReservation)
+        /// The visit ended, was replaced, no longer matches its user or geometry, or its dwell was
+        /// already marked emitted. Nothing was written and nothing should be delivered.
+        case superseded
+        case writeFailed
+    }
+
+    /// Compare-and-set with the same guards as `markDwellVisitEmitted`: stores `proposed` on `visit`
+    /// only while it is still the stored, un-emitted visit for this fence and holds no reservation.
+    func reserveDwellEmission(
+        _ proposed: GeofenceDwellReservation,
+        for visit: GeofenceDwellVisit,
+        geofenceId: String
+    ) -> DwellReservationResult {
+        var state = loadFromDisk() ?? GeofenceState()
+        guard var stored = state.dwellVisits?[geofenceId],
+              stored.visitId == visit.visitId,
+              stored.userId == visit.userId,
+              stored.geometryRevision == visit.geometryRevision,
+              state.cachedGeofences?.first(where: { $0.id == geofenceId })?.dwellRevision == visit.geometryRevision,
+              !stored.emitted
+        else { return .superseded }
+        if let existing = stored.dwellReservation { return .reserved(existing) }
+        stored.dwellReservation = proposed
+        state.dwellVisits?[geofenceId] = stored
+        return saveToDisk(state) ? .reserved(proposed) : .writeFailed
+    }
+
     func removeDwellVisit(geofenceId: String) {
         var state = loadFromDisk() ?? GeofenceState()
         guard state.dwellVisits?.removeValue(forKey: geofenceId) != nil else { return }
