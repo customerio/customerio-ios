@@ -260,10 +260,11 @@ struct PolygonMembershipResolverTests {
         #expect(await setup.storage.getDwellVisit(geofenceId: circle.id) == nil)
     }
 
-    /// The same rule on a polygon's covering circle: leaving the circle still proves the device left
-    /// the polygon, so the EXIT is delivered, but a discovered circle exit cannot time the stay.
+    /// Leaving a polygon's covering circle proves the device is outside now, but it may have left
+    /// the polygon long before reaching the circle edge. Neither observed nor healed circle exits
+    /// can time the polygon stay, although both deliver the EXIT and close the visit.
     @Test(arguments: [true, false])
-    func coveringCircleExit_givenObservedPolygonVisit_expectDurationOnlyWhenExitObserved(crossingObserved: Bool) async {
+    func coveringCircleExit_givenObservedPolygonVisit_expectNoDuration(crossingObserved: Bool) async {
         let setup = await makeSetup(fix: nil, withDwellCoordinator: true)
         let geofence = polygonGeofence(transitionTypes: [.enter, .exit])
         await setup.storage.setCachedGeofences([geofence])
@@ -282,8 +283,7 @@ struct PolygonMembershipResolverTests {
         #expect(await setup.emitter.snapshot().map(\.transition) == [.enter, .exit])
         let exits = await setup.emitter.exitSnapshot()
         #expect(exits.count == 1)
-        #expect(exits.first?.context?.durationSeconds == (crossingObserved ? 600 : nil))
-        #expect(exits.first?.context?.detectionSource == (crossingObserved ? "covering_circle" : nil))
+        #expect(exits.first?.context == nil)
         #expect(await setup.storage.getDwellVisit(geofenceId: geofence.id) == nil)
     }
 

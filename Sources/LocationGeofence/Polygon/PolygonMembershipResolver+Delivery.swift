@@ -231,7 +231,10 @@ extension PolygonMembershipResolver {
                 transition: .exit,
                 occurredAt: evidence,
                 expectedUserId: expectedUserId,
-                detectionSource: confirmedByFix ? "location_evidence" : "covering_circle"
+                detectionSource: confirmedByFix ? "location_evidence" : "covering_circle",
+                // Leaving the covering circle proves outside now, but says nothing about when
+                // the device crossed the polygon boundary within it.
+                crossingObserved: confirmedByFix
             )
         case .none:
             return nil
