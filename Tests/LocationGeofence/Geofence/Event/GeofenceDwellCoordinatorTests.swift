@@ -1328,7 +1328,10 @@ struct GeofenceDwellCoordinatorTests {
         freshFixProvider: (() async -> CLLocation?)? = nil,
         evidenceRetryDelay: TimeInterval = 60,
         maxEvidenceRetryAttempts: Int = 3,
-        notificationCenter: NotificationCenter = .default
+        // Private by default: suites running alongside post `willEnterForeground` on `.default` (the
+        // replay harness does), and each post re-arms every live coordinator — resetting retry
+        // budgets and spending scripted fixes mid-test.
+        notificationCenter: NotificationCenter = NotificationCenter()
     ) async -> Setup {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         let storage = GeofenceStorage(fileManager: .default, directoryURL: directory)
