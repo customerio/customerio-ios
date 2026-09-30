@@ -1,15 +1,7 @@
 name: Geofence corpus replay
 
-# Replays the private recorded-drive corpus (customerio/mobile-replay-harness) against the
-# LocationGeofence module. A check of its own, so a corpus or harness problem never reddens the main
-# Tests run — and it leaves the shared ios-test.yml (also used by customerio-ios-fcm) untouched.
-#
-# Pilot: informative, not required. It skips cleanly when geofence code did not change, and when
-# the corpus key is unavailable (forks, bots, or before the secret is configured). Detection runs
-# on ubuntu so a macOS runner is only taken when there is something to replay.
-#
-# The corpus is private and this repo's logs are public: nothing below prints scenario content,
-# failure messages or uploads the result bundle. See .github/scripts/geofence_replay_gate.py.
+# Separate check, so a corpus problem never reddens the main Tests run.
+# Private corpus, public logs: never print scenario content or failure messages, or upload the result bundle.
 on:
   pull_request:
     types: [opened, synchronize, reopened]
@@ -59,10 +51,7 @@ jobs:
               if [ "$BEFORE" = "0000000000000000000000000000000000000000" ]; then
                 echo "run=true" >> "$GITHUB_OUTPUT"; exit 0
               fi
-              # The compare API lists at most 300 files and does not page them, so a push that
-              # reaches the cap (a large merge) may be hiding a geofence change. Replay rather than
-              # skip: an extra replay costs minutes, a skipped one hides a regression. Same for a
-              # failed call.
+              # The compare API lists at most 300 files; at the cap, replay rather than skip.
               if ! files=$(gh api "repos/$GITHUB_REPOSITORY/compare/$BEFORE...$AFTER" --jq '.files[].filename'); then
                 echo "::notice::Could not list the pushed changes — replaying to be safe."
                 echo "run=true" >> "$GITHUB_OUTPUT"; exit 0
@@ -72,8 +61,7 @@ jobs:
                 echo "run=true" >> "$GITHUB_OUTPUT"; exit 0
               fi ;;
           esac
-          # The pin file is watched on purpose: bumping the corpus alone is a change worth replaying.
-          # So is everything the geofence module and its tests build on (see Package.swift).
+          # Includes the corpus pin and everything the module and its tests build on (see Package.swift).
           if printf '%s\n' "$files" | grep -Eq '^(Sources/(Common|Location|LocationGeofence)/|Tests/(LocationGeofence|Shared|Mocks/Common|Mocks/LocationGeofence)/|Package\.swift$|\.github/geofence-corpus\.ref$|\.github/workflows/geofence-replay\.yml$|\.github/scripts/geofence_replay_gate\.py$)'; then
             echo "run=true" >> "$GITHUB_OUTPUT"
           else
@@ -111,8 +99,7 @@ jobs:
           persist-credentials: false
           path: .corpus
 
-      # Checked by count, not by trusting the loader: an override naming a missing directory
-      # resolves to "no corpus" on iOS and skips every replay rather than failing.
+      # By count: a missing directory would skip every replay rather than fail.
       - name: Check corpus
         run: |
           if [ "${{ steps.corpus.outcome }}" != "success" ]; then
@@ -132,10 +119,8 @@ jobs:
         with:
           xcode-version: '26.6'
 
-      # `TEST_RUNNER_` is how an environment variable reaches the simulator test process; a bare
-      # CIO_GEOFENCE_SCENARIOS is silently dropped. Output goes to a file, not the log: a failing
-      # drive's report can carry corpus content. What is shown can't: the exit status, build and
-      # destination errors, and xcodebuild's banners. Test-failure lines are filtered out.
+      # Without `TEST_RUNNER_` the simulator never sees the variable. Output goes to a file: a
+      # failing drive's report can carry corpus content.
       - name: Run replay tests
         env:
           TEST_RUNNER_CIO_GEOFENCE_SCENARIOS: ${{ github.workspace }}/.corpus/scenarios

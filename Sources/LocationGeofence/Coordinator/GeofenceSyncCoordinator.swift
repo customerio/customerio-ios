@@ -2,54 +2,35 @@ import CioInternalCommon
 import CoreLocation
 import Foundation
 
-/// Errors surfaced by `GeofenceSyncCoordinator` callers.
 enum GeofenceSyncError: Error, Equatable {
     case noIdentifiedUser
     case alreadyInProgress
     case fetchFailed(GeofenceApiError)
 }
 
-/// Which branch `handleMovement` took for the current EXIT.
+/// Which branch `handleMovement` took, for the log.
 enum HandleMovementTier: String, Sendable, CaseIterable {
-    /// Re-rank cached regions for the new location; no API call.
     case localRerank
-    /// Refetch from the server — when no anchor exists yet (first EXIT after install / clearAll /
-    /// sign-out).
     case remoteRefresh
 }
 
-/// Sync pipeline for the on-device geofence cache. Entry points:
-///
-/// - `refresh(latitude:longitude:anchorIsLiveFix:)` — identify / app-launch entry. Routes through
-///   `refreshAction`: re-fetch when stale, re-rank locally when the ranking is stale or the cache is
-///   unregistered, else skip. Gated on identified user and in-flight dedup. `anchorIsLiveFix` says
-///   whether the coordinates describe where the device is NOW or are a stored value standing in for
-///   it; only the caller knows, and the movement trigger cannot be sized to a polygon boundary
-///   around a point the device may not be at.
-/// - `handleMovement(latitude:longitude:anchorIsLiveFix:heldFix:)` — movement-trigger EXIT entry.
-///   Re-ranks the cached set for the new location; bootstraps from the server only when there's no
-///   anchor. Shares the same dedup gate as `refresh`. A movement pass whose fresh-fix request failed
-///   carries the cached fix that prompted it, so this entry is not automatically live either.
-///   `heldFix` is a fix the CALLER has already obtained and gated; the membership re-evaluation this
-///   entry starts runs against it instead of requesting one of its own. Nil for a trigger EXIT,
-///   which holds nothing.
-/// - `applyCachedRegistration(...)` — synchronously register from caller-fetched state,
-///   used by cold-wake / boot / auth-change paths. Synchronous on the main actor so
-///   `ownedRegionIdentifiers` is populated before the next yield — otherwise the OS may
-///   deliver a queued cold-wake transition into an empty filter set. Returns what it
-///   registered so the caller can persist it once the no-await window has closed.
-/// - `reset()` — sign-out cleanup. Stops OS-side monitoring and clears user-scoped store
-///   state (cooldowns, last-sync). Preserves the workspace cache.
+/// Keeps OS geofence registration in sync with the cached catalog. All entry points share one
+/// in-flight gate; all except `reset` need an identified user.
 protocol GeofenceSyncCoordinator: AutoMockable, AnyObject, Sendable {
+    /// Identify / app-launch entry. `anchorIsLiveFix`: the coordinates are where the device is now,
+    /// so the trigger may be sized to a polygon boundary around them.
     func refresh(latitude: Double, longitude: Double, anchorIsLiveFix: Bool) async -> Result<Void, GeofenceSyncError>
+    /// Movement-trigger EXIT entry. `heldFix`: a fix the caller already obtained, reused rather than
+    /// requesting another.
     func handleMovement(
         latitude: Double, longitude: Double, anchorIsLiveFix: Bool, heldFix: ResolvedFix?
     ) async -> Result<Void, GeofenceSyncError>
+    /// Sign-out: stops monitoring and clears user-scoped state, keeping the workspace cache.
     func reset() async -> Result<Void, GeofenceSyncError>
-    /// Fired after a remote refresh writes a new config; replaces any prior handler. Beside the
-    /// writer rather than at the callers of `refresh`, because `handleMovement`'s remote tier —
-    /// a trigger EXIT's refetch, the common background refresh — has no module-level call site.
+    /// Called after a remote refresh saves a new config.
     func setOnConfigPersisted(_ handler: (@Sendable () -> Void)?)
+    /// Cold-wake registration from cached state. Synchronous so ownership is set before a queued OS
+    /// event can be delivered.
     @MainActor
     func applyCachedRegistration(
         cachedRegions: [Geofence],
@@ -59,12 +40,9 @@ protocol GeofenceSyncCoordinator: AutoMockable, AnyObject, Sendable {
     ) -> GeofenceRegistration?
 }
 
-/// `@unchecked Sendable`: stored `Logger` and `DateUtil` are existentials of protocols
-/// not declared `: Sendable`. Both are `let` references injected once and never mutated;
-/// the only mutable state is the `Synchronized<Bool>` dedup gate.
+/// `@unchecked Sendable`: `Logger` and `DateUtil` aren't `Sendable` but are immutable `let`s; all
+/// mutable state is `Synchronized`.
 final class GeofenceSyncCoordinatorImpl: GeofenceSyncCoordinator, @unchecked Sendable {
-    // Internal (not private) so the `+RefreshDecision` / `+Refresh` / `+InitialEnter` /
-    // `+OsRegistration` extensions in their own files can read them; all are immutable injected deps.
     let distanceFilter: GeofenceDistanceFilter
     let logger: Logger
     let apiService: GeofenceApiService
@@ -73,30 +51,14 @@ final class GeofenceSyncCoordinatorImpl: GeofenceSyncCoordinator, @unchecked Sen
     let dateUtil: DateUtil
     let transitionEmitter: GeofenceTransitionEmitting
     let contextStore: BackgroundDeliveryContextStore
-    // `internal`, not `private`, only because the gate helpers live in a split extension file.
     let refreshInProgress = Synchronized<Bool>(false)
 
-    /// A movement pass that lost the gate, replayed when the holder releases it.
-    ///
-    /// Only movement is deferred, and the asymmetry is the point. A refresh that loses the gate is
-    /// redundant — whoever holds it is refreshing the same catalog from a fix of the same moment.
-    /// A movement pass that loses it is not: it is the only path that re-centres the movement
-    /// trigger, and nothing else re-arms it. A business crossing and a trigger EXIT routinely
-    /// arrive from the SAME movement, so the two race, and without this the EXIT can be dropped
-    /// with `alreadyInProgress` and no retry — leaving the trigger on the circle the device just
-    /// left, where no further EXIT can fire.
-    ///
-    /// Last writer wins: two movements queued behind one holder describe the same journey, and the
-    /// newer coordinates are the ones worth re-arming against.
+    /// A movement that lost the gate, replayed when it frees. Refreshes aren't deferred: a dropped
+    /// refresh is redundant, but a dropped movement leaves the trigger where no EXIT can fire.
     let deferredMovement = Synchronized<DeferredMovement?>(nil)
 
-    /// Arrival order for movements, so a replay can tell whether it has been overtaken.
-    ///
-    /// Ordered by ARRIVAL, not by completion: a movement that lost the gate is NEWER than the one
-    /// holding it, so a completion counter would discard exactly the replay the deferral exists to
-    /// preserve.
-    /// Set by `GeofenceBootstrap` so visit arming can be reconciled against a newly landed config.
     let onConfigPersisted = Synchronized<(@Sendable () -> Void)?>(nil)
+    /// Arrival order, not completion order: a movement that lost the gate is newer than the holder.
     let movementSequence = Synchronized<UInt64>(0)
     /// Arrival sequence of the newest movement that has already re-centred the trigger.
     let appliedMovementSequence = Synchronized<UInt64>(0)
@@ -122,9 +84,7 @@ final class GeofenceSyncCoordinatorImpl: GeofenceSyncCoordinator, @unchecked Sen
     }
 
     func refresh(latitude: Double, longitude: Double, anchorIsLiveFix: Bool) async -> Result<Void, GeofenceSyncError> {
-        // A refresh re-centres the trigger just as a movement pass does, and a replay that does
-        // not know it happened walks the trigger back to an older point. Stamped as part of
-        // taking the gate: see `acquireGateWithSequence` for why the two cannot be separate steps.
+        // Takes a sequence: a refresh re-centres the trigger too, and an older replay must not undo it.
         guard let sequence = acquireGateWithSequence() else {
             logger.geofenceSyncSkipped(reason: .refreshInProgress)
             return .failure(.alreadyInProgress)
@@ -134,17 +94,13 @@ final class GeofenceSyncCoordinatorImpl: GeofenceSyncCoordinator, @unchecked Sen
         let result = outcome.result
         if outcome.reCentred { noteMovementApplied(sequence) }
         let cleaned = await cleanupIfUserChanged(expectedUserId: expectedUserId)
-        // Explicit release (not defer): the self-heal retry below must find the gate free, or it
-        // would be dropped exactly like the refresh it compensates for.
+        // Not `defer`: the retry below must find the gate free.
         releaseGate()
         if cleaned { retryForCurrentUser(latitude: latitude, longitude: longitude, anchorIsLiveFix: anchorIsLiveFix) }
         drainDeferredMovement(userChanged: cleaned)
         return result
     }
 
-    /// The refresh body, extracted so `refresh` has a single exit at which `cleanupIfUserChanged`
-    /// runs while the gate is still held — covering every path (freshness-skip, fetch failure,
-    /// post-fetch supersede, success alike).
     private func performRefresh(
         expectedUserId: String?,
         latitude: Double,
@@ -159,13 +115,8 @@ final class GeofenceSyncCoordinatorImpl: GeofenceSyncCoordinator, @unchecked Sen
         let cachedConfig = await storage.getCachedConfig()
         let effectiveConfig = cachedConfig ?? .fallback
         let requested = LocationData(latitude: latitude, longitude: longitude)
-        // A non-live anchor only means "not obtained for this event", so it can be an OS cache
-        // value hours old. Ranking, planting and persisting around one can drop the fence that
-        // just fired and leave a movement trigger the device is not inside — which on the classic
-        // path never fires again. The registration centre is the point the live registration is
-        // already built around, so anchoring there still lets a time-expired catalog refetch
-        // without moving anything. Callers holding a live fix are unaffected, and so is the
-        // launch path, which already passes this same centre.
+        // A non-live anchor can be hours old; ranking around it can drop the fence that just fired.
+        // Use the registration centre the live set is already built around.
         let location = anchorIsLiveFix ? requested : (await storage.getLastRegistrationCenter() ?? requested)
         switch await refreshAction(location: location, config: effectiveConfig) {
         case .remote:
@@ -184,28 +135,24 @@ final class GeofenceSyncCoordinatorImpl: GeofenceSyncCoordinator, @unchecked Sen
                 cachedRegions: cachedRegions,
                 anchorIsLiveFix: anchorIsLiveFix
             )
-        // Moves nothing, so it must not retire a movement waiting behind it.
+        // Moved nothing, so it must not retire a queued movement.
         case .skip:
             logger.geofenceSyncSkippedFresh()
             return MovementPassOutcome(result: .success(()), reCentred: false)
         }
     }
 
-    // `heldFix` is defaulted here rather than in the protocol, which cannot carry default
-    // arguments: every caller but the circle-entry re-arm holds no fix.
+    // Defaulted here because protocol requirements cannot carry default arguments.
     func handleMovement(
         latitude: Double, longitude: Double, anchorIsLiveFix: Bool, heldFix: ResolvedFix? = nil
     ) async -> Result<Void, GeofenceSyncError> {
-        // No sequence here: a fresh movement is stamped inside the gate, so a pass acquiring
-        // later can never hold an earlier number. See `acquireGateOrDefer`.
+        // No sequence here: a fresh movement is stamped inside the gate (`acquireGateOrDefer`).
         await handleMovement(
             latitude: latitude, longitude: longitude, anchorIsLiveFix: anchorIsLiveFix,
             replaySequence: nil, heldFix: heldFix
         )
     }
 
-    /// The movement body, extracted for a single gated exit — same rationale as `performRefresh`.
-    /// `internal` only because the gated caller lives in `+Gate`.
     func performMovement(
         expectedUserId: String?,
         latitude: Double,
@@ -223,8 +170,6 @@ final class GeofenceSyncCoordinatorImpl: GeofenceSyncCoordinator, @unchecked Sen
         let effectiveConfig = cachedConfig ?? .fallback
         let movement = LocationData(latitude: latitude, longitude: longitude)
 
-        // No anchor (first EXIT after install / clearAll / sign-out) bootstraps from the server;
-        // otherwise refetch only once the device has moved beyond the cached nearby set.
         if anchor == nil || movedBeyondRefetchRadius(from: anchor, to: movement, config: effectiveConfig) {
             logger.geofenceMovementTrigger(tier: .remoteRefresh)
             let remote = await performRemoteRefresh(
@@ -235,8 +180,7 @@ final class GeofenceSyncCoordinatorImpl: GeofenceSyncCoordinator, @unchecked Sen
                 heldFix: heldFix
             )
             if case .failure = remote.result {
-                // A failed pass never re-centers the trigger, leaving it on the circle the device
-                // just exited where no further EXIT can fire. Re-rank from cache to re-arm it.
+                // Re-arm from cache, or the trigger stays on the circle just exited and never fires.
                 logger.geofenceMovementRearmedAfterFailedRefresh()
                 let rearm = await performLocalRefresh(
                     expectedUserId: userId,
@@ -246,14 +190,11 @@ final class GeofenceSyncCoordinatorImpl: GeofenceSyncCoordinator, @unchecked Sen
                     anchorIsLiveFix: anchorIsLiveFix,
                     heldFix: heldFix
                 )
-                // The fetch failed but the re-arm may still have moved the trigger, and it is the
-                // MOVE an older replay must not undo. Reporting this as "nothing happened" is what
-                // let one through.
+                // The re-arm may have moved the trigger even though the fetch failed.
                 return MovementPassOutcome(result: remote.result, reCentred: rearm.reCentred)
             }
             return remote
         } else if await !movedBeyondRerankRadius(to: movement, config: effectiveConfig) {
-            // Always registers the trigger at `movement` before returning.
             return await performPolygonWakePass(expectedUserId: userId, at: movement, config: effectiveConfig, anchorIsLiveFix: anchorIsLiveFix, heldFix: heldFix)
         } else {
             logger.geofenceMovementTrigger(tier: .localRerank)
@@ -274,32 +215,23 @@ final class GeofenceSyncCoordinatorImpl: GeofenceSyncCoordinator, @unchecked Sen
             logger.geofenceSyncSkipped(reason: .refreshInProgress)
             return .failure(.alreadyInProgress)
         }
-        // Discarded, not drained: a movement queued behind a reset belongs to the profile this
-        // reset is clearing, and re-registering for it would undo the sign-out.
-        // One step, not two: see `discardDeferredAndReleaseGate`.
+        // Discarded, not drained: a queued movement belongs to the user being signed out.
         defer { discardDeferredAndReleaseGate() }
 
-        // If a new user signed in between sign-out and this handler firing, skip — their
-        // own refresh path will register the right state for them, and clearing here
-        // would undo it.
+        // A new user already signed in; clearing would undo their registration.
         if let currentUserId = contextStore.currentUserId, !currentUserId.isEmpty {
             logger.geofenceResetSuperseded()
             return .success(())
         }
 
-        // Clear BEFORE the OS stop, not after. They are separate awaits, and a polygon pass
-        // resuming between them would read a still-populated `monitoredGeofenceIds`, pass the
-        // create guard in `recordPolygonMembership` and emit an enter for a fence being torn down.
-        // Clearing first makes that pass fail closed; a callback arriving in the reversed gap is
-        // suppressed instead, which is the safe direction.
+        // Clear BEFORE the OS stop, so a polygon pass resuming in between can't emit an enter for
+        // a fence being torn down.
         await storage.clearUserScopedState()
         await MainActor.run { monitor.stopMonitoringAll() }
         logger.geofenceResetCompleted()
         return .success(())
     }
 
-    // `internal`, not `private`, only because the gate helpers live in a split extension file.
-    /// The identified user a gated operation runs for (`nil` when signed out); the exit cleanup compares against it.
     var identifiedUserId: String? {
         guard let userId = contextStore.currentUserId, !userId.isEmpty else { return nil }
         return userId
@@ -309,9 +241,7 @@ final class GeofenceSyncCoordinatorImpl: GeofenceSyncCoordinator, @unchecked Sen
 // MARK: - DI
 
 extension DIGraphShared {
-    /// Hand-written + `@MainActor`-isolated because constructing the coordinator reads
-    /// `geofenceMonitor`, whose accessor is also `@MainActor`. Override-check mirrors
-    /// the generated accessors so tests can substitute via `di.override(value:forType:)`.
+    /// Hand-written because `geofenceMonitor` is `@MainActor`.
     @MainActor
     var geofenceSyncCoordinator: GeofenceSyncCoordinator {
         let overridden: GeofenceSyncCoordinator? = getOverriddenInstance()
@@ -320,9 +250,7 @@ extension DIGraphShared {
 }
 
 extension GeofenceSyncCoordinatorImpl {
-    /// Process-wide singleton — must be shared so the instance-level `refreshInProgress`
-    /// dedup gate actually deduplicates across every caller. A factory-style accessor
-    /// would hand each caller its own gate and defeat the point.
+    /// One instance, so the gate deduplicates across every caller.
     @MainActor
     static let shared = GeofenceSyncCoordinatorImpl(
         apiService: DIGraphShared.shared.geofenceApiService,

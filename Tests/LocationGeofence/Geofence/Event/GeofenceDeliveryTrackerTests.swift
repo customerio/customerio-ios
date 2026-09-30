@@ -59,9 +59,8 @@ struct GeofenceDeliveryTrackerTests {
         #expect(properties["timestamp"] == nil)
         #expect(properties["latitude"] == nil)
         #expect(properties["longitude"] == nil)
-        // No name on the metric → property omitted entirely (not sent empty/null).
+        // Omitted, not sent empty/null.
         #expect(properties["geofenceName"] == nil)
-        // transitionId carried through verbatim from the persisted row.
         #expect(properties["transitionId"] as? String == "txn_abc")
     }
 
@@ -113,9 +112,7 @@ struct GeofenceDeliveryTrackerTests {
 
     @Test
     func trackMetric_givenNumericGeosetId_expectEmittedAsStringNotNumber() async {
-        // A numeric-looking geoset must serialize as a JSON string, not a number, to stay aligned
-        // with Android (which also emits it as a string). Guards against re-introducing numeric
-        // coercion in trackEventProperties.
+        // A string, not a number, to match Android.
         let (tracker, httpClient) = makeTracker()
         httpClient.sendTrackEventClosure = { _, completion in completion(.success(())) }
 
@@ -162,7 +159,7 @@ struct GeofenceDeliveryTrackerTests {
             }
         }
 
-        // Always present as an (empty) object rather than omitted/nil.
+        // Present as an empty object, not omitted.
         let properties = httpClient.sendTrackEventReceivedArguments?.request.properties ?? [:]
         #expect((properties["metadata"] as? [String: Any])?.isEmpty == true)
     }

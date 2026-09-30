@@ -3,19 +3,8 @@ import Foundation
 
 // sourcery: InjectRegisterShared = "GeofenceEventTracker"
 // sourcery: InjectCustomShared
-/// Delivers geofence transition events. Anonymous crossings are dropped (geofencing is
-/// identified-only); survivors are deduped by a cooldown, fanned out per geoset, and persisted
-/// before any send. Two delivery channels drain the row, deduped server-side by the shared
-/// transitionId:
-/// - Fresh transition → direct HTTP (`deliverFresh`): works before DataPipeline is up (cold-wake);
-///   failure retains the row for the next flush.
-/// - Replay (`flushPending`) → EventBus when DataPipeline is live, else direct HTTP off the
-///   persisted context; routing rationale on the method.
-///
-/// `flushPending()` runs on module init, cold-wake bootstrap, `ProfileIdentifiedEvent`, and after
-/// every tracked transition (once its own rows are persisted and sent) — so a backlog retries
-/// whenever a crossing wakes the device, without the fresh crossing's durability waiting on it.
-/// Concurrent deliveries of the same row are deduped via the in-memory active-delivery set.
+/// Delivers geofence transition events: identified-only, cooldown-deduped, fanned out per geoset,
+/// and persisted before any send.
 ///
 /// `@unchecked Sendable`: all stored properties are `let`; mutable state is wrapped in `Synchronized`.
 final class GeofenceEventTracker: @unchecked Sendable {
@@ -52,76 +41,50 @@ final class GeofenceEventTracker: @unchecked Sendable {
         self.backgroundTaskRunner = backgroundTaskRunner
     }
 
-    /// Tracks a geofence transition, suppressing duplicates within the cooldown window.
-    /// Fans the transition out to one metric per geoset the geofence belongs to (a single
-    /// metric without a geosetId when it belongs to none), persists every row, then delivers.
-    /// The cooldown is evaluated once per geofence, before fan-out, so all rows of one
-    /// transition are suppressed or emitted together.
-    ///
-    /// - Parameter occurredAt: when the crossing happened — an OS event's date, or the timestamp of
-    ///   the fix that decided a polygon verdict. It becomes the row's `timestamp`, the event time
-    ///   the customer sees, so it is required rather than defaulted: a caller allowed to omit it
-    ///   would report the moment of delivery, which trails the crossing by a whole wake-to-verdict
-    ///   pipeline on a polygon and by a whole suspension on a replayed one.
+    /// The cooldown applies before fan-out, so a crossing's rows are suppressed or emitted together.
+    /// `occurredAt` is the crossing time the customer sees, not the delivery time.
     func trackTransition(
         geofenceId: String,
         transition: GeofenceTransition,
         occurredAt: Date
     ) async {
-        // Persist and send the current crossing before any backlog work: the monitor's dedup
-        // baseline has already advanced, so a crossing suspended away un-persisted can never
-        // re-emit — its durability must not wait on a slow replay.
+        // Current crossing before the backlog: the dedup baseline has advanced, so an un-persisted
+        // crossing can never re-emit.
         let freshKeys = await deliverCurrentCrossing(
             geofenceId: geofenceId, transition: transition, occurredAt: occurredAt
         )
-        // Then retry the backlog: queued rows are self-contained (stamped userId), so this
-        // crossing's gates don't apply. Excluding the rows just written keeps a failed fresh
-        // send on disk for the next trigger instead of re-attempting it on the same network.
+        // Excluding the rows just written keeps a failed fresh send on disk for the next trigger.
         await flushPending(excluding: freshKeys)
     }
 
-    /// Gates, fans out, persists, and sends the crossing's rows over direct HTTP; returns the
-    /// persisted keys (empty when gated) so the caller can exclude them from the backlog flush.
     private func deliverCurrentCrossing(
         geofenceId: String,
         transition: GeofenceTransition,
         occurredAt: Date
     ) async -> Set<String> {
-        // Identified-only: the backend rejects anonymous geofence tracks, so drop before cooldown or
-        // persist. Snapshot the userId so a later sign-out/sign-in can't reattribute the row.
+        // Snapshot the userId so a later sign-out/sign-in can't reattribute the row.
         guard let stampedUserId = contextStore.currentUserId, !stampedUserId.isEmpty else {
             logger.geofenceTransitionDroppedAnonymous(geofenceId: geofenceId, transition: transition)
             return []
         }
 
-        // Cooldown is scoped per user: a re-login must not be suppressed by the previous user's
-        // recent transition, even when a fast re-login skips the async sign-out cleanup.
+        // Per user: a fast re-login must not be suppressed by the previous user's transition.
         let cooldownKey = "\(stampedUserId):\(geofenceId):\(transition.rawValue)"
-        // Wall-clock, deliberately not `occurredAt`: this base is shared with
-        // `purgeExpiredCooldowns` below, so a record written at a past crossing time would be
-        // purge-eligible the moment it lands and would suppress nothing.
+        // Wall-clock, not `occurredAt`: `purgeExpiredCooldowns` shares this base and would purge a
+        // past-dated record at once.
         let now = dateUtil.now
-        // Cached config wins when present so a workspace can tune the dedup window without
-        // an SDK release; constructor default applies otherwise.
         let interval = await storage.getCachedConfig()?.duplicateEventsExpiry ?? cooldownInterval
 
         if let remaining = await storage.tryAcquireCooldown(key: cooldownKey, now: now, interval: interval) {
             logger.geofenceEventSuppressed(geofenceId: geofenceId, transition: transition, cooldownRemaining: remaining)
             return []
         }
-        // Resolve the geofence name and geoset membership now and carry them on the metric;
-        // name is nil when the geofence has none so the event omits `geofenceName`.
         let cachedGeofence = await storage.getCachedGeofences().first { $0.id == geofenceId }
         let geofenceName = cachedGeofence?.name
-        // One event per geoset (scalar geosetId + geofence id/name as metadata) so matching needs no
-        // joins; no geosets (or the fence left the cache) → one event without a geosetId.
-        // Dedupe geoset ids, and drop blanks, so a fence listing the same one twice — or an empty
-        // id — doesn't emit a duplicate or a stray empty-geoset event.
         var seenGeosetIds = Set<String>()
         let memberGeosetIds = (cachedGeofence?.geosetIds ?? []).filter { !$0.isEmpty && seenGeosetIds.insert($0).inserted }
         let geosetIds: [String?] = memberGeosetIds.isEmpty ? [nil] : memberGeosetIds
-        // One transitionId for the whole crossing so downstream correlates the fan-out as one
-        // transition; geosetId distinguishes the rows.
+        // One transitionId for the whole crossing, so downstream correlates the fan-out.
         let transitionId = UUID().uuidString
         let metrics = geosetIds.map { geosetId in
             PendingGeofenceMetric(
@@ -132,28 +95,21 @@ final class GeofenceEventTracker: @unchecked Sendable {
                 name: geofenceName,
                 transitionId: transitionId,
                 geosetId: geosetId,
-                // Snapshot as the fallback for an evicted geofence; delivery prefers the live cache.
+                // Fallback for an evicted geofence; delivery prefers the live cache.
                 metadata: cachedGeofence?.metadata
             )
         }
-        // Persist all rows in one atomic write: a per-row loop could save some and lose the rest on
-        // an app kill, and the cooldown is already spent so the lost ones would never retry. Done
-        // before requesting background time so durability never depends on the assertion.
+        // One atomic write: the cooldown is spent, so rows lost mid-loop would never retry. Before
+        // background time, so durability never depends on the assertion.
         let write = await pendingStore.append(metrics)
         guard write == .persisted else {
             await abandonUnpersisted(write, geofenceId: geofenceId, transition: transition, cooldownKey: cooldownKey)
             return []
         }
-        // The SDK has accepted the crossing and written it down; that is the fact replay asserts
-        // on, and it is complete here. What happens to the row afterwards is delivery's business
-        // and is reported by the `delivery.*` family — this record deliberately promises nothing
-        // about it.
+        // Accepted means persisted; delivery outcomes are the `delivery.*` records.
         logger.geofenceTransitionAccepted(geofenceId: geofenceId, transition: transition, rows: metrics.count)
 
-        // Hold a background-task assertion across delivery so the OS doesn't suspend us mid-send when
-        // it woke us only briefly for the transition. Deliver concurrently so N geosets don't
-        // serialize N round-trips inside that window. Safe: distinct keys (no dedup-claim collision),
-        // and rows are already persisted so any that don't finish are retried by flushPending.
+        // Concurrent is safe: keys are distinct, and unfinished rows are already persisted.
         await backgroundTaskRunner.withBackgroundTime { [self] in
             await withTaskGroup(of: Void.self) { group in
                 for metric in metrics {
@@ -165,23 +121,15 @@ final class GeofenceEventTracker: @unchecked Sendable {
         return Set(metrics.map(\.key))
     }
 
-    /// Replays every queued row, routed by who owns delivery best right now:
-    /// - DataPipeline live → EventBus: its durable queue retries on its own cadence and batches the rows.
-    /// - Else persisted key → direct HTTP: an uninitialized cold-wake (wrapper before JS/Dart init)
-    ///   ships the backlog in the wake window; failed rows stay queued for the next trigger.
-    /// - Neither → EventBus persists to disk; DataPipeline replays at next init.
-    ///
-    /// `excluding` skips rows the caller just persisted and already attempted itself.
+    /// DataPipeline live → EventBus; else a persisted key → direct HTTP (cold wake); neither →
+    /// EventBus, which persists for DataPipeline's next init.
     func flushPending(excluding excludedKeys: Set<String> = []) async {
-        // An unreadable queue is not an empty one. Both end this call without sending, but only
-        // the first leaves rows on disk that a later trigger must come back for — so it must not
-        // read as "nothing to flush" to anything added here later. The store logs which it was.
+        // An unreadable queue is not an empty one: its rows stay on disk for a later trigger.
         guard case .rows(let rows) = await pendingStore.read() else { return }
         let metrics = rows.filter { !excludedKeys.contains($0.key) }
         guard !metrics.isEmpty else { return }
         let persistedKey = contextStore.currentCdpApiKey
         if !contextStore.hasLiveCdpApiKeyProvider, let persistedKey, !persistedKey.isEmpty {
-            // Same assertion + concurrent fan-out rationale as the fresh send in `trackTransition`.
             await backgroundTaskRunner.withBackgroundTime { [self] in
                 await withTaskGroup(of: Void.self) { group in
                     for metric in metrics {
@@ -198,19 +146,9 @@ final class GeofenceEventTracker: @unchecked Sendable {
 
     // MARK: - Private
 
-    /// Gives up a crossing whose rows never reached disk.
-    ///
-    /// Nothing was written in either case, but they are not the same event and must not share a
-    /// record: one is a write that failed, the other a write refused before it was tried, so an
-    /// unreadable queue survives. Both release the just-claimed cooldown so the next crossing
-    /// retries from a clean state instead of being suppressed.
-    ///
-    /// Both also skip delivery, for different reasons. On a failed write, sending anyway would let
-    /// the success-path `remove(key:)` drop a later same-second crossing's row (keys omit
-    /// transitionId). That hazard does NOT apply to a refusal — `remove` takes nothing out of a
-    /// file it cannot read — so this crossing is dropped by choice: the backlog we declined to
-    /// overwrite is worth more than one fresh row, and delivering un-persisted would make a failed
-    /// send unretryable and silent. The cost is real when the queue was in fact empty.
+    /// Skips delivery. After a failed write, the success-path `remove(key:)` could drop a later
+    /// same-second row (keys omit transitionId); after a refused one, a send that failed could
+    /// never be retried.
     private func abandonUnpersisted(
         _ write: PendingGeofenceQueueWrite,
         geofenceId: String,
@@ -218,9 +156,7 @@ final class GeofenceEventTracker: @unchecked Sendable {
         cooldownKey: String
     ) async {
         switch write {
-        // Unreachable: the one call site guards on `.persisted`. Kept total rather than narrowed
-        // so the compiler still lists the arms, but it must stay a no-op only while that guard
-        // holds — reaching here would release no cooldown and log nothing.
+        // Unreachable: the one call site guards on `.persisted`.
         case .persisted: return
         case .writeFailed:
             logger.geofencePendingPersistFailed(geofenceId: geofenceId, transition: transition)
@@ -230,7 +166,6 @@ final class GeofenceEventTracker: @unchecked Sendable {
         await storage.releaseCooldown(key: cooldownKey)
     }
 
-    /// Fresh-transition delivery via direct HTTP. Failure leaves the row for `flushPending`.
     private func deliverFresh(metric: PendingGeofenceMetric) async {
         // Claim so a concurrent flush of the same row can't also send it.
         guard activeDeliveryKeys.mutating({ $0.insert(metric.key).inserted }) else { return }
@@ -238,8 +173,7 @@ final class GeofenceEventTracker: @unchecked Sendable {
 
         let effective = await resolvingLiveValues(metric)
 
-        // The error is carried out, not collapsed to a Bool, so `delivery.failed` can report a
-        // reason — an offline device and a misconfigured one are otherwise identical in the log.
+        // Not collapsed to a Bool, so `delivery.failed` can report a reason.
         let outcome = await withCheckedContinuation { (continuation: CheckedContinuation<Result<Void, BackgroundDeliveryHttpError>, Never>) in
             deliveryTracker.trackMetric(metric: effective, userId: effective.userId) { result in
                 continuation.resume(returning: result)
@@ -251,17 +185,12 @@ final class GeofenceEventTracker: @unchecked Sendable {
             _ = await pendingStore.remove(key: metric.key)
             logger.geofenceDeliverySent(geofenceId: effective.geofenceId, transition: effective.transition, via: "http")
         case .failure(let error):
-            // Row stays for the next flush. Logged rather than left silent: an accepted crossing
-            // still in the queue and one the SDK never saw are the same absence otherwise.
             logger.geofenceDeliveryFailed(geofenceId: effective.geofenceId, transition: effective.transition, error: error)
         }
     }
 
-    /// Replay via EventBus → DataPipeline, which then owns delivery and retry. We drop our copy
-    /// once the handoff resolves (observer invoked, or written to the EventBus cache when none
-    /// exists yet). That is not a durable-persistence ack — the strongest signal EventBus exposes
-    /// today — so a crash before DataPipeline persists re-delivers on the next flush (deduped by
-    /// transitionId).
+    /// Drops our copy once the handoff resolves. Not a durable ack, so a crash can re-deliver
+    /// (deduped by transitionId).
     private func deliverViaEventBus(metric: PendingGeofenceMetric) async {
         guard activeDeliveryKeys.mutating({ $0.insert(metric.key).inserted }) else { return }
         defer { activeDeliveryKeys.mutating { _ = $0.remove(metric.key) } }
@@ -271,21 +200,16 @@ final class GeofenceEventTracker: @unchecked Sendable {
         _ = await pendingStore.remove(key: metric.key)
     }
 
-    /// Prefers the freshest cached `name`/`metadata` at send, falling back to the row snapshot when
-    /// the geofence has left the cache. All other fields — including the dedup key inputs — are
-    /// unchanged, so the returned copy addresses the same persisted row.
+    /// Only `name`/`metadata` change, so the copy still addresses the same persisted row.
     private func resolvingLiveValues(_ metric: PendingGeofenceMetric) async -> PendingGeofenceMetric {
         guard let live = await storage.getCachedGeofences().first(where: { $0.id == metric.geofenceId }) else {
             return metric
         }
-        // Re-resolve name and metadata from the live cache; name is nil when the geofence has none.
         return metric.withResolved(name: live.name, metadata: live.metadata)
     }
 
-    /// Hands a row to DataPipeline via EventBus, carrying the snapshot userId + timestamp so a
-    /// delayed replay attributes to the right person and time, not the current identity/send time.
-    /// `postEventAndWait` (not `postEvent`) so the caller drains the row only once the handoff has
-    /// resolved — `postEvent` returns before its detached delivery/persist task even runs.
+    /// `postEventAndWait`, not `postEvent`: the caller drains the row, and `postEvent` returns before
+    /// its delivery task even runs.
     private func postEventBus(metric: PendingGeofenceMetric) async {
         await eventBusHandler.postEventAndWait(TrackGeofenceMetricEvent(
             geofenceId: metric.geofenceId,
@@ -303,9 +227,7 @@ final class GeofenceEventTracker: @unchecked Sendable {
 
 // MARK: - Transition emitter seam
 
-/// Delivers a transition through the tracked path (cooldown dedup, per-geoset fan-out, persistence).
-/// Lets a caller such as `GeofenceSyncCoordinator` fire a synthetic initial ENTER for a newly
-/// registered geofence the device is already inside, without depending on the concrete tracker.
+/// Delivers a transition through the tracked path (cooldown, per-geoset fan-out, persistence).
 protocol GeofenceTransitionEmitting: Sendable {
     /// See `GeofenceEventTracker.trackTransition(geofenceId:transition:occurredAt:)`.
     func trackTransition(geofenceId: String, transition: GeofenceTransition, occurredAt: Date) async
@@ -324,7 +246,6 @@ extension DIGraphShared {
 extension GeofenceEventTracker {
     private static let sharedHolder = Synchronized<GeofenceEventTracker?>(nil)
 
-    /// Real background-task assertion in the app; no-op where `UIApplication` is unavailable.
     private static var defaultBackgroundTaskRunner: BackgroundTaskRunner {
         #if canImport(UIKit)
         UIKitBackgroundTaskRunner(name: "io.customer.geofence.delivery")
@@ -333,10 +254,8 @@ extension GeofenceEventTracker {
         #endif
     }
 
-    /// Lazily constructs and caches a process-wide singleton. Both `LocationModule.initialize`
-    /// (foreground) and `LocationModule.bootstrapForBackgroundDelivery` (cold-wake) resolve
-    /// through this DI accessor so they share the same tracker — same active-delivery dedup
-    /// set, same `PendingGeofenceMetricStore`, same cooldown actor.
+    /// One instance for foreground init and cold-wake bootstrap, so both share the active-delivery
+    /// set and pending store.
     static func shared(di: DIGraphShared) -> GeofenceEventTracker {
         sharedHolder.mutating { current in
             if let current { return current }

@@ -1,7 +1,6 @@
 import CioInternalCommon
 import Foundation
 
-/// Errors surfaced by `GeofenceApiService` callers.
 enum GeofenceApiError: Error, Equatable {
     case missingApiHost
     case missingCdpApiKey
@@ -10,8 +9,7 @@ enum GeofenceApiError: Error, Equatable {
     case transport
     case decoding
 
-    /// A stable machine token. `String(describing:)` would change with the case name, the
-    /// associated value, or a future `CustomStringConvertible`, and these end up in `why=`.
+    /// Stable token for `why=`; `String(describing:)` isn't stable.
     var diagnosticToken: String {
         switch self {
         case .missingApiHost: return "missing_api_host"
@@ -26,8 +24,7 @@ enum GeofenceApiError: Error, Equatable {
 
 /// Fetches geofences + workspace config from the CDP API.
 protocol GeofenceApiService: AutoMockable, Sendable {
-    /// Returns the geofence set ranked around the device location. The request carries no user
-    /// identifier (only the workspace API key), so the coordinate can't be attributed to a person.
+    /// Carries no user identifier, only the workspace API key.
     func fetchNearbyGeofences(
         latitude: Double,
         longitude: Double,
@@ -37,13 +34,10 @@ protocol GeofenceApiService: AutoMockable, Sendable {
 
 // sourcery: InjectRegisterShared = "GeofenceApiService"
 // sourcery: InjectCustomShared
-/// `@unchecked Sendable`: all stored properties are `let` and the only mutable state lives
-/// inside the injected stores/runner (already thread-safe). Lets callers invoke this from
-/// a `Task` without an isolation hop.
+/// `@unchecked Sendable`: all stored properties are `let`; mutable state lives in the injected,
+/// thread-safe dependencies.
 final class GeofenceApiServiceImpl: GeofenceApiService, @unchecked Sendable {
-    /// Carries its own version. `apiHost` ends in `/v1` (region-derived, e.g.
-    /// `cdp.customer.io/v1`) and is shared with `/track`, which is still v1 — so the version here
-    /// cannot come from the host. Polygon regions are only returned by v2.
+    /// Carries its own version: `apiHost` ends in `/v1`, shared with `/track`. Polygons are v2 only.
     static let nearestPath = "/v2/geofences/nearest"
 
     private let contextStore: BackgroundDeliveryContextStore
@@ -124,19 +118,12 @@ final class GeofenceApiServiceImpl: GeofenceApiService, @unchecked Sendable {
         }
     }
 
-    /// Composes `{apiHost}{path}`, dropping a trailing version segment off the host because `path`
-    /// supplies its own. Handles `/v1`, another version, or no version at all — a self-hosted or
-    /// overridden host may legitimately carry none.
-    ///
-    /// Rebuilt from parsed components rather than spliced onto the host string: `apiHost` is
-    /// customer-supplied, and a trailing slash on it concatenates into a `//` the server does not
-    /// route. Splitting also drops empty segments, and confining the edit to the path leaves a
-    /// query or port on the host intact instead of appending into it.
+    /// Drops the host's trailing version segment, if any. Built from components, not spliced: a
+    /// customer host's trailing slash, query or port must survive.
     static func composeUrl(apiHost: String, path: String) -> URL? {
         guard var components = URLComponents(string: BackgroundDeliveryHttp.absoluteHost(apiHost))
         else { return nil }
-        // `percentEncodedPath`, not `path`: reading and writing the decoded form would re-encode
-        // an already-escaped segment on an overridden host.
+        // `percentEncodedPath`, not `path`, or an already-escaped segment is re-encoded.
         var segments = components.percentEncodedPath.split(separator: "/").map(String.init)
         if let last = segments.last, isVersionSegment(last) {
             segments.removeLast()
@@ -146,14 +133,12 @@ final class GeofenceApiServiceImpl: GeofenceApiService, @unchecked Sendable {
         return components.url
     }
 
-    /// `v` followed by digits and nothing else, so a path segment that merely starts with `v`
-    /// (`/v`, `/venues`) is left alone.
     private static func isVersionSegment(_ segment: String) -> Bool {
         segment.count >= 2 && segment.hasPrefix("v") && segment.dropFirst().allSatisfy(\.isNumber)
     }
 }
 
-/// Body of the nearby geofence fetch. `radius`/`limit` are optional server-side and omitted.
+/// `radius`/`limit` are optional server-side and deliberately omitted.
 private struct NearestRequest: Encodable {
     let latitude: Double
     let longitude: Double

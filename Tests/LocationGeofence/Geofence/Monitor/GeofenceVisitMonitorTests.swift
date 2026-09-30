@@ -5,8 +5,6 @@ import CoreLocation
 import Foundation
 import Testing
 
-/// Records what the monitor asked CoreLocation to do. The real calls are no-ops in a test process,
-/// so the override is the only place the request is observable.
 private final class RecordingLocationManager: CLLocationManager {
     var startCount = 0
     var stopCount = 0
@@ -20,14 +18,11 @@ private final class RecordingLocationManager: CLLocationManager {
     }
 }
 
-/// Holds the status the injected reader returns, so the closure captures this rather than the
-/// fixture — no `self` capture, and no `unowned`.
 private final class StatusBox {
     var value: CLAuthorizationStatus = .authorizedAlways
 }
 
-/// `CLVisit` has no public initializer, so the delegate callback is only reachable through a
-/// subclass that overrides the four properties the monitor reads.
+/// `CLVisit` has no public initializer.
 private final class FakeVisit: CLVisit {
     private let coord: CLLocationCoordinate2D
     private let arrival: Date
@@ -65,8 +60,7 @@ struct GeofenceVisitMonitorTests {
             authorizationStatus: { [status] in status.value }
         )
 
-        /// Matched on PROSE, not on the `state=skipped` tail: `GeofenceLog.tail` returns "" unless
-        /// diagnostics are enabled, and this suite does not touch that process-global gate.
+        /// Matches prose, not the `state=skipped` tail: the tail is empty with diagnostics off.
         var skippedLogCount: Int {
             logger.infoReceivedInvocations
                 .filter { $0.message.contains("Visit monitoring needs Always authorization") }
@@ -86,8 +80,7 @@ struct GeofenceVisitMonitorTests {
     func start_givenAlwaysDowngradedAfterArming_expectVisitsStopped() {
         let f = Fixture()
         f.monitor.start()
-        // What the authorization-changed rewire does: the same `start()`, now under a permission
-        // that no longer backs it.
+        // The authorization-change rewire calls `start()` again.
         f.status.value = .authorizedWhenInUse
         f.monitor.start()
 
@@ -106,23 +99,18 @@ struct GeofenceVisitMonitorTests {
 
     @Test
     func start_givenNeverAuthorized_expectSkipRecorded() {
-        // Asserts the skip is RECORDED, because that log is the only thing unique to this branch.
-        // The disarm below is real but not distinctive — the first `stop()` on any fresh instance
-        // reaches CoreLocation whatever brought us there.
         let f = Fixture()
         f.status.value = .denied
         f.monitor.start()
 
         #expect(f.manager.startCount == 0)
         #expect(f.skippedLogCount == 1)
-        // Pinned, not incidental: a fresh instance under denied permission pushes one disarm, so
-        // a previous process's visit service does not outlive the permission that backed it.
+        // A fresh instance under denied permission disarms once, in case a previous process armed
+        // visits.
         #expect(f.manager.stopCount == 1)
     }
 
-    /// Visit monitoring outlives the process. On a relaunch this instance has never armed, but
-    /// the OS service from the previous session is still running — so a disarm before any arm
-    /// must still reach CoreLocation, or a kill-switched account keeps waking.
+    /// Visit monitoring outlives the process, so a disarm before any arm must still reach CoreLocation.
     @Test
     func stop_givenARecreatedMonitorThatNeverStarted_expectCoreLocationStopped() {
         let f = Fixture()
@@ -132,7 +120,6 @@ struct GeofenceVisitMonitorTests {
         #expect(f.manager.stopCount == 1)
     }
 
-    /// The suppression still works after that first one, so a repeated disarm is not chatty.
     @Test
     func stop_givenRepeatedStopsWithoutStarting_expectOnlyTheFirstReachesCoreLocation() {
         let f = Fixture()
@@ -146,9 +133,7 @@ struct GeofenceVisitMonitorTests {
 
     // MARK: - Delivery
 
-    /// The handler's answer IS the disarm decision — that is how sign-out stops the monitor
-    /// without a teardown hook. Nothing else asserts the monitor acts on it: the binder tests
-    /// check what the handler returns, not what the monitor does with it.
+    /// The handler's answer is the disarm decision; sign-out relies on it.
     @Test
     func didVisit_givenTheHandlerRefuses_expectDisarmed() {
         let f = Fixture()
@@ -171,11 +156,7 @@ struct GeofenceVisitMonitorTests {
         #expect(f.manager.stopCount == 0)
     }
 
-    /// Both edges, in one test on purpose. A departure must reach the handler as well as an
-    /// arrival — the binder re-judges membership on either. Asserting only the departure passes
-    /// against a constant `isArrival` and against the two dates being carried across swapped,
-    /// because neither date on a departure is `.distantFuture`; the arrival case is what
-    /// separates them.
+    /// Both edges: a departure alone also passes with a constant `isArrival` or swapped dates.
     @Test
     func didVisit_givenEitherEdge_expectTheEdgeReportedAsGiven() {
         let f = Fixture()

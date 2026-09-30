@@ -12,10 +12,8 @@ public struct GeofenceModuleConfig: CustomerIOModuleConfig {
     }
 }
 
-/// Opt-in on-device geofence module. Depends on the Location module: register both via
-/// `SDKConfigBuilder.addModule(_:)` so geofence monitoring is initialized during
-/// `CustomerIO.initialize(withConfig:)`. Apps that only need location tracking register
-/// `LocationModule` alone and never link this module.
+/// Opt-in geofence module. Requires the Location module; register both via
+/// `SDKConfigBuilder.addModule(_:)`.
 ///
 /// **Example:**
 /// ```swift
@@ -33,29 +31,19 @@ public final class GeofenceModule: CustomerIOModule {
         self.config = config
     }
 
-    /// Setup runs on `GeofenceModuleState.shared`, which lives for the process lifetime — the
-    /// SDK does not retain this facade after `initialize()` returns, so the module's foreground
-    /// observer and first-run state must outlive it.
     public func initialize() {
         GeofenceModuleState.shared.setup(di: DIGraphShared.shared, locationMode: config.locationMode)
     }
 
-    /// Bootstraps geofence cold-wake delivery from the host's `AppDelegate`.
+    /// Delivers geofence events when the OS wakes the app in the background without
+    /// `CustomerIO.initialize` running (e.g. wrapper SDKs whose JS/Dart runtime doesn't start). Call
+    /// from the host's `AppDelegate` launch method. Safe to call on every launch, including when
+    /// `CustomerIO.initialize` also runs: nothing is set up twice.
     ///
-    /// Wrapper SDKs (RN, Flutter) do not run `CustomerIO.initialize` in the cold-wake
-    /// process — there is no JS/Dart runtime. This entry reads all the state it needs
-    /// from persisted stores and wires up region monitoring and flushes any queued
-    /// transition deliveries without requiring any module's `initialize` to have run in
-    /// this process.
-    ///
-    /// Safe to call on every launch. When the SDK has been initialized via
-    /// `CustomerIO.initialize(withConfig:)`, the same DI-resolved singletons are reused —
-    /// no double-init, no duplicate monitoring.
+    /// - Parameter launchOptions: the launch options the app delegate received.
     @MainActor
     public static func bootstrapForBackgroundDelivery(launchOptions: [UIApplication.LaunchOptionsKey: Any]?) {
         let di = DIGraphShared.shared
-        // Only a cold wake is worth a record here; a normal launch is already covered by
-        // module.init, and this path is the only one that can see `launchOptions`.
         if launchOptions?[.location] != nil {
             di.logger.geofenceModuleWoke(launchReason: .locationEvent)
         }

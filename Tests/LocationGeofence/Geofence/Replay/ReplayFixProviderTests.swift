@@ -47,8 +47,6 @@ struct ReplayFixProviderTests {
         #expect(provider.requestedAnswer(within: 10) == nil)
     }
 
-    /// An answer recorded before this request belonged to a request the replay did not make; it
-    /// must not be handed to a later one.
     @Test
     func requestedAnswer_givenAnAnswerRecordedBeforeTheRequest_expectItSkipped() {
         let provider = ReplayFixProvider(epoch: epoch)

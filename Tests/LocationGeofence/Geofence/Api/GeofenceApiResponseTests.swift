@@ -131,14 +131,12 @@ struct GeofenceApiResponseTests {
 
     @Test
     func toDomainConfig_givenMaxMonitoringDistanceAbsent_expectDefaultCap() throws {
-        // The server omits the field today — apply the default cap, not "unlimited".
         let response = try decode("{\"config\":{\"local_refresh_trigger_radius\":3000},\"geofences\":[]}")
         #expect(response.toDomainConfig()?.maxMonitoringDistance == GeofenceConstants.defaultMaxMonitoringDistance)
     }
 
     @Test
     func toDomainConfig_givenMaxMonitoringDistanceZero_expectNoCap() throws {
-        // An explicit 0 is the server's way to turn the cap off.
         let json = """
         {"config":{"local_refresh_trigger_radius":3000,"max_monitoring_distance":0},"geofences":[]}
         """
@@ -169,7 +167,6 @@ struct GeofenceApiResponseTests {
 
     @Test
     func toDomainRegions_givenNumericId_expectDecodedAsString() throws {
-        // The backend sends `id` as a JSON number; it must decode and normalize to a String.
         let json = """
         {"geofences":[{"id":4,"latitude":1,"longitude":2,"radius":100}]}
         """
@@ -255,7 +252,6 @@ struct GeofenceApiResponseTests {
 
     @Test
     func toDomainRegions_givenMixedValidAndInvalidRegions_expectValidKeptAndInvalidReported() throws {
-        // One bad server region must cost itself, not the rest of the sync.
         let json = """
         {"geofences":[
           {"id":"good","latitude":1,"longitude":2,"radius":100},
@@ -272,7 +268,6 @@ struct GeofenceApiResponseTests {
 
     @Test
     func toDomainRegions_givenBoundaryCoordinates_expectKept() throws {
-        // The exact poles/antimeridian are valid registerable coordinates.
         let json = """
         {"geofences":[{"id":"edge","latitude":90,"longitude":-180,"radius":100}]}
         """
@@ -282,7 +277,6 @@ struct GeofenceApiResponseTests {
 
     @Test
     func toDomainRegions_givenLastUpdatedMillis_expectConvertedToSeconds() throws {
-        // Wire value is epoch milliseconds; the domain `Date` is seconds.
         let json = """
         {"geofences":[{"id":"g1","latitude":1,"longitude":2,"radius":100,"last_updated":1700000000000}]}
         """
@@ -310,8 +304,7 @@ struct GeofenceApiResponseTests {
 
     @Test
     func toDomainRegions_givenNumericGeosetIds_expectNormalizedToStrings() throws {
-        // The server contract: `geoset_ids` is `[]int64`, so ids arrive as JSON numbers. This is the
-        // common case and must always decode; we normalize to String for downstream flexibility.
+        // Server type is `[]int64`, so numeric ids are the common case.
         let json = """
         {"geofences":[{"id":"g1","latitude":1,"longitude":2,"radius":100,"geoset_ids":[1,3,7]}]}
         """
@@ -321,8 +314,7 @@ struct GeofenceApiResponseTests {
 
     @Test
     func toDomainRegions_givenLargeInt64GeosetId_expectNoPrecisionLoss() throws {
-        // int64 exceeds JSON/Double safe-integer range; decoding via Int64 (not Double) keeps large
-        // ids exact. 9007199254740993 (2^53 + 1) would collapse to ...992 through a Double.
+        // 9007199254740993 (2^53 + 1) would collapse to ...992 through a Double.
         let json = """
         {"geofences":[{"id":"g1","latitude":1,"longitude":2,"radius":100,"geoset_ids":[9007199254740993]}]}
         """
@@ -332,7 +324,6 @@ struct GeofenceApiResponseTests {
 
     @Test
     func toDomainRegions_givenMissingGeosetIds_expectEmpty() throws {
-        // Backend rolls `geoset_ids` out gradually; absent means no geoset membership.
         let json = """
         {"geofences":[{"id":"g1","latitude":1,"longitude":2,"radius":100}]}
         """
@@ -342,7 +333,6 @@ struct GeofenceApiResponseTests {
 
     @Test
     func toDomainRegions_givenNullGeosetIds_expectEmpty() throws {
-        // Explicit JSON null must decode to no membership, not throw and fail the whole response.
         let json = """
         {"geofences":[{"id":"g1","latitude":1,"longitude":2,"radius":100,"geoset_ids":null}]}
         """
@@ -383,7 +373,6 @@ struct GeofenceApiResponseTests {
 
     @Test
     func toDomainRegions_givenNullOrNonScalarMetadataValues_expectDroppedNotFailed() throws {
-        // A null, nested object, or array value must drop that single entry, not fail the region.
         let json = """
         {"geofences":[{"id":"g1","latitude":1,"longitude":2,"radius":100,
           "metadata":{"good":"ok","bad":null,"nested":{"a":1},"list":[1,2]}}]}
@@ -393,8 +382,6 @@ struct GeofenceApiResponseTests {
 
     @Test
     func toDomainRegions_givenMalformedMetadataType_expectEmptyMetadataAndRegionStillParses() throws {
-        // `metadata` sent as a non-object (here a string) must not fail the region/response decode —
-        // it degrades to empty metadata while every other field parses normally.
         let json = """
         {"geofences":[{"id":"g1","latitude":1.5,"longitude":2.5,"radius":100,"metadata":"oops"}]}
         """
@@ -421,8 +408,7 @@ struct GeofenceApiResponseTests {
 
     @Test
     func toDomainRegions_givenTotalPayloadBeyondByteCap_expectStoppedAtByteBudget() throws {
-        // Umbrella guard: values are bounded by the total byte budget, independent of the count cap.
-        // Each value is ~1/4 of the budget, so 8 of them overrun it and only a few are kept.
+        // Each value is ~1/4 of the byte budget, so 8 overrun it regardless of the count cap.
         let bigValue = String(repeating: "a", count: GeofenceConstants.maxMetadataPayloadBytes / 4)
         let generated = 8
         let entries = (0 ..< generated)
@@ -456,8 +442,7 @@ struct GeofenceApiResponseTests {
         #expect(response.toDomainRegions().map(\.id) == ["good", "alsoGood"])
     }
 
-    /// Distinguishes "the server sent none" from "none of them decoded" — the caller wipes the
-    /// cache on the first and must not on the second.
+    /// The caller wipes the cache when the server sent none, and must not when none decoded.
     @Test
     func decode_givenEveryRegionWrongTyped_expectCountPreservedAndListEmpty() throws {
         let json = """

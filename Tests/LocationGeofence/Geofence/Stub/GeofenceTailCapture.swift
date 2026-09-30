@@ -2,7 +2,6 @@
 @testable import CioLocationGeofence
 import Foundation
 
-/// Captures formatted log messages verbatim, and reads the machine tail back off them.
 final class CapturingLogger: Logger, @unchecked Sendable {
     private let lock = NSLock()
     private var captured: [String] = []
@@ -45,8 +44,7 @@ final class CapturingLogger: Logger, @unchecked Sendable {
     }
 }
 
-/// Reads the ` || ev=… k=v` tail off a formatted message: split on the last delimiter, accept
-/// only if every token is `key=value`.
+/// Parses the tail after the last delimiter; nil unless every token is `key=value`.
 enum GeofenceTail {
     static func parse(_ message: String) -> [String: String]? {
         guard let range = message.range(of: GeofenceLog.delimiter, options: .backwards) else { return nil }
@@ -60,7 +58,6 @@ enum GeofenceTail {
         return fields.isEmpty ? nil : fields
     }
 
-    /// Every parseable tail, in emission order.
     static func parseAll(_ messages: [String]) -> [[String: String]] {
         messages.compactMap { parse($0) }
     }
