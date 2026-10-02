@@ -3,6 +3,7 @@ import CioMessagingPushFCM // do not use `@testable` so we can test functions ar
 @testable import CioMessagingPushFCMMocks
 import Foundation
 import SharedTests
+import UIKit
 import XCTest
 
 /**
@@ -127,5 +128,12 @@ class MessagingPushFCMAPITest: UnitTest {
         _ = pushContent?.deepLink
         _ = pushContent?.image
         #endif
+    }
+}
+
+// Customers can subclass `CioAppDelegate` and override its app delegate methods.
+private class CustomerSubclassedAppDelegate: CioAppDelegate {
+    override func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
+        super.application(application, didRegisterForRemoteNotificationsWithDeviceToken: deviceToken)
     }
 }

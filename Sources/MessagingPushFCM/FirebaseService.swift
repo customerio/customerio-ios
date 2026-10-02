@@ -9,8 +9,26 @@ public protocol FirebaseService: AnyObject {
     /// - Parameter completion: Called with the token or error
     func fetchToken(completion: @escaping (String?, Error?) -> Void)
 
+    /// Whether the app registers with FCM through its Firebase Installation ID (FID mode).
+    /// `false` when the app's Firebase version doesn't support FID registration.
+    var isInstallationIdEnabled: Bool { get }
+
+    /// Register the app with FCM through its Firebase Installation ID (FID), then fetch the FID.
+    /// Only used when `isInstallationIdEnabled` is `true`.
+    /// - Parameter completion: Called with the FID or error
+    func fetchInstallationId(completion: @escaping (String?, Error?) -> Void)
+
     /// The delegate for receiving Firebase events
     var delegate: FirebaseServiceDelegate? { get set }
+}
+
+// Defaults keep services written before FID support working in token mode.
+public extension FirebaseService {
+    var isInstallationIdEnabled: Bool { false }
+
+    func fetchInstallationId(completion: @escaping (String?, Error?) -> Void) {
+        completion(nil, nil)
+    }
 }
 
 /// A protocol to handle Firebase events without Firebase dependencies

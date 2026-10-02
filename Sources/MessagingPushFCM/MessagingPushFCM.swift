@@ -58,6 +58,46 @@ public class MessagingPushFCM: MessagingPushFCMInstance {
         firebaseService
     }
 
+    /// Gives Firebase the APNs token, then fetches the app's FCM registration: its FID in FID mode, otherwise its token.
+    /// Fetching doesn't rely on the Firebase delegate, which the app may have replaced with its own.
+    func fetchFirebaseRegistration(apnsToken: Data, onFetched: @escaping (String) -> Void) {
+        let logger = DIGraphShared.shared.logger
+        guard let firebaseService = firebaseMessaging() else {
+            logger.error("CIO: firebaseService is nil. Make sure to initialize the MessagingPushFCM SDK before use.")
+            return
+        }
+
+        firebaseService.apnsToken = apnsToken
+
+        guard firebaseService.isInstallationIdEnabled else {
+            if Self.isInstallationIdEnabledInInfoPlist {
+                logger.error("CIO: FirebaseMessagingInstallationIdEnabled is set, but FID registration isn't available. Registering FCM token instead. Update FirebaseMessaging and CioFirebaseWrapper to use FIDs.")
+            }
+            firebaseService.fetchToken { token, error in
+                guard let token = token else {
+                    logger.error("CIO: Failed to fetch FCM token: \(error?.localizedDescription ?? "unknown error")")
+                    return
+                }
+                onFetched(token)
+            }
+            return
+        }
+
+        firebaseService.fetchInstallationId { fid, error in
+            guard let fid = fid else {
+                logger.error("CIO: Failed to register Firebase Installation ID: \(error?.localizedDescription ?? "unknown error")")
+                return
+            }
+            onFetched(fid)
+        }
+    }
+
+    // Firebase's own setting for FID mode, read the way Firebase reads it. Only used to warn when the app's Firebase can't use it.
+    private static var isInstallationIdEnabledInInfoPlist: Bool {
+        let value = Bundle.main.object(forInfoDictionaryKey: "FirebaseMessagingInstallationIdEnabled")
+        return (value as? NSNumber)?.boolValue ?? (value as? NSString)?.boolValue ?? false
+    }
+
     public func registerDeviceToken(fcmToken: String?) {
         guard let deviceToken = fcmToken else {
             return

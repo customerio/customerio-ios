@@ -1,7 +1,9 @@
 public interface CioMessagingPushFCM.FirebaseService {
 	public var apnsToken: Data?;
+	public var isInstallationIdEnabled: Boolean;
 	public var delegate: (any FirebaseServiceDelegate)?;
 	public fun func fetchToken(completion: @escaping (String?, Error?) -> Unit);
+	public fun func fetchInstallationId(completion: @escaping (String?, Error?) -> Unit);
 }
 public interface CioMessagingPushFCM.FirebaseServiceDelegate {
 	public fun func didReceiveRegistrationToken(_ token: String?);
