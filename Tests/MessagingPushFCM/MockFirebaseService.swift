@@ -8,6 +8,9 @@ class MockFirebaseService: FirebaseService {
     var mockDelegate: FirebaseServiceDelegate?
     var mockTokenCompletion: ((String?, Error?) -> Void)?
     var fetchTokenCallCount = 0
+    var mockIsInstallationIdEnabled = false
+    var mockInstallationIdCompletion: ((String?, Error?) -> Void)?
+    var fetchInstallationIdCallCount = 0
 
     // MARK: - FirebaseService Protocol Implementation
 
@@ -34,6 +37,15 @@ class MockFirebaseService: FirebaseService {
         mockTokenCompletion = completion
     }
 
+    var isInstallationIdEnabled: Bool {
+        mockIsInstallationIdEnabled
+    }
+
+    func fetchInstallationId(completion: @escaping (String?, Error?) -> Void) {
+        fetchInstallationIdCallCount += 1
+        mockInstallationIdCompletion = completion
+    }
+
     // MARK: - Test Helper Methods
 
     func simulateTokenSuccess(_ token: String) {
@@ -42,6 +54,14 @@ class MockFirebaseService: FirebaseService {
 
     func simulateTokenError(_ error: Error) {
         mockTokenCompletion?(nil, error)
+    }
+
+    func simulateInstallationIdSuccess(_ fid: String) {
+        mockInstallationIdCompletion?(fid, nil)
+    }
+
+    func simulateInstallationIdError(_ error: Error) {
+        mockInstallationIdCompletion?(nil, error)
     }
 
     func simulateRegistrationToken(_ token: String?) {
@@ -53,6 +73,9 @@ class MockFirebaseService: FirebaseService {
         mockDelegate = nil
         mockTokenCompletion = nil
         fetchTokenCallCount = 0
+        mockIsInstallationIdEnabled = false
+        mockInstallationIdCompletion = nil
+        fetchInstallationIdCallCount = 0
     }
 }
 
