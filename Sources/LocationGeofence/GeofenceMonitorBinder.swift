@@ -22,6 +22,9 @@ enum GeofenceMonitorBinder {
             // supersedes ahead of the task that routes the ENTER.
             if transition == .enter {
                 noteEnter(dwellCoordinator, geofenceId: identifier, occurredAt: occurredAt, crossing: crossingObserved)
+            } else if transition == .exit, identifier != GeofenceConstants.movementTriggerIdentifier {
+                // In OS order: the ENTERs noted so far are what this EXIT knew of the stay's end.
+                noteExit(dwellCoordinator, geofenceId: identifier, occurredAt: occurredAt)
             }
             rearmDwellEvidence(dwellCoordinator)
             if identifier == GeofenceConstants.movementTriggerIdentifier {
@@ -148,6 +151,18 @@ enum GeofenceMonitorBinder {
         guard let dwellCoordinator else { return }
         MainActor.assumeIsolated {
             dwellCoordinator.noteEnter(geofenceId: geofenceId, occurredAt: occurredAt, crossing: crossing)
+        }
+    }
+
+    /// See `noteEnter`: the same main-actor contract, for an EXIT's callback.
+    private nonisolated static func noteExit(
+        _ dwellCoordinator: GeofenceDwellCoordinator?,
+        geofenceId: String,
+        occurredAt: Date
+    ) {
+        guard let dwellCoordinator else { return }
+        MainActor.assumeIsolated {
+            dwellCoordinator.noteExitCallback(geofenceId: geofenceId, occurredAt: occurredAt)
         }
     }
 

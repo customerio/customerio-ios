@@ -41,10 +41,9 @@ final class GeofenceDwellCoordinator {
     /// began before the loss. Internal for the `+Continuity` extension.
     var continuityLostUptime: [String: TimeInterval] = [:]
     var allContinuityLostUptime: TimeInterval?
-    /// A visit a re-ENTER replaced after an EXIT ended it, possibly before that EXIT read the store,
-    /// under the exact dates of the EXIT events that ended it: that EXIT still reports its duration.
-    /// In memory, as `exitMarks` are. Internal for the `+ExitDuration` extension.
-    var visitsEndedByPendingExit: [String: (visit: GeofenceDwellVisit, exitDates: Set<Date>)] = [:]
+    /// What EXIT durations keep between callbacks; see `GeofenceExitDurationState`. Internal for
+    /// the `+ExitDuration` extension.
+    var exitDuration = GeofenceExitDurationState()
     // `internal`, not `private`, only because the `+Evidence` extension file uses them.
     let storage: GeofenceStorage
     let contextStore: BackgroundDeliveryContextStore
@@ -138,7 +137,7 @@ final class GeofenceDwellCoordinator {
         let mark = GeofenceExitMark(date: occurredAt, processedAt: reading, source: source)
         // Before the user check and every await: leaving is geometry, whoever is signed in, and an
         // ENTER write already in flight must see it.
-        if transition == .exit { recordExit(mark, geofenceId: geofence.id) }
+        if transition == .exit { recordExitEvent(mark, geofenceId: geofence.id) }
         if transition == .enter, presenceProven { noteEnter(mark, geofenceId: geofence.id, crossing: crossingObserved) }
         if let expectedUserId, contextStore.currentUserId != expectedUserId { return nil }
         await syncClockReference(reading)

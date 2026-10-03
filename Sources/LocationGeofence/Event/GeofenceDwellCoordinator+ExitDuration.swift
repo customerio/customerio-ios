@@ -42,7 +42,8 @@ extension GeofenceDwellCoordinator {
 
     /// The duration an EXIT carries for `visit`; nil when the visit's start was not an observed
     /// entry, nothing has yet proved the device there, the customer did not configure EXIT, outside
-    /// evidence ended the visit too, or the span is not on one timeline.
+    /// evidence or an ENTER this EXIT already knew of ended the visit, or the span is not on one
+    /// timeline.
     private func exitContext(
         for visit: GeofenceDwellVisit,
         geofence: Geofence,
@@ -52,6 +53,7 @@ extension GeofenceDwellCoordinator {
     ) -> GeofenceExitContext? {
         guard visit.entryObserved, !visit.awaitsPresenceProof, geofence.transitionTypes.contains(.exit),
               !outsideEvidenceOvertook(visit, geofenceId: geofence.id),
+              !enterKnownAtExitEnded(visit, exit: exit, geofenceId: geofence.id),
               Self.spanIsTimeable(visit, exitedAt: exit.date, processedAt: reading)
         else { return nil }
         return GeofenceExitContext(
@@ -60,6 +62,46 @@ extension GeofenceDwellCoordinator {
             durationSeconds: Self.reportedSeconds(from: visit.enteredAt, to: exit.date),
             detectionSource: source
         )
+    }
+
+    /// Notes an EXIT in the OS callback, in OS order, before its routing task records it: the
+    /// native ENTERs noted so far are what the EXIT knew of the stay's end (`keepEntersKnown`). A
+    /// burst — ENTER, EXIT, ENTER — reaches the binder before any routing task runs, so by the time
+    /// the EXIT is recorded a later ENTER may already have replaced an earlier one in its slot.
+    func noteExitCallback(geofenceId: String, occurredAt: Date) {
+        exitDuration.latestExitCallback[geofenceId] = occurredAt
+        keepEntersKnown(at: occurredAt, geofenceId: geofenceId)
+    }
+
+    /// Records an EXIT event, and what it knew of the stay's end if its callback did not note it:
+    /// an EXIT from a direct caller, or a polygon verdict dated by its fix.
+    func recordExitEvent(_ exit: GeofenceExitMark, geofenceId: String) {
+        recordExit(exit, geofenceId: geofenceId)
+        keepEntersKnown(at: exit.date, geofenceId: geofenceId)
+    }
+
+    /// Keeps, on an EXIT's first note by its exact date, the native ENTERs then noted for its fence,
+    /// which no later callback can erase by replacing an ENTER in its slot; a copy of the same EXIT
+    /// keeps the first. Each record lives only while its EXIT's mark does (`exitMarks`, pruned as
+    /// marks are subsumed), a visit is remembered for it, or it is the fence's latest EXIT callback,
+    /// whose routing may still be on its way.
+    private func keepEntersKnown(at date: Date, geofenceId: String) {
+        var known = exitDuration.entersKnownAtExit[geofenceId] ?? [:]
+        if known[date] == nil { known[date] = enterMarks[geofenceId] ?? GeofenceEnterMarks() }
+        var live = Set((exitMarks[geofenceId] ?? []).filter { $0.source == .exitEvent }.map(\.date))
+            .union(exitDuration.visitsEndedByPendingExit[geofenceId]?.exitDates ?? [])
+        if let callback = exitDuration.latestExitCallback[geofenceId] { live.insert(callback) }
+        exitDuration.entersKnownAtExit[geofenceId] = known.filter { live.contains($0.key) }
+    }
+
+    /// Whether an ENTER noted by the time this EXIT was first noted ended `visit` before the EXIT
+    /// (`GeofenceEnterMarks.superseding`: a crossing, or a correction of a stay not yet qualified):
+    /// the stay then ended at an EXIT the SDK missed, and this one is not its end. An ENTER after
+    /// this EXIT is the re-entry and does not count; across a wall-clock step nothing orders the
+    /// two, so it does.
+    private func enterKnownAtExitEnded(_ visit: GeofenceDwellVisit, exit: GeofenceExitMark, geofenceId: String) -> Bool {
+        let known = exitDuration.entersKnownAtExit[geofenceId]?[exit.date]
+        return known?.superseding(visit).contains { !Self.enter($0, follows: exit) } ?? false
     }
 
     /// Whether outside evidence this process holds ends `visit`: the SDK saw the device away, so
@@ -111,7 +153,7 @@ extension GeofenceDwellCoordinator {
             exit.source == .exitEvent && reentries.allSatisfy { Self.enter($0, follows: exit) }
         }.map(\.date))
         guard !exitDates.isEmpty, !overtaking.contains(where: { $0.source == .outsideEvidence }) else { return }
-        visitsEndedByPendingExit[geofenceId] = (visit, exitDates)
+        exitDuration.visitsEndedByPendingExit[geofenceId] = (visit, exitDates)
     }
 
     /// `currentVisit` is removing `visit` because later native ENTERs superseded it — a crossing,
@@ -143,8 +185,9 @@ extension GeofenceDwellCoordinator {
         exit: GeofenceExitMark,
         userId: String
     ) -> GeofenceDwellVisit? {
-        guard let ended = visitsEndedByPendingExit[geofence.id], ended.exitDates.contains(exit.date) else { return nil }
-        visitsEndedByPendingExit.removeValue(forKey: geofence.id)
+        guard let ended = exitDuration.visitsEndedByPendingExit[geofence.id], ended.exitDates.contains(exit.date)
+        else { return nil }
+        exitDuration.visitsEndedByPendingExit.removeValue(forKey: geofence.id)
         guard ended.visit.userId == userId,
               ended.visit.geometryRevision == geofence.dwellRevision,
               exit.overtakes(ended.visit),
@@ -153,4 +196,15 @@ extension GeofenceDwellCoordinator {
         else { return nil }
         return ended.visit
     }
+}
+
+/// What EXIT durations keep between callbacks, in memory, as `exitMarks` are.
+struct GeofenceExitDurationState {
+    /// A visit a re-ENTER replaced after an EXIT ended it, possibly before that EXIT read the store,
+    /// under the exact dates of the EXIT events that ended it: that EXIT still reports its duration.
+    var visitsEndedByPendingExit: [String: (visit: GeofenceDwellVisit, exitDates: Set<Date>)] = [:]
+    /// Per fence and EXIT event date, the native ENTERs noted when that EXIT was first noted.
+    var entersKnownAtExit: [String: [Date: GeofenceEnterMarks]] = [:]
+    /// Per fence, the date of the latest EXIT its OS callback noted.
+    var latestExitCallback: [String: Date] = [:]
 }
