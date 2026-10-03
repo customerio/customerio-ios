@@ -21,21 +21,25 @@ struct GeofenceExitCallbackBinderTests {
         dwellThresholdSeconds: 600
     )
 
-    /// The same EXIT delivered twice is counted twice and cleared once both are routed.
+    /// The same EXIT delivered twice is counted twice and cleared once both are routed. Each
+    /// callback carries a location, so its routing task ends with a catalog refresh after it has
+    /// ended the callback: two refreshes mean both routings returned.
     @Test
     func duplicateExitCallbacks_expectCountedAndCleared() async throws {
         let rig = await GeofenceDwellFollowupTests.Rig.make(insideFixAlways: true)
         await rig.cacheCircle()
         let monitor = MockGeofenceRegionMonitor()
-        let resolver = Self.bind(monitor, to: rig)
+        let sync = GeofenceSyncCoordinatorMock()
+        let resolver = Self.bind(monitor, to: rig, sync: sync)
         await rig.dwell.handleBoundary(geofence: Self.circle, transition: .enter, occurredAt: rig.clock.wall)
         rig.advance(600)
         let exitedAt = rig.clock.wall
+        let location = LocationData(latitude: 1, longitude: 2)
 
-        monitor.simulateTransition(identifier: Self.circleId, transition: .exit, location: nil, occurredAt: exitedAt)
-        monitor.simulateTransition(identifier: Self.circleId, transition: .exit, location: nil, occurredAt: exitedAt)
+        monitor.simulateTransition(identifier: Self.circleId, transition: .exit, location: location, occurredAt: exitedAt)
+        monitor.simulateTransition(identifier: Self.circleId, transition: .exit, location: location, occurredAt: exitedAt)
         #expect(rig.dwell.pendingExitCallbacks[Self.circleId]?[exitedAt]?.count == 2)
-        await settleQuietly(0.5)
+        try #require(await settle(timeout: 30) { sync.refreshCallsCount == 2 })
 
         #expect(rig.dwell.pendingExitCallbacks.isEmpty)
         #expect(await rig.storage.getDwellVisit(geofenceId: Self.circleId) == nil)
@@ -108,13 +112,15 @@ struct GeofenceExitCallbackBinderTests {
     // MARK: - Helpers
 
     /// Binds the monitor to the rig's coordinator through a real resolver, which the binder holds
-    /// weakly: the caller keeps it alive, or releases it.
-    private static func bind(_ monitor: MockGeofenceRegionMonitor, to rig: GeofenceDwellFollowupTests.Rig) -> PolygonMembershipResolver {
+    /// weakly: the caller keeps it alive, or releases it. `sync` receives the routing tasks' follow-ups.
+    private static func bind(
+        _ monitor: MockGeofenceRegionMonitor, to rig: GeofenceDwellFollowupTests.Rig,
+        sync: GeofenceSyncCoordinatorMock = GeofenceSyncCoordinatorMock()
+    ) -> PolygonMembershipResolver {
         let resolver = PolygonMembershipResolver(
             storage: rig.storage, transitionEmitter: rig.tracker, logger: LoggerMock(), contextStore: rig.contextStore,
             dateUtil: rig.dateUtil, notificationCenter: NotificationCenter(), dwellCoordinator: rig.dwell
         )
-        let sync = GeofenceSyncCoordinatorMock()
         sync.refreshReturnValue = .success(())
         sync.handleMovementReturnValue = .success(())
         GeofenceMonitorBinder.bind(monitor: monitor, resolver: resolver, coordinator: sync, logger: LoggerMock(), dwellCoordinator: rig.dwell)

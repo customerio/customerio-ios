@@ -31,7 +31,9 @@ struct GeofenceDwellBootReleaseTests {
             identifier: Self.polygon.id, transition: .enter, location: nil, occurredAt: device.clock.wall,
             crossingObserved: crossing
         )
-        await settleQuietly(0.5)
+        // The routed ENTER's evaluation has returned once the binder refreshes from its fix.
+        let sync = second.sync
+        try #require(await settle(timeout: 30) { sync.refreshCallsCount == 1 })
         let current = try #require(await second.visit())
         device.advance(600)
         await second.pass()
