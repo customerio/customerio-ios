@@ -50,7 +50,6 @@ struct GeofenceDistanceFilterTests {
 
     @Test
     func nearest_givenMoreRegionsThanLimit_expectKClosestInDistanceOrder() {
-        // c is closest, b mid, a farthest.
         let regions = [
             makeRegion(id: "a", latitude: 5.0, longitude: 0),
             makeRegion(id: "b", latitude: 2.0, longitude: 0),
@@ -63,7 +62,6 @@ struct GeofenceDistanceFilterTests {
 
     @Test
     func nearest_givenTiedDistances_expectStableOrderByIdAscending() {
-        // Three regions at the same distance — tiebreaker is id ascending.
         let regions = [
             makeRegion(id: "z", latitude: 0.1, longitude: 0),
             makeRegion(id: "a", latitude: 0.1, longitude: 0),
@@ -89,7 +87,6 @@ struct GeofenceDistanceFilterTests {
             makeRegion(id: "near", latitude: 0.01, longitude: 0),
             makeRegion(id: "far", latitude: 1.0, longitude: 0)
         ]
-        // The no-cap sentinel includes every region regardless of distance.
         let result = filter.nearest(regions, to: origin, limit: 5, maxDistance: GeofenceConstants.noMonitoringDistanceCap)
         #expect(result.map(\.id) == ["near", "far"])
     }
@@ -98,8 +95,7 @@ struct GeofenceDistanceFilterTests {
 
     @Test
     func nearest_givenDeviceInsideLargeRegion_expectItRanksFirst() {
-        // Device sits inside `big` (center ~2.2 km away, radius 5 km) and outside `small`
-        // (center 1 km away). Ranking on center distance would put `small` first.
+        // Inside `big` (center ~2.2 km, radius 5 km), outside `small` (center 1 km).
         let regions = [
             makeRegion(id: "small", latitude: 0.009, longitude: 0, radius: 100),
             makeRegion(id: "big", latitude: 0.02, longitude: 0, radius: 5000)
@@ -110,8 +106,6 @@ struct GeofenceDistanceFilterTests {
 
     @Test
     func nearest_givenLimitFilledByNearerCenters_expectContainingRegionStillMonitored() {
-        // Regression: a region the device occupies must never be evicted by regions with nearer
-        // centers. Evicting it stops monitoring and its exit can then never be reported.
         var regions = (0 ..< 19).map {
             makeRegion(id: "decoy\(String(format: "%02d", $0))", latitude: 0.001, longitude: 0, radius: 50)
         }
@@ -123,8 +117,6 @@ struct GeofenceDistanceFilterTests {
 
     @Test
     func nearest_givenContainingRegionCenterBeyondMaxDistance_expectStillIncluded() {
-        // The distance cap is also boundary-based: a region whose center is outside the cap but
-        // whose area contains the device must survive filtering.
         let regions = [makeRegion(id: "containing", latitude: 0.05, longitude: 0, radius: 8000)]
         let result = filter.nearest(regions, to: origin, limit: 5, maxDistance: 1000)
         #expect(result.map(\.id) == ["containing"])
@@ -143,8 +135,7 @@ struct GeofenceDistanceFilterTests {
 
     @Test
     func nearest_givenMultipleContainingRegions_expectAllRankAheadOfOutsideOnes() {
-        // Every containing region has boundary distance 0, so they tie and break by id, but all
-        // must precede any region the device is outside of.
+        // Containing regions tie at 0 and break by id.
         let regions = [
             makeRegion(id: "outside", latitude: 0.005, longitude: 0, radius: 100),
             makeRegion(id: "inside-b", latitude: 0.01, longitude: 0, radius: 3000),
@@ -207,8 +198,8 @@ struct GeofenceDistanceFilterTests {
 
     @Test
     func nearest_givenContainingPolygonAndCoveringCircleOnlyPolygon_expectContainingRanksFirst() {
-        // Both covering circles contain the device, but only the shop's ring does. The strip's
-        // smaller id would win a tie at 0.
+        // Both covering circles contain the device, only the shop's ring does; the strip's id would
+        // win a tie.
         let regions = [
             makeStrip(id: "a-strip", longitude: 0.0025),
             makeSquare(id: "z-shop", longitude: 0, halfSide: 0.0002, radius: 40)
@@ -242,8 +233,8 @@ struct GeofenceDistanceFilterTests {
 
     @Test
     func nearest_givenElongatedAndCompactPolygons_expectNearerRingRanksFirst() {
-        // Strip: covering circle edge ~44 m, ring ~422 m. Square: covering circle edge ~302 m,
-        // ring ~311 m.
+        // Strip: covering circle edge ~44 m, ring ~422 m. Square: covering circle edge ~302 m, ring
+        // ~311 m.
         let regions = [
             makeStrip(id: "strip", longitude: 0.004),
             makeSquare(id: "square", longitude: -0.003, halfSide: 0.0002, radius: 32)

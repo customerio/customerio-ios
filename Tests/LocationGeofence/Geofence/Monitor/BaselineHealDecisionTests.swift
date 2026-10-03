@@ -39,17 +39,15 @@ struct BaselineHealDecisionTests {
 
     @Test
     func synthesizedTransition_givenFixInsideAmbiguityBand_expectNil() {
-        // 20m inside the edge with 30m accuracy: could be either side.
+        // 980 and 1025 are within the 30m accuracy of the 1000m edge.
         #expect(decide(distanceFromCenter: 980) == nil)
-        // 25m outside the edge with 30m accuracy, enter baseline: same band.
         #expect(decide(distanceFromCenter: 1025, lastState: .enter) == nil)
     }
 
     @Test
     func synthesizedTransition_givenOverOptimisticAccuracy_expectFloorApplied() {
-        // 15m inside the edge; accuracy claims 5m but the 20m floor rejects the verdict.
+        // Claimed 5m accuracy is floored to 20m: 15m inside is ambiguous, 25m inside is not.
         #expect(decide(distanceFromCenter: 985, horizontalAccuracy: 5) == nil)
-        // 25m inside the edge clears the floor with the same claimed accuracy.
         #expect(decide(distanceFromCenter: 975, horizontalAccuracy: 5) == .enter)
     }
 

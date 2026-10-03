@@ -4,14 +4,7 @@ import CoreLocation
 import Foundation
 import Testing
 
-/// iOS 13–17 run the classic monitor, and a polygon reaches it as its covering circle. The
-/// membership verdict is the resolver's job, but it can only be right if this path hands over the
-/// circle the OS actually crossed — a polygon forwarded as `unknown`, or carrying a replacement
-/// fence's geometry, silently becomes a circle fence for every pre-iOS-18 user.
-///
-/// Measured on the iOS 17.5 simulator 2026-09-14: the classic path already fetches, registers and
-/// evaluates polygons end-to-end. These pin the monitor's half of that so it cannot regress
-/// unnoticed — no drive covers this band, and the CLMonitor twin cannot be built in a test at all.
+/// iOS 13–17 run the classic monitor, where a polygon arrives as its covering circle.
 @Suite("CoreLocationGeofenceMonitor polygon path", .serialized)
 @MainActor
 struct GeofenceClassicPolygonPathTests {
@@ -89,9 +82,7 @@ struct GeofenceClassicPolygonPathTests {
         )
     }
 
-    /// A polygon's covering circle must arrive as `.circle`, never `.unknown`: the resolver's exit
-    /// branch writes `outside` only when it can check the crossed circle is still the fence's, and
-    /// `unknown` makes it write that verdict unchecked.
+    /// Must be `.circle`, not `.unknown`: `.unknown` makes the resolver write exit verdicts unchecked.
     @Test
     func coveringCircleEnter_expectTheCrossedCircleCarriedToTheResolver() {
         var delivered: [Delivered] = []
@@ -111,9 +102,7 @@ struct GeofenceClassicPolygonPathTests {
         #expect(crossed.radius == Self.coveringRadius)
     }
 
-    /// Both edges must reach the resolver. A polygon is registered with `[.enter, .exit]` whatever
-    /// the customer asked for, because membership needs the filtered edge to advance — dropping
-    /// the exit here would leave a polygon entered and never left.
+    /// Polygons register both edges whatever the customer asked for; membership needs the exit.
     @Test
     func coveringCircleExit_expectDeliveredWithItsCircle() {
         var delivered: [Delivered] = []
@@ -128,16 +117,13 @@ struct GeofenceClassicPolygonPathTests {
         }
     }
 
-    /// The circle is captured from the region the OS raised the event against, not looked up when
-    /// the event is delivered. A refresh replacing the fence under the same id between the crossing
-    /// and the drain must not make the old crossing describe the new geometry.
     @Test
     func coveringCircleEnter_givenTheFenceIsReshapedBeforeDelivery_expectTheCrossedGeometry() async {
         var delivered: [Delivered] = []
         let monitor = CoreLocationGeofenceMonitor(logger: SilentLogger())
         monitor.ownedRegionIdentifiers.insert(Self.polygonId)
 
-        // No handler bound yet, so the crossing buffers — the cold-wake ordering.
+        // No handler yet, so the crossing buffers.
         monitor.locationManager(CLLocationManager(), didEnterRegion: coveringRegion())
         // A refresh reshapes the fence under the same id before the buffered event drains.
         monitor.locationManager(CLLocationManager(), didExitRegion: coveringRegion(radius: 900))
@@ -145,7 +131,6 @@ struct GeofenceClassicPolygonPathTests {
             delivered.append(Delivered(identifier: identifier, transition: transition, circle: circle))
         }
 
-        // The drain is a Task hop; give it one turn of the main actor.
         let drained = await waitForDrain { delivered.count >= 2 }
         #expect(drained, "buffered event never drained")
         guard case .circle(let crossed) = delivered.first?.circle else {
@@ -160,10 +145,7 @@ struct GeofenceClassicPolygonPathTests {
         #expect(second.radius == 900, "each event must carry the circle IT crossed, not a shared lookup")
     }
 
-    /// Yields the main actor until the drain has run, rather than sleeping a fixed interval — a
-    /// fixed wait is the shape that made the MessagingInApp suite flaky. It must yield rather than
-    /// spin: the drain is a `Task { @MainActor }`, so a synchronous loop holds the actor the drain
-    /// needs and the condition can never become true.
+    /// Yields, not spins: the drain needs the main actor this test holds.
     private func waitForDrain(iterations: Int = 200, _ condition: () -> Bool) async -> Bool {
         for _ in 0 ..< iterations {
             if condition() { return true }
@@ -172,9 +154,6 @@ struct GeofenceClassicPolygonPathTests {
         return condition()
     }
 
-    /// The gate analysis for iOS 13-17 rests on "registering 9 regions produced ZERO
-    /// `os.callback.received`", which is only evidence if this path emits that record at all. An
-    /// owned crossing must produce one — see the absence-of-a-log-line trap.
     @Test
     func ownedCrossing_expectAReceivedCallbackRecord() throws {
         try DiagnosticsGateTesting.withDiagnostics(true) {

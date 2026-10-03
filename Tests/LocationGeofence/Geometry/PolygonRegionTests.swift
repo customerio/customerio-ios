@@ -23,9 +23,6 @@ struct PolygonRegionTests {
         }
     }
 
-    /// A bow-tie's lobes both read as inside under even-odd, at a signed distance decisive enough
-    /// to clear the delivery gate — measured +33 m — so it would fire an enter for ground the
-    /// polygon never covered. Rejected at construction, matching Android.
     @Test
     func init_givenSelfIntersectingRing_expectRejected() {
         let bowtie = [
@@ -37,8 +34,6 @@ struct PolygonRegionTests {
         #expect(PolygonRegion(validating: bowtie) == nil)
     }
 
-    /// Zero area: never contains anything, but would still hold an OS slot and drag the shared wake
-    /// circle to its floor, so every other fence in the set wakes more often.
     @Test
     func init_givenCollinearRing_expectRejected() {
         let line = [
@@ -49,9 +44,7 @@ struct PolygonRegionTests {
         #expect(PolygonRegion(validating: line) == nil)
     }
 
-    /// Two lobes joined at a single point: the bow-tie with its crossing degenerated to a vertex.
-    /// Android rejects touches as well as crossings, so a crossing-only test here would let this
-    /// through on iOS and drop it on Android.
+    /// Touches are rejected like crossings, matching Android.
     @Test
     func init_givenRingTouchingAtAVertex_expectRejected() {
         let touching = [
@@ -65,9 +58,7 @@ struct PolygonRegionTests {
         #expect(PolygonRegion(validating: touching) == nil)
     }
 
-    /// A non-consecutive repeat survives collapsing on both SDKs (both collapse consecutive repeats
-    /// only), so the drop has to come from the intersection test: the two edges leaving the repeated
-    /// vertex are non-adjacent and touch.
+    /// Only consecutive repeats collapse, so this must be caught by the intersection test.
     @Test
     func init_givenNonConsecutiveRepeatedVertex_expectRejected() {
         let repeated = [
@@ -79,7 +70,6 @@ struct PolygonRegionTests {
         #expect(PolygonRegion(validating: repeated) == nil)
     }
 
-    /// Concave rings are the point of polygons and must survive the new rejection.
     @Test
     func init_givenConcaveRing_expectAccepted() {
         let lShape = [
@@ -93,10 +83,8 @@ struct PolygonRegionTests {
         #expect(PolygonRegion(validating: lShape) != nil)
     }
 
-    /// A wild longitude is decodable JSON, and every consumer walks longitudes in 360° steps.
-    /// 1e12 is billions of iterations per vertex; past ~3.2e18 subtracting 360 stops changing the
-    /// value and the walk never terminates. The ring has to be refused at construction, on the
-    /// cheap initializer, because that is the one every rebuild from cache goes through.
+    /// Longitudes are walked in 360° steps, so 1e12 would take billions of iterations. Must be refused
+    /// on the cheap initializer, which every rebuild from cache uses.
     @Test
     func init_givenOutOfRangeCoordinate_expectRejectedWithoutWalking() {
         let wild = [
@@ -122,9 +110,8 @@ struct PolygonRegionTests {
         #expect(PolygonRegion(vertices: outOfRangeLatitude) == nil)
     }
 
-    /// A repeated position is a zero-length edge: geometrically nothing, but it inflates the count
-    /// the vertex cap is compared against, and the server states that cap in UNIQUE vertices. So a
-    /// ring the server considers valid must not be dropped for carrying a duplicate.
+    /// The server's vertex cap counts UNIQUE vertices, so duplicates must not push a valid ring
+    /// over it.
     @Test
     func init_givenConsecutiveDuplicateVertices_expectCollapsedAndGeometryUnchanged() throws {
         let fixture = try #require(polygonGeometryFixtures.first)
@@ -146,7 +133,6 @@ struct PolygonRegionTests {
         }
     }
 
-    /// A triangle written with every point doubled is still a triangle, not a six-sided ring.
     @Test
     func init_givenOnlyDuplicatesLeavingTwoDistinct_expectNil() {
         let a = LocationData(latitude: 0, longitude: 0)
@@ -175,9 +161,7 @@ struct PolygonRegionTests {
         #expect(PolygonRegion(vertices: [a, b, a]) == nil)
     }
 
-    /// Pins the half-open ray cast documented on the type: boundary points are NOT symmetric.
-    /// Nothing depends on the asymmetry (delivery never acts within the accuracy-gate floor), but
-    /// it is the rule the cross-SDK fixtures encode, so a silent flip would diverge from Android.
+    /// Boundary asymmetry is intended (half-open ray cast); a boundary point never yields a verdict.
     @Test
     func contains_givenPointsExactlyOnBoundary_expectHalfOpenRule() throws {
         let square = try #require(polygonGeometryFixtures.first { $0.name == "square400" })
@@ -197,19 +181,14 @@ struct PolygonRegionTests {
         #expect(!region.contains(LocationData(latitude: maxLat, longitude: maxLon))) // NE vertex
     }
 
-    /// Translation invariance: the same shape must behave identically wherever it sits. Before the
-    /// unwrap, a fix mid-island on an antimeridian ring read `contains=false` at -4256 m — decisive
-    /// enough to clear the ambiguity gate, so the fence silently never fired.
     @Test
     func contains_givenRingCrossingAntimeridian_expectSameVerdictsAsAwayFromIt() throws {
-        // Taveuni, Fiji — a real island on the antimeridian.
         let onDateline = [
             LocationData(latitude: -16.80, longitude: 179.95),
             LocationData(latitude: -16.80, longitude: -179.95),
             LocationData(latitude: -16.90, longitude: -179.95),
             LocationData(latitude: -16.90, longitude: 179.95)
         ]
-        // The identical 0.1-degree-wide shape, moved so nothing wraps.
         let atGreenwich = onDateline.map {
             LocationData(latitude: $0.latitude, longitude: $0.longitude > 0 ? $0.longitude - 180 : $0.longitude + 180)
         }
@@ -255,8 +234,6 @@ struct PolygonRegionTests {
 
     @Test
     func signedEdgeDistance_givenSignFlipAcrossEdge_expectContinuousMagnitude() throws {
-        // Walk a straight line across the square's eastern edge; the signed distance must
-        // change sign exactly once and |sd| must be continuous (no jumps at the boundary).
         let square = try #require(polygonGeometryFixtures.first { $0.name == "square400" })
         let region = try #require(PolygonRegion(vertices: square.vertices))
         let lat = square.vertices.map(\.latitude).reduce(0, +) / Double(square.vertices.count)
@@ -277,10 +254,8 @@ struct PolygonRegionTests {
         #expect(signFlips == 1)
     }
 
-    /// A ring on the antimeridian may legally close with the opposite sign to the one it opened
-    /// with — +180 and -180 are one meridian. Compared raw, the closing vertex survives as a
-    /// zero-length edge, `selfIntersects` reads that as a crossing, and the fence drops at decode.
-    /// Android canonicalises the same case away, so an unfixed iOS silently loses fences there.
+    /// +180 and -180 are one meridian. Compared raw, the closing vertex becomes a zero-length edge
+    /// that `selfIntersects` reads as a crossing.
     @Test
     func init_givenRingClosedWithTheOppositeSign_expectClosureCollapsed() throws {
         let ring = [
@@ -297,8 +272,6 @@ struct PolygonRegionTests {
         #expect(PolygonRegion(vertices: ring)?.vertices.count == 4)
     }
 
-    /// Control: the same ring closed with the SAME sign must still collapse to four, so the fix is
-    /// recognising the meridian rather than dropping any trailing vertex.
     @Test
     func init_givenRingClosedWithTheSameSign_expectClosureCollapsed() throws {
         let ring = [
@@ -314,9 +287,7 @@ struct PolygonRegionTests {
         #expect(region.vertices.count == 4)
     }
 
-    /// An out-of-range longitude must reject the ring, not be collapsed away. 360 unwraps onto 0,
-    /// so testing "same meridian" before validating would let exactly this vertex vanish and the
-    /// ring build as if the server had never sent it.
+    /// 360 unwraps onto 0, so a same-meridian check before validation would silently drop this vertex.
     @Test
     func init_givenOutOfRangeLongitudeAfterAMatchingVertex_expectRejected() {
         let ring = [
@@ -330,8 +301,6 @@ struct PolygonRegionTests {
         #expect(PolygonRegion(validating: ring) == nil)
     }
 
-    /// Negative control: two positions a real distance apart on either side of the meridian are NOT
-    /// the same place, so an open ring keeps every vertex it was sent.
     @Test
     func init_givenDistinctPositionsNearTheMeridian_expectNoneCollapsed() throws {
         let ring = [
@@ -348,7 +317,6 @@ struct PolygonRegionTests {
 }
 
 private extension Double {
-    /// Wraps a longitude built by arithmetic (e.g. `180 - offset`) back into [-180, 180].
     var normalizedLongitude: Double {
         var value = self
         while value > 180 {

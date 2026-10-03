@@ -1,25 +1,9 @@
 @testable import CioLocationGeofence
 import Foundation
 
-/// Compares what the SDK emitted on replay against what it emitted on the road.
-///
-/// Two rules, and both are needed:
-///
-/// 1. **Ordered between stimuli, unordered within one.** Every `then` must appear, and expectations
-///    triggered by *different* stimuli must appear in the recorded order. Expectations triggered by
-///    the *same* stimulus may arrive in any order, because `GeofenceMonitorBinder` dispatches the
-///    tracker and coordinator paths as concurrent fire-and-forget `Task`s — so whether
-///    `movement.exit` or `transition.accepted` lands first is a scheduling detail, not behaviour.
-///    Pinning it would make the suite flaky for a reason the SDK does not control. This is the
-///    `"group": n` semantics the format specified, derived from each record's `at` rather than
-///    authored into the file. Emissions the scenario does not mention are ignored, because the
-///    transform deliberately drops records and a new diagnostic line should not turn a drive red.
-/// 2. **Exact count per `ev`.** For each event name the scenario mentions, the number emitted must
-///    match exactly. Rule 1 alone would pass an SDK that emitted *two* `transition.accepted` where
-///    the drive saw one — a duplicate-delivery regression sailing through as a subsequence.
-///
-/// A `then` asserts **only the keys it lists**. The transform already stripped the volatile ones
-/// (`ms`, `age`, `acc`), so anything still present is something the drive is entitled to pin.
+/// Ordered across stimuli, unordered within one (the binder dispatches each callback on its own
+/// `Task`); unmentioned emissions are ignored. Per-`ev` counts must match exactly, or a duplicate
+/// passes as a subsequence. A `then` asserts only the keys it lists.
 enum ReplayMatcher {
     struct Mismatch: CustomStringConvertible {
         enum Kind {
@@ -42,16 +26,7 @@ enum ReplayMatcher {
         }
     }
 
-    /// Both sequences side by side, for a failure message.
-    ///
-    /// A list of mismatches says *what* did not line up; when the cause is ordering rather than
-    /// behaviour, only seeing the two sequences says *why*.
-    ///
-    /// **The replay column is narrowed to the event names the drive asserts.** `emitted` is the whole
-    /// diagnostic tail — every `fence.cataloged`, every `location.fix` — and against a `then` list of
-    /// nineteen rows that pushed the two sequences so far out of step that the columns lined up
-    /// nothing at all. The comparison itself still runs over the full tail; only this rendering is
-    /// filtered, so an emission the drive never mentions can still be read from the log.
+    /// Only this rendering is narrowed to asserted events, not the comparison.
     static func diff(expected: [Scenario.Record], actual: [[String: String]]) -> String {
         func label(_ ev: String, _ id: String?, _ t: String?) -> String {
             [ev, id, t].compactMap { $0 }.joined(separator: "/")
@@ -69,8 +44,6 @@ enum ReplayMatcher {
         return "    drive\(String(repeating: " ", count: 42))replay\n" + rows.joined(separator: "\n")
     }
 
-    /// Groups expectations by the stimulus that triggered them: everything emitted after one
-    /// `when` and before the next belongs to the same concurrent burst.
     static func grouped(_ expected: [Scenario.Record], stimuli: [TimeInterval]) -> [Int] {
         expected.map { record in stimuli.lastIndex { $0 <= record.at } ?? 0 }
     }
@@ -84,8 +57,7 @@ enum ReplayMatcher {
         var consumed = Set<Int>()
         var cursor = 0
 
-        // Rule 1 — one group at a time. Within a group, order is free; the cursor only advances
-        // past a group once all of its expectations have been placed.
+        // The cursor passes a group only once all of it is placed.
         for group in groups(expected, stimuli: stimuli) {
             var placed: [Int] = []
             for index in group {
@@ -100,7 +72,6 @@ enum ReplayMatcher {
             cursor = (placed.max().map { $0 + 1 } ?? cursor)
         }
 
-        // Rule 2 — counts, for the event names this drive talks about.
         for ev in Set(expected.map(\.ev)).sorted() {
             let want = expected.count { $0.ev == ev }
             let got = actual.count { $0["ev"] == ev }
@@ -112,7 +83,6 @@ enum ReplayMatcher {
         return mismatches
     }
 
-    /// Expectation indices grouped by the stimulus that triggered them.
     private static func groups(_ expected: [Scenario.Record], stimuli: [TimeInterval]) -> [[Int]] {
         guard !stimuli.isEmpty else { return expected.indices.map { [$0] } }
         var byStimulus: [Int: [Int]] = [:]
@@ -123,7 +93,6 @@ enum ReplayMatcher {
         return byStimulus.keys.sorted().map { byStimulus[$0]! }
     }
 
-    /// Why an expectation did not match: the closest same-`ev` emission, field by field.
     private static func explain(
         _ want: Scenario.Record,
         at index: Int,
@@ -142,10 +111,7 @@ enum ReplayMatcher {
         return found
     }
 
-    /// First unconsumed emission at or after `start` that satisfies `want`.
-    ///
-    /// Consumed indices are skipped so two identical expectations cannot both match one emission —
-    /// which would hide a dropped duplicate.
+    /// Skips consumed indices so two identical expectations can't both match one emission.
     private static func seek(
         _ want: Scenario.Record,
         in actual: [[String: String]],

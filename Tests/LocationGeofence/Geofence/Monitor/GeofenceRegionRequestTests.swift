@@ -3,10 +3,6 @@
 import Foundation
 import Testing
 
-/// `matchesRegistered` decides whether `setMonitoredRegions` leaves a region alone. A false positive
-/// keeps a stale circle registered; a false negative re-registers every pass and discards crossings
-/// the OS has detected but not yet delivered. Both monitors and the mock share this comparison, so
-/// it is tested here rather than through any one of them.
 @Suite("GeofenceRegionRequest.matchesRegistered")
 struct GeofenceRegionRequestTests {
     private static let uncapped = Double.greatestFiniteMagnitude
@@ -38,7 +34,6 @@ struct GeofenceRegionRequestTests {
 
     @Test
     func matchesRegistered_givenCoordinateDriftWithinTolerance_expectMatch() {
-        // Coordinates round-trip through CoreLocation and JSON; sub-centimetre drift is not a move.
         let request = makeRequest()
         #expect(request.matchesRegistered(
             center: LocationData(latitude: 10 + 5e-8, longitude: 20 - 5e-8),
@@ -83,8 +78,7 @@ struct GeofenceRegionRequestTests {
 
     @Test
     func matchesRegistered_givenRadiusAboveCapAndRegisteredAtCap_expectMatch() {
-        // The OS clamps on registration. Comparing the requested radius against the clamped one it
-        // holds would mark every over-cap region changed on every pass and re-register it forever.
+        // The OS clamps the radius at registration.
         let request = makeRequest(radius: 5000)
         #expect(request.matchesRegistered(
             center: LocationData(latitude: 10, longitude: 20),
@@ -96,7 +90,6 @@ struct GeofenceRegionRequestTests {
 
     @Test
     func matchesRegistered_givenRadiusAboveCapButRegisteredBelowCap_expectNoMatch() {
-        // Registered narrower than the cap allows: the OS is holding a circle we did not ask for.
         let request = makeRequest(radius: 5000)
         #expect(!request.matchesRegistered(
             center: LocationData(latitude: 10, longitude: 20),

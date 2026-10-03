@@ -6,28 +6,10 @@ private let geofenceTag = "Geofence"
 // MARK: - Crossing decisions
 
 //
-// What the SDK concluded about a crossing, as opposed to what the OS handed it (`os.callback.*`)
-// or what happened to the event afterwards (`delivery.*`). This family is what replay asserts on.
-//
-// `transition.accepted` and `transition.synthesized` are shared with Android verbatim — same key,
-// same fields, same reason tokens — so one parser reads both. `baseline.refused` is iOS-only:
-// Android has no baseline heal, so there is nothing on that side to match.
-//
-// Grouped by meaning rather than by whichever file had room, which is how `transition.accepted`
-// ended up next to the permission records in the first place.
+// `transition.accepted` and `transition.synthesized` match Android verbatim (key, fields, tokens).
 
 extension Logger {
-    /// The SDK accepted a crossing and durably queued it — the decision replay asserts on.
-    ///
-    /// Distinct from the `delivery.*` family, which fires only once the row leaves. Neither of
-    /// those says the SDK judged the crossing real, and on an offline device they can trail it by
-    /// many minutes or never arrive, which makes them useless as a signal about geofencing. This
-    /// record makes no claim about what happens to the row next.
-    /// A field drive showed exactly that — one crossing surfaced 26 minutes late and another,
-    /// accepted and persisted, produced no positive record at all.
-    ///
-    /// `n` is the row count: one per geoset the fence belongs to, so a fan-out is visible as one
-    /// acceptance rather than inferred from the delivery records that follow.
+    /// `n` is the row count, one per geoset the fence belongs to.
     func geofenceTransitionAccepted(geofenceId: String, transition: GeofenceTransition, rows: Int) {
         debug(
             "Accepted \(transition.rawValue) for geofence \(geofenceId), queued \(rows) row(s)"
@@ -51,12 +33,7 @@ extension Logger {
         )
     }
 
-    /// Every event arriving while a re-add record is held, with its distance in TIME from that add.
-    ///
-    /// The gate records only refusals, so `contradictionGateReplayWindow` could not be calibrated
-    /// from a drive: an event just outside the window and an event that was never a replay both
-    /// logged nothing. `dly` is the event's date minus the add, `win` whether the current bound
-    /// covered it — together, the distribution the constant is currently guessing at.
+    /// `dly` is the event's date minus the add; `win` whether the window covered it.
     func geofenceContradictionEvaluated(identifier: String, transition: GeofenceTransition, delaySinceAdd: TimeInterval, insideWindow: Bool) {
         debug(
             "Event for region \(identifier) landed \(String(format: "%.3f", delaySinceAdd))s after its re-add"
@@ -70,19 +47,7 @@ extension Logger {
         )
     }
 
-    /// The gate consulted a fix and did NOT refuse — the counterpart to `contradiction.refused`,
-    /// without which "the gate allowed this event" and "the gate could not have refused anything"
-    /// are the same silence. Below a radius the fix accuracy can resolve, the second case is the
-    /// norm, so a drive on small fences cannot otherwise tell whether the gate still protects
-    /// anything.
-    ///
-    /// `edge` is signed here, unlike the refusal's, because which side the fix fell on is the
-    /// question. Negative is inside — the CIRCLE path's convention, matching
-    /// `BaselineHealDecision`. The polygon records use the same key with the opposite sign
-    /// (`PolygonRegion.signedEdgeDistance` is positive inside), so a parser must read `edge`
-    /// against the record's `ev`. The measurements ride as their own keys and no `why` token
-    /// classifies them: which guard declined is derivable from `edge`, `acc` and `age`, and a
-    /// token would need a second copy of `BaselineHealDecision`'s guard sequence to produce.
+    /// `edge` is negative inside (circle convention); polygon records use the opposite sign.
     func geofenceContradictionAllowed(
         identifier: String,
         transition: GeofenceTransition,
@@ -103,15 +68,8 @@ extension Logger {
         )
     }
 
-    /// The gate reached an in-window event with no fix to judge it against, so it failed open.
-    /// Silent before this, which made it indistinguishable from a gate that ran and allowed the
-    /// event.
-    ///
-    /// This is NOT what a blocked fix request produces. The blocked path still returns
-    /// `bestKnownFix()`, and the usable-fix filter rejects only an invalid coordinate, never age —
-    /// so whenever any fix exists the gate reaches the decision and fails open on the age guard,
-    /// emitting `contradiction.allowed` with a large `age`. Counting blocked bursts by this record
-    /// would find none and read that as the resolver working.
+    /// Fails open. A blocked fix request doesn't land here: it logs `contradiction.allowed` with a
+    /// large `age`.
     func geofenceContradictionNoFix(
         identifier: String,
         transition: GeofenceTransition,
@@ -143,13 +101,7 @@ extension Logger {
         )
     }
 
-    /// A heal decided a crossing was real and the dedup baseline refused it.
-    ///
-    /// `io=obs` and its own key, deliberately not `os.callback.dropped`: nothing arrived from the
-    /// OS here. A heal synthesizes the transition from a fix, so reporting it as a dropped callback
-    /// invents an OS delivery that never happened and inflates the received-vs-dropped count —
-    /// the count that distinguishes "the OS never reported it" from "we discarded it", which is
-    /// the question a paired drive exists to answer.
+    /// Not `os.callback.dropped`: nothing arrived from the OS, so it must not skew that count.
     func geofenceBaselineRefused(identifier: String, transition: GeofenceTransition, reason: String) {
         debug(
             "Baseline heal for region \(identifier) refused: \(reason)"
@@ -162,13 +114,7 @@ extension Logger {
         )
     }
 
-    /// An ENTER the SDK invented because the device was already inside a newly-registered fence.
-    ///
-    /// Without it a synthesized enter is indistinguishable from a real crossing in the log — the
-    /// 2026-09-07 drive opened with exactly this, and only the surrounding context revealed it.
-    /// Matches the Android record of the same name and reason token so one parser reads both —
-    /// including hardcoding the reason rather than taking it as a parameter, so the prose and the
-    /// `why` token cannot drift apart at a second call site.
+    /// `why` is hardcoded to match Android.
     func geofenceTransitionSynthesized(geofenceId: String, transition: GeofenceTransition) {
         debug(
             "Geofence '\(geofenceId)': device already inside a newly-registered fence — synthesizing \(transition.rawValue)"

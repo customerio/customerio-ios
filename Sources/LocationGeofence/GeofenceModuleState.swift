@@ -2,17 +2,11 @@ import CioInternalCommon
 @_spi(Geofence) import CioLocation
 import Foundation
 
-/// Wires the Geofence module and holds it for the process lifetime. The decisions live in
-/// `GeofenceRefreshTrigger`; this is the wiring around it.
-///
-/// Lives for the process lifetime via `shared` so the first-run rearm gate outlives
-/// `GeofenceModule.initialize()` — the SDK does not retain the module facade once
-/// initialization returns.
+/// Process-lifetime via `shared`: the SDK doesn't retain `GeofenceModule` after `initialize()`.
 final class GeofenceModuleState {
     static let shared = GeofenceModuleState()
 
-    /// Resolved lazily at each use so the live `LocationServices` is read even when the geofence
-    /// module initializes before `LocationModule` (registration order is not guaranteed).
+    /// Resolved at each use: this module may initialize before `LocationModule`.
     private let locationServicesProvider: () -> LocationServices
 
     /// Owned here because `refreshFromCurrentLocation()` can arrive before `setup`.
@@ -22,15 +16,13 @@ final class GeofenceModuleState {
     private var didSetup = false
     private var trigger: GeofenceRefreshTrigger?
 
-    /// Internal init lets tests build instances independent of `.shared`.
     init(
         locationServicesProvider: @escaping () -> LocationServices = { CustomerIO.location }
     ) {
         self.locationServicesProvider = locationServicesProvider
     }
 
-    /// Wires the geofence module: event subscriptions, cold-wake pending-flush, first-run
-    /// rearm, and OS monitor bootstrap. Idempotent across repeat calls.
+    /// Idempotent: only the first call wires anything.
     func setup(di: DIGraphShared, locationMode: GeofenceLocationMode = .automatic) {
         lock.lock()
         defer { lock.unlock() }
@@ -64,31 +56,22 @@ final class GeofenceModuleState {
     private func registerEventSubscriptions(di: DIGraphShared, trigger: GeofenceRefreshTrigger) {
         di.eventBusHandler.addObserver(ProfileIdentifiedEvent.self) { _ in
             Task { await di.geofenceEventTracker.flushPending() }
-            // Setup runs before the host calls `identify`, so `wireMonitor` almost always arms
-            // against a nil user and leaves visits off. Without this the in-circle wake never
-            // starts on the ordinary launch order, which is the case the visit wake exists for.
+            // `wireMonitor` usually ran before identify and left visits off; this arms them.
             Task { @MainActor in await GeofenceBootstrap.armVisitMonitoring(di: di) }
             trigger.onIdentified()
         }
         di.eventBusHandler.addObserver(ResetEvent.self) { _ in
             trigger.onReset()
-            // Disarms through the same call: a visit waking a signed-out process evaluates an
-            // empty set. `bindVisits` only refuses the delivery, it does not stop the monitor.
-            // Queued after `onReset`, which starts the coordinator reset on the same actor.
+            // Disarms visits. Must stay after `onReset`, which starts the reset on the same actor.
             Task { @MainActor in await GeofenceBootstrap.armVisitMonitoring(di: di) }
         }
-        // Rearm first-run refresh on the first fresh fix after an identify skipped for no anchor.
         di.eventBusHandler.addObserver(LocationAcquiredEvent.self) { event in
-            // The only place a position arrives on this platform; every other `location.fix` is a read.
             di.logger.geofenceLocationArrived(event.location)
             trigger.onLocationAcquired(event.location)
         }
     }
 
-    /// Arms a host-initiated refresh so the next acquired fix drives a sync even without a prior
-    /// no-location skip. Paired with `LocationServices.requestLocationUpdateSilently()` by the
-    /// `CustomerIO.geofence.refreshFromCurrentLocation()` facade.
-    /// Writes the shared box directly: may be called before `setup`, when no trigger exists.
+    /// May be called before `setup`, so it writes the shared box rather than the trigger.
     func onRefreshRequested() {
         explicitRefreshRequested.wrappedValue = true
     }

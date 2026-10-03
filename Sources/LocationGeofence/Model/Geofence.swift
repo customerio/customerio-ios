@@ -6,29 +6,19 @@ enum GeofenceDwellLimits {
     static let maxThresholdSeconds = Int(Int32.max) / 1000
 }
 
-/// A geofence region returned by the server.
 struct Geofence: Codable, Equatable, Sendable {
     let id: String
     let latitude: Double
     let longitude: Double
-    /// Radius in meters.
+    /// Meters.
     let radius: Double
-    /// Geofence name, or `nil` when the server didn't provide one.
     let name: String?
     let transitionTypes: Set<GeofenceTransition>
     let lastUpdated: Date
-    /// IDs of the geosets this geofence belongs to. Empty when the geofence is
-    /// in no geoset. Stamped onto transition events, one event per geoset.
     let geosetIds: [String]
-    /// Workspace-defined key/value metadata; empty when the geofence carries none.
-    /// Snapshotted onto transition events and preferred fresh from cache at send.
     let metadata: [String: GeofenceMetadataValue]
-    /// Polygon boundary, canonicalized (closed rings unclosed) at the API boundary; `nil` for a
-    /// circle geofence. Which rings are worth monitoring is the server's call; the SDK rejects only
-    /// what it cannot evaluate — an out-of-range coordinate, or a ring enclosing no area or
-    /// crossing itself, both of which make containment meaningless. When present, `latitude`/`longitude`/`radius` describe the
-    /// server-guaranteed covering circle — the shape registered at the OS as the wake trigger —
-    /// and membership decisions come from the polygon, never the circle.
+    /// `nil` for a circle. When set, `latitude`/`longitude`/`radius` are the covering circle registered
+    /// at the OS; membership comes from the polygon, never the circle.
     let vertices: [LocationData]?
     /// Seconds required inside for one dwell event per visit. Zero disables dwell.
     let dwellThresholdSeconds: Int
@@ -59,12 +49,7 @@ struct Geofence: Codable, Equatable, Sendable {
         self.dwellThresholdSeconds = dwellThresholdSeconds
     }
 
-    /// Geometry kernel for a polygon geofence. Built on demand — callers on a hot path should hold
-    /// the result rather than re-deriving it per fix.
-    ///
-    /// `nil` means EITHER a circle or a polygon whose stored ring no longer builds, so it must not
-    /// be read as "this is a circle": check `vertices` for that. The two differ if `init?` ever
-    /// tightens, since cached rings decode without re-validation.
+    /// `nil` is EITHER a circle or a stored ring that no longer builds; check `vertices` for a circle.
     var polygonRegion: PolygonRegion? {
         vertices.flatMap(PolygonRegion.init(vertices:))
     }
@@ -95,9 +80,7 @@ struct Geofence: Codable, Equatable, Sendable {
         return "\(id)|\(latitude)|\(longitude)|\(radius)|\(ring)|\(dwellThresholdSeconds)"
     }
 
-    /// Custom decode so geofences cached by SDK versions predating `geosetIds` / `metadata` still
-    /// decode (missing key means none). Disk values come from our own encoder, so strict decode is
-    /// safe; the tolerant, null-dropping decode is at the API boundary in `GeofenceApiRegion`.
+    /// Tolerates missing `geosetIds` / `metadata` from caches written by older SDK versions.
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         self.id = try container.decode(String.self, forKey: .id)

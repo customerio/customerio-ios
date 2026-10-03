@@ -1,19 +1,9 @@
 import CioInternalCommon
 import Foundation
 
-/// The diff-based initial enter-when-inside, split out to keep the coordinator's core flow readable.
-/// Methods are `internal` (not `private`) only because they live in a separate file from their
-/// callers; they remain coordinator implementation detail.
 extension GeofenceSyncCoordinatorImpl {
-    /// Fires an initial ENTER for each newly-registered geofence the device is already inside — the
-    /// crossing neither OS layer reports for a region added around you (Android's `INITIAL_TRIGGER_ENTER`).
-    /// The `previouslyRegisteredIds` diff keeps a wholesale re-register silent; a sign-out clears that set
-    /// so the next sign-in re-fires. At the coordinator so iOS ≤17 and 18+ match; cooldown-deduped via the tracker.
-    ///
-    /// - Parameter osRegistration: what the OS accepted this sync. A candidate absent from
-    ///   `registeredIds` (dropped for blocked permission / invalid coordinates) isn't monitored, so it
-    ///   must not emit an enter it can't balance; the inside check clamps to `maxMonitoringRadius`
-    ///   (Apple guarantees no floor for it, so a fence radius can exceed the monitored circle).
+    /// Neither OS monitor reports ENTER for a fence the device is already inside. Only fences the OS
+    /// took, and not in `previouslyRegisteredIds`, so a re-register stays silent.
     func emitInitialEnters(
         candidates: [Geofence],
         osRegistration: GeofenceOsRegistration,
@@ -25,10 +15,7 @@ extension GeofenceSyncCoordinatorImpl {
             osRegistration.registeredIds.contains(region.id)
                 && !previouslyRegisteredIds.contains(region.id)
         }
-        // A polygon must NOT be judged by this containment test: `radius` is its covering circle, so
-        // a device in the annulus would emit an enter it never earned. Newly-registered polygons go
-        // to the resolver's gated evaluation instead, which is also the only thing that reports the
-        // device already standing inside one — there is no crossing for the OS to deliver.
+        // Not polygons: `radius` is the covering circle, so the resolver evaluates them instead.
         let newPolygons = newlyRegistered.filter { $0.vertices != nil }
         let newInside = newlyRegistered.filter { region in
             region.vertices == nil
@@ -39,21 +26,14 @@ extension GeofenceSyncCoordinatorImpl {
             evaluateNewPolygons(newPolygons, expectedUserId: expectedUserId)
         }
         guard !newInside.isEmpty else { return }
-        // Deliver off the refresh gate (like the binder does for real crossings) so a slow send can't
-        // stall the next refresh; `trackTransition` persists first, so an interrupted send is retried.
-        // Nothing crossed anything — the fence was registered around a device already inside it —
-        // so the moment we noticed is the only honest event time. Read out here rather than inside
-        // the Task because `DateUtil` is a non-Sendable protocol with a non-final implementation,
-        // and the Swift 5 language mode does not diagnose capturing one into a @Sendable closure.
+        // Read outside the Task: `DateUtil` isn't Sendable, and Swift 5 mode doesn't diagnose it.
         let discoveredAt = dateUtil.now
-        // Not main-actor bound, as before dwell: the ENTER must not queue behind main-actor work, a
-        // sign-out included. Only the visit bookkeeping hops, in a child that runs alongside the
-        // emit: awaited after it, a stalled send left the visit unwritten past a real EXIT.
+        // Off the gate: a slow send must not stall the next refresh. Not main-actor bound either, so
+        // the ENTER can't queue behind a sign-out; only the visit bookkeeping hops, in a child run
+        // alongside the emit — awaited after it, a stalled send left the visit unwritten past an EXIT.
         Task { [transitionEmitter, contextStore, logger, dwellCoordinator] in
             for region in newInside {
-                // Re-check per iteration: the diff was computed for `expectedUserId`, and each awaited
-                // send can span a sign-out/switch that the tracker would otherwise stamp to whoever is
-                // current — so stop the batch the moment identity changes.
+                // Per iteration: an awaited send can span a user switch.
                 guard contextStore.currentUserId == expectedUserId else { return }
                 async let visitRecorded: Void? = dwellCoordinator?.handleBoundary(
                     geofence: region,
@@ -65,9 +45,6 @@ extension GeofenceSyncCoordinatorImpl {
                     entryObserved: false
                 )
                 if region.transitionTypes.contains(.enter) {
-                    // Marked before the emit: downstream this is an ordinary crossing, so without a
-                    // record here nothing distinguishes an enter the SDK invented from one the person
-                    // drove through.
                     logger.geofenceTransitionSynthesized(geofenceId: region.id, transition: .enter)
                     await transitionEmitter.trackTransition(
                         geofenceId: region.id, transition: .enter, occurredAt: discoveredAt
@@ -78,21 +55,11 @@ extension GeofenceSyncCoordinatorImpl {
         }
     }
 
-    /// The trigger is sized to the nearest polygon boundary, so its EXIT is the signal that some
-    /// membership may have changed. A wake fires BECAUSE the device moved, so the cached fix
-    /// describes where it was — answering from it re-affirms the old verdict and swallows the
-    /// crossing outright (measured: a 26 s fix at 20 m/s is 520 m stale).
-    ///
-    /// `heldFix` is the exception, and the only one: a caller that has ALREADY obtained a fix under
-    /// that same rule passes it here, and the pass runs against it. Requesting again would not just
-    /// waste the request — the forced-fresh path demands a fix strictly newer than the last one this
-    /// resolver delivered, which the held fix has just advanced, so the second request answers
-    /// nothing and every polygon in the pass records `no_usable_fix`.
+    /// Forced-fresh: a cached fix would re-affirm the old verdict. Pass `heldFix` through; a new
+    /// request would fail, as it needs a fix newer than the held one.
     func evaluatePolygonsAfterMovement(expectedUserId: String, heldFix: ResolvedFix? = nil) {
         Task { @MainActor [contextStore, polygonResolver] in
             guard contextStore.currentUserId == expectedUserId else { return }
-            // Re-checked inside, after the fix resolves and again before the emit: a forced-fresh
-            // request is the longest await in the feature, and the polygon set was read before it.
             await polygonResolver().evaluateAllPolygons(
                 reason: .movement,
                 requiresFreshFix: true,
@@ -105,8 +72,6 @@ extension GeofenceSyncCoordinatorImpl {
     private func evaluateNewPolygons(_ polygons: [Geofence], expectedUserId: String) {
         Task { @MainActor [contextStore, polygonResolver] in
             guard contextStore.currentUserId == expectedUserId else { return }
-            // Also re-checked inside, per polygon, after the fix resolves: that await is the window
-            // where a user switch would otherwise land an event on the wrong profile.
             await polygonResolver().evaluateNewlyRegistered(
                 geofenceIds: polygons.map(\.id),
                 isStillCurrent: { contextStore.currentUserId == expectedUserId }

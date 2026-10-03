@@ -5,50 +5,22 @@ import Foundation
 import UIKit
 #endif
 
-/// `CLMonitor`-backed implementation of `GeofenceRegionMonitoring`. Available at iOS 17, but the DI
-/// accessor routes to it on iOS 18+ only — the floor where `CLServiceSession` keeps background
-/// delivery alive (see the accessor); 13–17 keep the classic monitor.
-///
-/// Behavioral contract: match the classic monitor — deliver only genuine boundary crossings, only
-/// for the registered transition types. `CLMonitor` differences this type compensates for:
-/// - Re-emits a condition's CURRENT state on process start and re-evaluation (relaunch, unlock),
-///   not just on crossings → per-condition dedup baseline persisted in `GeofenceStorage`, so a
-///   cold-wake compares against the pre-kill state.
-/// - No `notifyOnEntry`/`notifyOnExit` equivalent → per-condition delivery filter applied here.
-/// - Async API (actor + `events` sequence) behind a synchronous protocol → mutations run on a
-///   serialized FIFO pipeline so a re-registration's removes can never overtake its adds.
-/// - On iOS 18+, `events` yields nothing in the background without a `CLServiceSession` → hold one
-///   for the monitor's lifetime, created only when Always is already granted (never prompts —
-///   permission is the host's decision).
-/// - Conditions persist in the app container under our private monitor name → everything in it is
-///   SDK-owned by construction (classic `monitoredRegions` is shared app-wide).
-///
-/// Not unit-tested directly — it adapts real, non-substitutable CoreLocation objects. The decision
-/// logic lives in `GeofenceStorage` (unit-tested); the adapter is validated on-device.
+/// `CLMonitor`-backed monitor, used on iOS 18+ only (see the DI accessor). Must deliver only genuine
+/// crossings like the classic monitor; `CLMonitor` re-emits CURRENT state on relaunch/unlock, so
+/// events dedup against a persisted baseline.
 @available(iOS 17.0, *)
 @MainActor
 final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring {
-    // CLMonitor names must be alphanumeric — dots/special chars throw "Monitor name is not valid".
+    // Alphanumeric only: dots/special chars throw "Monitor name is not valid".
     private static let monitorName = "CustomerIOGeofenceMonitor"
-    /// UserDefaults mirror of the monitor's condition identifiers. `CLMonitor` only exposes them
-    /// async, but the bootstrap's adopt-vs-re-register decision needs a synchronous read right
-    /// after construction — without the mirror that read is empty on every cold launch.
-    /// `internal` for the same reason as `userDefaults`.
+    /// `CLMonitor` only exposes its identifiers async; bootstrap needs a synchronous read at launch.
     static let conditionMirrorKey = "io.customer.sdk.geofence.clmonitor.conditionIdentifiers"
 
-    /// Internal for the `+Registration` extension.
     let logger: Logger
-    /// Persists the per-condition dedup baseline + delivery filter (see `MonitorRegionRecord`).
-    /// Internal (not private) so the `+Rearm` extension can read it; immutable injected dependency.
     let storage: GeofenceStorage
-    /// `internal` only so `+ConditionMirror` can write the mirror it reads.
     let userDefaults: UserDefaults
-    /// Internal for the `+Registration` and `+Fixes` extensions.
     let authManager: GeofenceLocationAuthority
-    /// Freshens the fix behind movement-trigger EXIT dispatches (see `MovementFixResolver`).
-    /// Internal (not private) for the `+BaselineHeal` and `+ContradictionGate` extensions' fix resolution.
     let movementFixResolver: MovementFixResolver
-    /// Internal (not private) for the `+BaselineHeal` extension's synthesized deliveries.
     var onTransition: GeofenceTransitionHandler?
     /// Internal (not private) for the `+Authorization` extension, which fires it.
     var onAuthorizationChanged: GeofenceAuthorizationChangedHandler?
@@ -57,59 +29,33 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring {
     /// Internal (not private) for the `+Authorization` extension's tier dedup.
     var lastLoggedPermissionTier: CoreLocationGeofenceMonitor.PermissionTier?
 
-    /// In-memory ownership filter, mirrors `ownedRegionIdentifiers` in the classic monitor.
-    /// The three below are internal for the `+Registration` extension.
     var ownedRegionIdentifiers: Set<String> = []
-    /// Synchronous view of the monitor's condition identifiers: seeded from the mirror at init,
-    /// reconciled against `CLMonitor.identifiers` by the pipeline's first operation, then maintained.
     var knownConditionIdentifiers: Set<String> = []
-    /// Geometry each condition was added with, post-clamp. `CLMonitor` exposes no way to read a
-    /// condition back, so this is the only record `setMonitoredRegions` can diff against.
-    ///
-    /// Deliberately NOT seeded from the mirror at init (which has no geometry anyway). A condition
-    /// inherited from a previous process may be a reboot zombie — still listed, no longer monitored
-    /// (see `rearmConditions`) — and only re-adding revives it. Leaving it absent here makes the
-    /// first pass re-register it; when the bootstrap adopts instead, `adoptExistingRegions` seeds it
-    /// from the persisted records the re-arm then imposes at the OS.
+    /// Geometry each condition was added with; `CLMonitor` can't read a condition back. Not seeded
+    /// at init: leaving an inherited condition absent makes the first sync re-add it.
     var conditionLedger = RegisteredConditionLedger()
-    /// Conditions the OS stopped monitoring since their last registration. The next registration
-    /// reseeds their stored baseline instead of preserving it — see `recordMonitorRegistration`.
     var conditionsNeedingBaselineReseed: Set<String> = []
 
-    /// When each condition was last (re)added at the OS and the circle that add imposed, stamped
-    /// at the add's drain time. The contradiction gate only vets events landing shortly after an
-    /// add — the daemon's belief replays — and judges them against this geometry, NOT the staged
-    /// ledger entry: a reshape updates the ledger synchronously, so during its
-    /// staging→drain gap an event computed on the old circle would otherwise be judged against
-    /// the new one (see `+ContradictionGate`).
+    /// Stamped at drain. The contradiction gate judges against this, not the ledger, which may hold
+    /// a staged reshape the OS hasn't taken yet.
     var conditionReadds: [String: ConditionReadd] = [:]
-    /// When the last gate-fix request completed without producing a fresh fix. While recent, the
-    /// gate reads the cache instead of requesting again — see `resolveGateFix`. Internal (not
-    /// private) for the `+ContradictionGate` extension.
     var gateFixRequestFailedAt: Date?
 
-    /// The circle a condition was added with.
-    /// The one condition monitor, created once and shared by every caller: a second `CLMonitor`
-    /// with the same name throws "Monitor named ... is already in use".
+    /// Created once: a second `CLMonitor` with the same name throws.
     private var monitorTask: Task<GeofenceConditionMonitoring, Never>?
 
-    /// Single long-lived consumer of `monitor.events`. Never cancelled or recreated: a second
-    /// subscription steals events from the first rather than duplicating them.
+    /// Never cancelled or recreated: a second subscription steals events from the first.
     private var consumeTask: Task<Void, Never>?
-    /// Tail of the FIFO mutation pipeline; each enqueued operation awaits the previous one.
     private var lastQueuedOperation: Task<Void, Never>?
-    /// Events received before the bootstrap bound `onTransition` (see `handle(event:)`).
     private var pendingEvents: [GeofenceConditionEvent] = []
     private var isDrainingPendingEvents = false
     private static let maxPendingEvents = 64
-    /// When the armed conditions were last rebuilt at the OS (init, adopt, or a foreground re-arm).
-    /// Internal for the `+Rearm` extension. Regular syncs don't reset it: they leave unchanged
-    /// conditions untouched, which is exactly what lets a wedged promotion record persist.
+    /// Reset only by full rebuilds (init, adopt, foreground re-arm); regular syncs leave unchanged
+    /// conditions untouched.
     var lastRearmAt: Date
-    /// Internal for the `+Rearm` extension, which registers it.
     var foregroundObserverToken: NSObjectProtocol?
 
-    /// Every timing decision in this wrapper reads this clock, never `Date()`.
+    /// Every timing decision reads this clock, never `Date()`.
     let dateUtil: DateUtil
 
     private let makeConditionMonitor: @Sendable (String) async -> GeofenceConditionMonitoring
@@ -139,11 +85,8 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring {
         super.init()
         let mirrored = Set(userDefaults.stringArray(forKey: Self.conditionMirrorKey) ?? [])
         self.knownConditionIdentifiers = mirrored
-        // Everything under our private monitor name was registered by the SDK, so persisted
-        // conditions are owned as soon as the process starts — a cold-wake event must find its
-        // identifier in the filter before any async work has run.
+        // Owned from process start: a cold-wake event must pass the filter before any async work.
         self.ownedRegionIdentifiers = mirrored
-        // Auth-status changes only; no region callbacks arrive here.
         authManager.onAuthorizationChange = { [weak self] in
             MainActor.assumeIsolated { self?.handleAuthorizationChange() }
         }
@@ -167,19 +110,14 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring {
     private func monitorInstance() -> Task<GeofenceConditionMonitoring, Never> {
         if let monitorTask { return monitorTask }
         let name = Self.monitorName
-        // Created immediately and unconditionally. Despite the CLMonitor header's note, do NOT defer
-        // creation on protected-data availability: the flag is false while the device is locked —
-        // the normal state for a background crossing wake — and can read false on prewarmed launches
-        // with no notification following; either way the events consumer would never attach. An
-        // empty pre-first-unlock conditions read self-heals via reconcile.
+        // Don't defer on protected-data availability despite the CLMonitor header: it reads false
+        // while locked (the usual background wake), so the events consumer would never attach.
         let task = Task { [makeConditionMonitor] in await makeConditionMonitor(name) }
         monitorTask = task
         return task
     }
 
-    /// Runs `operation` after every previously enqueued operation has finished. All monitor
-    /// mutations go through here so caller-side ordering (stop-all, then re-register) is preserved
-    /// across the async hops to the `CLMonitor` actor. Internal (not private) for `+Rearm`.
+    /// FIFO. All monitor mutations go through here so a remove can't overtake its re-add.
     func enqueueMonitorOperation(_ operation: @escaping @MainActor (GeofenceConditionMonitoring) async -> Void) {
         let previous = lastQueuedOperation
         let monitorTask = monitorInstance()
@@ -189,18 +127,14 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring {
         }
     }
 
-    /// First pipeline operation: replace the mirror-seeded snapshot with `CLMonitor`'s persisted
-    /// truth. Safe to assign wholesale because no add/remove can have run yet (FIFO).
+    /// Assigned wholesale: as the first pipeline op, no add/remove can have run yet.
     private func reconcileKnownConditions(with monitor: GeofenceConditionMonitoring) async {
         let persisted = Set(await monitor.identifiers)
-        // A drifted mirror means bootstrap's synchronous adopt/re-register decision may have been
-        // wrong — notify so it re-evaluates against live truth, not at the next sync.
         let drifted = persisted != knownConditionIdentifiers
         knownConditionIdentifiers = persisted
         ownedRegionIdentifiers.formUnion(persisted)
-        // The ledger is deliberately not filtered against `persisted`. It starts empty
-        // each process, so its only entries are ones staged while CLMonitor was still loading,
-        // whose adds are queued behind this operation — exactly the identifiers `persisted` lacks.
+        // Don't filter the ledger against `persisted`: its only entries were staged while loading,
+        // and their adds are still queued behind this op.
         persistConditionMirror()
         if drifted { onReconciled?() }
     }
@@ -209,9 +143,8 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring {
         consumeTask = Task { [weak self] in
             guard let self else { return }
             let monitor = await self.monitorInstance().value
-            // Re-subscribe with bounded backoff if the sequence throws or ends — otherwise all
-            // delivery silently stops for the process. Sequential (the prior loop has ended), so
-            // there is never a second concurrent consumer stealing events.
+            // Re-subscribe on throw or end, or delivery stops for the process. Sequential, so there
+            // is never a second consumer stealing events.
             var backoffNanos: UInt64 = 1000000000
             let maxBackoffNanos: UInt64 = 30000000000
             while !Task.isCancelled {
@@ -224,8 +157,6 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring {
                     self.logger.geofenceMonitorEventStreamFailed(error: error)
                 }
                 self.onMonitoringInterrupted?(nil)
-                // A sequence that ENDS rather than throws took this path in silence, and that is
-                // indistinguishable in a capture from the OS having nothing to report.
                 self.logger.geofenceInfo("event_stream_resubscribing", fields: [("s", String(backoffNanos / 1000000000))])
                 try? await Task.sleep(nanoseconds: backoffNanos)
                 backoffNanos = min(backoffNanos * 2, maxBackoffNanos)
@@ -234,12 +165,8 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring {
     }
 
     private func handle(event: GeofenceConditionEvent) async {
-        // Hold events until the bootstrap binds `onTransition`: processing earlier would advance the
-        // persisted dedup baseline and then drop the delivery on the nil handler, suppressing the
-        // later re-emission of the same state. New arrivals queue behind any backlog — including
-        // while the drain has popped its last event but is still awaiting `process`, where the queue
-        // reads empty — so per-condition order holds. Capped against a process that never binds —
-        // dropping oldest is safe because CLMonitor re-emits current state.
+        // Hold until `onTransition` is bound (processing earlier advances the baseline and drops the
+        // delivery). Queue behind any backlog or in-flight drain to keep per-condition order.
         if onTransition == nil || !pendingEvents.isEmpty || isDrainingPendingEvents {
             pendingEvents.append(event)
             if pendingEvents.count > Self.maxPendingEvents { logOverflowedEvent(pendingEvents.removeFirst()) }
@@ -279,22 +206,16 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring {
         @unknown default:
             return logger.geofenceInfo("os_state_unusable", fields: [("id", identifier), ("state", "unhandled")])
         }
-        // Logged before the gate and the dedup baseline: an event refused or deduped is still an
-        // event the OS delivered, and the drives worth explaining are usually the ones where
-        // something arrived and was then discarded.
+        // Logged before the gate and dedup: a refused or deduped event was still delivered by the OS.
         logReceivedCallback(identifier: identifier, transition: transition, eventDate: event.date)
-        // Runs BEFORE the baseline advance below: a refused event must leave the stored baseline
-        // untouched so the daemon's own re-evaluation dedups against it (see `+ContradictionGate`).
-        // The movement trigger is exempt: polygon wake-sizing shrinks it to `polygonWakeMinRadius`
-        // (100 m), so a genuine exit lands inside the gate's window while the cached fix still reads
-        // the centre — gating it would refuse the real crossing that drives the next polygon pass.
+        // BEFORE the baseline advance, so re-evaluation dedups against an untouched baseline. The
+        // trigger is exempt: once wake-sized small, a genuine exit's cached fix can still read the
+        // centre.
         if identifier != GeofenceConstants.movementTriggerIdentifier,
            await isEventContradictedByFreshFix(identifier: identifier, transition: transition, eventDate: event.date) {
             return
         }
-        // Dated by the OS, not by receipt: every guard below weighs OS dates, never the instant
-        // the SDK wrote, which made the old rule follow the queue's drain speed (drive 5). The
-        // evidence guard covers what the other two cannot see — see `enqueueBaselineHeal`.
+        // Dated by the OS, not by receipt, so no guard depends on drain speed.
         let (outcome, entryObserved) = await storage.recordMonitorTransition(
             transition, forIdentifier: identifier,
             onlyIfBaselinePredates: event.date, osEventDate: event.date, now: event.date
@@ -304,12 +225,10 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring {
             return
         }
         // No ownership re-check after the await: the baseline already advanced, so dropping here
-        // loses the transition permanently — a sync's stop-all + re-add swap would eat a genuine
-        // crossing that raced it. A region truly removed in that window delivers one last gated event.
+        // would lose a genuine crossing that raced a sync's re-add.
         if identifier == GeofenceConstants.movementTriggerIdentifier, transition == .exit {
-            // The movement pass re-centers the trigger and measures displacement at these coords, so
-            // a frozen cached fix pins the whole pipeline to a stale point — freshen it first.
-            // Fire-and-forget so a slow fix can't stall the pending-event drain behind it.
+            // The pass re-centres on these coords, so resolve a fresh fix; fire-and-forget so a slow
+            // fix can't stall the pending-event drain.
             movementFixResolver.resolve(cached: bestKnownFix(), purpose: .movement) { [weak self] location, isFresh in
                 self?.logger.geofenceCallbackDispatched(identifier: identifier, transition: transition)
                 self?.onTransition?(identifier, transition, location, event.date, isFresh, self?.eventCircle(for: identifier, raisedAt: event.date) ?? .unknown, entryObserved)
@@ -317,7 +236,6 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring {
             return
         }
         logger.geofenceCallbackDispatched(identifier: identifier, transition: transition)
-        // Business events carry the captured location for context only; nothing sizes to it.
         onTransition?(
             identifier, transition, currentLocationData(), event.date, false,
             eventCircle(for: identifier, raisedAt: event.date), entryObserved
@@ -325,27 +243,21 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring {
     }
 
     private func handleUnmonitored(identifier: String) {
-        // CLMonitor gave up on the condition (budget exceeded). Drop the mirror entry and the
-        // recorded circle so the next sync re-registers it, and reseed the baseline then rather
-        // than preserve it — after the OS gave up, the stored state no longer matches reality.
-        // Ownership is KEPT: it only gates which events this process accepts, and a dropped
-        // condition stays listed and revives on its own once budget frees (measured); dropping
-        // the movement trigger's ownership would remove the only thing that restores it.
+        // Ownership is KEPT: the condition revives once budget frees, and refusing the movement
+        // trigger's events would remove the only thing that restores it.
         logger.geofenceMonitorStoppedMonitoringRegion(identifier)
         knownConditionIdentifiers.remove(identifier)
         conditionLedger.forget(identifier)
         conditionReadds.removeValue(forKey: identifier)
         conditionsNeedingBaselineReseed.insert(identifier)
         persistConditionMirror()
-        // The fence went unwatched, so a stored entry time can no longer vouch for a continuous
-        // stay — matching the classic monitor's `monitoringDidFailFor`. The movement trigger
-        // carries no visit.
+        // Unwatched, so a stored entry time can no longer vouch for a continuous stay, as on the
+        // classic path. The movement trigger carries no visit.
         if identifier != GeofenceConstants.movementTriggerIdentifier {
             onMonitoringInterrupted?(identifier)
         }
-        // Skipped if a registration re-added the identifier since — deleting a baseline that add
-        // just wrote would cost the next crossing. Keyed on this monitor's own completed adds,
-        // not `CLMonitor.identifiers` (which still lists a dropped condition).
+        // Skipped if a registration re-added it since, or this would delete that add's baseline.
+        // Keyed on our own completed adds: `CLMonitor.identifiers` still lists a dropped condition.
         enqueueMonitorOperation { [weak self] _ in
             guard let self, !self.knownConditionIdentifiers.contains(identifier) else { return }
             await self.storage.clearMonitorRegionRecord(identifier: identifier)

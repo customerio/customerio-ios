@@ -1,18 +1,7 @@
 import CioInternalCommon
 import Foundation
 
-/// Wires the monitor's transition handler. Synchronous — must run before any
-/// `startMonitoring` call so cold-wake delegate callbacks arriving immediately after
-/// `CLLocationManager` becomes active have a handler to dispatch to.
-///
-/// Two dispatch paths:
-/// - `GeofenceConstants.movementTriggerIdentifier` (EXIT) → `coordinator.handleMovement`
-///   (internal; never tracked as a customer event).
-/// - Any other identifier → `resolver.handleTransition`, which forwards circle geofences to the
-///   tracker unchanged and interprets a polygon's covering-circle event against membership. What
-///   it answers then picks the follow-up: entering a polygon's covering circle re-arms the wake
-///   against the boundary the OS cannot see, and everything else takes a throttled
-///   `coordinator.refresh` so catalog freshness does not depend on the trigger EXIT alone.
+/// `bind` must run before any `startMonitoring`, so cold-wake callbacks find a handler.
 @MainActor
 enum GeofenceMonitorBinder {
     static func bind(
@@ -27,13 +16,8 @@ enum GeofenceMonitorBinder {
             Task { await dwellCoordinator?.invalidateContinuity(geofenceId: geofenceId) }
         }
         monitor.setOnTransition { [weak resolver, weak coordinator, weak dwellCoordinator] identifier, transition, location, occurredAt, locationIsFresh, eventCircle, entryObserved in
-            // CLLocationManager delivers on main; both handlers below are async with their
-            // own serialization (tracker active-delivery dedup, coordinator refresh gate),
-            // so fire-and-forget Tasks are safe.
             rearmDwellEvidence(dwellCoordinator)
             if identifier == GeofenceConstants.movementTriggerIdentifier {
-                // EXIT is the only registered transition for the movement trigger; the
-                // guard defends against an unexpected ENTER reaching this dispatch.
                 guard transition == .exit else {
                     logger.geofenceCallbackDropped(identifier: identifier, transition: transition, reason: "movement_trigger_not_exit")
                     return
@@ -42,17 +26,13 @@ enum GeofenceMonitorBinder {
                     logger.geofenceCallbackDropped(identifier: identifier, transition: transition, reason: "movement_trigger_no_location")
                     return
                 }
-                // The EXIT is consumed once dispatched; a wake window expiring mid-pass would
-                // lose it with no retry, so the pass runs under a background-task assertion.
-                // (The tracker path holds its own inside `trackTransition`.)
+                // Background time: the EXIT is consumed once dispatched and never retried.
                 Task {
                     await backgroundTaskRunner.withBackgroundTime {
                         _ = await coordinator?.handleMovement(
                             latitude: location.latitude,
                             longitude: location.longitude,
                             anchorIsLiveFix: locationIsFresh,
-                            // A trigger EXIT arrives with a callback location and no resolved fix;
-                            // the pass it starts requests its own, as it always has.
                             heldFix: nil
                         )
                     }
@@ -62,9 +42,7 @@ enum GeofenceMonitorBinder {
             // Before the Task hop: a sign-in switch can run before the task does, and the crossing
             // belongs to whoever was identified when the OS delivered it.
             let receivedForUserId = resolver?.identifiedUserId ?? ""
-            // One Task, not two: the follow-up depends on what the resolver decided, and the two
-            // share the coordinator's gate — dispatched in parallel, one of them loses it and
-            // logs `refresh_in_progress` for work that was never redundant.
+            // One Task: parallel dispatch would lose the coordinator's gate.
             Task {
                 let outcome = await resolver?.handleTransition(
                     identifier: identifier, transition: transition,
@@ -81,10 +59,6 @@ enum GeofenceMonitorBinder {
         }
     }
 
-    /// Chooses what a delivered business crossing does about the wake and the catalog.
-    ///
-    /// Extracted from `bind` only to keep that closure inside the function-length cap; it is one
-    /// step of the same dispatch.
     private static func dispatchFollowUp(
         outcome: PolygonTransitionOutcome,
         coordinator: GeofenceSyncCoordinator?,
@@ -94,46 +68,19 @@ enum GeofenceMonitorBinder {
     ) async {
         switch outcome {
         case .circleEntered(let fix):
-            // Entering a polygon's covering circle puts the device beside a boundary the OS
-            // cannot report, and the wake is sized at registration time — so without this
-            // the device carries whatever trigger it arrived with. Measured: a circle entry
-            // 45 m from the ring, then nothing for 11 minutes, because the trigger in force
-            // was the full refresh radius from a registration made kilometres earlier.
-            //
-            // `handleMovement`, not `refresh`: `refresh` answers `.skip` unless the device
-            // has moved a full refresh radius from the last registration centre, and `.skip`
-            // never touches the trigger. `handleMovement` has a third tier for exactly this
-            // case — `performPolygonWakePass`, which re-arms against the nearest boundary
-            // and re-evaluates, with no ranking and no cache write.
-            //
-            // The resolver's fix, not the callback's: business events dispatch with
-            // `locationIsFresh == false` on both monitor paths, and a non-live anchor makes
-            // the coordinator widen the trigger to the full refresh radius — installing the
-            // widest possible wake in the one case that needs the tightest.
+            // `handleMovement`, not `refresh`: `refresh` skips until a full radius is moved and never
+            // re-arms the trigger. The resolver's fix, not the callback's, which isn't fresh and
+            // would widen the trigger.
             await backgroundTaskRunner.withBackgroundTime {
-                //
-                // The fix travels with it: the re-arm starts a membership re-evaluation, and that
-                // pass forces a fix strictly newer than the last one the resolver delivered — which
-                // is this one. Left to request its own, it gets nothing back and records
-                // `no_usable_fix` for every polygon, so the crossing this path exists to catch goes
-                // undecided.
+                // Pass the fix: re-evaluation needs one newer than the resolver's last (this one),
+                // so a new request would come back empty.
                 _ = await coordinator?.handleMovement(
                     latitude: fix.latitude,
                     longitude: fix.longitude,
                     anchorIsLiveFix: true,
                     heldFix: fix
                 )
-                // `handleMovement` covers distance, never age: it refetches on
-                // `movedBeyondRefetchRadius` or a missing anchor, while `refreshAction`
-                // also answers `.remote` for a cache that merely EXPIRED. Without this a
-                // circle entry with a time-expired catalog, made without moving a refetch
-                // radius, would re-arm the wake and leave the catalog stale — narrower
-                // than the crossing-refresh this path had before the re-arm was added.
-                //
-                // Sequential, not parallel: they share the coordinator's gate. Cheap in
-                // the common case because the wake pass writes no `lastSync`, so this sees
-                // the same freshness the decision table would have seen, and a refetch the
-                // movement pass already did leaves nothing for it to answer `.remote` to.
+                // Also refetches a time-expired catalog. Sequential: they share the gate.
                 _ = await coordinator?.refresh(
                     latitude: fix.latitude,
                     longitude: fix.longitude,
@@ -141,16 +88,7 @@ enum GeofenceMonitorBinder {
                 )
             }
         case .nothingToRearm:
-            // A business-fence crossing is still evidence the device moved, and the
-            // catalog's only other refresh input is the movement trigger's EXIT. When that
-            // EXIT is lost the cache has nothing left to recover it: there is no timer and
-            // no background refresh, so it stays stale until the app is next opened —
-            // three hours on the 2026-09-18 drive capture, and unbounded while the device
-            // stays still.
-            //
-            // `refresh` here because nothing needs re-arming: it consults the same decision
-            // table as app launch and answers `.skip` when nothing has moved or aged, so a
-            // crossing that warrants no work costs four cached reads and no network.
+            // Without this, a lost trigger EXIT leaves the catalog stale until the next app open.
             guard let location else { return }
             await backgroundTaskRunner.withBackgroundTime {
                 _ = await coordinator?.refresh(
@@ -162,19 +100,8 @@ enum GeofenceMonitorBinder {
         }
     }
 
-    /// Wires the visit wake. A separate entry point from `bind` because the two have different
-    /// lifetimes: transitions bind once per bootstrap regardless of authorization, while visit
-    /// monitoring only arms under Always and disarms itself when there is no user to act for.
-    ///
-    /// A visit runs the same work foregrounding runs — re-judge every registered polygon against
-    /// a freshly resolved fix. That is the whole fix for the in-circle dead zone: the device is
-    /// already inside the covering circle, so no edge will be crossed and no OS callback is
-    /// coming, and a re-evaluation is the only thing that can notice it is now inside the polygon.
-    ///
-    /// Deliberately does NOT refresh the catalog. `refresh` can re-arm the movement trigger, and
-    /// a visit carries no live anchor — its coordinate is minutes old — so it would size the
-    /// trigger from a stored anchor and install the WIDEST wake in the one situation that needs
-    /// the tightest.
+    /// Does NOT refresh the catalog: a visit's coordinate is minutes old, and `refresh` would widen
+    /// the trigger where the tightest is needed.
     static func bindVisits(
         visitMonitor: GeofenceVisitMonitoring,
         resolver: PolygonMembershipResolver,
@@ -183,28 +110,15 @@ enum GeofenceMonitorBinder {
         backgroundTaskRunner: BackgroundTaskRunner = GeofenceBackgroundTime.runner(name: "io.customer.geofence.visit-pass")
     ) {
         visitMonitor.setOnVisit { [weak resolver, weak dwellCoordinator] _ in
-            // Read synchronously, before the Task: this is also the disarm answer, and it has to
-            // be the identity in force at the wake rather than whatever it becomes later.
+            // Read before the Task: the return value must reflect identity at the wake.
             guard let expectedUserId = contextStore.currentUserId else { return false }
             // A visit reports the device stayed somewhere, which is exactly when a circle dwell
             // that came due during suspension needs its evidence.
             rearmDwellEvidence(dwellCoordinator)
             Task {
-                // The wake window is short and the pass resolves a fix, which suspends. Without
-                // the assertion a visit landing on a suspended app can lose the pass with no
-                // retry — same reasoning as the trigger EXIT above.
                 await backgroundTaskRunner.withBackgroundTime {
-                    // Forced, not the default reuse. A visit reports that the device ARRIVED, so
-                    // the cached fix is by definition from before the arrival: reproduced with a
-                    // five-second-old fix outside the ring and the device inside it, the pass
-                    // reused the stale one, made no request and emitted nothing. Forcing also
-                    // stops a visit being dropped by the already-running short-circuit, which
-                    // matters because a visit may be the only wake this crossing gets.
-                    //
-                    // The cost is the echo refusal measured on 09-18: a forced request that
-                    // CoreLocation answers with the same fix is refused and the pass decides
-                    // nothing. Deciding nothing is recoverable — the next wake re-judges — while
-                    // deciding from a pre-arrival fix emits the wrong answer and moves the belief.
+                    // Forced fresh: the cached fix predates the arrival. Also bypasses the
+                    // already-running short-circuit, as a visit may be the only wake.
                     await resolver?.evaluateAllPolygons(
                         reason: .visit,
                         requiresFreshFix: true,

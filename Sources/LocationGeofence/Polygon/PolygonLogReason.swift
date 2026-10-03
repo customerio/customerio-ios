@@ -1,34 +1,17 @@
 import Foundation
 
-/// Why a polygon evaluation reached no verdict, as a stable token.
-///
-/// Same prose/token split as `GeofenceSyncSkipReason` and `GeofenceRegionDropReason`: the sentence
-/// is for a human reading the log, the token is what a script keys off. Free strings at the call
-/// sites meant a reworded sentence silently changed the token — and one of them interpolated two
-/// measurements, so no two records shared a `why` at all.
+/// The raw value is the stable token scripts key off; `prose` can be reworded.
 enum PolygonUndecidedReason: String, CaseIterable {
     case noUsableFix = "no_usable_fix"
     case userChanged = "user_changed"
     case ringUnbuildable = "ring_unbuildable"
     case unregistered
     case circleExpired = "circle_expired"
-    /// The fix cannot separate inside from outside: `|edge|` is within its accuracy. The two
-    /// measurements ride as their own keys rather than in the token.
     case withinAccuracy = "within_accuracy"
-    /// The fix was too old to describe where the device is now.
     case fixTooOld = "fix_too_old"
-    /// The accuracy circle is as wide as the venue is deep, so `inside` carries no information.
-    /// Distinct from `withinAccuracy`, which is a fix that could decide for a larger venue.
     case accuracyTooLow = "accuracy_too_low"
-    /// Ambiguous, reads inside, and the stored belief is ALREADY inside — a second fix could not
-    /// change the outcome, so none was requested. Distinct from a corroboration that was tried and
-    /// failed: this one spent nothing.
     case corroborationUnnecessary = "corroboration_unnecessary"
-    /// A second fix was obtained and read OUTSIDE, so the two disagreed about the side. Distinct
-    /// from `withinAccuracy`, which is one fix that could not separate the sides at all.
     case corroborationDisagreed = "corroboration_disagreed"
-    /// A second fix came back but did not postdate the first, so it is the same fix over again.
-    /// Distinct from `noUsableFix`, which is location not answering at all.
     case corroborationNotIndependent = "corroboration_not_independent"
 
     var prose: String {
@@ -48,7 +31,6 @@ enum PolygonUndecidedReason: String, CaseIterable {
     }
 }
 
-/// Why a whole-set pass did not run.
 enum PolygonPassSkipReason: String, CaseIterable {
     case passInFlight = "pass_in_flight"
 
@@ -59,15 +41,12 @@ enum PolygonPassSkipReason: String, CaseIterable {
     }
 }
 
-/// What prompted a re-evaluation.
 enum PolygonEvaluationReason: String, CaseIterable {
     case newPolygon = "new_polygon"
     case newPolygonForcedRequestFailed = "new_polygon_forced_request_failed"
     case movement
     case foreground
-    /// A covering-circle ENTER the OS delivered, which judges that one fence.
     case osTransition = "os_transition"
-    /// iOS reported the device settling at a place. The only wake that needs no edge crossing.
     case visit
 
     var prose: String {
@@ -82,18 +61,10 @@ enum PolygonEvaluationReason: String, CaseIterable {
     }
 }
 
-/// Why a verdict that the storage write accepted still delivered nothing.
-///
-/// Mostly the write's own outcome, plus the one refusal that happens after it. Those are not the
-/// same thing: `no_change` says the belief did not move, and reusing it for a user switch would
-/// report a delivery that was refused as one that was never owed.
+/// Refusals after the write get their own tokens so they're never logged as `no_change` or `deliver`.
 enum PolygonUndeliveredReason {
     case outcome(PolygonMembershipOutcome)
-    /// The identified user changed between the membership write and the emit.
     case userChanged
-    /// The write said deliver, but the workspace does not want this transition for this fence —
-    /// an enter-only polygon reaching an outside decision. Its own reason because sharing the
-    /// write's outcome reports `why=deliver` on a record that exists because nothing was.
     case transitionNotRegistered
 
     var logToken: String {
@@ -106,7 +77,7 @@ enum PolygonUndeliveredReason {
 }
 
 extension PolygonMembershipOutcome {
-    /// snake_case like every other `why` in the module; the synthesized case name is camelCase.
+    /// snake_case like every other `why` in the module, not the camelCase case name.
     var logToken: String {
         switch self {
         case .deliver: return "deliver"

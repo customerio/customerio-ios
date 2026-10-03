@@ -7,24 +7,9 @@ import Foundation
 /// rather than `private` only because of this split; they remain implementation detail.
 @MainActor
 extension PolygonMembershipResolver {
-    /// Applies a membership verdict and delivers the crossing when it changes the stored belief.
-    /// `evidence` is when the crossing happened — a fix's timestamp, or the OS event's date for a
-    /// covering-circle exit. Required, not optional: it both orders the write against the stored
-    /// belief and stamps the event, so omitting it would write an unordered belief AND report the
-    /// delivery time as the crossing — here a whole forced-fresh fix request later. `confirmedByFix`
-    /// says which of the two dates it was; the date alone cannot tell the log how it was decided.
-    ///
-    /// `isStillCurrent` is re-checked here, immediately before the emit and with no await after it:
-    /// the tracker stamps whoever is current when it is entered, and the write below is an await of
-    /// its own. The write is left unguarded deliberately — a belief states geometry, true whoever
-    /// is signed in; an emit is an ATTRIBUTION, and attribution is what a switch invalidates.
-    ///
-    /// `internal` rather than `private` only because the pass runner lives in a split file.
-    ///
-    /// `evaluatedRing` is the geometry the verdict was computed from, and the write is refused if
-    /// the workspace has moved off it since. Nil from the covering-circle exit, and that is not an
-    /// omission: polygon ⊆ circle holds for whatever ring is current, so leaving the circle is a
-    /// verdict no replacement can invalidate. Only a ring-derived verdict can go stale with the ring.
+    /// The write is refused if the fence has moved off `evaluatedRing`/`evaluatedCircle`. Only the
+    /// emit and the dwell evidence check `isStillCurrent`: a belief is geometry, true whoever is
+    /// signed in.
     func apply(
         _ membership: PolygonMembership,
         to geofence: Geofence,
@@ -73,15 +58,8 @@ extension PolygonMembershipResolver {
         contextStore.currentUserId
     }
 
-    /// A polygon's covering-circle EXIT. No ring needed — leaving a circle says nothing about a
-    /// ring — but the certainty is polygon ⊆ ITS OWN covering circle, so the crossed circle has to
-    /// still be the fence's. That is checked inside the write, not here: a refresh landing between
-    /// this hop and the store would otherwise leave `outside` recorded for a device inside the
-    /// replacement polygon, stamped with a date no older fix can correct.
-    ///
-    /// `expired` is refused rather than forwarded: the circle crossed is gone, so the write has
-    /// nothing to check the ring against, and "cannot say" would store `outside` for a device
-    /// inside the replacement polygon. The next pass re-derives it.
+    /// A polygon's covering-circle EXIT. The crossed circle is checked in the write, not here: a
+    /// refresh may replace the fence first.
     func applyCoveringCircleExit(geofence: Geofence, eventCircle: GeofenceEventCircle, occurredAt: Date) async {
         switch eventCircle {
         case .circle(let crossed):

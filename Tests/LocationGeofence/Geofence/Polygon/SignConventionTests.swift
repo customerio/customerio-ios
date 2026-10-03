@@ -3,17 +3,8 @@
 import Foundation
 import Testing
 
-/// Pins the RELATIONSHIP between the two edge-distance conventions in the SDK, which are opposite.
-///
-/// `PolygonRegion.signedEdgeDistance` is positive inside; the circle path's edge distance
-/// (`distanceFromCenter - radius`, what `BaselineHealDecision` consumes) is negative inside. The
-/// kernel's doc comment once claimed they were interchangeable, and the polygon decision function
-/// was written against that claim — producing inverted verdicts that neither side's unit tests
-/// could see, because each was self-consistent.
-///
-/// These tests are deliberately phrased in terms of PHYSICAL POSITION rather than sign, so flipping
-/// either convention breaks them. They are the cross-check that survives both implementations
-/// being ours.
+/// The two edge-distance conventions are opposite: polygon is positive inside, circle is negative
+/// inside. Asserted by physical position, so flipping either convention breaks these.
 @Suite("Edge-distance sign conventions")
 struct SignConventionTests {
     private static let square = [
@@ -30,8 +21,6 @@ struct SignConventionTests {
         )
     }
 
-    /// One physical fact — the device is inside — must be reported as inside by BOTH layers, even
-    /// though they express it with opposite signs.
     @Test
     func deviceInside_expectBothLayersAgreeDespiteOppositeSigns() {
         let at = LocationData(latitude: 0, longitude: 0)
@@ -47,15 +36,12 @@ struct SignConventionTests {
         #expect(PolygonMembershipDecision.resolvedMembership(
             signedEdgeDistance: polygonSigned, horizontalAccuracy: 5, fixAge: 1
         ) == .inside)
-        // The heal reads the circle convention: a stored `.exit` baseline contradicted by a device
-        // that is actually inside must synthesize `.enter`.
         #expect(BaselineHealDecision.synthesizedTransition(
             distanceFromCenter: circle.distanceTo(at), radius: circle.radius,
             horizontalAccuracy: 5, fixAge: 1, lastState: .exit
         ) == .enter)
     }
 
-    /// And the mirror image, so a test that passes by flipping both conventions at once fails here.
     @Test
     func deviceOutside_expectBothLayersAgreeDespiteOppositeSigns() {
         let at = LocationData(latitude: 0.01, longitude: 0)
