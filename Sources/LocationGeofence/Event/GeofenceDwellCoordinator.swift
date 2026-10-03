@@ -25,6 +25,7 @@ final class GeofenceDwellCoordinator {
     /// noted as the OS delivers them, before the callback re-arms any evidence. A visit one ends is
     /// not the stay it reports. Internal for `+Chronology`.
     var enterMarks: [String: GeofenceEnterMarks] = [:]
+    var pendingExitCallbacks: [String: [Date: GeofencePendingExitCallback]] = [:] // `noteExitCallback`
     /// This coordinator's first clock reading, taken when it was built; the wall offset of its
     /// previous reading, and the uptime it last saw the wall clock step at. Internal for
     /// `+Chronology`.
@@ -36,9 +37,8 @@ final class GeofenceDwellCoordinator {
     var clockReferenceLoad: Task<GeofenceClockReading?, Never>?
     var clockReferenceAtLaunch: GeofenceClockReading?
     var persistedClockReference: GeofenceClockReading?
-    /// The uptime continuity was last lost at, per fence and for every fence. Like `exitMarks`, it
-    /// refuses a visit write that lands after the loss's removal ran but
-    /// began before the loss. Internal for the `+Continuity` extension.
+    /// The uptime continuity was last lost at, per fence and for every fence. Like `exitMarks`, it refuses
+    /// a visit write that lands after the loss's removal ran but began before the loss. Internal for `+Continuity`.
     var continuityLostUptime: [String: TimeInterval] = [:]
     var allContinuityLostUptime: TimeInterval?
     // `internal`, not `private`, only because the `+Evidence` extension file uses them.

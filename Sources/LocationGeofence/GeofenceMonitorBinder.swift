@@ -22,6 +22,10 @@ enum GeofenceMonitorBinder {
             // supersedes ahead of the task that routes the ENTER.
             if transition == .enter {
                 noteEnter(dwellCoordinator, geofenceId: identifier, occurredAt: occurredAt, crossing: entryObserved)
+            } else if transition == .exit, identifier != GeofenceConstants.movementTriggerIdentifier {
+                // Before the re-arm too: until the task below routes this EXIT, it holds back a
+                // first DWELL that evidence requested meanwhile would admit across it.
+                noteExit(dwellCoordinator, geofenceId: identifier, occurredAt: occurredAt)
             }
             rearmDwellEvidence(dwellCoordinator)
             if identifier == GeofenceConstants.movementTriggerIdentifier {
@@ -50,12 +54,14 @@ enum GeofenceMonitorBinder {
             // belongs to whoever was identified when the OS delivered it.
             let receivedForUserId = resolver?.identifiedUserId ?? ""
             // One Task: parallel dispatch would lose the coordinator's gate.
-            Task {
+            Task { [dwellCoordinator] in
                 let outcome = await resolver?.handleTransition(
                     identifier: identifier, transition: transition,
                     occurredAt: occurredAt, eventCircle: eventCircle,
                     receivedForUserId: receivedForUserId, entryObserved: entryObserved
                 ) ?? .nothingToRearm
+                // Whatever the resolver made of it, this EXIT is no longer being routed.
+                if transition == .exit { await dwellCoordinator?.exitCallbackRouted(geofenceId: identifier, occurredAt: occurredAt) }
 
                 await dispatchFollowUp(
                     outcome: outcome, coordinator: coordinator,
@@ -148,6 +154,18 @@ enum GeofenceMonitorBinder {
         guard let dwellCoordinator else { return }
         MainActor.assumeIsolated {
             dwellCoordinator.noteEnter(geofenceId: geofenceId, occurredAt: occurredAt, crossing: crossing)
+        }
+    }
+
+    /// See `noteEnter`: the same main-actor contract, for an EXIT's callback.
+    private nonisolated static func noteExit(
+        _ dwellCoordinator: GeofenceDwellCoordinator?,
+        geofenceId: String,
+        occurredAt: Date
+    ) {
+        guard let dwellCoordinator else { return }
+        MainActor.assumeIsolated {
+            dwellCoordinator.noteExitCallback(geofenceId: geofenceId, occurredAt: occurredAt)
         }
     }
 

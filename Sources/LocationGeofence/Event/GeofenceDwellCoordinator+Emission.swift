@@ -47,17 +47,21 @@ extension GeofenceDwellCoordinator {
     }
 
     /// Whether a first admission of `visit` — one with no reservation yet — is refused because an
-    /// EXIT or outside proof this process recorded ends it, though its removal has not landed: the
-    /// DWELL would span a known departure. Judged at admission, not in `continuityHolds`, so the
-    /// visit can still be read up to that EXIT. Conservative: a fix taken before the EXIT whose
-    /// admission races it is lost too. A reservation already made is a fact and is never refused.
+    /// EXIT or outside proof this process recorded ends it, though its removal has not landed, or
+    /// a native EXIT callback still being routed would: the DWELL would span a departure already
+    /// known. Judged at admission, not in `continuityHolds`, so the visit can still be read up to
+    /// that EXIT; a callback the resolver then finds proves nothing only defers the DWELL to the
+    /// next evidence. Conservative: a fix taken before the EXIT whose admission races it is lost
+    /// too. A reservation already made is a fact and is never refused.
     private func knownExitRefusesFirstAdmission(of visit: GeofenceDwellVisit, geofenceId: String) -> Bool {
-        visit.dwellReservation == nil && exitOvertook(visit, geofenceId: geofenceId)
+        visit.dwellReservation == nil
+            && (exitOvertook(visit, geofenceId: geofenceId) || exitCallbackPendingOvertook(visit, geofenceId: geofenceId))
     }
 
     /// Reserves `proposed` on `visit`, or returns the reservation another attempt stored first; nil
-    /// when nothing is to be delivered now. A first admission is judged again after the write, for
-    /// an EXIT recorded during it, and is then left reserved and unqueued for the EXIT's removal.
+    /// when nothing is to be delivered now. The admission was decided before the write; an EXIT
+    /// learned during it was unknown then, so the DWELL would be a fact about the stay before it.
+    /// It is withheld anyway, as extra caution: left reserved and unqueued for the EXIT's removal.
     private func reserve(
         _ proposed: GeofenceDwellReservation,
         for visit: GeofenceDwellVisit,
