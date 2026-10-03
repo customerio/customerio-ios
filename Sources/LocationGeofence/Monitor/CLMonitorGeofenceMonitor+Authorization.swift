@@ -22,12 +22,26 @@ extension CLMonitorGeofenceMonitor {
         }
     }
 
+    var locationAccess: GeofenceLocationAccess {
+        GeofenceLocationAccess(status: authManager.authorizationStatus, fullAccuracy: authManager.isFullAccuracy)
+    }
+
     // MARK: - Authorization
 
     /// Unfiltered: an improvement re-attempts registration, and a downgrade disarms visits.
     func handleAuthorizationChange() {
         updateServiceSession()
+        interruptContinuityIfAccessDropped()
         onAuthorizationChanged?()
+    }
+
+    /// Losing Always or precise location means region events that would end a visit may no longer
+    /// arrive. A repeated report, or an increase, changes nothing.
+    private func interruptContinuityIfAccessDropped() {
+        let access = locationAccess
+        defer { lastObservedAccess = access }
+        guard let previous = lastObservedAccess, access.isDowngrade(from: previous) else { return }
+        onMonitoringInterrupted?(nil)
     }
 
     // MARK: - Service session (iOS 18+)

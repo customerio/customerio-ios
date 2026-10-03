@@ -92,6 +92,8 @@ final class MockGeofenceRegionMonitor: GeofenceRegionMonitoring {
         reportPermissionTierCallsCount += 1
     }
 
+    var locationAccess = GeofenceLocationAccess(delivery: .background, fullAccuracy: true)
+
     func setOnTransition(_ handler: GeofenceTransitionHandler?) {
         onTransition = handler
         setOnTransitionCallsCount += 1

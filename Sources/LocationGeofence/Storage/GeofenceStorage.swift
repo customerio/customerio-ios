@@ -103,15 +103,11 @@ actor GeofenceStorage {
         let delayedMovementExit = Self.isDelayedMovementExit(
             transition, identifier: identifier, osEventDate: osEventDate, record: record
         )
-        if let osEventDate {
-            if !delayedMovementExit,
-               let registeredAt = record.registeredAt, osEventDate < registeredAt { return (.suppressedPredatesRegistration, false) }
-            if let lastEventDate = record.lastEventDate, osEventDate <= lastEventDate { return (.suppressedRedelivery, false) }
-            record.lastEventDate = osEventDate
-        }
-        if !delayedMovementExit,
-           let evidenceTimestamp, let changedAt = record.lastStateChangedAt, changedAt > evidenceTimestamp {
-            return (.suppressedNewerBaseline, false)
+        if let refused = Self.refusedByDate(
+            &record, osEventDate: osEventDate, evidenceTimestamp: evidenceTimestamp,
+            delayedMovementExit: delayedMovementExit, now: dateUtil.now
+        ) {
+            return (refused, false)
         }
         if delayedMovementExit {
             // Keep the new circle's seeded state, or its next real exit would look unchanged.
@@ -295,5 +291,43 @@ actor GeofenceStorage {
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .secondsSince1970
         return decoder
+    }
+}
+
+/// The OS-date guards of `recordMonitorTransition`, outside the actor body to keep it under the
+/// type-length cap; same file, so they stay private.
+extension GeofenceStorage {
+    /// The outcome an event's dates alone decide, nil when they pass; a passing OS date is recorded
+    /// on `record` as seen. Judged against OS-dated history only, never SDK write times.
+    private static func refusedByDate(
+        _ record: inout MonitorRegionRecord,
+        osEventDate: Date?,
+        evidenceTimestamp: Date?,
+        delayedMovementExit: Bool,
+        now: Date
+    ) -> GeofenceMonitorEventOutcome? {
+        if let osEventDate {
+            if !delayedMovementExit,
+               let registeredAt = stamp(record.registeredAt, ordering: osEventDate, now: now),
+               osEventDate < registeredAt { return .suppressedPredatesRegistration }
+            if let lastEventDate = stamp(record.lastEventDate, ordering: osEventDate, now: now),
+               osEventDate <= lastEventDate { return .suppressedRedelivery }
+            record.lastEventDate = osEventDate
+        }
+        if !delayedMovementExit, let evidenceTimestamp,
+           let changedAt = stamp(record.lastStateChangedAt, ordering: evidenceTimestamp, now: now),
+           changedAt > evidenceTimestamp {
+            return .suppressedNewerBaseline
+        }
+        return nil
+    }
+
+    /// `stamp`, unless it cannot order `eventDate`: a stamp after `now` was written before the wall
+    /// clock was set back, and an event dated on the clock as it reads now is not older than it,
+    /// only on a different timeline. Kept against an event dated in that same future, which a copy
+    /// from before the change is.
+    private static func stamp(_ stamp: Date?, ordering eventDate: Date, now: Date) -> Date? {
+        guard let stamp, stamp > now, eventDate <= now else { return stamp }
+        return nil
     }
 }

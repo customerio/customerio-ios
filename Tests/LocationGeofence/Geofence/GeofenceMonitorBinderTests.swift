@@ -150,7 +150,7 @@ struct GeofenceMonitorBinderTests {
             enteredAt: Date(),
             geometryRevision: geofence.dwellRevision,
             userId: "user-1",
-            emitted: false
+            emitted: false, timing: .recorded()
         )
         #expect(await storage.saveDwellVisit(visit, geofenceId: "business-1"))
 
@@ -170,6 +170,59 @@ struct GeofenceMonitorBinderTests {
 
         #expect(monitor.setOnMonitoringInterruptedCallsCount == 1)
         #expect(await storage.getDwellVisit(geofenceId: "business-1") == nil)
+        withExtendedLifetime(resolver) {}
+    }
+
+    /// The loss is dated at the callback, the removal lands later. A visit recorded in between is
+    /// not one the loss interrupted, and must survive the removal.
+    @Test
+    func bind_givenMonitoringInterrupted_expectVisitRecordedAfterTheCallbackKept() async {
+        let monitor = MockGeofenceRegionMonitor()
+        let storage = makeStorage()
+        let contextStore = makeContextStore(userId: "user-1")
+        let tracker = makeTracker(deliveryTracker: makeDeliveryMock())
+        let clock = ManualGeofenceClock()
+        let dwellCoordinator = GeofenceDwellCoordinator(
+            storage: storage,
+            transitionEmitter: tracker,
+            contextStore: contextStore,
+            logger: LoggerMock(),
+            notificationCenter: NotificationCenter(),
+            clock: clock
+        )
+        let geofences = ["interrupted", "entered-later"].map { id in
+            Geofence(
+                id: id, latitude: 0, longitude: 0, radius: 100, name: nil,
+                transitionTypes: [.enter, .exit], lastUpdated: Date(), dwellThresholdSeconds: 60
+            )
+        }
+        await storage.setCachedGeofences(geofences)
+        func visit(for geofence: Geofence) -> GeofenceDwellVisit {
+            GeofenceDwellVisit(
+                visitId: "visit-\(geofence.id)", enteredAt: clock.wall, geometryRevision: geofence.dwellRevision,
+                userId: "user-1", emitted: false,
+                timing: GeofenceVisitTiming(enteredAt: clock.wall, recordedAt: clock.read())
+            )
+        }
+        #expect(await storage.saveDwellVisit(visit(for: geofences[0]), geofenceId: geofences[0].id))
+        let resolver = makeResolver(tracker: tracker, storage: storage, contextStore: contextStore)
+        GeofenceMonitorBinder.bind(
+            monitor: monitor, resolver: resolver, coordinator: makeCoordinatorMock(),
+            logger: LoggerMock(), dwellCoordinator: dwellCoordinator
+        )
+
+        clock.advance(10)
+        monitor.simulateMonitoringInterrupted(identifier: nil)
+        clock.advance(10)
+        #expect(await storage.saveDwellVisit(visit(for: geofences[1]), geofenceId: geofences[1].id))
+        for _ in 0 ..< 50 {
+            if await storage.getDwellVisit(geofenceId: geofences[0].id) == nil { break }
+            await Task.yield()
+        }
+        await settleQuietly()
+
+        #expect(await storage.getDwellVisit(geofenceId: geofences[0].id) == nil)
+        #expect(await storage.getDwellVisit(geofenceId: geofences[1].id)?.visitId == "visit-entered-later")
         withExtendedLifetime(resolver) {}
     }
 
@@ -196,7 +249,7 @@ struct GeofenceMonitorBinderTests {
         await storage.recordRegistration(center: LocationData(latitude: 0, longitude: 0), businessIds: [geofence.id])
         let visit = GeofenceDwellVisit(
             visitId: "visit-1", enteredAt: Date().addingTimeInterval(-600),
-            geometryRevision: geofence.dwellRevision, userId: "user-1", emitted: false
+            geometryRevision: geofence.dwellRevision, userId: "user-1", emitted: false, timing: .recorded(secondsAgo: 600)
         )
         #expect(await storage.saveDwellVisit(visit, geofenceId: geofence.id))
         return dwellCoordinator
@@ -282,7 +335,7 @@ struct GeofenceMonitorBinderTests {
                 enteredAt: Date(),
                 geometryRevision: geofence.dwellRevision,
                 userId: "user-1",
-                emitted: false
+                emitted: false, timing: .recorded()
             )
             #expect(await storage.saveDwellVisit(visit, geofenceId: geofence.id))
         }

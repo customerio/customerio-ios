@@ -21,10 +21,13 @@ struct PendingGeofenceMetric: Codable, Equatable, Sendable, GeofenceMetric {
     let detectionSource: String?
 
     /// Includes `userId`: the queue survives sign-out, so one crossing can be queued under two users.
-    /// Escaped so a `_` in a value can't imitate a boundary.
+    /// Includes `transitionId`, the occurrence: two visits' facts in one second stay two rows, while
+    /// a retried fact repeats its occurrence and lands on the row already queued. Derived, never
+    /// stored, so rows persisted under an older key still match their own removal. Escaped so a
+    /// `_` in a value can't imitate a boundary.
     var key: String {
         let sec = Int(timestamp.timeIntervalSince1970)
-        var components = [geofenceId, transition.rawValue, "\(sec)", userId]
+        var components = [geofenceId, transition.rawValue, "\(sec)", userId, transitionId]
         if let geosetId { components.append(geosetId) }
         return components.map(Self.escapedForKey).joined(separator: "_")
     }

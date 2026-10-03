@@ -158,9 +158,7 @@ final class GeofenceEventTracker: @unchecked Sendable {
 
     // MARK: - Private
 
-    /// Skips delivery. After a failed write, the success-path `remove(key:)` could drop a later
-    /// same-second row (keys omit transitionId); after a refused one, a send that failed could
-    /// never be retried.
+    /// Skips delivery: the rows are not on disk, so a send that failed could never be retried.
     private func abandonUnpersisted(
         _ write: PendingGeofenceQueueWrite,
         geofenceId: String,

@@ -236,6 +236,63 @@ struct CLMonitorRelaunchTests {
         }
     }
 
+    // MARK: - Wall-clock steps
+
+    /// The clock is set back an hour after an ENTER. The EXIT that follows is dated before every
+    /// stamp the record holds, but it is a new crossing, not a redelivery or a pre-registration
+    /// event, and must not be refused until the clock catches up.
+    @Test
+    @available(iOS 17.0, *)
+    func osEvent_givenWallClockSetBackAfterTheLastEvent_expectTheNextCrossingDelivered() async {
+        await withFixture(preloaded: ["f1": .unsatisfied]) { fixture in
+            await fixture.storage.recordMonitorRegistration(
+                identifier: "f1", transitionTypes: [.enter, .exit],
+                initialState: .exit, center: Self.center, radius: Self.radius
+            )
+            let delivered = DeliveredTransitions()
+            fixture.monitor.setOnTransition { identifier, transition, _, _, _, _, _ in
+                delivered.record(identifier, transition)
+            }
+            let enteredAt = fixture.clock.now.addingTimeInterval(60)
+            fixture.clock.givenNow = enteredAt
+            fixture.os.deliver(identifier: "f1", state: .satisfied, at: enteredAt)
+            _ = await settleOnMain { delivered.all.count == 1 }
+
+            // Ten minutes later, with the clock set back an hour.
+            fixture.clock.givenNow = enteredAt.addingTimeInterval(600 - 3600)
+            fixture.os.deliver(identifier: "f1", state: .unsatisfied, at: fixture.clock.now)
+            _ = await settleOnMain { delivered.all.count == 2 }
+            await settleQuietly()
+
+            #expect(
+                delivered.all.map(\.transition) == [.enter, .exit],
+                "delivered: \(delivered.description); dropped: \(tails(fixture, ev: "os.callback.dropped"))"
+            )
+        }
+    }
+
+    // MARK: - Location access
+
+    /// Losing Always or precise location ends the continuity a visit relies on; a repeated report
+    /// or an increase does not.
+    @Test
+    @available(iOS 17.0, *)
+    func authorizationChange_givenDowngrade_expectContinuityInterruptedOncePerDrop() async {
+        await withFixture { fixture in
+            var interruptions: [String?] = []
+            fixture.monitor.setOnMonitoringInterrupted { interruptions.append($0) }
+
+            fixture.authority.setAuthorization(.authorizedAlways)
+            fixture.authority.setAuthorization(.authorizedWhenInUse)
+            fixture.authority.setAuthorization(.authorizedWhenInUse)
+            fixture.authority.setAuthorization(.authorizedAlways)
+            fixture.authority.setFullAccuracy(false)
+            fixture.authority.setFullAccuracy(false)
+
+            #expect(interruptions == [nil, nil])
+        }
+    }
+
     // MARK: - The movement trigger is exempt from the contradiction gate
 
     /// A wake-sized trigger is small enough that a real exit arrives while the cached fix still

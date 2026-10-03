@@ -528,7 +528,7 @@ struct GeofenceBootstrapTests {
                     enteredAt: Date(timeIntervalSince1970: 100),
                     geometryRevision: geofence.dwellRevision,
                     userId: "user-1",
-                    emitted: false
+                    emitted: false, timing: .recorded()
                 ),
                 geofenceId: geofence.id
             ))
@@ -556,6 +556,57 @@ struct GeofenceBootstrapTests {
         #expect(coordinator.applyCachedRegistrationCallsCount == 1)
         #expect(await storage.getDwellVisit(geofenceId: "g1") != nil)
         #expect(await storage.getDwellVisit(geofenceId: "g2") == nil)
+    }
+
+    /// iOS reports no reboot, and an adopted region raises nothing for a device back in the state
+    /// it was stored in. A visit recorded on the previous boot spans the power-off, so the resume
+    /// that follows adopting must drop it rather than re-arm it.
+    @Test
+    func wireMonitor_givenAdoptPathAfterAReboot_expectVisitFromThePreviousBootDropped() async {
+        let di = DIGraphShared.shared
+        let storage = GeofenceStorage(
+            directoryURL: FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        )
+        let fence = Geofence(
+            id: "g1", latitude: 1, longitude: 2, radius: 100, name: nil,
+            transitionTypes: [.exit], lastUpdated: Date(timeIntervalSince1970: 1),
+            dwellThresholdSeconds: 60
+        )
+        await storage.setCachedGeofences([fence])
+        await storage.recordRegistration(center: LocationData(latitude: 10, longitude: 20), businessIds: ["g1"])
+        let clock = ManualGeofenceClock()
+        #expect(await storage.saveDwellVisit(
+            GeofenceDwellVisit(
+                visitId: "visit-g1",
+                enteredAt: clock.wall,
+                geometryRevision: fence.dwellRevision,
+                userId: "user-1",
+                emitted: false,
+                timing: GeofenceVisitTiming(enteredAt: clock.wall, recordedAt: clock.read())
+            ),
+            geofenceId: fence.id
+        ))
+        clock.reboot(secondsLater: 600)
+        di.override(value: storage, forType: GeofenceStorage.self)
+        let contextStore = BackgroundDeliveryContextStore(
+            fileManager: .default,
+            directoryURL: FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        )
+        contextStore.setUserId("user-1")
+        let dwellCoordinator = makeDwellCoordinator(storage: storage, contextStore: contextStore, clock: clock)
+        di.override(value: dwellCoordinator, forType: GeofenceDwellCoordinator.self)
+        let monitor = MockGeofenceRegionMonitor()
+        monitor.osMonitoredRegions = ["g1", GeofenceConstants.movementTriggerIdentifier]
+        di.override(value: monitor as GeofenceRegionMonitoring, forType: GeofenceRegionMonitoring.self)
+        let coordinator = GeofenceSyncCoordinatorMock()
+        di.override(value: coordinator as GeofenceSyncCoordinator, forType: GeofenceSyncCoordinator.self)
+        defer { di.reset() }
+
+        await GeofenceBootstrap.wireMonitor(di: di)
+        await GeofenceBootstrap.awaitPendingWorkForTesting()
+
+        #expect(monitor.adoptExistingRegionsCallsCount == 1)
+        #expect(await storage.getDwellVisit(geofenceId: "g1") == nil)
     }
 
     /// Dropping continuity for OS-dropped fences awaits storage. Doing that before registering let
@@ -606,7 +657,8 @@ struct GeofenceBootstrapTests {
 
     private func makeDwellCoordinator(
         storage: GeofenceStorage,
-        contextStore: BackgroundDeliveryContextStore
+        contextStore: BackgroundDeliveryContextStore,
+        clock: GeofenceClock = SystemGeofenceClock()
     ) -> GeofenceDwellCoordinator {
         GeofenceDwellCoordinator(
             storage: storage,
@@ -615,7 +667,8 @@ struct GeofenceBootstrapTests {
             logger: LoggerMock(),
             notificationCenter: NotificationCenter(),
             // Resumed deadlines must not reach CoreLocation from a unit test.
-            freshFixProvider: { nil }
+            freshFixProvider: { nil },
+            clock: clock
         )
     }
 

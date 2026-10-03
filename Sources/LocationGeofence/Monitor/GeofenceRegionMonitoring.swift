@@ -17,7 +17,8 @@ typealias GeofenceAuthorizationChangedHandler = @MainActor () -> Void
 typealias GeofenceReconciledHandler = @MainActor () -> Void
 
 /// Called when the OS stops monitoring one condition, or when the monitor's event stream is
-/// interrupted globally. A nil identifier means continuity is unknown for every active visit.
+/// interrupted globally or location access drops (Always or precise location lost). A nil
+/// identifier means continuity is unknown for every active visit.
 typealias GeofenceMonitoringInterruptedHandler = @MainActor (String?) -> Void
 
 /// `unknown` (cold wake, never recorded) must be taken as current or real crossings are dropped.
@@ -104,7 +105,8 @@ protocol GeofenceRegionMonitoring: AnyObject, Sendable {
     /// Fires when reconciling against the OS's live conditions found drift. CLMonitor only.
     func setOnReconciled(_ handler: GeofenceReconciledHandler?)
 
-    /// Fires when the OS stops monitoring a condition; nil when continuity is lost for all of them.
+    /// Fires when the OS stops monitoring a condition; nil when continuity is lost for all of them,
+    /// including on a drop in `locationAccess`. Never for a repeated or increased authorization.
     func setOnMonitoringInterrupted(_ handler: GeofenceMonitoringInterruptedHandler?)
 
     /// `radius` is clamped to the OS maximum.
@@ -134,6 +136,9 @@ protocol GeofenceRegionMonitoring: AnyObject, Sendable {
 
     /// Logs only when the tier changed since the last report.
     func reportPermissionTier()
+
+    /// What the current location permission lets region monitoring observe.
+    var locationAccess: GeofenceLocationAccess { get }
 }
 
 extension GeofenceRegionMonitoring {

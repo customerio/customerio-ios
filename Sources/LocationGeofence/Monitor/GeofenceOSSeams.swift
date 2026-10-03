@@ -37,6 +37,8 @@ protocol GeofenceConditionMonitoring: AnyObject, Sendable {
 protocol GeofenceLocationAuthority: AnyObject {
     /// Never prompts.
     var authorizationStatus: CLAuthorizationStatus { get }
+    /// Precise rather than approximate location.
+    var isFullAccuracy: Bool { get }
     var maximumRegionMonitoringDistance: CLLocationDistance { get }
     var currentLocation: CLLocation? { get }
     /// **Must be invoked on the main actor**: the handler calls `MainActor.assumeIsolated`, which
@@ -134,6 +136,7 @@ final class CoreLocationAuthority: NSObject, GeofenceLocationAuthority, CLLocati
     }
 
     var authorizationStatus: CLAuthorizationStatus { manager.authorizationStatus }
+    var isFullAccuracy: Bool { manager.accuracyAuthorization == .fullAccuracy }
     var maximumRegionMonitoringDistance: CLLocationDistance { manager.maximumRegionMonitoringDistance }
     var currentLocation: CLLocation? { manager.location }
 
