@@ -34,6 +34,12 @@ final class ReplayHarness {
     private(set) var coordinator: GeofenceSyncCoordinatorImpl!
     private(set) var tracker: GeofenceEventTracker!
     private(set) var resolver: PolygonMembershipResolver!
+    /// This composition's visits. Without its own, `GeofenceBootstrap` resolves
+    /// `GeofenceDwellCoordinator.shared` — a process-wide `static let` holding the storage, identity
+    /// and tracker of whichever harness touched it first — and awaits it inside the process-global
+    /// run chain every later drive's setup queues behind. It also leaves the resolver and
+    /// coordinator on the pre-dwell paths production no longer takes.
+    private(set) var dwellCoordinator: GeofenceDwellCoordinator!
     private(set) var trigger: GeofenceRefreshTrigger!
 
     let contextStore: BackgroundDeliveryContextStore
@@ -124,6 +130,20 @@ final class ReplayHarness {
         return monitor
     }
 
+    private func makeRefreshTrigger() -> GeofenceRefreshTrigger {
+        GeofenceRefreshTrigger(
+            storage: storage,
+            contextStore: contextStore,
+            coordinator: { [coordinator] in coordinator },
+            logger: logger,
+            locationMode: .automatic,
+            explicitRefreshRequested: Synchronized<Bool>(false),
+            // Not the fix provider: that would read the OS cache where the drive recorded no read.
+            lastKnownLocation: { [weak self] in self?.moduleLastKnownLocation },
+            acquireFix: { [weak self] in self?.acquireFixCallCount += 1 }
+        )
+    }
+
     /// Rerun by `reenterProcess()`: build here only what a dying process loses.
     private func composeSDK() {
         tracker = GeofenceEventTracker(
@@ -136,47 +156,59 @@ final class ReplayHarness {
             logger: logger
         )
 
+        // Evidence comes from the drive's position, never CoreLocation. `.default` because
+        // `enterForeground()` posts there, as the OS does.
+        dwellCoordinator = GeofenceDwellCoordinator(
+            storage: storage,
+            transitionEmitter: tracker,
+            contextStore: contextStore,
+            logger: logger,
+            freshFixProvider: { [weak self] in self?.fixes.currentPosition() },
+            clock: DateUtilGeofenceClock(dateUtil: clock)
+        )
+
         resolver = makePolygonResolver()
 
         monitor = makeMonitor()
 
+        let polygonResolver: PolygonMembershipResolver = resolver
         coordinator = GeofenceSyncCoordinatorImpl(
             apiService: api,
             storage: storage,
             monitor: monitor,
             contextStore: contextStore,
             transitionEmitter: tracker,
+            dwellCoordinator: dwellCoordinator,
+            // The post-refresh polygon passes run here too, not on the process-wide singleton.
+            polygonResolver: { polygonResolver },
             dateUtil: clock,
             logger: logger
         )
 
-        trigger = GeofenceRefreshTrigger(
-            storage: storage,
-            contextStore: contextStore,
-            coordinator: { [coordinator] in coordinator },
-            logger: logger,
-            locationMode: .automatic,
-            explicitRefreshRequested: Synchronized<Bool>(false),
-            // Not the fix provider: that would read the OS cache where the drive recorded no read.
-            lastKnownLocation: { [weak self] in self?.moduleLastKnownLocation },
-            acquireFix: { [weak self] in self?.acquireFixCallCount += 1 }
-        )
+        trigger = makeRefreshTrigger()
 
         // Kept though `wireMonitor()` binds too: a hand-driven test never sends `module.init`.
         GeofenceMonitorBinder.bind(
             monitor: monitor,
             resolver: resolver,
             coordinator: coordinator,
-            logger: logger
+            logger: logger,
+            dwellCoordinator: dwellCoordinator
         )
         // Also rebinds visits to the fresh resolver on `reenterProcess()`.
         GeofenceMonitorBinder.bindVisits(
             visitMonitor: visitMonitor,
             resolver: resolver,
-            contextStore: contextStore
+            contextStore: contextStore,
+            dwellCoordinator: dwellCoordinator
         )
 
-        // Plus `DateUtil`, so a later read cannot reach the wall clock.
+        overrideBootstrapDependencies()
+    }
+
+    /// Everything `GeofenceBootstrap` resolves, plus `DateUtil` so a later read cannot reach the
+    /// wall clock.
+    private func overrideBootstrapDependencies() {
         di.override(value: logger as Logger, forType: Logger.self)
         di.override(value: clock as DateUtil, forType: DateUtil.self)
         di.override(value: storage, forType: GeofenceStorage.self)
@@ -184,6 +216,7 @@ final class ReplayHarness {
         di.override(value: tracker, forType: GeofenceEventTracker.self)
         // Without this, transitions land in the process-wide `PolygonMembershipResolver.shared`.
         di.override(value: resolver, forType: PolygonMembershipResolver.self)
+        di.override(value: dwellCoordinator, forType: GeofenceDwellCoordinator.self)
         di.override(value: monitor as GeofenceRegionMonitoring, forType: GeofenceRegionMonitoring.self)
         di.override(value: visitMonitor as GeofenceVisitMonitoring, forType: GeofenceVisitMonitoring.self)
         di.override(value: coordinator as GeofenceSyncCoordinator, forType: GeofenceSyncCoordinator.self)
@@ -214,6 +247,17 @@ final class ReplayHarness {
     deinit {
         try? FileManager.default.removeItem(at: root)
         UserDefaults.standard.removePersistentDomain(forName: defaultsSuite)
+    }
+
+    /// Whether the graph `GeofenceBootstrap` resolves hands out this composition's dwell
+    /// coordinator rather than the process-wide `shared` one.
+    var bootstrapResolvesOwnDwellCoordinator: Bool {
+        di.geofenceDwellCoordinator === dwellCoordinator
+    }
+
+    /// The visit this composition's storage holds for a fence, if any.
+    func storedVisit(fence: String) async -> GeofenceDwellVisit? {
+        await storage.getDwellVisit(geofenceId: fence)
     }
 
     func hasRegisteredPolygons() async -> Bool {
@@ -267,7 +311,8 @@ final class ReplayHarness {
             logger: logger,
             contextStore: contextStore,
             dateUtil: clock,
-            fixResolver: fixResolver
+            fixResolver: fixResolver,
+            dwellCoordinator: dwellCoordinator
         )
     }
 }

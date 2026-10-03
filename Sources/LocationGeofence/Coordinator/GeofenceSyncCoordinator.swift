@@ -51,6 +51,12 @@ final class GeofenceSyncCoordinatorImpl: GeofenceSyncCoordinator, @unchecked Sen
     let dateUtil: DateUtil
     let transitionEmitter: GeofenceTransitionEmitting
     let contextStore: BackgroundDeliveryContextStore
+    let dwellCoordinator: GeofenceDwellCoordinator?
+    /// The resolver the post-refresh polygon passes run on. Injected, not read from
+    /// `DIGraphShared.shared` at the call: a composition with its own resolver (replay) otherwise
+    /// had every such pass — and, through the singleton's construction, a production dwell
+    /// coordinator — run against the process-wide graph mid-drive.
+    let polygonResolver: @MainActor @Sendable () -> PolygonMembershipResolver
     let refreshInProgress = Synchronized<Bool>(false)
 
     /// A movement that lost the gate, replayed when it frees. Refreshes aren't deferred: a dropped
@@ -69,6 +75,10 @@ final class GeofenceSyncCoordinatorImpl: GeofenceSyncCoordinator, @unchecked Sen
         monitor: GeofenceRegionMonitoring,
         contextStore: BackgroundDeliveryContextStore,
         transitionEmitter: GeofenceTransitionEmitting,
+        dwellCoordinator: GeofenceDwellCoordinator? = nil,
+        polygonResolver: @escaping @MainActor @Sendable () -> PolygonMembershipResolver = {
+            DIGraphShared.shared.polygonMembershipResolver
+        },
         distanceFilter: GeofenceDistanceFilter = GeofenceDistanceFilter(),
         dateUtil: DateUtil,
         logger: Logger
@@ -78,6 +88,8 @@ final class GeofenceSyncCoordinatorImpl: GeofenceSyncCoordinator, @unchecked Sen
         self.monitor = monitor
         self.contextStore = contextStore
         self.transitionEmitter = transitionEmitter
+        self.dwellCoordinator = dwellCoordinator
+        self.polygonResolver = polygonResolver
         self.distanceFilter = distanceFilter
         self.dateUtil = dateUtil
         self.logger = logger
@@ -258,6 +270,7 @@ extension GeofenceSyncCoordinatorImpl {
         monitor: DIGraphShared.shared.geofenceMonitor,
         contextStore: DIGraphShared.shared.backgroundDeliveryContextStore,
         transitionEmitter: DIGraphShared.shared.geofenceEventTracker,
+        dwellCoordinator: DIGraphShared.shared.geofenceDwellCoordinator,
         dateUtil: DIGraphShared.shared.dateUtil,
         logger: DIGraphShared.shared.logger
     )

@@ -1,4 +1,5 @@
 @testable import CioInternalCommon
+@testable import CioInternalCommonMocks
 @_spi(Geofence) import CioLocation
 @testable import CioLocationGeofence
 @testable import CioLocationGeofenceMocks
@@ -339,6 +340,408 @@ struct GeofenceModuleSetupTests {
 
         try await f.settle { f.visitMonitor.stopCallCount == 1 }
     }
+}
+
+extension GeofenceModuleSetupTests {
+    /// `identify(B)` while A is identified only rewrites the identified user: no reset clears
+    /// user-scoped state. A's visit must not survive B's time and be picked up again when A comes
+    /// back, as a stay continuous across both identities.
+    @Test
+    @MainActor
+    func setup_givenIdentitySwitchesAwayAndBack_expectTheEarlierUsersVisitEnded() async throws {
+        let f = Fixture(identifiedUserId: "user-a")
+        defer { f.cleanup() }
+        let fence = await Self.seedVisit(f, userId: "user-a")
+        f.spyCoordinator.refreshClosure = { _, _, _ in .success(()) }
+        f.wire()
+        await GeofenceBootstrap.awaitPendingWorkForTesting()
+        let identify = try #require(f.bus.observers[ProfileIdentifiedEvent.key])
+
+        f.contextStore.setUserId("user-b")
+        identify(ProfileIdentifiedEvent(identifier: "user-b"))
+        f.contextStore.setUserId("user-a")
+        identify(ProfileIdentifiedEvent(identifier: "user-a"))
+
+        #expect(await Self.visitEnds(f, fence: fence))
+    }
+
+    /// Control: identifying the same user again keeps that user's visit.
+    @Test
+    @MainActor
+    func setup_givenTheSameUserIdentifiedAgain_expectTheVisitKept() async throws {
+        let f = Fixture(identifiedUserId: "user-a")
+        defer { f.cleanup() }
+        let fence = await Self.seedVisit(f, userId: "user-a")
+        f.spyCoordinator.refreshClosure = { _, _, _ in .success(()) }
+        f.wire()
+        await GeofenceBootstrap.awaitPendingWorkForTesting()
+        let identify = try #require(f.bus.observers[ProfileIdentifiedEvent.key])
+
+        identify(ProfileIdentifiedEvent(identifier: "user-a"))
+
+        #expect(await Self.visitEnds(f, fence: fence) == false)
+    }
+
+    @MainActor
+    private static func seedVisit(_ f: Fixture, userId: String) async -> Geofence {
+        let fence = Geofence(
+            id: "dwell-fence", latitude: 1, longitude: 2, radius: 100, name: nil,
+            transitionTypes: [.enter, .exit], lastUpdated: Date(timeIntervalSince1970: 1), dwellThresholdSeconds: 60
+        )
+        let storage = f.di.geofenceStorage
+        await storage.setCachedGeofences([fence])
+        // Observes the store the producer writes, as the shared tracker does.
+        let tracker = GeofenceIdentityTracker(contextStore: f.contextStore)
+        f.di.override(value: tracker, forType: GeofenceIdentityTracker.self)
+        let dwell = GeofenceDwellCoordinator(
+            storage: storage, transitionEmitter: SilentTransitionEmitter(), contextStore: f.contextStore,
+            logger: LoggerMock(), notificationCenter: NotificationCenter(), freshFixProvider: { nil },
+            identityTracker: tracker
+        )
+        f.di.override(value: dwell, forType: GeofenceDwellCoordinator.self)
+        // Recorded from an ENTER, so it carries the identity it was recorded under.
+        await dwell.handleBoundary(geofence: fence, transition: .enter, occurredAt: Date())
+        dwell.cancelEvidence(for: fence.id)
+        #expect(await storage.getDwellVisit(geofenceId: fence.id)?.userId == userId)
+        return fence
+    }
+
+    /// Bounded: the identity handler works on tasks of its own.
+    private static func visitEnds(_ f: Fixture, fence: Geofence) async -> Bool {
+        for _ in 0 ..< 100 {
+            if await f.di.geofenceStorage.getDwellVisit(geofenceId: fence.id) == nil { return true }
+            try? await Task.sleep(nanoseconds: 10000000)
+        }
+        return false
+    }
+}
+
+/// `DataPipelineImplementation.identify` writes the context store, then posts
+/// `ProfileIdentifiedEvent`; `CombinedCacheEventBusHandler.postEvent` delivers it from an
+/// unstructured task, off the main actor and unordered against later posts. The observer's cleanup
+/// then hops to the main actor. These tests invoke the real observer on the main actor, so that
+/// cleanup cannot start until the test yields.
+extension GeofenceModuleSetupTests {
+    /// B then A identified, both observed, cleanup not yet run: A's earlier visit spans B's time and
+    /// must already admit no DWELL.
+    @Test
+    @MainActor
+    func setup_givenBThenAObservedBeforeCleanupRuns_expectEarlierVisitAdmitsNoDwell() async throws {
+        let f = Fixture(identifiedUserId: "user-a")
+        defer { f.cleanup() }
+        let rig = await IdentityRig.make(f)
+        let identify = try await rig.wire(f)
+
+        f.contextStore.setUserId("user-b")
+        identify(ProfileIdentifiedEvent(identifier: "user-b"))
+        f.contextStore.setUserId("user-a")
+        identify(ProfileIdentifiedEvent(identifier: "user-a"))
+
+        // No suspension yet: neither cleanup task has run.
+        #expect(rig.dwell.continuityHolds(for: rig.visit, geofenceId: rig.fence.id) == false)
+        await rig.dwell.emitDwellIfQualified(
+            geofence: rig.fence, visit: rig.visit, observedAt: rig.clock.wall, source: "location_evidence", userId: "user-a"
+        )
+        #expect(await rig.emitter.dwellCount() == 0)
+    }
+
+    /// The producer and the profile callback can both run on any task; recording B needs neither
+    /// the main actor nor the event bus.
+    @Test
+    @MainActor
+    func setup_givenUserChangedOffTheMainActor_expectLossRecordedWithoutCrashing() async throws {
+        let f = Fixture(identifiedUserId: "user-a")
+        defer { f.cleanup() }
+        let rig = await IdentityRig.make(f)
+        let identify = try await rig.wire(f)
+
+        let store = f.contextStore
+        await Task.detached {
+            store.setUserId("user-b")
+            identify(ProfileIdentifiedEvent(identifier: "user-b"))
+        }.value
+
+        #expect(rig.dwell.continuityHolds(for: rig.visit, geofenceId: rig.fence.id) == false)
+    }
+
+    /// The producer changes the user to B and back to A before the bus delivers either profile
+    /// event. A's earlier visit spans B's time: refused at once, with no event at all.
+    @Test
+    @MainActor
+    func setup_givenUserChangedAwayAndBackBeforeAnyProfileEvent_expectEarlierVisitAdmitsNoDwell() async throws {
+        let f = Fixture(identifiedUserId: "user-a")
+        defer { f.cleanup() }
+        let rig = await IdentityRig.make(f)
+        _ = try await rig.wire(f)
+
+        f.contextStore.setUserId("user-b")
+        rig.clock.advance(5)
+        f.contextStore.setUserId("user-a")
+
+        #expect(rig.dwell.continuityHolds(for: rig.visit, geofenceId: rig.fence.id) == false)
+        await rig.dwell.emitDwellIfQualified(
+            geofence: rig.fence, visit: rig.visit, observedAt: rig.clock.wall, source: "location_evidence", userId: "user-a"
+        )
+        #expect(await rig.emitter.dwellCount() == 0)
+    }
+
+    /// Signing out ends the stay, whether by an empty user or a reset.
+    @Test(arguments: [false, true])
+    @MainActor
+    func setup_givenUserClearedAndRestored_expectEarlierVisitAdmitsNoDwell(byReset: Bool) async throws {
+        let f = Fixture(identifiedUserId: "user-a")
+        defer { f.cleanup() }
+        let rig = await IdentityRig.make(f)
+        _ = try await rig.wire(f)
+
+        if byReset { f.contextStore.reset() } else { f.contextStore.setUserId("") }
+        f.contextStore.setUserId("user-a")
+
+        #expect(rig.dwell.continuityHolds(for: rig.visit, geofenceId: rig.fence.id) == false)
+    }
+
+    /// The tracker matches the store's internal notification by its string values.
+    @Test
+    func identityTracker_expectTheStoresNotificationNameAndKey() {
+        #expect(GeofenceIdentityTracker.userIdDidChangeNotification == BackgroundDeliveryContextStore.userIdDidChangeNotification)
+        #expect(GeofenceIdentityTracker.userIdKey == BackgroundDeliveryContextStore.userIdKey)
+        #expect(GeofenceIdentityTracker.userVersionKey == BackgroundDeliveryContextStore.userVersionKey)
+        #expect(GeofenceIdentityTracker.userLineageKey == BackgroundDeliveryContextStore.userLineageKey)
+        #expect(GeofenceIdentityTracker.userSnapshotRequest == BackgroundDeliveryContextStore.userSnapshotRequest)
+        #expect(GeofenceIdentityTracker.replyKey == BackgroundDeliveryContextStore.replyKey)
+    }
+
+    /// Control: the producer writing the same user again changes nothing.
+    @Test
+    @MainActor
+    func setup_givenTheSameUserWrittenAgain_expectTheVisitStillHolds() async throws {
+        let f = Fixture(identifiedUserId: "user-a")
+        defer { f.cleanup() }
+        let rig = await IdentityRig.make(f)
+        _ = try await rig.wire(f)
+
+        f.contextStore.setUserId("user-a")
+
+        #expect(rig.dwell.continuityHolds(for: rig.visit, geofenceId: rig.fence.id))
+    }
+
+    /// B's profile event arrives late, after A was restored and recorded a new visit. B happened
+    /// before that visit: neither admission nor B's cleanup may end it.
+    @Test
+    @MainActor
+    func setup_givenDelayedProfileEventOlderThanARestoredVisit_expectTheVisitKept() async throws {
+        let f = Fixture(identifiedUserId: "user-a")
+        defer { f.cleanup() }
+        let rig = await IdentityRig.make(f)
+        let identify = try await rig.wire(f)
+        let changedToB = rig.clock.wall
+        f.contextStore.setUserId("user-b")
+        rig.clock.advance(10)
+        f.contextStore.setUserId("user-a")
+        identify(ProfileIdentifiedEvent(identifier: "user-a", timestamp: rig.clock.wall))
+        rig.clock.advance(10)
+        let later = await rig.recordVisit()
+        rig.clock.advance(60)
+
+        identify(ProfileIdentifiedEvent(identifier: "user-b", timestamp: changedToB))
+        await settleQuietly(0.5)
+
+        #expect(rig.dwell.continuityHolds(for: later, geofenceId: rig.fence.id))
+        #expect(await rig.storage.getDwellVisit(geofenceId: rig.fence.id)?.visitId == later.visitId)
+    }
+
+    /// The real event bus replays its whole cached history to the module's observer: B then A,
+    /// both from before the A visit now stored, whose dwell was already emitted. Neither may end
+    /// it — losing its emitted mark would let the same uninterrupted stay emit a second DWELL.
+    @Test(arguments: [false, true])
+    @MainActor
+    func setup_givenBusReplaysIdentityHistoryOlderThanTheVisit_expectEmittedVisitKeptAndNoSecondDwell(wallRolledBack: Bool) async throws {
+        let f = Fixture(identifiedUserId: "user-a")
+        defer { f.cleanup() }
+        let eventStorage = EventStorageMock()
+        eventStorage.loadEventsReturnValue = []
+        let bus = CombinedCacheEventBusHandler(eventStorage: eventStorage, logger: LoggerMock())
+        f.di.override(value: bus as EventBusHandler, forType: EventBusHandler.self)
+        let clock = ManualGeofenceClock()
+        // The history, before the geofence module or its tracker existed in this process.
+        f.contextStore.setUserId("user-b")
+        await bus.postEventAndWait(ProfileIdentifiedEvent(identifier: "user-b", timestamp: clock.wall))
+        clock.advance(5)
+        f.contextStore.setUserId("user-a")
+        await bus.postEventAndWait(ProfileIdentifiedEvent(identifier: "user-a", timestamp: clock.wall))
+        clock.advance(5)
+        if wallRolledBack { clock.wall = clock.wall.addingTimeInterval(-3600) }
+        let rig = await IdentityRig.make(f, clock: clock, visitEmitted: true, polygon: true)
+        f.spyCoordinator.refreshClosure = { _, _, _ in .success(()) }
+
+        f.wire()
+        // Posted behind the replay on the same key, so it returns once the replay was delivered.
+        await bus.postEventAndWait(ProfileIdentifiedEvent(identifier: "user-a", timestamp: clock.wall))
+        await GeofenceBootstrap.awaitPendingWorkForTesting()
+        await settleQuietly(0.3)
+        rig.dwell.cancelEvidence(for: rig.fence.id)
+
+        let stored = await rig.storage.getDwellVisit(geofenceId: rig.fence.id)
+        #expect(stored?.visitId == rig.visit.visitId)
+        #expect(stored?.emitted == true)
+        // The device is still inside: fresh evidence a moment later, and again after the threshold.
+        clock.advance(1)
+        await rig.dwell.recordInsideEvidence(geofence: rig.fence, at: clock.wall, source: "location_evidence")
+        clock.advance(600)
+        await rig.dwell.recordInsideEvidence(geofence: rig.fence, at: clock.wall, source: "location_evidence")
+        #expect(await rig.emitter.dwellCount() == 0)
+        rig.dwell.cancelEvidence(for: rig.fence.id)
+    }
+
+    /// The cleanup B queued is dated when B was observed. A visit A records after A is identified
+    /// again, before that cleanup runs, is not one B interrupted.
+    @Test
+    @MainActor
+    func setup_givenStaleIdentityCleanup_expectALaterVisitOfTheRestoredUserKept() async throws {
+        let f = Fixture(identifiedUserId: "user-a")
+        defer { f.cleanup() }
+        let rig = await IdentityRig.make(f)
+        let identify = try await rig.wire(f)
+
+        f.contextStore.setUserId("user-b")
+        identify(ProfileIdentifiedEvent(identifier: "user-b"))
+        rig.clock.advance(10)
+        f.contextStore.setUserId("user-a")
+        identify(ProfileIdentifiedEvent(identifier: "user-a"))
+        rig.clock.advance(10)
+        let later = await rig.recordVisit()
+        // Both cleanups run now.
+        await settleQuietly(0.5)
+
+        #expect(await rig.storage.getDwellVisit(geofenceId: rig.fence.id)?.visitId == later.visitId)
+        #expect(rig.dwell.continuityHolds(for: later, geofenceId: rig.fence.id))
+    }
+
+    /// Control: the same user identified again changes nothing; the visit still qualifies.
+    @Test
+    @MainActor
+    func setup_givenTheSameUserIdentifiedAgain_expectTheVisitStillQualifies() async throws {
+        let f = Fixture(identifiedUserId: "user-a")
+        defer { f.cleanup() }
+        let rig = await IdentityRig.make(f)
+        let identify = try await rig.wire(f)
+
+        identify(ProfileIdentifiedEvent(identifier: "user-a"))
+
+        #expect(rig.dwell.continuityHolds(for: rig.visit, geofenceId: rig.fence.id))
+        await rig.dwell.emitDwellIfQualified(
+            geofence: rig.fence, visit: rig.visit, observedAt: rig.clock.wall, source: "location_evidence", userId: "user-a"
+        )
+        #expect(await rig.emitter.dwellCount() == 1)
+    }
+}
+
+/// A user-a visit 600 s into a 600 s threshold, under a coordinator and identity tracker the
+/// fixture's graph resolves.
+@MainActor
+private struct IdentityRig {
+    let clock: ManualGeofenceClock
+    let storage: GeofenceStorage
+    let dwell: GeofenceDwellCoordinator
+    let emitter: CountingDwellEmitter
+    let fence: Geofence
+    let visit: GeofenceDwellVisit
+
+    static func make(
+        _ f: Fixture,
+        clock: ManualGeofenceClock = ManualGeofenceClock(),
+        visitEmitted: Bool = false,
+        polygon: Bool = false
+    ) async -> IdentityRig {
+        let fence = Geofence(
+            id: "dwell-fence", latitude: 1, longitude: 2, radius: 100, name: nil,
+            transitionTypes: [.enter, .exit], lastUpdated: Date(timeIntervalSince1970: 1),
+            vertices: polygon ? [
+                LocationData(latitude: 0.999, longitude: 1.999),
+                LocationData(latitude: 0.999, longitude: 2.001),
+                LocationData(latitude: 1.001, longitude: 2.001),
+                LocationData(latitude: 1.001, longitude: 1.999)
+            ] : nil,
+            dwellThresholdSeconds: 600
+        )
+        let storage = f.di.geofenceStorage
+        await storage.setCachedGeofences([fence])
+        // Subscribed to the store the module's producer writes, as the shared tracker is.
+        let tracker = GeofenceIdentityTracker(contextStore: f.contextStore)
+        f.di.override(value: tracker, forType: GeofenceIdentityTracker.self)
+        let emitter = CountingDwellEmitter()
+        let dwell = GeofenceDwellCoordinator(
+            storage: storage, transitionEmitter: emitter, contextStore: f.contextStore, logger: LoggerMock(),
+            notificationCenter: NotificationCenter(), freshFixProvider: { nil }, clock: clock, identityTracker: tracker
+        )
+        f.di.override(value: dwell, forType: GeofenceDwellCoordinator.self)
+        // Recorded by the coordinator from an ENTER, so it carries whatever provenance this build
+        // stamps on a visit.
+        var visit = await Self.recordVisit(dwell: dwell, storage: storage, fence: fence, clock: clock)
+        if visitEmitted {
+            #expect(await storage.markDwellVisitEmitted(visit, geofenceId: fence.id) == .marked)
+            visit.emitted = true
+        }
+        clock.advance(600)
+        return IdentityRig(clock: clock, storage: storage, dwell: dwell, emitter: emitter, fence: fence, visit: visit)
+    }
+
+    /// A new user-a visit from an ENTER now, as A's next arrival records it.
+    func recordVisit() async -> GeofenceDwellVisit {
+        await Self.recordVisit(dwell: dwell, storage: storage, fence: fence, clock: clock)
+    }
+
+    private static func recordVisit(
+        dwell: GeofenceDwellCoordinator, storage: GeofenceStorage, fence: Geofence, clock: ManualGeofenceClock
+    ) async -> GeofenceDwellVisit {
+        await dwell.handleBoundary(geofence: fence, transition: .enter, occurredAt: clock.wall)
+        dwell.cancelEvidence(for: fence.id)
+        let stored = await storage.getDwellVisit(geofenceId: fence.id)
+        #expect(stored?.userId == "user-a")
+        return stored ?? GeofenceDwellVisit(
+            visitId: "missing", enteredAt: clock.wall, geometryRevision: fence.dwellRevision, userId: "user-a",
+            emitted: false, timing: nil
+        )
+    }
+
+    /// Wires the module and returns its real `ProfileIdentifiedEvent` observer.
+    func wire(_ f: Fixture) async throws -> (ProfileIdentifiedEvent) -> Void {
+        f.spyCoordinator.refreshClosure = { _, _, _ in .success(()) }
+        f.wire()
+        await GeofenceBootstrap.awaitPendingWorkForTesting()
+        dwell.cancelEvidence(for: fence.id)
+        let observer = try #require(f.bus.observers[ProfileIdentifiedEvent.key])
+        return { observer($0) }
+    }
+}
+
+private actor CountingDwellEmitter: GeofenceTransitionEmitting {
+    private var dwells = 0
+
+    func trackTransition(geofenceId: String, transition: GeofenceTransition, occurredAt: Date) async {}
+    func trackDwell(
+        geofenceId: String, occurredAt: Date, context: GeofenceDwellContext, expectedUserId: String?
+    ) async -> Bool {
+        dwells += 1
+        return true
+    }
+
+    func trackExit(geofenceId: String, occurredAt: Date, expectedUserId: String?) async {}
+
+    func dwellCount() -> Int {
+        dwells
+    }
+}
+
+private actor SilentTransitionEmitter: GeofenceTransitionEmitting {
+    func trackTransition(geofenceId: String, transition: GeofenceTransition, occurredAt: Date) async {}
+    func trackDwell(
+        geofenceId: String, occurredAt: Date, context: GeofenceDwellContext, expectedUserId: String?
+    ) async -> Bool {
+        true
+    }
+
+    func trackExit(geofenceId: String, occurredAt: Date, expectedUserId: String?) async {}
 }
 
 @MainActor

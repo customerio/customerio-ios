@@ -15,11 +15,15 @@ struct PolygonMembershipStorageTests {
         return storage
     }
 
+    /// A polygon with no record is undecided, not outside — so the first decisive fix placing the
+    /// device inside still owes an enter (the polygon counterpart of enter-when-inside). It is
+    /// discovery, not a crossing: the device was never seen outside, so the stay's start is unknown.
     @Test
-    func recordPolygonMembership_givenNoRecordAndInside_expectEnterDelivered() async {
+    func recordPolygonMembership_givenNoRecordAndInside_expectDiscoveredInsideDeliveringEnter() async {
         let storage = await makeStorage()
         let outcome = await storage.recordPolygonMembership(.inside, forIdentifier: "1")
-        #expect(outcome == .deliver(.enter))
+        #expect(outcome == .discoveredInside)
+        #expect(outcome.deliveredTransition == .enter)
     }
 
     @Test
@@ -157,7 +161,7 @@ struct PolygonMembershipStorageTests {
         #expect(await storage.getPolygonMembership()["1"] == nil)
 
         await storage.recordRegistration(center: LocationData(latitude: 0, longitude: 0), businessIds: ["1"])
-        #expect(await storage.recordPolygonMembership(.inside, forIdentifier: "1") == .deliver(.enter))
+        #expect(await storage.recordPolygonMembership(.inside, forIdentifier: "1") == .discoveredInside)
     }
 
     @Test
@@ -307,6 +311,10 @@ struct PolygonMembershipStorageTests {
         LocationData(latitude: 6, longitude: 6)
     ]
 
+    /// When the inside verdict of an entry test is evidenced. Fixed, and passed as `now` too, so
+    /// the gap to the outside proof is exact rather than whatever the runner took between writes.
+    private static let insideAt = Date(timeIntervalSince1970: 1800000000)
+
     private func polygon(
         id: String = "1", ring: [LocationData], latitude: Double = 0, longitude: Double = 0,
         radius: Double = 300
@@ -347,7 +355,279 @@ struct PolygonMembershipStorageTests {
             .inside, forIdentifier: "1", onlyIfRingMatches: Self.ringA
         )
 
+        #expect(outcome == .discoveredInside)
+        #expect(outcome.deliveredTransition == .enter)
+    }
+
+    /// A recent outside belief for the same ring is what makes inside a crossing someone was seen
+    /// to make.
+    @Test
+    func recordPolygonMembership_givenOutsideThenInsideOnTheSameRing_expectObservedEnter() async {
+        let storage = await makeStorage()
+        await storage.setCachedGeofences([polygon(ring: Self.ringA)])
+        let first = await storage.recordPolygonMembership(
+            .outside, forIdentifier: "1", onlyIfBeliefPredates: Self.insideAt.addingTimeInterval(-60),
+            onlyIfRingMatches: Self.ringA, now: Self.insideAt
+        )
+
+        let outcome = await storage.recordPolygonMembership(
+            .inside, forIdentifier: "1", onlyIfBeliefPredates: Self.insideAt,
+            onlyIfRingMatches: Self.ringA, now: Self.insideAt
+        )
+
+        #expect(first == .suppressedInitialOutside)
         #expect(outcome == .deliver(.enter))
+    }
+
+    /// Outside the OLD ring says nothing about when the device came to be inside the new one: the
+    /// replacement may have been drawn around it. Still an ENTER, but discovered, not observed.
+    @Test
+    func recordPolygonMembership_givenOutsideTheReplacedRingThenInsideTheNewOne_expectDiscoveredInside() async {
+        let storage = await makeStorage()
+        await storage.setCachedGeofences([polygon(ring: Self.ringA)])
+        _ = await storage.recordPolygonMembership(.outside, forIdentifier: "1", onlyIfRingMatches: Self.ringA)
+        await storage.setCachedGeofences([polygon(ring: Self.ringB)])
+
+        let outcome = await storage.recordPolygonMembership(
+            .inside, forIdentifier: "1", onlyIfRingMatches: Self.ringB
+        )
+
+        #expect(outcome == .discoveredInside)
+    }
+
+    /// Being proven outside the NEW ring re-establishes the precondition, so the next arrival is a
+    /// crossing again — the replacement costs at most the one stay it landed in.
+    @Test
+    func recordPolygonMembership_givenOutsideConfirmedAgainstTheNewRing_expectNextEnterObserved() async {
+        let storage = await makeStorage()
+        await storage.setCachedGeofences([polygon(ring: Self.ringA)])
+        _ = await storage.recordPolygonMembership(
+            .outside, forIdentifier: "1", onlyIfBeliefPredates: Self.insideAt.addingTimeInterval(-600),
+            onlyIfRingMatches: Self.ringA, now: Self.insideAt
+        )
+        await storage.setCachedGeofences([polygon(ring: Self.ringB)])
+
+        let confirmed = await storage.recordPolygonMembership(
+            .outside, forIdentifier: "1", onlyIfBeliefPredates: Self.insideAt.addingTimeInterval(-60),
+            onlyIfRingMatches: Self.ringB, now: Self.insideAt
+        )
+        let outcome = await storage.recordPolygonMembership(
+            .inside, forIdentifier: "1", onlyIfBeliefPredates: Self.insideAt,
+            onlyIfRingMatches: Self.ringB, now: Self.insideAt
+        )
+
+        #expect(confirmed == .suppressedNoChange)
+        #expect(outcome == .deliver(.enter))
+    }
+
+    /// A belief written before records carried their ring cannot say which shape it was formed
+    /// against, so it proves no entry: the stay it begins has no known start.
+    @Test
+    func recordPolygonMembership_givenLegacyOutsideRecordWithoutRing_expectDiscoveredInside() async {
+        let storage = await makeStorage()
+        await storage.setCachedGeofences([polygon(ring: Self.ringA)])
+        var state = await storage.loadFromDisk() ?? GeofenceState()
+        state.polygonMembership = [
+            "1": PolygonMembershipRecord(membership: .outside, lastChangedAt: Date().addingTimeInterval(-60))
+        ]
+        await storage.saveToDisk(state)
+
+        let outcome = await storage.recordPolygonMembership(
+            .inside, forIdentifier: "1", onlyIfRingMatches: Self.ringA
+        )
+
+        #expect(outcome == .discoveredInside)
+    }
+
+    /// The ring stamp survives a relaunch, so an outside belief written before the process died
+    /// still makes the next arrival an observed crossing.
+    @Test
+    func recordPolygonMembership_givenOutsideBeliefAcrossRelaunch_expectObservedEnter() async {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        let beforeRelaunch = GeofenceStorage(fileManager: .default, directoryURL: directory)
+        await beforeRelaunch.recordRegistration(center: LocationData(latitude: 0, longitude: 0), businessIds: ["1"])
+        await beforeRelaunch.setCachedGeofences([polygon(ring: Self.ringA)])
+        _ = await beforeRelaunch.recordPolygonMembership(
+            .outside, forIdentifier: "1", onlyIfBeliefPredates: Self.insideAt.addingTimeInterval(-60),
+            onlyIfRingMatches: Self.ringA, now: Self.insideAt
+        )
+
+        let afterRelaunch = GeofenceStorage(fileManager: .default, directoryURL: directory)
+        let outcome = await afterRelaunch.recordPolygonMembership(
+            .inside, forIdentifier: "1", onlyIfBeliefPredates: Self.insideAt,
+            onlyIfRingMatches: Self.ringA, now: Self.insideAt
+        )
+
+        #expect(outcome == .deliver(.enter))
+    }
+
+    // MARK: - Outside proof age
+
+    /// Seeds an `outside` belief against ring A proven at `provenAt`, then applies an inside
+    /// verdict evidenced at `insideAt` (nil for an unordered write).
+    private func insideAfterOutside(
+        provenAt: Date,
+        insideAt: Date? = PolygonMembershipStorageTests.insideAt
+    ) async -> (outcome: PolygonMembershipOutcome, storage: GeofenceStorage) {
+        let storage = await makeStorage()
+        await storage.setCachedGeofences([polygon(ring: Self.ringA)])
+        _ = await storage.recordPolygonMembership(
+            .outside, forIdentifier: "1", onlyIfBeliefPredates: provenAt,
+            onlyIfRingMatches: Self.ringA, now: Self.insideAt
+        )
+        let outcome = await storage.recordPolygonMembership(
+            .inside, forIdentifier: "1", onlyIfBeliefPredates: insideAt,
+            onlyIfRingMatches: Self.ringA, now: Self.insideAt
+        )
+        return (outcome, storage)
+    }
+
+    /// An outside belief from long before says the crossing happened at some point since, not at
+    /// the inside fix. The ENTER is still owed and the belief still flips, but the entry is
+    /// discovered: dating it to the inside fix would report a guessed `entered_at` and duration.
+    @Test
+    func recordPolygonMembership_givenStaleOutsideProofOnTheSameRing_expectDiscoveredInsideAndBeliefFlipped() async {
+        let (outcome, storage) = await insideAfterOutside(provenAt: Self.insideAt.addingTimeInterval(-3 * 60 * 60))
+
+        #expect(outcome == .discoveredInside)
+        #expect(outcome.deliveredTransition == .enter)
+        let record = await storage.getPolygonMembership()["1"]
+        #expect(record?.membership == .inside)
+        #expect(record?.lastChangedAt == Self.insideAt)
+    }
+
+    /// The window is inclusive at its bound, as on Android, and closed one step past it.
+    @Test
+    func recordPolygonMembership_givenOutsideProofAtAndPastTheWindow_expectBoundaryRespected() async {
+        let limit = GeofenceConstants.polygonOutsideProofMaxAge
+
+        let atLimit = await insideAfterOutside(provenAt: Self.insideAt.addingTimeInterval(-limit))
+        let pastLimit = await insideAfterOutside(provenAt: Self.insideAt.addingTimeInterval(-limit - 0.001))
+
+        #expect(atLimit.outcome == .deliver(.enter))
+        #expect(pastLimit.outcome == .discoveredInside)
+    }
+
+    /// Proof at the very instant of the inside fix does not show the device outside BEFORE it, so
+    /// it brackets no crossing.
+    @Test
+    func recordPolygonMembership_givenOutsideProofAtTheInsideInstant_expectDiscoveredInside() async {
+        let (outcome, _) = await insideAfterOutside(provenAt: Self.insideAt)
+
+        #expect(outcome == .discoveredInside)
+    }
+
+    /// An inside write with no evidence time cannot be placed against the proof at all, so it
+    /// fails closed rather than borrowing the write time.
+    @Test
+    func recordPolygonMembership_givenNoInsideEvidenceTime_expectDiscoveredInside() async {
+        let (outcome, _) = await insideAfterOutside(provenAt: Self.insideAt.addingTimeInterval(-10), insideAt: nil)
+
+        #expect(outcome == .discoveredInside)
+    }
+
+    /// A long-held outside belief that is RE-PROVEN shortly before the arrival is fresh proof: the
+    /// confirmation advances the stamp, and the stamp is what the window is measured from.
+    @Test
+    func recordPolygonMembership_givenOldOutsideReconfirmedWithinTheWindow_expectObservedEnter() async {
+        let storage = await makeStorage()
+        await storage.setCachedGeofences([polygon(ring: Self.ringA)])
+        _ = await storage.recordPolygonMembership(
+            .outside, forIdentifier: "1", onlyIfBeliefPredates: Self.insideAt.addingTimeInterval(-3 * 60 * 60),
+            onlyIfRingMatches: Self.ringA, now: Self.insideAt
+        )
+        let confirmed = await storage.recordPolygonMembership(
+            .outside, forIdentifier: "1", onlyIfBeliefPredates: Self.insideAt.addingTimeInterval(-30),
+            onlyIfRingMatches: Self.ringA, now: Self.insideAt
+        )
+
+        let outcome = await storage.recordPolygonMembership(
+            .inside, forIdentifier: "1", onlyIfBeliefPredates: Self.insideAt,
+            onlyIfRingMatches: Self.ringA, now: Self.insideAt
+        )
+
+        #expect(confirmed == .suppressedNoChange)
+        #expect(outcome == .deliver(.enter))
+    }
+
+    /// A stamp ahead of `now` is discarded as evidence, so it proves nothing about the entry —
+    /// even though, read literally, it would sit "within" the window of a later clock.
+    @Test
+    func recordPolygonMembership_givenFutureStampedOutsideRecord_expectDiscoveredInside() async {
+        let storage = await makeStorage()
+        await storage.setCachedGeofences([polygon(ring: Self.ringA)])
+        var state = await storage.loadFromDisk() ?? GeofenceState()
+        state.polygonMembership = [
+            "1": PolygonMembershipRecord(
+                membership: .outside, lastChangedAt: Self.insideAt.addingTimeInterval(60), ring: Self.ringA
+            )
+        ]
+        await storage.saveToDisk(state)
+
+        let outcome = await storage.recordPolygonMembership(
+            .inside, forIdentifier: "1", onlyIfBeliefPredates: Self.insideAt,
+            onlyIfRingMatches: Self.ringA, now: Self.insideAt
+        )
+
+        #expect(outcome == .discoveredInside)
+    }
+
+    /// A record persisted by an earlier build, decoded from its stored JSON under the literal
+    /// `lastChangedAt` key: an old stamp demotes the entry even with a matching ring, and a recent
+    /// one still counts, so the upgrade neither invents nor loses an observed crossing.
+    @Test(arguments: [(-3 * 60 * 60, false), (-60, true)] as [(TimeInterval, Bool)])
+    func recordPolygonMembership_givenLegacyOutsideRecordWithRing_expectOnlyARecentStampObserved(
+        offset: TimeInterval, observed: Bool
+    ) async throws {
+        let storage = await makeStorage()
+        await storage.setCachedGeofences([polygon(ring: Self.ringA)])
+        let encoder = JSONEncoder()
+        let ringJSON = try String(decoding: encoder.encode(Self.ringA), as: UTF8.self)
+        let stamp = try String(decoding: encoder.encode(Self.insideAt.addingTimeInterval(offset)), as: UTF8.self)
+        let legacyJSON = #"{"membership":"outside","lastChangedAt":\#(stamp),"ring":\#(ringJSON)}"#
+        let legacy = try JSONDecoder().decode(PolygonMembershipRecord.self, from: Data(legacyJSON.utf8))
+        var state = await storage.loadFromDisk() ?? GeofenceState()
+        state.polygonMembership = ["1": legacy]
+        await storage.saveToDisk(state)
+
+        let outcome = await storage.recordPolygonMembership(
+            .inside, forIdentifier: "1", onlyIfBeliefPredates: Self.insideAt,
+            onlyIfRingMatches: Self.ringA, now: Self.insideAt
+        )
+
+        #expect(outcome == (observed ? .deliver(.enter) : .discoveredInside))
+    }
+
+    /// Freshness does not override geometry: recent proof against a replaced ring still proves no
+    /// entry into the new one.
+    @Test
+    func recordPolygonMembership_givenFreshOutsideProofAgainstTheReplacedRing_expectDiscoveredInside() async {
+        let storage = await makeStorage()
+        await storage.setCachedGeofences([polygon(ring: Self.ringA)])
+        _ = await storage.recordPolygonMembership(
+            .outside, forIdentifier: "1", onlyIfBeliefPredates: Self.insideAt.addingTimeInterval(-10),
+            onlyIfRingMatches: Self.ringA, now: Self.insideAt
+        )
+        await storage.setCachedGeofences([polygon(ring: Self.ringB)])
+
+        let outcome = await storage.recordPolygonMembership(
+            .inside, forIdentifier: "1", onlyIfBeliefPredates: Self.insideAt,
+            onlyIfRingMatches: Self.ringB, now: Self.insideAt
+        )
+
+        #expect(outcome == .discoveredInside)
+    }
+
+    /// Freshness does not override ordering either: an inside fix older than the outside proof is
+    /// still refused as superseded, not delivered as a crossing.
+    @Test
+    func recordPolygonMembership_givenInsideEvidenceOlderThanTheOutsideProof_expectSuppressedNewerDecision() async {
+        let (outcome, storage) = await insideAfterOutside(
+            provenAt: Self.insideAt, insideAt: Self.insideAt.addingTimeInterval(-10)
+        )
+
+        #expect(outcome == .suppressedNewerDecision)
+        #expect(await storage.getPolygonMembership()["1"]?.membership == .outside)
     }
 
     @Test

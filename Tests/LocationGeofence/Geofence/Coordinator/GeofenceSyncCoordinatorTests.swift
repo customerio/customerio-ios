@@ -38,6 +38,7 @@ struct GeofenceSyncCoordinatorTests {
         monitor: MockGeofenceRegionMonitor? = nil,
         contextStore: BackgroundDeliveryContextStore? = nil,
         emitter: TransitionEmitterSpy = TransitionEmitterSpy(),
+        dwellCoordinator: GeofenceDwellCoordinator? = nil,
         dateUtil: DateUtilStub = DateUtilStub()
     ) -> Setup {
         let resolvedContextStore = contextStore ?? makeContextStore()
@@ -48,6 +49,7 @@ struct GeofenceSyncCoordinatorTests {
             monitor: resolvedMonitor,
             contextStore: resolvedContextStore,
             transitionEmitter: emitter,
+            dwellCoordinator: dwellCoordinator,
             dateUtil: dateUtil,
             logger: LoggerMock()
         )
@@ -101,7 +103,8 @@ struct GeofenceSyncCoordinatorTests {
                 transitionTypes: region.transitionTypes.map(\.rawValue),
                 lastUpdated: region.lastUpdated.timeIntervalSince1970,
                 geosetIds: region.geosetIds.isEmpty ? nil : region.geosetIds,
-                metadata: region.metadata.isEmpty ? nil : region.metadata
+                metadata: region.metadata.isEmpty ? nil : region.metadata,
+                dwellThresholdSeconds: region.dwellThresholdSeconds > 0 ? region.dwellThresholdSeconds : nil
             )
         }
         let apiConfig = config.map { config in
@@ -2832,6 +2835,262 @@ struct GeofenceSyncCoordinatorTests {
     }
 
     @Test
+    func refresh_givenNewExitDwellCircleInside_expectVisitObservedWithoutEnterEvent() async {
+        let anchor = LocationData(latitude: 1.0, longitude: 2.0)
+        let storage = makeStorage()
+        let contextStore = makeContextStore()
+        let emitter = TransitionEmitterSpy()
+        let dwellCoordinator = GeofenceDwellCoordinator(
+            storage: storage,
+            transitionEmitter: emitter,
+            contextStore: contextStore,
+            logger: LoggerMock(),
+            freshFixProvider: { nil }
+        )
+        let dateUtil = DateUtilStub()
+        await storage.recordSync(
+            timestamp: dateUtil.givenNow.addingTimeInterval(-25 * 60 * 60),
+            location: LocationData(latitude: 0, longitude: 0)
+        )
+        let region = Geofence(
+            id: "exit-only",
+            latitude: anchor.latitude,
+            longitude: anchor.longitude,
+            radius: 100,
+            name: "Exit only",
+            transitionTypes: [.exit],
+            lastUpdated: Date(timeIntervalSince1970: 1),
+            dwellThresholdSeconds: 60
+        )
+        let api = GeofenceApiServiceMock()
+        api.fetchNearbyGeofencesClosure = { _, _, completion in
+            completion(.success(makeApiResponse(regions: [region])))
+        }
+        let setup = makeCoordinator(
+            api: api,
+            storage: storage,
+            contextStore: contextStore,
+            emitter: emitter,
+            dwellCoordinator: dwellCoordinator,
+            dateUtil: dateUtil
+        )
+
+        _ = await setup.coordinator.refresh(
+            latitude: anchor.latitude,
+            longitude: anchor.longitude,
+            anchorIsLiveFix: true
+        )
+        // Bounded on the write, not a yield count: the visit is recorded on a task of its own.
+        for _ in 0 ..< 200 where await storage.getDwellVisit(geofenceId: region.id) == nil {
+            try? await Task.sleep(nanoseconds: 10000000)
+        }
+
+        #expect(emitter.calls.wrappedValue.isEmpty)
+        let visit = await storage.getDwellVisit(geofenceId: region.id)
+        #expect(visit != nil)
+        // Registered around a device already inside: discovery, not an entry a dwell may report,
+        // and the anchor proves no presence until a fresh fix does.
+        #expect(visit?.entryObserved == false && visit?.awaitsPresenceProof == true)
+    }
+
+    /// The refresh records a widened edge before registering and keeps the record through the
+    /// refresh that drops the fence, so a callback queued at the drop is still recognised.
+    @Test
+    func remoteRefresh_givenExitDwellCircleDropped_expectWidenedEnterStillKnownThroughTheDrop() async {
+        let anchor = LocationData(latitude: 1.0, longitude: 2.0)
+        let storage = makeStorage()
+        let dateUtil = DateUtilStub()
+        let exitOnly = Geofence(
+            id: "exit-only", latitude: 1.0, longitude: 2.0, radius: 100, name: "exit-only",
+            transitionTypes: [.exit], lastUpdated: Date(timeIntervalSince1970: 1700000000),
+            dwellThresholdSeconds: 60
+        )
+        let served = Synchronized<[Geofence]>([exitOnly, makeRegion(id: "configured", latitude: 1.0, longitude: 2.0)])
+        let api = GeofenceApiServiceMock()
+        api.fetchNearbyGeofencesClosure = { _, _, completion in
+            completion(.success(makeApiResponse(regions: served.wrappedValue)))
+        }
+        let setup = makeCoordinator(api: api, storage: storage, dateUtil: dateUtil)
+        let refreshRemotely = {
+            await storage.recordSync(
+                timestamp: dateUtil.givenNow.addingTimeInterval(-25 * 60 * 60),
+                location: LocationData(latitude: 0, longitude: 0)
+            )
+            _ = await setup.coordinator.refresh(latitude: anchor.latitude, longitude: anchor.longitude, anchorIsLiveFix: true)
+        }
+
+        await refreshRemotely()
+        let registered = setup.monitor.monitoredRegionIdentifiers
+        #expect(registered.contains("exit-only"))
+        served.wrappedValue = []
+        await refreshRemotely()
+
+        #expect(await storage.transitionTarget(id: "exit-only") == .uncached(unconfigured: [.enter]))
+        #expect(await storage.transitionTarget(id: "configured") == .uncached(unconfigured: []))
+    }
+
+    /// The synthetic ENTER's send can stall (offline, a backlog flush). Its visit must not wait
+    /// behind it, or a real EXIT in that window finds nothing to close and the write lands after.
+    @Test
+    func refresh_givenInitialEnterSendStalls_expectVisitRecordedWhileItIsInFlight() async {
+        let anchor = LocationData(latitude: 1.0, longitude: 2.0)
+        let storage = makeStorage()
+        let contextStore = makeContextStore()
+        let emitter = StallingEnterEmitter()
+        let dwellCoordinator = GeofenceDwellCoordinator(
+            storage: storage,
+            transitionEmitter: emitter,
+            contextStore: contextStore,
+            logger: LoggerMock(),
+            freshFixProvider: { nil }
+        )
+        let dateUtil = DateUtilStub()
+        await storage.recordSync(
+            timestamp: dateUtil.givenNow.addingTimeInterval(-25 * 60 * 60),
+            location: LocationData(latitude: 0, longitude: 0)
+        )
+        let region = Geofence(
+            id: "enter-exit",
+            latitude: anchor.latitude,
+            longitude: anchor.longitude,
+            radius: 100,
+            name: "Enter and exit",
+            transitionTypes: [.enter, .exit],
+            lastUpdated: Date(timeIntervalSince1970: 1),
+            dwellThresholdSeconds: 60
+        )
+        let coordinator = makeStallingEnterCoordinator(
+            serving: region,
+            emitter: emitter,
+            dwellCoordinator: dwellCoordinator,
+            dateUtil: dateUtil
+        )
+
+        _ = await coordinator.refresh(
+            latitude: anchor.latitude,
+            longitude: anchor.longitude,
+            anchorIsLiveFix: true
+        )
+        for _ in 0 ..< 1000 {
+            if await emitter.entersReceived == 1, await storage.getDwellVisit(geofenceId: region.id) != nil { break }
+            await Task.yield()
+        }
+
+        #expect(await emitter.entersReceived == 1)
+        #expect(await emitter.isStalled)
+        // Within a millisecond, not equal: the visit's date round-trips through JSON.
+        let enteredAt = await storage.getDwellVisit(geofenceId: region.id)?.enteredAt
+        #expect(abs(enteredAt?.timeIntervalSince(dateUtil.givenNow) ?? .infinity) < 0.001)
+        await emitter.release()
+    }
+
+    /// A fence the SDK stops monitoring gets no EXIT. Its visit ends with the registration, so
+    /// the ENTER synthesized when a later re-rank registers it again cannot adopt a stay that
+    /// spans the time nobody watched. A fence that stays registered keeps its visit.
+    @Test
+    func registerWithOs_givenDwellFenceUnregistered_expectOnlyItsVisitEnded() async {
+        let storage = makeStorage()
+        let contextStore = makeContextStore()
+        let dwellCoordinator = GeofenceDwellCoordinator(
+            storage: storage, transitionEmitter: TransitionEmitterSpy(), contextStore: contextStore,
+            logger: LoggerMock(), freshFixProvider: { nil }
+        )
+        let fences = ["dropped", "kept"].map { id in
+            Geofence(
+                id: id, latitude: 1.0, longitude: 2.0, radius: 100, name: id,
+                transitionTypes: [.enter, .exit], lastUpdated: Date(timeIntervalSince1970: 1),
+                dwellThresholdSeconds: 600
+            )
+        }
+        await storage.setCachedGeofences(fences)
+        for fence in fences {
+            let visit = GeofenceDwellVisit(
+                visitId: "visit-\(fence.id)", enteredAt: Date(), geometryRevision: fence.dwellRevision,
+                userId: "user-1", emitted: false, timing: .recorded()
+            )
+            #expect(await storage.saveDwellVisit(visit, geofenceId: fence.id))
+        }
+        let setup = makeCoordinator(storage: storage, contextStore: contextStore, dwellCoordinator: dwellCoordinator)
+        let register = { (regions: [Geofence]) in
+            setup.coordinator.registerWithOsSync(
+                businessRegions: regions,
+                movementTriggerLocation: LocationData(latitude: 1.0, longitude: 2.0),
+                movementTriggerRadius: 500,
+                registerMovementTrigger: true
+            )
+        }
+        register(fences)
+
+        register([fences[1]])
+        for _ in 0 ..< 200 where await storage.getDwellVisit(geofenceId: "dropped") != nil {
+            await Task.yield()
+        }
+
+        #expect(await storage.getDwellVisit(geofenceId: "dropped") == nil)
+        #expect(await storage.getDwellVisit(geofenceId: "kept")?.visitId == "visit-kept")
+    }
+
+    /// The post-refresh polygon pass runs on the resolver the coordinator was given. Read from
+    /// `DIGraphShared.shared` instead, a replay drive built the production resolver — and with it a
+    /// production dwell coordinator — mid-drive and ran the pass against the process-wide graph.
+    @Test
+    func refresh_expectPostRefreshPolygonPassUsesTheInjectedResolver() async {
+        let storage = makeStorage()
+        let contextStore = makeContextStore()
+        let emitter = TransitionEmitterSpy()
+        let resolver = PolygonMembershipResolver(
+            storage: storage, transitionEmitter: emitter, logger: LoggerMock(), contextStore: contextStore,
+            fixResolver: MovementFixResolver(logger: LoggerMock()), notificationCenter: NotificationCenter()
+        )
+        let requested = Synchronized<Int>(0)
+        let api = GeofenceApiServiceMock()
+        api.fetchNearbyGeofencesClosure = { _, _, completion in
+            completion(.success(makeApiResponse(regions: [makeRegion(id: "g1", latitude: 1.0, longitude: 2.0)])))
+        }
+        let dateUtil = DateUtilStub()
+        await storage.recordSync(
+            timestamp: dateUtil.givenNow.addingTimeInterval(-25 * 60 * 60), location: LocationData(latitude: 0, longitude: 0)
+        )
+        let coordinator = GeofenceSyncCoordinatorImpl(
+            apiService: api, storage: storage, monitor: MockGeofenceRegionMonitor(), contextStore: contextStore,
+            transitionEmitter: emitter,
+            polygonResolver: {
+                requested.mutating { $0 += 1 }
+                return resolver
+            },
+            dateUtil: dateUtil, logger: LoggerMock()
+        )
+
+        _ = await coordinator.refresh(latitude: 1.0, longitude: 2.0, anchorIsLiveFix: true)
+
+        #expect(await settleOnMain(timeout: 5) { requested.wrappedValue >= 1 })
+    }
+
+    /// `makeCoordinator` is typed to `TransitionEmitterSpy`; this wires the stalling emitter instead.
+    /// Storage and identity come from `dwellCoordinator`, so all three share one store.
+    private func makeStallingEnterCoordinator(
+        serving region: Geofence,
+        emitter: StallingEnterEmitter,
+        dwellCoordinator: GeofenceDwellCoordinator,
+        dateUtil: DateUtilStub
+    ) -> GeofenceSyncCoordinatorImpl {
+        let api = GeofenceApiServiceMock()
+        api.fetchNearbyGeofencesClosure = { _, _, completion in
+            completion(.success(makeApiResponse(regions: [region])))
+        }
+        return GeofenceSyncCoordinatorImpl(
+            apiService: api,
+            storage: dwellCoordinator.storage,
+            monitor: MockGeofenceRegionMonitor(),
+            contextStore: dwellCoordinator.contextStore,
+            transitionEmitter: emitter,
+            dwellCoordinator: dwellCoordinator,
+            dateUtil: dateUtil,
+            logger: LoggerMock()
+        )
+    }
+
+    @Test
     func refresh_givenNewAndAlreadyRegisteredInside_expectOnlyNewEmitted() async {
         let anchor = LocationData(latitude: 1.0, longitude: 2.0)
         // Both inside; `gOld` is already registered, so only `gNew` is new.
@@ -3138,6 +3397,7 @@ private actor SpyGeofenceSyncStorage: GeofenceSyncStorage {
         case setCachedConfig
         case recordSync
         case recordRegistration
+        case recordRegistrationIntent
         case clearUserScopedState
     }
 
@@ -3180,6 +3440,11 @@ private actor SpyGeofenceSyncStorage: GeofenceSyncStorage {
     func getLastRegistrationCenter() async -> LocationData? {
         operations.append(.getLastRegistrationCenter)
         return await underlying.getLastRegistrationCenter()
+    }
+
+    func recordRegistrationIntent(for geofences: [Geofence], pruningToCache: Bool) async {
+        operations.append(.recordRegistrationIntent)
+        await underlying.recordRegistrationIntent(for: geofences, pruningToCache: pruningToCache)
     }
 
     func getRegisteredBusinessIds() async -> Set<String> {
@@ -3235,6 +3500,49 @@ private final class TransitionEmitterSpy: GeofenceTransitionEmitting, @unchecked
         }
         onEmit?(index)
     }
+
+    func trackDwell(
+        geofenceId: String, occurredAt: Date, context: GeofenceDwellContext, expectedUserId: String?
+    ) async -> Bool {
+        await trackTransition(geofenceId: geofenceId, transition: .dwell, occurredAt: occurredAt)
+        return true
+    }
+
+    func trackExit(geofenceId: String, occurredAt: Date, expectedUserId: String?) async {
+        await trackTransition(geofenceId: geofenceId, transition: .exit, occurredAt: occurredAt)
+    }
+}
+
+/// Holds every ENTER inside the tracker, a send that has not come back, until released.
+private actor StallingEnterEmitter: GeofenceTransitionEmitting {
+    private var released = false
+    private var stalledSends: [CheckedContinuation<Void, Never>] = []
+    private(set) var entersReceived = 0
+
+    var isStalled: Bool {
+        !stalledSends.isEmpty
+    }
+
+    func trackTransition(geofenceId: String, transition: GeofenceTransition, occurredAt: Date) async {
+        guard transition == .enter else { return }
+        entersReceived += 1
+        guard !released else { return }
+        await withCheckedContinuation { stalledSends.append($0) }
+    }
+
+    func release() {
+        released = true
+        stalledSends.forEach { $0.resume() }
+        stalledSends.removeAll()
+    }
+
+    func trackDwell(
+        geofenceId: String, occurredAt: Date, context: GeofenceDwellContext, expectedUserId: String?
+    ) async -> Bool {
+        true
+    }
+
+    func trackExit(geofenceId: String, occurredAt: Date, expectedUserId: String?) async {}
 }
 
 // MARK: - Async signal helper

@@ -19,7 +19,7 @@ extension GeofenceSyncCoordinatorImpl {
         let newPolygons = newlyRegistered.filter { $0.vertices != nil }
         let newInside = newlyRegistered.filter { region in
             region.vertices == nil
-                && region.transitionTypes.contains(.enter)
+                && (region.transitionTypes.contains(.enter) || region.dwellThresholdSeconds > 0)
                 && region.distanceTo(anchor) <= min(region.radius, osRegistration.maxMonitoringRadius)
         }
         if !newPolygons.isEmpty {
@@ -28,15 +28,32 @@ extension GeofenceSyncCoordinatorImpl {
         guard !newInside.isEmpty else { return }
         // Read outside the Task: `DateUtil` isn't Sendable, and Swift 5 mode doesn't diagnose it.
         let discoveredAt = dateUtil.now
-        // Off the gate: a slow send must not stall the next refresh.
-        Task { [transitionEmitter, contextStore, logger] in
+        // Off the gate: a slow send must not stall the next refresh. Not main-actor bound either, so
+        // the ENTER can't queue behind a sign-out; only the visit bookkeeping hops, in a child run
+        // alongside the emit — awaited after it, a stalled send left the visit unwritten past an EXIT.
+        Task { [transitionEmitter, contextStore, logger, dwellCoordinator] in
             for region in newInside {
                 // Per iteration: an awaited send can span a user switch.
                 guard contextStore.currentUserId == expectedUserId else { return }
-                logger.geofenceTransitionSynthesized(geofenceId: region.id, transition: .enter)
-                await transitionEmitter.trackTransition(
-                    geofenceId: region.id, transition: .enter, occurredAt: discoveredAt
+                async let visitRecorded: Void? = dwellCoordinator?.handleBoundary(
+                    geofence: region,
+                    transition: .enter,
+                    occurredAt: discoveredAt,
+                    expectedUserId: expectedUserId,
+                    // Discovery, not a crossing: the stay began at some unknown earlier time, so
+                    // `discoveredAt` is never a reported entry. Nor is presence proven: the anchor
+                    // may be a stored location, and it carries no accuracy. The candidate counts
+                    // time only from the first fresh fix wholly inside.
+                    entryObserved: false,
+                    presenceProven: false
                 )
+                if region.transitionTypes.contains(.enter) {
+                    logger.geofenceTransitionSynthesized(geofenceId: region.id, transition: .enter)
+                    await transitionEmitter.trackTransition(
+                        geofenceId: region.id, transition: .enter, occurredAt: discoveredAt
+                    )
+                }
+                _ = await visitRecorded
             }
         }
     }
@@ -44,9 +61,9 @@ extension GeofenceSyncCoordinatorImpl {
     /// Forced-fresh: a cached fix would re-affirm the old verdict. Pass `heldFix` through; a new
     /// request would fail, as it needs a fix newer than the held one.
     func evaluatePolygonsAfterMovement(expectedUserId: String, heldFix: ResolvedFix? = nil) {
-        Task { @MainActor [contextStore] in
+        Task { @MainActor [contextStore, polygonResolver] in
             guard contextStore.currentUserId == expectedUserId else { return }
-            await DIGraphShared.shared.polygonMembershipResolver.evaluateAllPolygons(
+            await polygonResolver().evaluateAllPolygons(
                 reason: .movement,
                 requiresFreshFix: true,
                 heldFix: heldFix,
@@ -56,9 +73,9 @@ extension GeofenceSyncCoordinatorImpl {
     }
 
     private func evaluateNewPolygons(_ polygons: [Geofence], expectedUserId: String) {
-        Task { @MainActor [contextStore] in
+        Task { @MainActor [contextStore, polygonResolver] in
             guard contextStore.currentUserId == expectedUserId else { return }
-            await DIGraphShared.shared.polygonMembershipResolver.evaluateNewlyRegistered(
+            await polygonResolver().evaluateNewlyRegistered(
                 geofenceIds: polygons.map(\.id),
                 isStillCurrent: { contextStore.currentUserId == expectedUserId }
             )

@@ -240,6 +240,49 @@ struct PendingGeofenceMetricStoreTests {
         #expect(Set(items.compactMap(\.geosetId)) == ["set_y", "set_z"])
     }
 
+    /// Two visits' DWELLs on one fence in the same second are two facts. Keyed without their
+    /// occurrence, the second was dropped as a duplicate while the append still reported it
+    /// persisted, and removing either row's key removed both.
+    @Test
+    func append_givenDistinctOccurrencesInTheSameSecond_expectBothKeptAndRemovedSeparately() async {
+        let dir = makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let store = makeStore(directory: dir)
+        let first = makeMetric(transition: .dwell, transitionId: "visit-a")
+        let second = makeMetric(transition: .dwell, transitionId: "visit-b")
+
+        #expect(await store.append([first]) == .persisted)
+        #expect(await store.append([second]) == .persisted)
+
+        #expect(await store.rows() == [first, second])
+        #expect(await store.remove(key: first.key))
+        #expect(await store.rows() == [second])
+    }
+
+    /// A retried fact repeats its occurrence: it lands on the row already queued, which keeps its
+    /// original timestamp and evidence.
+    @Test
+    func append_givenTheSameOccurrenceRetried_expectTheFirstRowKept() async {
+        let dir = makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let store = makeStore(directory: dir)
+        let original = PendingGeofenceMetric(
+            geofenceId: "geo_1", transition: .dwell, timestamp: Date(timeIntervalSince1970: 1700000000.2),
+            userId: "user_1", name: nil, transitionId: "visit-a", geosetId: "set_y",
+            visitId: "visit-a", dwellThresholdSeconds: 60, dwellDurationSeconds: 61, detectionSource: "location_evidence"
+        )
+        let retried = PendingGeofenceMetric(
+            geofenceId: "geo_1", transition: .dwell, timestamp: Date(timeIntervalSince1970: 1700000000.7),
+            userId: "user_1", name: nil, transitionId: "visit-a", geosetId: "set_y",
+            visitId: "visit-a", dwellThresholdSeconds: 60, dwellDurationSeconds: 62, detectionSource: "location_evidence"
+        )
+
+        _ = await store.append([original])
+        #expect(await store.append([retried]) == .persisted)
+
+        #expect(await store.rows() == [original])
+    }
+
     @Test
     func append_givenEmpty_expectNoOpReturnTrue() async {
         let dir = makeTempDirectory()
@@ -264,7 +307,7 @@ struct PendingGeofenceMetricStoreTests {
         let metric = try decoder.decode(PendingGeofenceMetric.self, from: Data(legacyJson.utf8))
 
         #expect(metric.geosetId == nil)
-        #expect(metric.key == "geo%5F1_enter_1700000000_user%5F1")
+        #expect(metric.key == "geo%5F1_enter_1700000000_user%5F1_txn%5Flegacy")
     }
 
     /// Unescaped, `a_42` with no geoset and `a` in geoset `42` would both key `..._a_42`.

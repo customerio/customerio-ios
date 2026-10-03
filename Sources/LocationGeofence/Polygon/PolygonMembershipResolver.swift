@@ -10,8 +10,9 @@ import UIKit
 @MainActor
 final class PolygonMembershipResolver {
     let storage: GeofenceStorage
-    private let transitionEmitter: GeofenceTransitionEmitting
     let fixResolver: MovementFixResolver
+    let transitionEmitter: GeofenceTransitionEmitting
+    let dwellCoordinator: GeofenceDwellCoordinator?
     let logger: Logger
     let contextStore: BackgroundDeliveryContextStore
     let dateUtil: DateUtil
@@ -33,7 +34,8 @@ final class PolygonMembershipResolver {
         contextStore: BackgroundDeliveryContextStore,
         dateUtil: DateUtil = DIGraphShared.shared.dateUtil,
         fixResolver: MovementFixResolver? = nil,
-        notificationCenter: NotificationCenter = .default
+        notificationCenter: NotificationCenter = .default,
+        dwellCoordinator: GeofenceDwellCoordinator? = nil
     ) {
         self.storage = storage
         self.transitionEmitter = transitionEmitter
@@ -41,6 +43,7 @@ final class PolygonMembershipResolver {
         self.contextStore = contextStore
         self.dateUtil = dateUtil
         self.notificationCenter = notificationCenter
+        self.dwellCoordinator = dwellCoordinator
         // Ten metres, not the circle path's 100: a 100 m fix can't decide a minimum-size polygon.
         self.fixResolver = fixResolver ?? MovementFixResolver(
             logger: logger,
@@ -49,6 +52,12 @@ final class PolygonMembershipResolver {
             desiredAccuracy: kCLLocationAccuracyNearestTenMeters
         )
         registerForegroundEvaluation()
+        dwellCoordinator?.polygonVerifier = { [weak self] geofenceId in
+            guard let self else { return }
+            _ = await self.evaluateMembership(
+                geofenceIds: [geofenceId], reason: .foreground, requiresFreshFix: true
+            )
+        }
     }
 
     deinit {
@@ -58,30 +67,51 @@ final class PolygonMembershipResolver {
     }
 
     /// A geofence missing from the cache is forwarded as a circle: losing a real crossing is worse
-    /// than reporting a covering-circle-shaped one.
+    /// than reporting a covering-circle-shaped one. It carries no visit, having no fence to measure.
+    /// - Parameter receivedForUserId: who was identified when the OS delivered the callback, read
+    ///   synchronously in it; `""` when anonymous. Nil reads it on entry instead.
+    /// - Parameter entryObserved: whether a circle fence's ENTER may start an observed visit; see
+    ///   `GeofenceTransitionHandler`.
     @discardableResult
     func handleTransition(
         identifier: String,
         transition: GeofenceTransition,
         occurredAt: Date,
-        eventCircle: GeofenceEventCircle = .unknown
+        eventCircle: GeofenceEventCircle = .unknown,
+        receivedForUserId: String? = nil,
+        entryObserved: Bool = true
     ) async -> PolygonTransitionOutcome {
-        guard let geofence = await cachedGeofence(id: identifier), geofence.vertices != nil else {
-            await transitionEmitter.trackTransition(geofenceId: identifier, transition: transition, occurredAt: occurredAt)
+        // A switch during the awaits below must not relabel this crossing or its visit. Anonymous
+        // maps to "" so no later sign-in can claim it either.
+        let receivedForUserId = receivedForUserId ?? contextStore.currentUserId ?? ""
+        // One read for both answers, so an uncached ENTER meets its user check after exactly the
+        // storage round trip it always had.
+        let geofence: Geofence
+        switch await storage.transitionTarget(id: identifier) {
+        case .cached(let cached):
+            geofence = cached
+        case .uncached(let unconfigured):
+            await forwardUncachedTransition(
+                identifier: identifier, transition: transition, occurredAt: occurredAt,
+                receivedForUserId: receivedForUserId, unconfigured: unconfigured
+            )
+            return .nothingToRearm
+        }
+        guard geofence.vertices != nil else {
+            await forwardCircleTransition(
+                geofence: geofence, transition: transition, occurredAt: occurredAt,
+                receivedForUserId: receivedForUserId, entryObserved: entryObserved,
+                raisedByCurrentCircle: Self.circle(eventCircle, raisedEventsOf: geofence)
+            )
             return .nothingToRearm
         }
         switch transition {
+        case .dwell:
+            // Core Location never produces dwell transitions. Dwell is emitted only after this
+            // resolver supplies fresh, real-shape membership evidence to the dwell coordinator.
+            return .nothingToRearm
         case .exit:
-            // The crossed circle is checked in the write, not here: a refresh may replace the fence
-            // first.
-            switch eventCircle {
-            case .circle(let crossed):
-                await apply(.outside, to: geofence, evidence: occurredAt, confirmedByFix: false, evaluatedCircle: crossed)
-            case .unknown:
-                await apply(.outside, to: geofence, evidence: occurredAt, confirmedByFix: false, evaluatedCircle: nil)
-            case .expired:
-                logger.geofencePolygonUndecided(identifier: identifier, reason: .circleExpired, pass: nil)
-            }
+            await applyCoveringCircleExit(geofence: geofence, eventCircle: eventCircle, occurredAt: occurredAt)
             return .nothingToRearm
         case .enter:
             guard geofence.polygonRegion != nil else {
@@ -151,7 +181,21 @@ final class PolygonMembershipResolver {
         let pass = nextPass()
         let heldFixDecision = heldFixUse(heldFix)
         logger.geofencePolygonPassStarted(reason: reason, count: polygons.count, pass: pass, heldFix: heldFixDecision.use)
-        guard polygons.isEmpty == false else { return }
+        guard polygons.isEmpty == false else {
+            // A circle-only pass needs no new location request, but a fresh fix already held
+            // by the caller can still prove an existing circle visit ended.
+            guard heldFixDecision.age >= 0 else { return }
+            let location: CLLocation?
+            switch heldFixDecision.use {
+            case .reused: location = heldFix?.location
+            case .newer: location = heldFixDecision.newerFix
+            case .none, .tooOld: location = nil
+            }
+            if let location {
+                await dwellCoordinator?.recordOutsideEvidence(fix: location, expectedUserId: nil)
+            }
+            return
+        }
         // One request per pass: per-polygon requests would each hold the main actor for a timeout.
         guard let fix = await passFix(heldFix: heldFix, decision: heldFixDecision, requiringFresh: requiresFreshFix) else {
             for geofence in polygons {
@@ -223,40 +267,6 @@ final class PolygonMembershipResolver {
             )
             return nil
         }
-    }
-
-    /// The write is refused if the fence has moved off `evaluatedRing`/`evaluatedCircle`. Only the
-    /// emit checks `isStillCurrent`: a belief is geometry, true whoever is signed in.
-    func apply(
-        _ membership: PolygonMembership,
-        to geofence: Geofence,
-        evidence: Date,
-        confirmedByFix: Bool,
-        evaluatedRing: [LocationData]? = nil,
-        evaluatedCircle: MonitoredCircle? = nil,
-        isStillCurrent: (@Sendable () -> Bool)? = nil
-    ) async {
-        let outcome = await storage.recordPolygonMembership(
-            membership,
-            forIdentifier: geofence.id,
-            onlyIfBeliefPredates: evidence,
-            onlyIfRingMatches: evaluatedRing,
-            onlyIfCircleMatches: evaluatedCircle
-        )
-        guard case .deliver(let transition) = outcome else {
-            logger.geofencePolygonNotDelivered(identifier: geofence.id, reason: .outcome(outcome))
-            return
-        }
-        guard geofence.transitionTypes.contains(transition) else {
-            logger.geofencePolygonNotDelivered(identifier: geofence.id, reason: .transitionNotRegistered)
-            return
-        }
-        if let isStillCurrent, !isStillCurrent() {
-            logger.geofencePolygonNotDelivered(identifier: geofence.id, reason: .userChanged)
-            return
-        }
-        logger.geofencePolygonTransition(identifier: geofence.id, transition: transition, confirmedByFix: confirmedByFix)
-        await transitionEmitter.trackTransition(geofenceId: geofence.id, transition: transition, occurredAt: evidence)
     }
 
     private func cachedGeofence(id: String) async -> Geofence? {

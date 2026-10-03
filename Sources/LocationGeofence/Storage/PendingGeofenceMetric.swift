@@ -13,12 +13,20 @@ struct PendingGeofenceMetric: Codable, Equatable, Sendable, GeofenceMetric {
     let geosetId: String?
     /// Optional so rows persisted before metadata still decode.
     let metadata: [String: GeofenceMetadataValue]?
+    let visitId: String?
+    let enteredAt: Date?
+    let dwellThresholdSeconds: Int?
+    let dwellDurationSeconds: Int?
+    let detectionSource: String?
 
     /// Includes `userId`: the queue survives sign-out, so one crossing can be queued under two users.
-    /// Escaped so a `_` in a value can't imitate a boundary.
+    /// Includes `transitionId`, the occurrence: two visits' facts in one second stay two rows, while
+    /// a retried fact repeats its occurrence and lands on the row already queued. Derived, never
+    /// stored, so rows persisted under an older key still match their own removal. Escaped so a
+    /// `_` in a value can't imitate a boundary.
     var key: String {
         let sec = Int(timestamp.timeIntervalSince1970)
-        var components = [geofenceId, transition.rawValue, "\(sec)", userId]
+        var components = [geofenceId, transition.rawValue, "\(sec)", userId, transitionId]
         if let geosetId { components.append(geosetId) }
         return components.map(Self.escapedForKey).joined(separator: "_")
     }
@@ -38,7 +46,12 @@ struct PendingGeofenceMetric: Codable, Equatable, Sendable, GeofenceMetric {
         name: String?,
         transitionId: String,
         geosetId: String? = nil,
-        metadata: [String: GeofenceMetadataValue]? = nil
+        metadata: [String: GeofenceMetadataValue]? = nil,
+        visitId: String? = nil,
+        enteredAt: Date? = nil,
+        dwellThresholdSeconds: Int? = nil,
+        dwellDurationSeconds: Int? = nil,
+        detectionSource: String? = nil
     ) {
         self.geofenceId = geofenceId
         self.transition = transition
@@ -48,6 +61,11 @@ struct PendingGeofenceMetric: Codable, Equatable, Sendable, GeofenceMetric {
         self.transitionId = transitionId
         self.geosetId = geosetId
         self.metadata = metadata
+        self.visitId = visitId
+        self.enteredAt = enteredAt
+        self.dwellThresholdSeconds = dwellThresholdSeconds
+        self.dwellDurationSeconds = dwellDurationSeconds
+        self.detectionSource = detectionSource
     }
 
     enum CodingKeys: String, CodingKey {
@@ -59,6 +77,11 @@ struct PendingGeofenceMetric: Codable, Equatable, Sendable, GeofenceMetric {
         case transitionId = "transition_id"
         case geosetId = "geoset_id"
         case metadata
+        case visitId = "visit_id"
+        case enteredAt = "entered_at"
+        case dwellThresholdSeconds = "dwell_threshold_seconds"
+        case dwellDurationSeconds = "dwell_duration_seconds"
+        case detectionSource = "detection_source"
     }
 
     func withResolved(name: String?, metadata: [String: GeofenceMetadataValue]?) -> PendingGeofenceMetric {
@@ -70,7 +93,12 @@ struct PendingGeofenceMetric: Codable, Equatable, Sendable, GeofenceMetric {
             name: name,
             transitionId: transitionId,
             geosetId: geosetId,
-            metadata: metadata
+            metadata: metadata,
+            visitId: visitId,
+            enteredAt: enteredAt,
+            dwellThresholdSeconds: dwellThresholdSeconds,
+            dwellDurationSeconds: dwellDurationSeconds,
+            detectionSource: detectionSource
         )
     }
 }

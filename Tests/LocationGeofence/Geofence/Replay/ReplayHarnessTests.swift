@@ -14,23 +14,33 @@ struct ReplayHarnessTests {
     /// Past `contradictionGateReplayWindow`: inside it an enter while still outside is refused.
     private static let arrivalAt: TimeInterval = 30
 
-    private func catalogue(_ fenceId: String) -> String {
-        """
-        [{"id":"\(fenceId)","name":"F","latitude":\(Self.latitude),"longitude":\(Self.longitude),"radius":250,"transitionTypes":["enter","exit"],"geosetIds":["7"]}]
+    private func catalogue(_ fenceId: String, dwellThresholdSeconds: Int? = nil) -> String {
+        let dwell = dwellThresholdSeconds.map { ",\"dwellThresholdSeconds\":\($0)" } ?? ""
+        return """
+        [{"id":"\(fenceId)","name":"F","latitude":\(Self.latitude),"longitude":\(Self.longitude),"radius":250,"transitionTypes":["enter","exit"],"geosetIds":["7"]\(dwell)}]
         """
     }
 
+    /// `registrationFixAge` is how old the cached position the registration reads is; nil for none
+    /// at all, which leaves the SDK assuming the device is outside rather than knowing it.
     @available(iOS 17.0, *)
-    private func registered(_ harness: ReplayHarness, fenceId: String) async throws {
-        try harness.enqueueFetch(bodyJSON: catalogue(fenceId))
+    private func registered(
+        _ harness: ReplayHarness,
+        fenceId: String,
+        dwellThresholdSeconds: Int? = nil,
+        registrationFixAge: TimeInterval? = 0
+    ) async throws {
+        try harness.enqueueFetch(bodyJSON: catalogue(fenceId, dwellThresholdSeconds: dwellThresholdSeconds))
         harness.loadPulledFixes(stimuli: [0, Self.arrivalAt], samples: [
-            harness.pulledFix(
-                latitude: Self.awayLatitude,
-                longitude: Self.longitude,
-                accuracy: 10,
-                age: 0,
-                at: 0
-            ),
+            registrationFixAge.map {
+                harness.pulledFix(
+                    latitude: Self.awayLatitude,
+                    longitude: Self.longitude,
+                    accuracy: 10,
+                    age: $0,
+                    at: 0
+                )
+            } ?? harness.emptyPull(at: 0),
             harness.pulledFix(
                 latitude: Self.latitude,
                 longitude: Self.longitude,
@@ -126,6 +136,122 @@ struct ReplayHarnessTests {
             #expect(accepted.first?["id"] == "A")
             #expect(accepted.first?["t"] == "enter")
         }
+    }
+
+    /// Replay composes dwell as production does. Left to the DI default, bootstrap resolved
+    /// `GeofenceDwellCoordinator.shared` — built from whichever harness touched it first — and
+    /// awaited it inside the process-global run chain, while this composition's resolver and
+    /// coordinator ran the pre-dwell paths production no longer takes.
+    @Test
+    @available(iOS 17.0, *)
+    func deliverCrossing_givenArmedDwellCircle_expectVisitRecordedByThisComposition() async throws {
+        try await ReplayHarness.withTail {
+            let harness = ReplayHarness()
+            defer { harness.detachFromBootstrap() }
+            #expect(harness.bootstrapResolvesOwnDwellCoordinator)
+            try await registered(harness, fenceId: "A", dwellThresholdSeconds: 60)
+
+            harness.deliverCrossing(fence: "A", transition: .enter)
+            await Task.yield()
+            await settleOnMain { harness.emitted(ev: "transition.accepted").count == 1 }
+
+            #expect(harness.emitted(ev: "transition.accepted").first?["t"] == "enter")
+            // Recorded after the ENTER is tracked, so it can trail the acceptance by a hop or two.
+            var visit = await harness.storedVisit(fence: "A")
+            for _ in 0 ..< 200 where visit == nil {
+                try await Task.sleep(nanoseconds: 10000000)
+                visit = await harness.storedVisit(fence: "A")
+            }
+            #expect(visit?.entryObserved == true)
+        }
+    }
+
+    /// Registered with no fix, or one too old to settle the side, the condition is added ASSUMING
+    /// the device is outside. `CLMonitor` answers a wrong assumption with the real state, so the
+    /// ENTER that follows may describe a device that was inside all along: still delivered, but the
+    /// visit it starts is a candidate whose start is not reported as an entry.
+    @Test(arguments: [nil, 600] as [TimeInterval?])
+    @available(iOS 17.0, *)
+    func deliverCrossing_givenAssumedOutsideBaseline_expectEnterDeliveredAndVisitCandidate(
+        registrationFixAge: TimeInterval?
+    ) async throws {
+        try await ReplayHarness.withTail {
+            let harness = ReplayHarness()
+            defer { harness.detachFromBootstrap() }
+            try await registered(
+                harness, fenceId: "A", dwellThresholdSeconds: 60, registrationFixAge: registrationFixAge
+            )
+
+            let visit = try await enterAndAwaitVisit(harness, fenceId: "A")
+
+            #expect(harness.emitted(ev: "transition.accepted").first?["t"] == "enter")
+            #expect(visit != nil, "the ENTER started no visit, so this test proves nothing")
+            #expect(visit?.entryObserved == false, "an assumption's correction was dated as an entry")
+        }
+    }
+
+    /// `.unmonitored` means the OS stopped watching the fence, so the stored entry can no longer
+    /// vouch for a continuous stay. Kept, a later EXIT or dwell would measure across the gap.
+    @Test
+    @available(iOS 17.0, *)
+    func deliverMonitorStopped_givenOpenDwellVisit_expectVisitInvalidated() async throws {
+        try await ReplayHarness.withTail {
+            let harness = ReplayHarness()
+            defer { harness.detachFromBootstrap() }
+            try await registered(harness, fenceId: "A", dwellThresholdSeconds: 60)
+            try await enterAndAwaitVisit(harness, fenceId: "A")
+
+            harness.deliverMonitorStopped(fence: "A")
+
+            var visit = await harness.storedVisit(fence: "A")
+            for _ in 0 ..< 200 where visit != nil {
+                try await Task.sleep(nanoseconds: 10000000)
+                visit = await harness.storedVisit(fence: "A")
+            }
+            #expect(visit == nil, "an unmonitored fence kept its visit")
+        }
+    }
+
+    /// The movement trigger carries no visit; its loss must not end a business fence's stay.
+    @Test
+    @available(iOS 17.0, *)
+    func deliverMonitorStopped_givenMovementTrigger_expectBusinessVisitKept() async throws {
+        try await ReplayHarness.withTail {
+            let harness = ReplayHarness()
+            defer { harness.detachFromBootstrap() }
+            try await registered(harness, fenceId: "A", dwellThresholdSeconds: 60)
+            let visit = try await enterAndAwaitVisit(harness, fenceId: "A")
+
+            harness.deliverMonitorStopped(fence: GeofenceConstants.movementTriggerIdentifier)
+            #expect(
+                await settleOnMain {
+                    harness.emitted(ev: "os.monitor.stopped")
+                        .contains { $0["id"] == GeofenceConstants.movementTriggerIdentifier }
+                },
+                "the trigger's stop was never processed, so this test proves nothing"
+            )
+            try await harness.settleBoundaries()
+            for _ in 0 ..< 10 {
+                await Task.yield()
+            }
+
+            #expect(await harness.storedVisit(fence: "A") == visit)
+        }
+    }
+
+    @discardableResult
+    @available(iOS 17.0, *)
+    private func enterAndAwaitVisit(_ harness: ReplayHarness, fenceId: String) async throws -> GeofenceDwellVisit? {
+        harness.deliverCrossing(fence: fenceId, transition: .enter)
+        await Task.yield()
+        await settleOnMain { harness.emitted(ev: "transition.accepted").count == 1 }
+        var visit = await harness.storedVisit(fence: fenceId)
+        for _ in 0 ..< 200 where visit == nil {
+            try await Task.sleep(nanoseconds: 10000000)
+            visit = await harness.storedVisit(fence: fenceId)
+        }
+        #expect(visit != nil, "the ENTER never recorded a visit")
+        return visit
     }
 
     /// Each `enter` follows an `exit`, or dedup discards it before the cooldown is consulted. Each

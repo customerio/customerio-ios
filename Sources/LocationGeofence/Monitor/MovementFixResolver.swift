@@ -36,16 +36,23 @@ final class MovementFixResolver: NSObject, @preconcurrency CLLocationManagerDele
     var systemCachedFix: (() -> CLLocation?)?
 
     /// The newer of the OS cache and `latestFix`, since the cache moves on its own. A fallback, not a
-    /// freshness baseline: compare against `latestFix` for "is the answer newer".
+    /// freshness baseline: compare against `latestFix` for "is the answer newer". A fix dated in the
+    /// future of the clock is neither.
     var cachedFix: CLLocation? {
         FixSelection.newest(
-            cached: FixSelection.usable(systemCachedFix.map { $0() } ?? manager.location),
+            cached: FixSelection.usable(systemCachedFix.map { $0() } ?? manager.location).flatMap { isFuture($0) ? nil : $0 },
             delivered: latestFix
         )?.fix
     }
 
-    /// Retained even when it arrives after a timeout.
-    private(set) var latestFix: CLLocation?
+    /// Retained even when it arrives after a timeout. Hidden once it reads as from the future —
+    /// delivered before the clock was set back — so it can neither pass as fresh nor outrank a fix
+    /// taken on the current clock.
+    var latestFix: CLLocation? {
+        deliveredFix.flatMap { isFuture($0) ? nil : $0 }
+    }
+
+    private var deliveredFix: CLLocation?
     private var pendingCompletions: [(LocationData?, Bool) -> Void] = []
     private var fallbackFix: CLLocation?
     private var pendingPurpose: GeofenceFixPurpose?
@@ -89,7 +96,7 @@ final class MovementFixResolver: NSObject, @preconcurrency CLLocationManagerDele
     /// the request failed or timed out and the answer is the stale fallback.
     func resolve(cached: CLLocation?, purpose: GeofenceFixPurpose, completion: @escaping (LocationData?, Bool) -> Void) {
         let age = cached.map { self.age(of: $0) }
-        if let cached, let age, age <= maxAge {
+        if let cached, let age, isCurrent(cached) {
             logger.geofenceMovementFixResolved(ageSeconds: age, requested: false, speed: cached.speed, purpose: purpose)
             completion(locationData(from: cached), true)
             return
@@ -128,7 +135,7 @@ final class MovementFixResolver: NSObject, @preconcurrency CLLocationManagerDele
 
     /// Freshness not yet judged: a new manager can echo a stale cached location.
     func handleDeliveredFix(_ fix: CLLocation) {
-        guard age(of: fix) <= maxAge else {
+        guard isCurrent(fix) else {
             recordDeliveredFix(fix)
             return
         }
@@ -157,10 +164,23 @@ final class MovementFixResolver: NSObject, @preconcurrency CLLocationManagerDele
         dateUtil.now.timeIntervalSince(fix.timestamp)
     }
 
+    /// Fresh: no older than `maxAge`, and not from the future. A future date means the fix was taken
+    /// before the clock was set back, at a time the current clock cannot place. A second of slack
+    /// absorbs read skew between the fix's clock and this one.
+    private func isCurrent(_ fix: CLLocation) -> Bool {
+        let age = age(of: fix)
+        return age >= -GeofenceConstants.dwellWallClockStepTolerance && age <= maxAge
+    }
+
+    private func isFuture(_ fix: CLLocation) -> Bool {
+        age(of: fix) < -GeofenceConstants.dwellWallClockStepTolerance
+    }
+
     private func recordDeliveredFix(_ fix: CLLocation) {
         logger.geofenceFixReceived(fix, source: "movement_resolver", now: dateUtil.now)
+        guard !isFuture(fix) else { return }
         if latestFix.map({ fix.timestamp > $0.timestamp }) ?? true {
-            latestFix = fix
+            deliveredFix = fix
         }
     }
 
