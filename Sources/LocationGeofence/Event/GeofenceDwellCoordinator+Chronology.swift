@@ -73,6 +73,32 @@ struct GeofenceExitMark: Equatable {
     }
 }
 
+/// The latest native ENTERs a fence has seen in this process: one a crossing, one not — an OS
+/// correction of a state it assumed, or a baseline heal. Kept apart, so a correction noted after a
+/// crossing cannot hide the crossing's end of an emitted stay.
+struct GeofenceEnterMarks {
+    var crossing: GeofenceExitMark?
+    var correction: GeofenceExitMark?
+
+    /// Whether these ENTERs end `visit`. A crossing ends any stay it is later than. A correction
+    /// says the device is inside, not that it arrived again: it ends only a stay not yet qualified,
+    /// which restarts at it, since nothing watched the time the OS assumed the device outside. A
+    /// dwell already emitted or reserved stands, so the stay does not qualify a second time.
+    func supersede(_ visit: GeofenceDwellVisit) -> Bool {
+        !superseding(visit).isEmpty
+    }
+
+    /// The ENTERs that end `visit`, by the rule of `supersede`.
+    func superseding(_ visit: GeofenceDwellVisit) -> [GeofenceExitMark] {
+        var ending: [GeofenceExitMark] = []
+        if let crossing, crossing.supersedes(visit) { ending.append(crossing) }
+        if !visit.emitted, visit.dwellReservation == nil, let correction, correction.supersedes(visit) {
+            ending.append(correction)
+        }
+        return ending
+    }
+}
+
 /// Ordering boundary events against visits across wall-clock steps, split from the coordinator's
 /// visit lifecycle so both stay under the file cap.
 extension GeofenceDwellCoordinator {
@@ -98,20 +124,25 @@ extension GeofenceDwellCoordinator {
     }
 
     /// Notes a native ENTER as the OS delivers it, ahead of any evidence its wake re-arms.
-    func noteEnter(_ mark: GeofenceExitMark, geofenceId: String) {
-        if let noted = enterMarks[geofenceId], noted.processedUptime >= mark.processedUptime,
+    /// `crossing` is the ENTER's `entryObserved`.
+    func noteEnter(_ mark: GeofenceExitMark, geofenceId: String, crossing: Bool) {
+        let slot: WritableKeyPath<GeofenceEnterMarks, GeofenceExitMark?> = crossing ? \.crossing : \.correction
+        var marks = enterMarks[geofenceId] ?? GeofenceEnterMarks()
+        if let noted = marks[keyPath: slot], noted.processedUptime >= mark.processedUptime,
            noted.mappedUptime >= mark.mappedUptime { return }
-        enterMarks[geofenceId] = mark
+        marks[keyPath: slot] = mark
+        enterMarks[geofenceId] = marks
     }
 
     /// Notes a native ENTER from the OS callback itself, before its routing task runs.
-    func noteEnter(geofenceId: String, occurredAt: Date) {
-        noteEnter(GeofenceExitMark(date: occurredAt, processedAt: readClock(), source: .enterEvent), geofenceId: geofenceId)
+    func noteEnter(geofenceId: String, occurredAt: Date, crossing: Bool) {
+        let mark = GeofenceExitMark(date: occurredAt, processedAt: readClock(), source: .enterEvent)
+        noteEnter(mark, geofenceId: geofenceId, crossing: crossing)
     }
 
-    /// Whether a native ENTER this process has seen is a later crossing than `visit`'s.
+    /// Whether a native ENTER this process has seen ends `visit` (`GeofenceEnterMarks.supersede`).
     func enterSuperseded(_ visit: GeofenceDwellVisit, geofenceId: String) -> Bool {
-        enterMarks[geofenceId]?.supersedes(visit) ?? false
+        enterMarks[geofenceId]?.supersede(visit) ?? false
     }
 
     /// Whether an EXIT this process has seen for the fence ends `visit`.

@@ -99,30 +99,32 @@ extension GeofenceDwellCoordinator {
     /// Remembers `visit`, which a re-ENTER replaced because an EXIT overtook it, under the exact
     /// dates of the EXIT events that did: one of them may still be in flight to report it. Not
     /// when outside evidence overtook it too, which no EXIT may time across, nor when only outside
-    /// evidence did, which no EXIT event will come to claim. With `reenteredAt`, only EXITs that
-    /// ENTER followed count.
+    /// evidence did, which no EXIT event will come to claim. With `reenteredAfter`, only EXITs that
+    /// every one of those ENTERs followed count.
     func rememberVisitEndedByPendingExit(
         _ visit: GeofenceDwellVisit,
         geofenceId: String,
-        reenteredAt reentry: GeofenceExitMark? = nil
+        reenteredAfter reentries: [GeofenceExitMark] = []
     ) {
         let overtaking = (exitMarks[geofenceId] ?? []).filter { $0.overtakes(visit) }
         let exitDates = Set(overtaking.filter { exit in
-            exit.source == .exitEvent && (reentry.map { Self.enter($0, follows: exit) } ?? true)
+            exit.source == .exitEvent && reentries.allSatisfy { Self.enter($0, follows: exit) }
         }.map(\.date))
         guard !exitDates.isEmpty, !overtaking.contains(where: { $0.source == .outsideEvidence }) else { return }
         visitsEndedByPendingExit[geofenceId] = (visit, exitDates)
     }
 
-    /// `currentVisit` is removing `visit` because a later native ENTER superseded it. When an EXIT
-    /// already seen ended it before that ENTER, the ENTER is the re-entry after it, not a crossing
-    /// that shows the EXIT was lost: the visit is remembered for that EXIT, which may still be in
-    /// flight. Any other break in its continuity leaves nothing to report.
+    /// `currentVisit` is removing `visit` because later native ENTERs superseded it — a crossing,
+    /// or a correction of a stay not yet qualified. When an EXIT already seen ended it before every
+    /// one of those ENTERs, they are re-entries after it, not arrivals that show its EXIT was lost:
+    /// the visit is remembered for that EXIT, which may still be in flight. One ENTER before the
+    /// EXIT, of either kind, means the stay ended earlier unseen. Any other break in its continuity
+    /// leaves nothing to report.
     func rememberIfReenteredAfterItsExit(_ visit: GeofenceDwellVisit, geofenceId: String) {
-        guard let reentry = enterMarks[geofenceId], reentry.supersedes(visit),
+        guard let reentries = enterMarks[geofenceId]?.superseding(visit), !reentries.isEmpty,
               continuityHolds(for: visit, geofenceId: geofenceId, ignoringLaterEnter: true)
         else { return }
-        rememberVisitEndedByPendingExit(visit, geofenceId: geofenceId, reenteredAt: reentry)
+        rememberVisitEndedByPendingExit(visit, geofenceId: geofenceId, reenteredAfter: reentries)
     }
 
     /// Whether `enter` came after `exit`, on one wall-clock timeline. Across a step neither date

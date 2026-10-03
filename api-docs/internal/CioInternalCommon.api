@@ -44,6 +44,7 @@ public final class CioInternalCommon.BackgroundDeliveryContextStore {
 	public var currentCdpApiKey: String?;
 	public var hasLiveCdpApiKeyProvider: Boolean;
 	public fun convenience init();
+	public fun deinit;
 	public fun func setCdpApiKeyProvider(_ provider: BackgroundDeliveryCdpApiKeyProvider?);
 	public fun func setUserId(_ userId: String?);
 	public fun func setApiHost(_ apiHost: String?);

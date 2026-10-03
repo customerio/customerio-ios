@@ -268,6 +268,156 @@ struct GeofenceExitDurationProvenanceTests {
         #expect(row.visitDurationSeconds == 90)
     }
 
+    // MARK: - Native ENTERs that are not crossings
+
+    /// A stay whose dwell is emitted gets a native ENTER an hour in. A correction — the OS answering
+    /// a state it assumed, or a heal — says the device is inside, not that it arrived again: the
+    /// visit, its id and its entry stand, and its EXIT is timed from the original entry. A crossing
+    /// is a new arrival: the stay ends there, and the EXIT times only the new one.
+    @Test(arguments: [false, true])
+    func enterDuringAnEmittedStayEndsItOnlyWhenACrossing(crossing: Bool) async throws {
+        let files = Files()
+        let process = await Process(files: files)
+        let entry = files.clock.wall
+        await process.crossing(.enter, Self.dwellCircle)
+        let visit = try #require(await process.storage.getDwellVisit(geofenceId: Self.dwellCircle.id))
+        files.advance(600)
+        await process.dwell.recordInsideEvidence(geofence: Self.dwellCircle, at: files.clock.wall, source: "location_evidence")
+        try #require(await process.rows(.dwell).count == 1)
+        files.advance(3000)
+        let enteredAgain = files.clock.wall
+
+        await process.crossing(.enter, Self.dwellCircle, crossingObserved: crossing)
+        files.advance(300)
+        await process.crossing(.exit, Self.dwellCircle)
+
+        let row = try #require(await process.exitRows().last)
+        let reported = crossing ? enteredAgain : entry
+        #expect((row.visitId == visit.visitId) == !crossing)
+        #expect(row.enteredAt.map { Int($0.timeIntervalSince1970) } == Int(reported.timeIntervalSince1970))
+        #expect(row.visitDurationSeconds == (crossing ? 300 : 3900))
+        #expect(await process.rows(.dwell).count == 1)
+        process.dwell.cancelEvidence(for: Self.dwellCircle.id)
+    }
+
+    /// A stay whose dwell was reserved but never queued — an outbox write that failed — gets a
+    /// correction ENTER. The reservation stays exactly as it was, and the EXIT times the same
+    /// physical stay from its original entry.
+    @Test
+    func correctionEnterLeavesAReservedStayAndItsExitDuration() async throws {
+        let files = Files()
+        let process = await Process(files: files)
+        let entry = files.clock.wall
+        await process.crossing(.enter, Self.dwellCircle)
+        let visit = try #require(await process.storage.getDwellVisit(geofenceId: Self.dwellCircle.id))
+        files.advance(600)
+        let reservation = GeofenceDwellReservation(
+            occurredAtEpochMilliseconds: Int64(files.clock.wall.timeIntervalSince1970 * 1000),
+            enteredAtEpochMilliseconds: Int64(entry.timeIntervalSince1970 * 1000), durationSeconds: 600,
+            thresholdSeconds: 600, detectionSource: "location_evidence"
+        )
+        #expect(
+            await process.storage.reserveDwellEmission(reservation, for: visit, geofenceId: Self.dwellCircle.id)
+                == .reserved(reservation)
+        )
+        files.advance(3000)
+
+        await process.crossing(.enter, Self.dwellCircle, crossingObserved: false)
+        let kept = try #require(await process.storage.getDwellVisit(geofenceId: Self.dwellCircle.id))
+        files.advance(300)
+        await process.crossing(.exit, Self.dwellCircle)
+
+        #expect(kept.visitId == visit.visitId)
+        #expect(kept.dwellReservation == reservation)
+        #expect(kept.emitted == false)
+        let row = try #require(await process.exitRows().last)
+        #expect(row.visitId == visit.visitId)
+        #expect(row.enteredAt.map { Int($0.timeIntervalSince1970) } == Int(entry.timeIntervalSince1970))
+        #expect(row.visitDurationSeconds == 3900)
+        process.dwell.cancelEvidence(for: Self.dwellCircle.id)
+    }
+
+    /// On an EXIT-only fence no stay ever qualifies a dwell, so a correction ENTER restarts it:
+    /// nothing watched the time the OS assumed the device outside. The restarted visit has no known
+    /// entry, so its EXIT is untimed rather than timed across that time.
+    @Test
+    func correctionEnterOnAnUnqualifiedStayLeavesItsExitUntimed() async throws {
+        let files = Files()
+        let process = await Process(files: files)
+        await process.crossing(.enter, Self.exitOnly)
+        let visit = try #require(await process.storage.getDwellVisit(geofenceId: Self.exitOnly.id))
+        files.advance(600)
+
+        await process.crossing(.enter, Self.exitOnly, crossingObserved: false)
+        let restarted = try #require(await process.storage.getDwellVisit(geofenceId: Self.exitOnly.id))
+        files.advance(60)
+        await process.crossing(.exit, Self.exitOnly)
+
+        #expect(restarted.visitId != visit.visitId)
+        #expect(restarted.entryObserved == false)
+        let row = try #require(await process.exitRows().last)
+        #expect(row.visitDurationSeconds == nil)
+        #expect(row.visitId == nil)
+    }
+
+    /// Two native ENTERs, a crossing and a correction, are noted — as the binder notes them, in the
+    /// OS callback — on either side of an EXIT that ended the stay, before any of their routing
+    /// tasks runs. The ENTER before that EXIT says the stay had already ended earlier, at an EXIT the
+    /// SDK never saw: the EXIT is not the visit's, so it must not report the visit's entry or
+    /// duration, whichever kind of ENTER is the later one.
+    @Test(arguments: [true, false])
+    func enterBeforeTheExitStopsItTimingTheVisitWhateverCameAfter(crossingFirst: Bool) async throws {
+        let files = Files()
+        let process = await Process(files: files)
+        await process.crossing(.enter, Self.exitOnly)
+        files.advance(100)
+        process.dwell.noteEnter(geofenceId: Self.exitOnly.id, occurredAt: files.clock.wall, crossing: crossingFirst)
+        files.advance(100)
+        let exitedAt = files.clock.wall
+        await process.crossing(.exit, Self.exitOnly, receivedFor: "someone-else")
+        files.advance(100)
+        process.dwell.noteEnter(geofenceId: Self.exitOnly.id, occurredAt: files.clock.wall, crossing: !crossingFirst)
+
+        await process.crossing(.exit, Self.exitOnly, at: exitedAt)
+
+        let row = try #require(await process.exitRows().last)
+        #expect(row.visitDurationSeconds == nil)
+        #expect(row.enteredAt == nil)
+        #expect(row.visitId == nil)
+    }
+
+    /// The EXIT that ended a stay is still in flight when a native ENTER after it — a crossing, or
+    /// a correction — replaces the visit. That EXIT still times the old visit, and only it; the new
+    /// stay carries its own provenance: a crossing's EXIT is timed from it, a correction's is not.
+    @Test(arguments: [true, false])
+    func reentryAfterAPendingExitLeavesItTimingTheOldVisitOnly(crossing: Bool) async throws {
+        let files = Files()
+        let process = await Process(files: files)
+        await process.crossing(.enter, Self.exitOnly)
+        let first = try #require(await process.storage.getDwellVisit(geofenceId: Self.exitOnly.id))
+        files.advance(60)
+        let exitedAt = files.clock.wall
+        await process.crossing(.exit, Self.exitOnly, receivedFor: "someone-else")
+        files.advance(1)
+        let reentry = files.clock.wall
+        await process.crossing(.enter, Self.exitOnly, crossingObserved: crossing)
+        let newer = try #require(await process.storage.getDwellVisit(geofenceId: Self.exitOnly.id))
+
+        await process.crossing(.exit, Self.exitOnly, at: exitedAt)
+        let closed = try #require(await process.exitRows().last)
+        files.advance(120)
+        await process.crossing(.exit, Self.exitOnly)
+
+        #expect(closed.visitId == first.visitId)
+        #expect(closed.visitDurationSeconds == 60)
+        #expect(newer.visitId != first.visitId)
+        let rows = await process.exitRows()
+        try #require(rows.count == 2)
+        #expect(rows[1].visitId == (crossing ? newer.visitId : nil))
+        #expect(rows[1].enteredAt.map { Int($0.timeIntervalSince1970) } == (crossing ? Int(reentry.timeIntervalSince1970) : nil))
+        #expect(rows[1].visitDurationSeconds == (crossing ? 120 : nil))
+    }
+
     // MARK: - First clock reading
 
     /// A cold wake handles an ENTER the OS dated before this process's first clock reading. With no
@@ -395,15 +545,18 @@ struct GeofenceExitDurationProvenanceTests {
 
         /// A Core Location crossing, routed as the monitor binder routes it: dated `at` (now by
         /// default) and received for whoever is identified, unless `receivedFor` says otherwise.
+        /// `crossingObserved` false is what CLMonitor passes for a correction of an assumed state,
+        /// and BaselineHeal for a heal.
         func crossing(
             _ transition: GeofenceTransition,
             _ geofence: Geofence,
             at date: Date? = nil,
-            receivedFor userId: String? = nil
+            receivedFor userId: String? = nil,
+            crossingObserved: Bool = true
         ) async {
             await resolver.handleTransition(
                 identifier: geofence.id, transition: transition, occurredAt: date ?? files.clock.wall,
-                receivedForUserId: userId ?? contextStore.currentUserId ?? ""
+                receivedForUserId: userId ?? contextStore.currentUserId ?? "", crossingObserved: crossingObserved
             )
         }
 
