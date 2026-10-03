@@ -50,6 +50,7 @@ final class GeofenceDwellCoordinator {
     let locationAccess: (@MainActor () -> GeofenceLocationAccess?)?
     /// Whether Background App Refresh is available to the app; nil when unknown, taken as available.
     let backgroundRefreshAvailable: (@MainActor () -> Bool)?
+    var lastBackgroundRefreshAvailable: Bool?
 
     init(
         storage: GeofenceStorage,
@@ -69,6 +70,7 @@ final class GeofenceDwellCoordinator {
         self.clock = clock
         self.locationAccess = locationAccess
         self.backgroundRefreshAvailable = backgroundRefreshAvailable
+        self.lastBackgroundRefreshAvailable = backgroundRefreshAvailable?()
         self.transitionEmitter = transitionEmitter
         self.contextStore = contextStore
         self.notificationCenter = notificationCenter

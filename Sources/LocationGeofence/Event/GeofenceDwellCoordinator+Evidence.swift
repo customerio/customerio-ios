@@ -233,7 +233,7 @@ extension GeofenceDwellCoordinator {
         }
         observeLifecycle(UIApplication.didEnterBackgroundNotification) { $0.foregroundChanged() }
         observeLifecycle(UIApplication.backgroundRefreshStatusDidChangeNotification) { coordinator in
-            Task { await coordinator.revalidateVisits() }
+            coordinator.backgroundRefreshChanged()
         }
         #endif
     }

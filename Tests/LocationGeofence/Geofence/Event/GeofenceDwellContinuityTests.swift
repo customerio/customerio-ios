@@ -334,6 +334,30 @@ struct GeofenceDwellContinuityTests {
         #expect(await waitForNoVisit(setup))
     }
 
+    /// A restoration before the asynchronous revalidation runs cannot erase the observed loss.
+    @Test
+    func rapidlyRestoredBackgroundRefreshStillEndsTheInterruptedVisit() async {
+        let clock = ManualGeofenceClock()
+        let refresh = FlagBox(true)
+        let center = NotificationCenter()
+        let setup = await makeSetup(
+            clock: clock, notificationCenter: center,
+            locationAccess: { Self.always }, backgroundRefreshAvailable: { refresh.value }
+        )
+        await setup.coordinator.handleBoundary(geofence: setup.geofence, transition: .enter, occurredAt: clock.wall)
+        #expect(await setup.storage.getDwellVisit(geofenceId: setup.geofence.id) != nil)
+
+        clock.advance(10)
+        refresh.value = false
+        center.post(name: UIApplication.backgroundRefreshStatusDidChangeNotification, object: nil)
+        refresh.value = true
+        center.post(name: UIApplication.backgroundRefreshStatusDidChangeNotification, object: nil)
+        await settleQuietly()
+
+        #expect(await setup.storage.getDwellVisit(geofenceId: setup.geofence.id) == nil)
+        #expect(await setup.emitter.dwells().isEmpty)
+    }
+
     /// A visit recorded with refresh already off loses nothing to a repeated report, nor to
     /// refresh coming back.
     @Test

@@ -82,6 +82,18 @@ extension GeofenceDwellCoordinator {
         locationAccess?()?.limited(backgroundRefreshAvailable: backgroundRefreshAvailable?() ?? true)
     }
 
+    /// Capture the loss in the notification callback, before a quick restoration can hide it
+    /// from asynchronous revalidation. A repeated unavailable status interrupts no new visit.
+    func backgroundRefreshChanged() {
+        let available = backgroundRefreshAvailable?()
+        if lastBackgroundRefreshAvailable == true, available == false {
+            interruptContinuity(geofenceId: nil)
+        } else {
+            Task { await revalidateVisits() }
+        }
+        lastBackgroundRefreshAvailable = available
+    }
+
     /// The app moved between foreground and background. A visit recorded under access that
     /// observes nothing in the background — When In Use, which holds no background session, or
     /// Always without Background App Refresh — cannot span that move: an EXIT in the background
