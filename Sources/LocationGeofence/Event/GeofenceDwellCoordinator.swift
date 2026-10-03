@@ -201,7 +201,7 @@ final class GeofenceDwellCoordinator {
         // The first fresh inside proof for a candidate discovered from the anchor: the candidate
         // re-starts here, as a stay this evidence opens, so none of the time before it counts.
         if let stored, !stored.awaitsPresenceProof,
-           !beginsNewVisit || (stored.timing?.enteredUptime ?? .infinity) > observedUptime {
+           !beginsNewVisit || (stored.timing?.entryUptime(orderedAt: readClock()) ?? .infinity) > observedUptime {
             return stored
         }
         guard let visit = makeVisit(

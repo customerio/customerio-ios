@@ -51,23 +51,39 @@ extension GeofenceDwellCoordinator {
 
     /// Whether a loss recorded in this process happened at or after `visit` was entered: an
     /// interruption, or — for a visit recorded under access that observes nothing in the
-    /// background — the app moving between foreground and background.
+    /// background — the app moving between foreground and background. A visit not on this boot's
+    /// timeline was recorded by an earlier process, so every loss this one recorded came after it,
+    /// whatever the two uptimes read.
     func lossOvertook(_ visit: GeofenceDwellVisit, geofenceId: String) -> Bool {
         guard let timing = visit.timing else { return false }
         if identityTracker.interrupted(visit) { return true }
         var losses = [continuityLostUptime[geofenceId], allContinuityLostUptime]
         if Self.observesOnlyInForeground(visit) { losses.append(foregroundOnlyLostUptime) }
         guard let lostUptime = losses.compactMap({ $0 }).max() else { return false }
-        return timing.enteredUptime <= lostUptime
+        return !timing.isCurrent(at: readClock()) || timing.enteredUptime <= lostUptime
     }
 
     /// Whether nothing known since `visit` was recorded has broken its continuity. Checked on
     /// every read and before a dwell is admitted, so a loss already recorded counts before the
     /// task removing the visit has run; and it catches a reboot or an access loss nothing
     /// reported, which iOS signals to no process that was not running.
+    ///
+    /// Across an ambiguous boot — a reboot, or a wall-clock step, which moves the boot time too —
+    /// only a visit whose dwell was already emitted or reserved is kept, as the marker that the
+    /// stay already had its DWELL. It measures no time there, and every other check still ends it.
+    /// A visit not yet qualified ends: none of its time can be counted, and its stay starts over
+    /// at its next fresh proof.
     func continuityHolds(for visit: GeofenceDwellVisit, geofenceId: String) -> Bool {
         // No timing: recorded by a build that kept none, on a boot nothing identifies.
-        guard let timing = visit.timing, timing.isCurrent(at: readClock()) else { return false }
+        guard let timing = visit.timing else { return false }
+        switch timing.bootRelation(at: readClock()) {
+        case .same:
+            break
+        case .ambiguous where visit.emitted || visit.dwellReservation != nil:
+            break
+        case .ambiguous, .knownOther:
+            return false
+        }
         guard !lossOvertook(visit, geofenceId: geofenceId),
               !enterSuperseded(visit, geofenceId: geofenceId)
         else { return false }

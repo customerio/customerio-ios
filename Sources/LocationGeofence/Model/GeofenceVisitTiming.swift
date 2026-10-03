@@ -24,7 +24,20 @@ struct GeofenceVisitTiming: Codable, Equatable, Sendable {
     /// Whether `reading` was taken on the boot this visit was recorded on. Uptime behind the
     /// record can only be a later boot.
     func isCurrent(at reading: GeofenceClockReading) -> Bool {
-        boot.isSameBoot(as: reading.boot) && reading.uptime >= recordedUptime
+        bootRelation(at: reading) == .same
+    }
+
+    /// How the boot of `reading` relates to the one this visit was recorded on.
+    func bootRelation(at reading: GeofenceClockReading) -> GeofenceBootRelation {
+        if reading.uptime < recordedUptime { return .knownOther }
+        return boot.isSameBoot(as: reading.boot) ? .same : .ambiguous
+    }
+
+    /// The entry's uptime, to order it against an event processed at `reading`. Minus infinity on
+    /// another boot, whose uptime orders nothing against this one: such an event was processed after
+    /// this visit was recorded, so it is the later.
+    func entryUptime(orderedAt reading: GeofenceClockReading) -> TimeInterval {
+        isCurrent(at: reading) ? enteredUptime : -.infinity
     }
 
     /// Whether a loss of continuity seen at `loss` interrupted this visit: it was entered no later
@@ -60,6 +73,19 @@ struct GeofenceVisitTiming: Codable, Equatable, Sendable {
             wallClockAgrees: agrees
         )
     }
+}
+
+/// A reading's boot against a visit's. A wall-clock step moves `kern.boottime` by the same amount,
+/// so a different boot time does not prove a reboot; and a later boot's uptime can overtake the
+/// visit's, so uptime does not prove the same boot either.
+enum GeofenceBootRelation: Equatable, Sendable {
+    /// The same boot time, and uptime no earlier than the record.
+    case same
+    /// A different boot time, and uptime no earlier than the record: a reboot, or a wall-clock
+    /// step on the same boot. Nothing is measured across it.
+    case ambiguous
+    /// Uptime behind the record: only a later boot reads that.
+    case knownOther
 }
 
 /// How long a visit has lasted up to some event.

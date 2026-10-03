@@ -23,10 +23,12 @@ extension GeofenceDwellCoordinator {
         }
         // Elapsed as qualifying measures it, so a wall-clock step moves the deadline no more than
         // it moves qualification.
-        // A candidate awaiting proof asks for it at once: its time has not started.
+        // A candidate awaiting proof asks for it at once: its time has not started. So does a
+        // reserved dwell, which only repeats its reservation; across an ambiguous boot no elapsed
+        // time is known to count down from.
         let now = readClock()
         let elapsed = visit.timing?.elapsed(enteredAt: visit.enteredAt, until: now.wall, at: now)?.qualifyingSeconds ?? 0
-        let delay = visit.awaitsPresenceProof ? 0 : min(
+        let delay = visit.awaitsPresenceProof || visit.dwellReservation != nil ? 0 : min(
             TimeInterval(GeofenceDwellLimits.maxThresholdSeconds),
             max(0, TimeInterval(geofence.dwellThresholdSeconds) - elapsed)
         )
