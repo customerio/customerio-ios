@@ -81,12 +81,17 @@ actor GeofenceStorage {
     /// Only then is it a crossing timed by its event: out of an assumed state it may be `CLMonitor`
     /// correcting its `assuming:` — an ENTER for a device that never left, an EXIT for one that was
     /// never inside or left at some unknown earlier time. False for every other outcome.
+    /// - Parameter reading: when the producer read the dwell clock before this call; with it, a
+    ///   delivered change also closes the circle visit it ends, in the same write (`closeVisit`).
+    /// - Parameter maximumRadius: the radius cap the monitor registered the circle under.
     func recordMonitorTransition(
         _ transition: GeofenceTransition,
         forIdentifier identifier: String,
         onlyIfBaselinePredates evidenceTimestamp: Date? = nil,
         osEventDate: Date? = nil,
-        now: Date? = nil
+        now: Date? = nil,
+        processedAt reading: GeofenceClockReading? = nil,
+        maximumRadius: Double = .infinity
     ) -> (outcome: GeofenceMonitorEventOutcome, crossingObserved: Bool) {
         var state = loadFromDisk() ?? GeofenceState()
         var records = state.monitorRegionRecords ?? [:]
@@ -132,8 +137,15 @@ actor GeofenceStorage {
         record.lastStateObserved = true
         records[identifier] = record
         state.monitorRegionRecords = records
+        let delivered = record.transitionTypes.contains(transition)
+        let crossing = transition == .enter && leftObservedState
+        if delivered, let reading, transition == .exit || crossing, let center = record.center, let radius = record.radius {
+            let registered = MonitoredCircle(center: center, radius: radius, maximumRadius: maximumRadius)
+            let mark = GeofenceExitMark(date: osEventDate ?? now ?? dateUtil.now, processedAt: reading, source: transition == .exit ? .exitEvent : .enterEvent)
+            Self.closeVisit(in: &state, identifier: identifier, registered: registered, endedBy: transition, mark: mark)
+        }
         saveToDisk(state)
-        return (record.transitionTypes.contains(transition) ? .deliver : .suppressedFilteredType, leftObservedState)
+        return (delivered ? .deliver : .suppressedFilteredType, leftObservedState)
     }
 
     /// A trigger exit can arrive just after a re-plant, carrying the old circle's date. Only the

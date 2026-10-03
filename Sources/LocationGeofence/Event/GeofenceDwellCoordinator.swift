@@ -25,6 +25,7 @@ final class GeofenceDwellCoordinator {
     /// noted as the OS delivers them, before the callback re-arms any evidence. A visit one ends is
     /// not the stay it reports. Internal for `+Chronology`.
     var enterMarks: [String: GeofenceEnterMarks] = [:]
+    var pendingExitCallbacks: [String: [Date: GeofencePendingExitCallback]] = [:] // `noteExitCallback`
     /// This coordinator's first clock reading, taken when it was built; the wall offset of its
     /// previous reading, and the uptime it last saw the wall clock step at. Internal for
     /// `+Chronology`.
@@ -36,9 +37,8 @@ final class GeofenceDwellCoordinator {
     var clockReferenceLoad: Task<GeofenceClockReading?, Never>?
     var clockReferenceAtLaunch: GeofenceClockReading?
     var persistedClockReference: GeofenceClockReading?
-    /// The uptime continuity was last lost at, per fence and for every fence. Like `exitMarks`, it
-    /// refuses a visit write that lands after the loss's removal ran but
-    /// began before the loss. Internal for the `+Continuity` extension.
+    /// The uptime continuity was last lost at, per fence and for every fence. Like `exitMarks`, it refuses
+    /// a visit write that lands after the loss's removal ran but began before the loss. Internal for `+Continuity`.
     var continuityLostUptime: [String: TimeInterval] = [:]
     var allContinuityLostUptime: TimeInterval?
     /// What EXIT durations keep between callbacks; see `GeofenceExitDurationState`. Internal for
@@ -248,7 +248,7 @@ final class GeofenceDwellCoordinator {
         // ending does not count: that EXIT may still be suspended before its removal, and adopting
         // the visit would leave this re-entry with none once it lands. Nor does a candidate awaiting
         // proof, when this ENTER is proof.
-        if let existing, !exitOvertook(existing, geofenceId: geofence.id),
+        if let existing, !exitOvertook(existing, geofenceId: geofence.id), existing.closedByObservedBoundary == nil,
            !(presenceProven && existing.awaitsPresenceProof) {
             scheduleDeadline(for: geofence, visit: existing)
             return

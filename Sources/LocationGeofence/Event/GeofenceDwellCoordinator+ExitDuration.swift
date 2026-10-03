@@ -42,8 +42,10 @@ extension GeofenceDwellCoordinator {
 
     /// The duration an EXIT carries for `visit`; nil when the visit's start was not an observed
     /// entry, nothing has yet proved the device there, the customer did not configure EXIT, outside
-    /// evidence or an ENTER this EXIT already knew of ended the visit, or the span is not on one
-    /// timeline.
+    /// evidence or an ENTER this EXIT already knew of ended the visit, an observed boundary closed
+    /// it that was not this EXIT, or the span is not on one timeline. A closed visit is timed only
+    /// by the EXIT whose exact original date closed it: any other EXIT, however close, came after
+    /// the stay had already ended.
     private func exitContext(
         for visit: GeofenceDwellVisit,
         geofence: Geofence,
@@ -52,6 +54,7 @@ extension GeofenceDwellCoordinator {
         source: String
     ) -> GeofenceExitContext? {
         guard visit.entryObserved, !visit.awaitsPresenceProof, geofence.transitionTypes.contains(.exit),
+              visit.closedByObservedBoundary.map({ $0 == exit.date }) ?? true,
               !outsideEvidenceOvertook(visit, geofenceId: geofence.id),
               !enterKnownAtExitEnded(visit, exit: exit, geofenceId: geofence.id),
               Self.spanIsTimeable(visit, exitedAt: exit.date, processedAt: reading)
@@ -64,20 +67,6 @@ extension GeofenceDwellCoordinator {
         )
     }
 
-    /// Notes an EXIT in the OS callback, in OS order, before its routing task records it: the
-    /// native ENTERs noted so far are what the EXIT knew of the stay's end (`keepEntersKnown`). A
-    /// burst — ENTER, EXIT, ENTER — reaches the binder before any routing task runs, so by the time
-    /// the EXIT is recorded a later ENTER may already have replaced an earlier one in its slot.
-    /// The binder pairs this with `exitCallbackRouted` once the callback's routing task is done.
-    func noteExitCallback(geofenceId: String, occurredAt: Date) {
-        exitRoutingBegan(at: occurredAt, geofenceId: geofenceId)
-    }
-
-    /// The routing task of an EXIT callback `noteExitCallback` noted has finished.
-    func exitCallbackRouted(geofenceId: String, occurredAt: Date) {
-        exitRoutingEnded(at: occurredAt, geofenceId: geofenceId)
-    }
-
     /// Records an EXIT event before its first await, and what it knew of the stay's end if no
     /// callback noted it — an EXIT from a direct caller, or a polygon verdict dated by its fix.
     /// `handleBoundary` pairs it with `exitRoutingEnded` when it returns.
@@ -86,10 +75,13 @@ extension GeofenceDwellCoordinator {
         exitRoutingBegan(at: exit.date, geofenceId: geofenceId)
     }
 
-    /// An EXIT, by its exact date, is now being routed. Its first note keeps the native ENTERs then
-    /// noted for its fence, which no later callback can erase by replacing an ENTER in its slot;
+    /// An EXIT, by its exact date, is now being routed: noted in its OS callback, in OS order
+    /// (`noteExitCallback`), or recorded by `handleBoundary`. A burst — ENTER, EXIT, ENTER — reaches
+    /// the binder before any routing task runs, so by the time the EXIT is recorded a later ENTER
+    /// may already have replaced an earlier one in its slot. Its first note keeps the native ENTERs
+    /// then noted for its fence, which no later callback can erase by replacing an ENTER in its slot;
     /// another note of the same EXIT shares them.
-    private func exitRoutingBegan(at date: Date, geofenceId: String) {
+    func exitRoutingBegan(at date: Date, geofenceId: String) {
         exitDuration.routingsInFlight[geofenceId, default: [:]][date, default: 0] += 1
         if exitDuration.entersKnownAtExit[geofenceId]?[date] == nil {
             exitDuration.entersKnownAtExit[geofenceId, default: [:]][date] = enterMarks[geofenceId] ?? GeofenceEnterMarks()

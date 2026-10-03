@@ -60,6 +60,9 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring {
 
     /// Every timing decision reads this clock, never `Date()`.
     let dateUtil: DateUtil
+    /// The dwell coordinator's clock, read as an event is recorded, so the visit it ends is ordered
+    /// against it as the coordinator orders its own EXITs.
+    private let clock: GeofenceClock
 
     private let makeConditionMonitor: @Sendable (String) async -> GeofenceConditionMonitoring
 
@@ -71,9 +74,11 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring {
         authority: GeofenceLocationAuthority = CoreLocationAuthority(),
         makeConditionMonitor: @escaping @Sendable (String) async -> GeofenceConditionMonitoring = { name in
             await CoreLocationConditionMonitor(monitor: CLMonitor(name))
-        }
+        },
+        clock: GeofenceClock = SystemGeofenceClock()
     ) {
         self.logger = logger
+        self.clock = clock
         self.storage = storage
         self.userDefaults = userDefaults
         self.dateUtil = dateUtil
@@ -219,10 +224,14 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring {
            await isEventContradictedByFreshFix(identifier: identifier, transition: transition, eventDate: event.date) {
             return
         }
-        // Dated by the OS, not by receipt, so no guard depends on drain speed.
+        // Dated by the OS, not by receipt, so no guard depends on drain speed. Read before the
+        // write: it is when this event was processed, under the cap the circle was registered with.
+        let reading = clock.read()
+        let maximumRadius = authManager.maximumRegionMonitoringDistance
         let (outcome, crossingObserved) = await storage.recordMonitorTransition(
             transition, forIdentifier: identifier,
-            onlyIfBaselinePredates: event.date, osEventDate: event.date, now: event.date
+            onlyIfBaselinePredates: event.date, osEventDate: event.date, now: event.date,
+            processedAt: reading, maximumRadius: maximumRadius
         )
         guard case .deliver = outcome else {
             logDiscardedCallback(identifier: identifier, transition: transition, outcome: outcome)

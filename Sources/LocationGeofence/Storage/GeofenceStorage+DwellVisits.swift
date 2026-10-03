@@ -93,6 +93,8 @@ extension GeofenceStorage {
               !stored.emitted
         else { return .superseded }
         if let existing = stored.dwellReservation { return .reserved(existing) }
+        // A visit an observed boundary closed qualifies no first dwell: it would span the departure.
+        guard stored.closedByObservedBoundary == nil else { return .superseded }
         stored.dwellReservation = proposed
         state.dwellVisits?[geofenceId] = stored
         return saveToDisk(state) ? .reserved(proposed) : .writeFailed

@@ -60,6 +60,18 @@ struct GeofenceExitMark: Equatable {
         return processedUptime > timing.recordedUptime
     }
 
+    /// For a native ENTER already noted: whether it ends every visit `other` would, so `other`
+    /// need not replace it. On one wall-clock timeline the later date is the later crossing,
+    /// whichever was processed last — an older ENTER's routing re-notes it after a later ENTER's
+    /// callback did. Across a step the dates do not order, so this one stays only if it was both
+    /// processed and dated no earlier.
+    func outranksEnter(_ other: GeofenceExitMark) -> Bool {
+        if abs(wallOffset - other.wallOffset) <= GeofenceConstants.dwellWallClockStepTolerance {
+            return mappedUptime >= other.mappedUptime
+        }
+        return processedUptime >= other.processedUptime && mappedUptime >= other.mappedUptime
+    }
+
     /// Whether this mark overtakes every visit `other` does, which `other` then adds nothing to.
     /// Only on the same timeline: across a step, neither mark's dates order against the other's.
     /// Only of the same source, so outside evidence never stands in for an EXIT event, nor an EXIT
@@ -99,6 +111,15 @@ struct GeofenceEnterMarks {
     }
 }
 
+/// A native EXIT callback the binder has handed to a routing task that has not finished, by its
+/// exact date: the marks of its deliveries that no other subsumes, and how many deliveries are
+/// still being routed. Until its routing records it, nothing else tells the coordinator the stay
+/// may have ended.
+struct GeofencePendingExitCallback {
+    var marks: [GeofenceExitMark]
+    var count: Int
+}
+
 /// Ordering boundary events against visits across wall-clock steps, split from the coordinator's
 /// visit lifecycle so both stay under the file cap.
 extension GeofenceDwellCoordinator {
@@ -128,8 +149,7 @@ extension GeofenceDwellCoordinator {
     func noteEnter(_ mark: GeofenceExitMark, geofenceId: String, crossing: Bool) {
         let slot: WritableKeyPath<GeofenceEnterMarks, GeofenceExitMark?> = crossing ? \.crossing : \.correction
         var marks = enterMarks[geofenceId] ?? GeofenceEnterMarks()
-        if let noted = marks[keyPath: slot], noted.processedUptime >= mark.processedUptime,
-           noted.mappedUptime >= mark.mappedUptime { return }
+        if let noted = marks[keyPath: slot], noted.outranksEnter(mark) { return }
         marks[keyPath: slot] = mark
         enterMarks[geofenceId] = marks
     }
@@ -148,6 +168,41 @@ extension GeofenceDwellCoordinator {
     /// Whether an EXIT this process has seen for the fence ends `visit`.
     func exitOvertook(_ visit: GeofenceDwellVisit, geofenceId: String) -> Bool {
         exitMarks[geofenceId]?.contains { $0.overtakes(visit) } ?? false
+    }
+
+    /// Notes a native EXIT in the OS callback, before the binder re-arms evidence or starts the
+    /// task that routes it. It is not an EXIT mark: a polygon's covering-circle EXIT may prove
+    /// nothing, so it ends no visit. It only holds back a first DWELL while it is being routed
+    /// (`exitCallbackPendingOvertook`). In OS order, it also keeps the native ENTERs noted so far,
+    /// for timing this EXIT (`exitRoutingBegan`). The binder pairs it with `exitCallbackRouted` once
+    /// that task is done, whatever it made of the EXIT; no time limit.
+    func noteExitCallback(geofenceId: String, occurredAt: Date) {
+        exitRoutingBegan(at: occurredAt, geofenceId: geofenceId)
+        let mark = GeofenceExitMark(date: occurredAt, processedAt: readClock(), source: .exitEvent)
+        var pending = pendingExitCallbacks[geofenceId]?[occurredAt] ?? GeofencePendingExitCallback(marks: [], count: 0)
+        // As `recordExit` keeps them: across a clock step no delivery's mark orders the others, and a
+        // later one can end fewer visits than an earlier one did.
+        if !pending.marks.contains(where: { $0.subsumes(mark) }) {
+            pending.marks.removeAll { mark.subsumes($0) }
+            pending.marks.append(mark)
+        }
+        pending.count += 1
+        pendingExitCallbacks[geofenceId, default: [:]][occurredAt] = pending
+    }
+
+    /// The routing task of an EXIT callback `noteExitCallback` noted has finished.
+    func exitCallbackRouted(geofenceId: String, occurredAt: Date) {
+        exitRoutingEnded(at: occurredAt, geofenceId: geofenceId)
+        guard var pending = pendingExitCallbacks[geofenceId]?[occurredAt] else { return }
+        pending.count -= 1
+        pendingExitCallbacks[geofenceId]?[occurredAt] = pending.count > 0 ? pending : nil
+        if pendingExitCallbacks[geofenceId]?.isEmpty == true { pendingExitCallbacks[geofenceId] = nil }
+    }
+
+    /// Whether a native EXIT callback still being routed would end `visit`, by the same order as a
+    /// recorded EXIT: a late EXIT dated before the visit began does not.
+    func exitCallbackPendingOvertook(_ visit: GeofenceDwellVisit, geofenceId: String) -> Bool {
+        pendingExitCallbacks[geofenceId]?.values.contains { $0.marks.contains { $0.overtakes(visit) } } ?? false
     }
 
     /// Whether an entry dated `enteredAt`, recorded at `reading` with `timing`, was dated on the

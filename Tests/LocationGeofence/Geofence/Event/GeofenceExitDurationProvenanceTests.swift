@@ -834,6 +834,7 @@ struct GeofenceExitDurationProvenanceTests {
         for identifier in [Self.polygon.id, "uncached-fence"] {
             #expect(process.dwell.exitMarks[identifier]?.isEmpty ?? true)
             #expect(process.dwell.exitDuration.entersKnownAtExit[identifier]?.isEmpty ?? true)
+            #expect(process.dwell.pendingExitCallbacks[identifier]?.isEmpty ?? true)
         }
         #expect(await process.exitRows().allSatisfy { $0.visitDurationSeconds == nil })
         withExtendedLifetime(monitor) {}

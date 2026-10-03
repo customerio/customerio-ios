@@ -23,7 +23,9 @@ enum GeofenceMonitorBinder {
             if transition == .enter {
                 noteEnter(dwellCoordinator, geofenceId: identifier, occurredAt: occurredAt, crossing: crossingObserved)
             } else if transition == .exit, identifier != GeofenceConstants.movementTriggerIdentifier {
-                // In OS order: the ENTERs noted so far are what this EXIT knew of the stay's end.
+                // In OS order: the ENTERs noted so far are what this EXIT knew of the stay's end. Before
+                // the re-arm too: until the task below routes this EXIT, it holds back a first DWELL
+                // that evidence requested meanwhile would admit across it.
                 noteExit(dwellCoordinator, geofenceId: identifier, occurredAt: occurredAt)
             }
             rearmDwellEvidence(dwellCoordinator)

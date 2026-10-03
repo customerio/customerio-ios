@@ -24,21 +24,12 @@ extension GeofenceDwellCoordinator {
             for: visit, observedAt: observedAt, at: readClock(),
             thresholdSeconds: geofence.dwellThresholdSeconds, source: source
         ) else { return }
-        guard contextStore.currentUserId == userId else { return }
+        guard contextStore.currentUserId == userId,
+              !knownExitRefusesFirstAdmission(of: visit, geofenceId: geofence.id)
+        else { return }
         guard dwellEmissionsInFlight.insert(visit.visitId).inserted else { return }
         defer { dwellEmissionsInFlight.remove(visit.visitId) }
-        // `visit` may be a copy read before another attempt reserved; the stored reservation wins.
-        let reservation: GeofenceDwellReservation
-        switch await storage.reserveDwellEmission(proposed, for: visit, geofenceId: geofence.id) {
-        case .reserved(let stored):
-            reservation = stored
-        case .writeFailed:
-            // Nothing was delivered, so nothing is lost by asking again.
-            scheduleEvidenceRetry(for: geofence, visit: visit)
-            return
-        case .superseded:
-            return
-        }
+        guard let reservation = await reserve(proposed, for: visit, geofence: geofence) else { return }
         let persisted = await transitionEmitter.trackDwell(
             geofenceId: geofence.id,
             occurredAt: reservation.occurredAt,
@@ -53,6 +44,41 @@ extension GeofenceDwellCoordinator {
         )
         guard persisted else { return }
         await finishDwellEmission(geofence: geofence, visit: visit)
+    }
+
+    /// Whether a first admission of `visit` — one with no reservation yet — is refused because an
+    /// EXIT or outside proof this process recorded ends it, though its removal has not landed, or
+    /// a native EXIT callback still being routed would: the DWELL would span a departure already
+    /// known. Judged at admission, not in `continuityHolds`, so the visit can still be read up to
+    /// that EXIT; a callback the resolver then finds proves nothing only defers the DWELL to the
+    /// next evidence. Conservative: a fix taken before the EXIT whose admission races it is lost
+    /// too. A reservation already made is a fact and is never refused.
+    private func knownExitRefusesFirstAdmission(of visit: GeofenceDwellVisit, geofenceId: String) -> Bool {
+        visit.dwellReservation == nil
+            && (exitOvertook(visit, geofenceId: geofenceId) || exitCallbackPendingOvertook(visit, geofenceId: geofenceId))
+    }
+
+    /// Reserves `proposed` on `visit`, or returns the reservation another attempt stored first; nil
+    /// when nothing is to be delivered now. The admission was decided before the write; an EXIT
+    /// learned during it was unknown then, so the DWELL would be a fact about the stay before it.
+    /// It is withheld anyway, as extra caution: left reserved and unqueued for the EXIT's removal.
+    private func reserve(
+        _ proposed: GeofenceDwellReservation,
+        for visit: GeofenceDwellVisit,
+        geofence: Geofence
+    ) async -> GeofenceDwellReservation? {
+        // `visit` may be a copy read before another attempt reserved; the stored reservation wins.
+        switch await storage.reserveDwellEmission(proposed, for: visit, geofenceId: geofence.id) {
+        case .reserved(let stored):
+            guard stored != proposed || !knownExitRefusesFirstAdmission(of: visit, geofenceId: geofence.id) else { return nil }
+            return stored
+        case .writeFailed:
+            // Nothing was delivered, so nothing is lost by asking again.
+            scheduleEvidenceRetry(for: geofence, visit: visit)
+            return nil
+        case .superseded:
+            return nil
+        }
     }
 
     private func finishDwellEmission(geofence: Geofence, visit: GeofenceDwellVisit) async {
