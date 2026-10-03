@@ -111,8 +111,7 @@ struct GeofenceSyncCoordinatorTests {
             GeofenceApiConfig(
                 localRefreshTriggerRadius: config.localRefreshTriggerRadius,
                 remoteFetchRefreshTriggerRadius: config.remoteFetchRefreshTriggerRadius,
-                // GeofenceConfig stores seconds; wire format is ms — convert back so the
-                // parse boundary's ms→s logic produces the same seconds.
+                // Config stores seconds; the wire format is ms.
                 remoteFetchRefreshExpiryTime: config.remoteFetchRefreshExpiry * 1000,
                 duplicateEventsExpiryTime: config.duplicateEventsExpiry * 1000,
                 maxMonitoringDistance: config.maxMonitoringDistance,
@@ -156,7 +155,6 @@ struct GeofenceSyncCoordinatorTests {
         )
 
         let setup = makeCoordinator(storage: storage, dateUtil: dateUtil)
-        // Same anchor → distance is 0; freshness gate skips API.
         let result = await setup.coordinator.refresh(latitude: 0, longitude: 0, anchorIsLiveFix: true)
 
         #expect(result.isSuccess)
@@ -166,8 +164,6 @@ struct GeofenceSyncCoordinatorTests {
 
     @Test
     func refresh_givenTimeFreshButRankingStale_expectLocalRerankNoApiCall() async {
-        // Kill-then-travel: the app was dead so no movement EXIT fired, but the device is now beyond
-        // the trigger radius from the last registration. Re-rank the cached set locally — no fetch.
         let storage = makeStorage()
         let dateUtil = DateUtilStub()
         let oneHour: TimeInterval = 60 * 60
@@ -184,8 +180,7 @@ struct GeofenceSyncCoordinatorTests {
         await storage.setCachedGeofences([makeRegion(id: "near", latitude: 1, longitude: 2)])
         let setup = makeCoordinator(storage: storage, dateUtil: dateUtil)
 
-        // ~2.2km from the anchor: beyond the 1km trigger radius (ranking stale) but within the 3km
-        // refetch radius (no remote fetch).
+        // ~2.2 km: beyond the 1 km trigger radius, within the 3 km refetch radius.
         let result = await setup.coordinator.refresh(latitude: 0.02, longitude: 0, anchorIsLiveFix: true)
 
         #expect(result.isSuccess)
@@ -195,9 +190,6 @@ struct GeofenceSyncCoordinatorTests {
 
     @Test
     func refresh_givenTimeFreshAndRankingFreshButUnregisteredCache_expectLocalRerankNoApiCall() async {
-        // Cache holds regions but nothing is registered — no registration center (regs lost on
-        // sign-out / never restored) → re-register locally rather than skip, so the user isn't left
-        // with no monitored geofences until staleness.
         let storage = makeStorage()
         let dateUtil = DateUtilStub()
         let oneHour: TimeInterval = 60 * 60
@@ -210,11 +202,10 @@ struct GeofenceSyncCoordinatorTests {
             maxMonitoringDistance: GeofenceConstants.noMonitoringDistanceCap
         ))
         await storage.recordSync(timestamp: dateUtil.givenNow.addingTimeInterval(-100), location: LocationData(latitude: 0, longitude: 0))
-        // No recordRegistration → no registration center → genuinely "nothing registered".
+        // No `recordRegistration`, so nothing is registered.
         await storage.setCachedGeofences([makeRegion(id: "cached", latitude: 0, longitude: 0)])
         let setup = makeCoordinator(storage: storage, dateUtil: dateUtil)
 
-        // Same location as anchor → time-fresh + ranking-fresh, but nothing is registered.
         let result = await setup.coordinator.refresh(latitude: 0, longitude: 0, anchorIsLiveFix: true)
 
         #expect(result.isSuccess)
@@ -224,9 +215,7 @@ struct GeofenceSyncCoordinatorTests {
 
     @Test
     func refresh_givenTimeFreshRankingFreshAndFullyCappedOut_expectSkipNoRerank() async {
-        // Every cached geofence is beyond maxMonitoringDistance, so the last registration registered
-        // the movement trigger only (center set, zero business IDs). That's not "regs lost" — a
-        // time/ranking-fresh refresh must skip, not re-rank on every launch.
+        // Capped out (trigger only, no business IDs) is not "regs lost": a fresh refresh must skip.
         let storage = makeStorage()
         let dateUtil = DateUtilStub()
         let oneHour: TimeInterval = 60 * 60
@@ -239,7 +228,6 @@ struct GeofenceSyncCoordinatorTests {
             maxMonitoringDistance: 5000
         ))
         await storage.recordSync(timestamp: dateUtil.givenNow.addingTimeInterval(-100), location: LocationData(latitude: 0, longitude: 0))
-        // Prior capped-out registration: trigger registered (center set), no business IDs.
         await storage.recordRegistration(center: LocationData(latitude: 0, longitude: 0), businessIds: [])
         await storage.setCachedGeofences([makeRegion(id: "far", latitude: 1, longitude: 2)]) // ~248 km, beyond the 5 km cap
         let setup = makeCoordinator(storage: storage, dateUtil: dateUtil)
@@ -248,7 +236,6 @@ struct GeofenceSyncCoordinatorTests {
 
         #expect(result.isSuccess)
         #expect(setup.api.fetchNearbyGeofencesCallsCount == 0)
-        // Genuinely skipped: no re-rank, so no stop/start churn this call.
         #expect(setup.monitor.startedRegions.isEmpty)
         #expect(setup.monitor.stopAllCallCount == 0)
     }
@@ -283,13 +270,8 @@ struct GeofenceSyncCoordinatorTests {
         #expect(api.fetchNearbyGeofencesCallsCount == 1)
     }
 
-    /// A non-live anchor is not "an old fix near here" — `bestKnownFix` applies no age gate, so it
-    /// can be an OS cache value hours old and kilometres away. Ranking and re-planting around one
-    /// drops the fences that are actually nearby and leaves a movement trigger the device is not
-    /// inside; on the classic path that trigger never fires again.
-    ///
-    /// Anchoring on the registration centre instead keeps a time-expired catalog refetchable while
-    /// making distance-driven work impossible from a point we cannot trust.
+    /// A non-live anchor can be hours old and far away; ranking around it drops the fences actually
+    /// nearby.
     @Test
     func refresh_givenANonLiveAnchorFarFromTheRegistrationCentre_expectItDoesNotMoveAnything() async {
         let storage = makeStorage()
@@ -320,8 +302,7 @@ struct GeofenceSyncCoordinatorTests {
         #expect(await storage.getLastRegistrationCenter() == LocationData(latitude: 0, longitude: 0))
     }
 
-    /// The other direction, so the guard above cannot degrade into "a refresh never moves anything":
-    /// a caller that really did obtain a fix for this event still re-ranks around it.
+    /// Control: a live anchor still refetches, so the guard above can't degrade into "never move".
     @Test
     func refresh_givenALiveAnchorFarFromTheRegistrationCentre_expectItStillRefetches() async {
         let storage = makeStorage()
@@ -353,8 +334,7 @@ struct GeofenceSyncCoordinatorTests {
     func refresh_givenStaleLastSync_expectApiCallAndPersist() async {
         let storage = makeStorage()
         let dateUtil = DateUtilStub()
-        // Pin to integer-second precision so the roundtrip through `secondsSince1970`
-        // encoding in GeofenceStorage doesn't lose sub-second bits in the comparison.
+        // Integer seconds, so the storage round-trip compares equal.
         dateUtil.givenNow = Date(timeIntervalSince1970: 1700000000)
         // Sync 25h ago → past the 24h fallback expiry.
         await storage.recordSync(
@@ -391,7 +371,6 @@ struct GeofenceSyncCoordinatorTests {
         )
         let setup = makeCoordinator(storage: storage, dateUtil: dateUtil)
 
-        // Same anchor → distance is 0; freshness gate skips even without a cached config.
         let result = await setup.coordinator.refresh(latitude: 0, longitude: 0, anchorIsLiveFix: true)
 
         #expect(result.isSuccess)
@@ -400,8 +379,6 @@ struct GeofenceSyncCoordinatorTests {
 
     @Test
     func refresh_givenNoLastSync_expectApiCalled() async {
-        // First-run path: no LastSyncRecord at all → freshness gate is bypassed and the
-        // API is called regardless of cached-config state.
         let storage = makeStorage()
         let api = GeofenceApiServiceMock()
         api.fetchNearbyGeofencesClosure = { _, _, completion in
@@ -561,8 +538,6 @@ struct GeofenceSyncCoordinatorTests {
         #expect(movementTrigger?.transitionTypes == [.exit])
     }
 
-    /// A payload whose regions all fail to resolve is a broken response, not a geofence-free area:
-    /// treating it as the latter would wipe the cache and deregister every fence the user has.
     @Test
     func refresh_givenEveryRegionUnusable_expectFetchFailureAndCacheKept() async {
         let storage = makeStorage()
@@ -587,12 +562,7 @@ struct GeofenceSyncCoordinatorTests {
         #expect(setup.monitor.startedRegions.isEmpty)
     }
 
-    /// The loss that never reaches `toDomainRegions`: a region rejected at JSON decode is compacted
-    /// out of `geofences` before the domain mapping runs, so no drop callback fires for it. It is
-    /// still an unreadable payload, and treating it as "no geofences" wipes the cache.
-    ///
-    /// Built through `JSONDecoder` deliberately — the memberwise init sets `receivedRegionCount`
-    /// from the surviving array, so it cannot express "one arrived, none survived".
+    /// Built via `JSONDecoder`: the memberwise init can't express "one arrived, none survived".
     @Test
     func refresh_givenEveryRegionLostAtJsonDecode_expectFetchFailureAndCacheKept() async throws {
         let storage = makeStorage()
@@ -613,10 +583,7 @@ struct GeofenceSyncCoordinatorTests {
         #expect(await storage.getCachedGeofences().map(\.id) == ["kept"])
     }
 
-    /// Polygon fields with no shape discriminator is a MALFORMED payload, not a workspace that has
-    /// moved to a shape we cannot monitor — so it must preserve the cache, the way a decode loss
-    /// does. Both used to report `unknownShape`, which the all-dropped guard exempts, so this
-    /// payload cleared every fence the user had. Reproduction supplied by @Shahroz16 in review.
+    /// Polygon fields without a shape are malformed, not an unsupported shape.
     @Test
     func refresh_givenPolygonFieldsWithoutShape_expectFetchFailureAndCacheKept() async throws {
         let storage = makeStorage()
@@ -636,9 +603,8 @@ struct GeofenceSyncCoordinatorTests {
         #expect(setup.monitor.startedRegions.isEmpty)
     }
 
-    /// A workspace whose fences have all moved to a shape this SDK cannot monitor is the opposite
-    /// of a broken payload: the response read fine and there is genuinely nothing here for us.
-    /// Failing would freeze the previous fences in place with a refresh that can never succeed.
+    /// Read fine, so not a failure: failing would freeze the old fences behind a refresh that never
+    /// succeeds.
     @Test
     func refresh_givenEveryRegionAnUnsupportedShape_expectAppliedAsEmpty() async {
         let storage = makeStorage()
@@ -672,16 +638,13 @@ struct GeofenceSyncCoordinatorTests {
         let setup = makeCoordinator(api: api, storage: storage)
         _ = await setup.coordinator.refresh(latitude: 37.7749, longitude: -122.4194, anchorIsLiveFix: true)
 
-        // Empty nearby response is a geofence-free area, not a stop signal: keep the movement trigger
-        // armed so a later EXIT re-fetches as the device moves back toward geofences. The trigger is
-        // the only region registered (no business geofences to add).
+        // A geofence-free area, not a stop signal: the trigger stays armed so a later EXIT refetches.
         #expect(setup.monitor.startedRegions.map(\.identifier) == [GeofenceConstants.movementTriggerIdentifier])
     }
 
     @Test
     func refresh_givenEmptyServerResponseButKillSwitch_expectNothingRegistered() async {
-        // maxBusinessGeofences == 0 is the runtime off switch: even with the "keep monitoring
-        // through empty areas" behavior, a kill-switched account registers nothing at all.
+        // `maxBusinessGeofences == 0` is the kill switch: nothing registers, not even the trigger.
         let storage = makeStorage()
         let config = GeofenceConfig(
             localRefreshTriggerRadius: 750,
@@ -716,7 +679,6 @@ struct GeofenceSyncCoordinatorTests {
         _ = await setup.coordinator.refresh(latitude: 1.0, longitude: 2.0, anchorIsLiveFix: true)
 
         // The trigger goes first so it isn't starved when business regions fill the shared OS budget.
-        // Nothing was registered before, so nothing is stopped.
         #expect(setup.monitor.operationLog == [
             .start(identifier: GeofenceConstants.movementTriggerIdentifier),
             .start(identifier: "g1")
@@ -741,8 +703,7 @@ struct GeofenceSyncCoordinatorTests {
 
         let setup = makeCoordinator(api: api, storage: storage)
         async let first = setup.coordinator.refresh(latitude: 1.0, longitude: 2.0, anchorIsLiveFix: true)
-        // Wait for the first call to enter the API mock before firing the second, so the
-        // dedup-gate test is deterministic instead of timing-dependent.
+        // Wait for the first call to reach the API so the second deterministically hits the gate.
         await firstReachedApi.wait()
         let second = await setup.coordinator.refresh(latitude: 3.0, longitude: 4.0, anchorIsLiveFix: true)
         await allowFinish.fire()
@@ -757,10 +718,8 @@ struct GeofenceSyncCoordinatorTests {
 
     @Test
     func refresh_givenSuccess_expectStorageWritesInOrder_regionsThenConfigThenSync() async {
-        // Order matters for tear-recovery: if `recordSync` lands before
-        // `setCachedGeofences`, a process kill between the two leaves `lastSync` present
-        // with a stale cache — the next refresh's freshness gate then skips the API and
-        // the user silently has the wrong regions monitored.
+        // Order matters: `recordSync` before `setCachedGeofences` plus a kill in between leaves a fresh
+        // sync over a stale cache, which the freshness gate never refetches.
         let backing = makeStorage()
         let spy = SpyGeofenceSyncStorage(underlying: backing)
         let api = GeofenceApiServiceMock()
@@ -788,9 +747,6 @@ struct GeofenceSyncCoordinatorTests {
 
     @Test
     func refresh_givenRemoteFetch_expectRegistrationCenterAndIdsPersisted() async {
-        // The remote path must persist the registration anchor + registered IDs — it's the
-        // ranking-staleness reference a later cold-boot refresh measures against. Without it,
-        // ranking staleness goes undetected after a kill-then-travel.
         let storage = makeStorage()
         let config = GeofenceConfig(
             localRefreshTriggerRadius: 1000,
@@ -857,8 +813,8 @@ struct GeofenceSyncCoordinatorTests {
         #expect(setup.monitor.startedRegions.isEmpty)
     }
 
-    /// Cold-wake sibling of the refresh rule: bootstrap persists whatever this returns, so an
-    /// oversized polygon reported here would be evaluated for membership with no OS wake behind it.
+    /// Bootstrap persists what this returns, so an oversized polygon here would get membership with
+    /// no OS wake.
     @Test
     func applyCachedRegistration_givenOversizedPolygon_expectExcludedFromReportedRegistration() {
         let monitor = MockGeofenceRegionMonitor()
@@ -892,9 +848,8 @@ struct GeofenceSyncCoordinatorTests {
 
     @Test
     func applyCachedRegistration_givenEmptyRegions_expectMovementTriggerRegistered() {
-        // An empty nearby response clears the cache but leaves the trigger armed. If the OS then
-        // drops our regions, this is the only path that re-arms it — the refresh decision skips on
-        // a cache that is fresh and empty.
+        // After an empty response this is the only path that re-arms the trigger; refresh skips a
+        // fresh empty cache.
         let setup = makeCoordinator(storage: makeStorage())
 
         let registration = setup.coordinator.applyCachedRegistration(
@@ -910,7 +865,6 @@ struct GeofenceSyncCoordinatorTests {
 
     @Test
     func applyCachedRegistration_givenEmptyRegionsAndKillSwitch_expectNothingRegistered() {
-        // The kill switch still wins over the empty-cache restore above.
         let config = GeofenceConfig(
             localRefreshTriggerRadius: 750,
             remoteFetchRefreshTriggerRadius: 3000,
@@ -933,8 +887,6 @@ struct GeofenceSyncCoordinatorTests {
 
     @Test
     func applyCachedRegistration_givenMissingAnchor_expectNoRegistration() {
-        // Without an anchor we can't distance-filter or place the movement trigger
-        // sensibly — bail rather than re-using an arbitrary location.
         let setup = makeCoordinator(storage: makeStorage())
 
         _ = setup.coordinator.applyCachedRegistration(
@@ -989,8 +941,8 @@ struct GeofenceSyncCoordinatorTests {
 
     @Test
     func applyCachedRegistration_givenAllInputs_expectReturnsRegisteredCenterAndIds() {
-        // The caller persists this as the ranking-staleness reference, so the returned center/ids
-        // must match what was registered with the OS (the nearest set, capped at maxBusinessGeofences).
+        // The caller persists this as the ranking-staleness reference, so it must match what the OS
+        // got.
         let config = GeofenceConfig(
             localRefreshTriggerRadius: 600,
             remoteFetchRefreshTriggerRadius: 3000,
@@ -1032,8 +984,6 @@ struct GeofenceSyncCoordinatorTests {
 
     @Test
     func applyCachedRegistration_givenAllRegionsBeyondCap_expectMovementTriggerButNoBusinessRegions() {
-        // The distance cap excludes the only cached region; the movement trigger must still register
-        // so a later EXIT re-ranks and can bring a now-closer region into range.
         let config = GeofenceConfig(
             localRefreshTriggerRadius: 600,
             remoteFetchRefreshTriggerRadius: 3000,
@@ -1057,7 +1007,6 @@ struct GeofenceSyncCoordinatorTests {
 
     @Test
     func applyCachedRegistration_givenKillSwitch_expectNoRegistrationIncludingTrigger() {
-        // maxBusinessGeofences == 0 disables registration entirely — not even the movement trigger.
         let config = GeofenceConfig(
             localRefreshTriggerRadius: 600,
             remoteFetchRefreshTriggerRadius: 3000,
@@ -1113,8 +1062,6 @@ struct GeofenceSyncCoordinatorTests {
         async let refreshResult = setup.coordinator.refresh(latitude: 1.0, longitude: 2.0, anchorIsLiveFix: true)
         await firstReachedApi.wait()
 
-        // Refresh holds the dedup gate. ApplyCachedRegistration must bail without touching
-        // the monitor.
         let monitorCallsBefore = setup.monitor.startedRegions.count
         _ = setup.coordinator.applyCachedRegistration(
             cachedRegions: [sampleRegion()],
@@ -1130,10 +1077,6 @@ struct GeofenceSyncCoordinatorTests {
 
     @Test
     func refresh_afterEarlyReturn_expectGateReleasedAndSecondRefreshSucceeds() async {
-        // Confirms `defer { refreshInProgress = false }` actually runs on the
-        // `noIdentifiedUser` early-return path. A leaked gate would silently lock the
-        // coordinator out of every future refresh — silent because the second call would
-        // return `.alreadyInProgress`, not an obvious crash.
         let storage = makeStorage()
         let contextStore = makeContextStore(userId: nil)
         let api = GeofenceApiServiceMock()
@@ -1169,8 +1112,6 @@ struct GeofenceSyncCoordinatorTests {
 
     @Test
     func handleMovement_givenNoAnchor_expectTierBRemoteFetch() async {
-        // No prior sync → no anchor → can't distance-compare, so default to remote fetch.
-        // Matches Android's `anchor == null` branch.
         let storage = makeStorage()
         let api = GeofenceApiServiceMock()
         api.fetchNearbyGeofencesClosure = { _, _, completion in
@@ -1196,7 +1137,6 @@ struct GeofenceSyncCoordinatorTests {
             maxMonitoringDistance: GeofenceConstants.noMonitoringDistanceCap
         )
         await storage.setCachedConfig(config)
-        // Anchor at (0, 0); cached regions arrayed nearby for re-rank verification.
         await storage.recordSync(timestamp: Date(timeIntervalSince1970: 100), location: LocationData(latitude: 0, longitude: 0))
         await storage.setCachedGeofences([
             makeRegion(id: "near", latitude: 0, longitude: 0.0005),
@@ -1216,9 +1156,6 @@ struct GeofenceSyncCoordinatorTests {
 
     @Test
     func handleMovement_givenLocalRerankWithEmptyCache_expectMovementTriggerStillRegistered() async {
-        // After an empty nearby response wiped the cache, a within-threshold EXIT re-ranks an empty
-        // set. The movement trigger must stay armed (re-centered at the new location) so the device
-        // keeps moving toward the next refetch instead of going dark in a geofence-free area.
         let storage = makeStorage()
         let config = GeofenceConfig(
             localRefreshTriggerRadius: 1000,
@@ -1245,8 +1182,6 @@ struct GeofenceSyncCoordinatorTests {
 
     @Test
     func handleMovement_givenMovementBeyondThreshold_expectRemoteFetch() async {
-        // A move beyond the refetch radius from the last fetch anchor leaves the cached nearby set no
-        // longer covering the area, so it refetches a fresh nearby set.
         let storage = makeStorage()
         let config = GeofenceConfig(
             localRefreshTriggerRadius: 1000,
@@ -1273,8 +1208,6 @@ struct GeofenceSyncCoordinatorTests {
 
     @Test
     func refresh_givenMovedBeyondRefetchRadius_expectRemoteFetch() async {
-        // Time-fresh, but the device moved beyond the refetch radius from the last fetch anchor, so
-        // the cached nearby set no longer covers the area and it refetches.
         let storage = makeStorage()
         let dateUtil = DateUtilStub()
         dateUtil.givenNow = Date(timeIntervalSince1970: 1000)
@@ -1287,7 +1220,6 @@ struct GeofenceSyncCoordinatorTests {
             maxMonitoringDistance: GeofenceConstants.noMonitoringDistanceCap
         )
         await storage.setCachedConfig(config)
-        // Fetched recently (time-fresh) at (0, 0).
         await storage.recordSync(timestamp: dateUtil.givenNow.addingTimeInterval(-100), location: LocationData(latitude: 0, longitude: 0))
         let api = GeofenceApiServiceMock()
         api.fetchNearbyGeofencesClosure = { _, _, completion in
@@ -1304,8 +1236,6 @@ struct GeofenceSyncCoordinatorTests {
 
     @Test
     func handleMovement_givenLocalRerank_expectLastSyncAndCacheNotMutated() async {
-        // A local re-rank re-uses the existing API anchor — must not overwrite lastSync, or the
-        // time-staleness reference would drift to wherever the user just stood.
         let storage = makeStorage()
         let originalAnchor = LocationData(latitude: 0, longitude: 0)
         let originalTimestamp = Date(timeIntervalSince1970: 100)
@@ -1331,8 +1261,6 @@ struct GeofenceSyncCoordinatorTests {
 
     @Test
     func handleMovement_givenLocalRerank_expectRegistrationCenterAndIdsPersistedAtNewLocation() async {
-        // A local re-rank must advance the registration reference to the new location, so the next
-        // refresh's ranking-staleness check measures from where the device actually re-registered.
         let storage = makeStorage()
         let config = GeofenceConfig(
             localRefreshTriggerRadius: 1000,
@@ -1356,8 +1284,6 @@ struct GeofenceSyncCoordinatorTests {
 
     @Test
     func handleMovement_givenLocalRerank_expectMovementTriggerRecenteredAtNewLocation() async {
-        // The movement trigger's job is to fire when the user leaves the *current* zone.
-        // After a local re-rank, it must center on where the user just stood, not the API anchor.
         let storage = makeStorage()
         let config = GeofenceConfig(
             localRefreshTriggerRadius: 1000,
@@ -1382,8 +1308,7 @@ struct GeofenceSyncCoordinatorTests {
 
     @Test
     func handleMovement_givenRemoteFetchFails_expectMovementTriggerRearmedAtCurrentFix() async {
-        // A failed pass leaves the trigger on the circle the device just exited, so no further EXIT
-        // can fire and re-ranking stops until the next launch. Re-rank from cache to re-arm it.
+        // A failed pass leaves the trigger on the circle just exited, where no further EXIT can fire.
         let storage = makeStorage()
         let config = GeofenceConfig(
             localRefreshTriggerRadius: 1000,
@@ -1406,21 +1331,17 @@ struct GeofenceSyncCoordinatorTests {
         let newLocation = LocationData(latitude: 1.0, longitude: 1.0)
         let result = await setup.coordinator.handleMovement(latitude: newLocation.latitude, longitude: newLocation.longitude, anchorIsLiveFix: true)
 
-        // The fetch failure is still what the caller sees.
         #expect(result.errorOrNil == .fetchFailed(.transport))
         #expect(setup.api.fetchNearbyGeofencesCallsCount == 1)
-        // ...but the trigger now sits on the device's current fix, so movement can fire again.
         let movementTrigger = setup.monitor.startedRegions.last { $0.identifier == GeofenceConstants.movementTriggerIdentifier }
         #expect(movementTrigger?.center == newLocation)
         #expect(movementTrigger?.radius == config.localRefreshTriggerRadius)
-        // The fetch anchor stays put, so the next EXIT retries remotely instead of treating the
-        // re-arm as a successful sync.
+        // The fetch anchor stays put, so the next EXIT retries remotely.
         #expect(await storage.getLastSync()?.location == fetchAnchor)
     }
 
     @Test
     func handleMovement_givenRemoteFetchFailsUnderKillSwitch_expectTeardownNotRearm() async {
-        // The re-arm fallback must not resurrect the trigger the kill switch just tore down.
         let storage = makeStorage()
         let config = GeofenceConfig(
             localRefreshTriggerRadius: 1000,
@@ -1447,10 +1368,6 @@ struct GeofenceSyncCoordinatorTests {
 
     // MARK: - Config-persisted hook
 
-    /// How visit arming learns a new config landed. It sits beside the write rather than at the
-    /// callers of `refresh` precisely because of this path: the remote tier of `handleMovement`
-    /// is a trigger EXIT's refetch, the common background refresh, and it has no module-level
-    /// call site to reconcile at.
     @Test
     func handleMovement_givenTheRemoteTierPersistsAConfig_expectTheHookFired() async {
         let storage = makeStorage()
@@ -1472,9 +1389,7 @@ struct GeofenceSyncCoordinatorTests {
         #expect(await storage.getCachedConfig() != nil)
     }
 
-    /// The negative, so the test above pins the WRITE rather than merely "a remote refresh ran".
-    /// A partial-rollout backend answering without a config must not be reported as a new one —
-    /// the cached value is deliberately left alone there, so there is nothing to reconcile.
+    /// The negative: pins the config WRITE, not just "a remote refresh ran".
     @Test
     func handleMovement_givenTheRemoteTierReturnsNoConfig_expectTheHookNotFired() async {
         let storage = makeStorage()
@@ -1496,9 +1411,7 @@ struct GeofenceSyncCoordinatorTests {
 
     // MARK: unchanged-set fast path (crossing absorption)
 
-    /// Shared arrangement for the registration-diff tests: an initial remote refresh registers
-    /// `regions`, so the monitor owns them and the OS holds them — the steady state every
-    /// subsequent re-rank runs against.
+    /// An initial remote refresh registers `regions`: the steady state re-ranks run against.
     private func makeRegisteredSetup(
         regions: [Geofence],
         config: GeofenceConfig,
@@ -1526,19 +1439,14 @@ struct GeofenceSyncCoordinatorTests {
 
     @Test
     func handleMovement_givenRerankLandsOnSameNearestSet_expectBusinessRegionsUntouched() async {
-        // Steady-state drive: adjacent trigger EXITs mostly land on the identical nearest set.
-        // Re-registering re-seeds the OS's assumed state and absorbs an undelivered crossing, so the
-        // business regions must be left alone — only the trigger re-centers.
-        //
-        // 111 m is inside the re-rank radius, so this takes the cheap polygon wake pass: the wake
-        // re-arms at the new position but the ranking anchor must NOT walk. Walking it on every
-        // wake would reset the distance re-ranking is measured against, and re-ranking would never
-        // come due — see `handleMovement_givenMoveBeyondRerankRadius_expectAnchorWalks`.
+        // Re-registering re-seeds the OS's assumed state and absorbs an undelivered crossing, so
+        // business regions are left alone. The wake pass must not walk the ranking anchor, or
+        // re-ranking never comes due.
         let region = makeRegion(id: "g1", latitude: 0.5, longitude: 0.5)
         let storage = makeStorage()
         let setup = await makeRegisteredSetup(regions: [region], config: diffConfig, storage: storage)
 
-        // ~111 m: within the refetch radius → local re-rank, same nearest set.
+        // ~111 m: inside the re-rank radius → polygon wake pass, same registered set.
         let newLocation = LocationData(latitude: 0, longitude: 0.001)
         let result = await setup.coordinator.handleMovement(latitude: newLocation.latitude, longitude: newLocation.longitude, anchorIsLiveFix: true)
 
@@ -1552,10 +1460,8 @@ struct GeofenceSyncCoordinatorTests {
         #expect(await storage.getLastRegistrationCenter() == LocationData(latitude: 0, longitude: 0))
     }
 
-    /// The launch/identify refresh anchors on the STORED registration centre, not a live fix, so a
-    /// boundary-sized trigger there would be a small circle around a point the device may be far
-    /// from — spurious on 17+, and never fired at all on the classic path. Only a caller holding a
-    /// real fix gets the tight radius.
+    /// A non-live refresh anchors on the STORED registration centre, where a boundary-sized trigger
+    /// may be a circle the device is already outside. Only a live fix gets the tight radius.
     @Test
     func refresh_givenNearbyPolygonButStoredAnchor_expectFullRefreshRadius() async {
         let ring = [
@@ -1582,7 +1488,6 @@ struct GeofenceSyncCoordinatorTests {
         #expect(trigger?.radius == diffConfig.localRefreshTriggerRadius, "got \(String(describing: trigger?.radius))")
     }
 
-    /// Control for the above: the same refresh from a caller that does hold a fix still tightens.
     @Test
     func refresh_givenNearbyPolygonAndLiveAnchor_expectTriggerShrunkToItsBoundary() async {
         let ring = [
@@ -1611,8 +1516,7 @@ struct GeofenceSyncCoordinatorTests {
 
     @Test
     func handleMovement_givenNearbyPolygon_expectTriggerShrunkToItsBoundary() async {
-        // The end-to-end assertion behind `PolygonWakeRadius`: a polygon the device stands inside
-        // must actually shrink the trigger the OS is given, not just the value the helper returns.
+        // End-to-end: the trigger the OS is given must shrink, not just the helper's value.
         let ring = [
             LocationData(latitude: -0.0018, longitude: -0.0018),
             LocationData(latitude: -0.0018, longitude: 0.0018),
@@ -1646,8 +1550,6 @@ struct GeofenceSyncCoordinatorTests {
 
     @Test
     func handleMovement_givenMoveBeyondRerankRadius_expectAnchorWalks() async {
-        // The other side of the gate: past the re-rank radius the full pass runs and the ranking
-        // anchor moves, so the cheap-pass short-circuit cannot starve re-ranking.
         let region = makeRegion(id: "g1", latitude: 0.5, longitude: 0.5)
         let storage = makeStorage()
         let setup = await makeRegisteredSetup(regions: [region], config: diffConfig, storage: storage)
@@ -1662,9 +1564,6 @@ struct GeofenceSyncCoordinatorTests {
 
     @Test
     func handleMovement_givenEmptyAreaThenKillSwitch_expectTriggerStopped() async {
-        // A geofence-free area leaves the trigger armed with no business regions, so a later
-        // kill-switched config re-ranks onto the same (empty) business set. The desired set is empty
-        // too, so the diff must stop the trigger rather than re-center it.
         let storage = makeStorage()
         let setup = await makeRegisteredSetup(regions: [], config: diffConfig, storage: storage)
         #expect(setup.monitor.monitoredRegionIdentifiers == [GeofenceConstants.movementTriggerIdentifier])
@@ -1687,8 +1586,6 @@ struct GeofenceSyncCoordinatorTests {
 
     @Test
     func handleMovement_givenRerankChangesNearestSet_expectOnlyDepartingRegionStopped() async {
-        // Membership actually changed (budget of 1, a closer fence took the slot) — the departing
-        // region is stopped and the arriving one started, so the OS set matches the new ranking.
         let config = GeofenceConfig(
             localRefreshTriggerRadius: 1000,
             remoteFetchRefreshTriggerRadius: 5000,
@@ -1713,9 +1610,8 @@ struct GeofenceSyncCoordinatorTests {
 
     @Test
     func handleMovement_givenSetChanges_expectCarryOverRegionLeftRegistered() async {
-        // A re-rank that changes membership must leave regions present in both sets completely
-        // untouched: stopping and re-adding one discards any crossing the OS has detected but not
-        // yet delivered, and neither monitor replays it.
+        // Stopping and re-adding a carry-over region discards any crossing the OS detected but
+        // hasn't delivered.
         let config = GeofenceConfig(
             localRefreshTriggerRadius: 1000,
             remoteFetchRefreshTriggerRadius: 5000,
@@ -1743,9 +1639,7 @@ struct GeofenceSyncCoordinatorTests {
 
     @Test
     func handleMovement_givenRadiusAboveOsCap_expectNoReRegistrationChurn() async {
-        // The OS clamps every radius to `maximumMonitoringRadius`. The unchanged check must compare
-        // against that clamped radius, or an over-cap region reads as changed on every pass and
-        // re-registers forever.
+        // The OS clamps to `maximumMonitoringRadius`; comparing unclamped would re-register every pass.
         let monitor = MockGeofenceRegionMonitor()
         monitor.maximumMonitoringRadius = 500
         let storage = makeStorage()
@@ -1766,8 +1660,7 @@ struct GeofenceSyncCoordinatorTests {
 
     @Test
     func handleMovement_givenUnchangedSetButOsDroppedRegion_expectRegionReRegistered() async {
-        // The identifier is still owned in-process but the OS silently dropped it (monitoring
-        // failure). The diff must not trust ownership alone — re-registering is what heals it.
+        // Still owned in-process, but the OS dropped it: the diff must not trust ownership alone.
         let region = makeRegion(id: "g1", latitude: 0.5, longitude: 0.5)
         let setup = await makeRegisteredSetup(regions: [region], config: diffConfig, storage: makeStorage())
         setup.monitor.osMonitoredRegions.remove("g1")
@@ -1781,9 +1674,8 @@ struct GeofenceSyncCoordinatorTests {
 
     @Test
     func refresh_givenOsHoldsUnownedRegionNoLongerNearest_expectSweptFromOs() async {
-        // A condition the OS still holds from a previous launch that this process never adopted and
-        // the server no longer returns. Ownership-based teardown can't see it, so only the sweep
-        // against live OS state removes it — otherwise it keeps one of the 20 slots indefinitely.
+        // Held by the OS from a previous launch, never adopted: only the sweep against live OS
+        // state sees it.
         let storage = makeStorage()
         let dateUtil = DateUtilStub()
         await storage.setCachedConfig(diffConfig)
@@ -1805,10 +1697,8 @@ struct GeofenceSyncCoordinatorTests {
 
     @Test
     func refresh_givenAdoptedRegionsWithPersistedGeometry_expectUnchangedRegionLeftUntouched() async {
-        // Cold launch on the CLMonitor path: the OS still holds last session's condition and the
-        // persisted record carries its geometry, which adoption seeds synchronously. A sync landing
-        // before the queued re-arm drains must read the unchanged region as unchanged — re-adding
-        // it would absorb a crossing the OS has detected but not yet delivered.
+        // Cold launch: adoption seeds persisted geometry synchronously, so a sync before the re-arm
+        // drains must read the region as unchanged.
         let storage = makeStorage()
         let dateUtil = DateUtilStub()
         await storage.setCachedConfig(diffConfig)
@@ -1838,11 +1728,8 @@ struct GeofenceSyncCoordinatorTests {
 
     @Test
     func refresh_givenFreshProcessAndReshapedRegionOsStillHolds_expectOsGeometryUpdated() async {
-        // Fresh process owning nothing, OS still holding `g1` from the previous launch on its old
-        // circle, and the server has since reshaped it. CLMonitor silently ignores an add over a
-        // live identifier, so without an explicit removal the OS keeps the old circle while this
-        // process records the new one — every later pass then reads "unchanged" and never repairs
-        // it. The stale circle would outlive the process indefinitely.
+        // CLMonitor ignores an add over a live identifier, so a reshape the OS still holds on its
+        // old circle needs an explicit removal first.
         let storage = makeStorage()
         let dateUtil = DateUtilStub()
         await storage.setCachedConfig(diffConfig)
@@ -1866,9 +1753,7 @@ struct GeofenceSyncCoordinatorTests {
 
     @Test
     func refresh_givenFreshProcessWithMatchingStorage_expectRegionsRegistered() async {
-        // Fresh process: storage says the same set is registered and the OS still holds it, but this
-        // process owns nothing yet (bootstrap hasn't adopted). Skipping would leave OS events with no
-        // owner — everything must be registered to re-establish in-process ownership.
+        // Storage and OS match, but this process owns nothing yet, so everything must re-register.
         let storage = makeStorage()
         let dateUtil = DateUtilStub()
         await storage.setCachedConfig(diffConfig)
@@ -1889,9 +1774,8 @@ struct GeofenceSyncCoordinatorTests {
 
     @Test
     func handleMovement_givenRemoteRefreshReturnsIdenticalPayload_expectBusinessRegionsUntouched() async {
-        // The 5 km refetch fired but the server returned byte-identical data and the ranking didn't
-        // change — same absorption risk as the local case. The trigger and both anchors must still
-        // walk forward so the next refetch threshold measures from here.
+        // Identical payload: business regions are left alone, but the trigger and both anchors
+        // still walk.
         let region = makeRegion(id: "g1", latitude: 0.5, longitude: 0.5)
         let storage = makeStorage()
         let setup = await makeRegisteredSetup(regions: [region], config: diffConfig, storage: storage)
@@ -1912,8 +1796,6 @@ struct GeofenceSyncCoordinatorTests {
 
     @Test
     func handleMovement_givenRemoteRefreshChangesGeometry_expectRegionReRegistered() async {
-        // Same id, but the server edited the fence (radius change) — the geometry compare must catch
-        // it and re-register, or the OS keeps monitoring the old circle forever.
         let original = makeRegion(id: "g1", latitude: 0.5, longitude: 0.5, radius: 100)
         let resized = makeRegion(id: "g1", latitude: 0.5, longitude: 0.5, radius: 250)
         let config = diffConfig
@@ -1934,8 +1816,6 @@ struct GeofenceSyncCoordinatorTests {
 
     @Test
     func handleMovement_givenEmptyAreaLoop_expectTriggerWalksWithoutChurn() async {
-        // The geofence-free corridor: empty response, empty cache, trigger armed. Every 5 km refetch
-        // comes back empty again — the trigger must keep walking forward without a stop-all cycle.
         let setup = await makeRegisteredSetup(regions: [], config: diffConfig, storage: makeStorage())
 
         let newLocation = LocationData(latitude: 0, longitude: 0.05)
@@ -1951,9 +1831,6 @@ struct GeofenceSyncCoordinatorTests {
 
     @Test
     func handleMovement_givenInFlightRefresh_expectAlreadyInProgress() async {
-        // Shared `refreshInProgress` gate — a refresh holding it must short-circuit
-        // a concurrent movement EXIT. Verified by suspending the API mid-fetch on the
-        // first call, then issuing handleMovement while it's pending.
         let storage = makeStorage()
         let api = GeofenceApiServiceMock()
         let suspendUntil = AsyncSignal()
@@ -1976,13 +1853,6 @@ struct GeofenceSyncCoordinatorTests {
         #expect(movement.errorOrNil == .alreadyInProgress)
     }
 
-    /// The recovery half of `handleMovement_givenInFlightRefresh_expectAlreadyInProgress`.
-    ///
-    /// Short-circuiting on the gate is correct; LOSING the pass is not. A business crossing and a
-    /// trigger EXIT routinely arrive from the same movement, and the movement pass is the only
-    /// thing that re-centres the trigger — dropped, the trigger stays on the circle the device
-    /// just left, where no further EXIT can ever fire. So the loser must be replayed once the
-    /// holder releases.
     @Test
     func handleMovement_givenItLostTheGateToARefresh_expectItIsReplayedAfterwards() async {
         let storage = makeStorage()
@@ -2000,8 +1870,7 @@ struct GeofenceSyncCoordinatorTests {
 
         async let firstRefresh = setup.coordinator.refresh(latitude: 0, longitude: 0, anchorIsLiveFix: true)
         await arrived.wait()
-        // Deliberately elsewhere, so a trigger re-armed at these coordinates can only have come
-        // from the replay and not from the refresh that beat it.
+        // Elsewhere, so a trigger re-armed here can only come from the replay.
         let movement = await setup.coordinator.handleMovement(latitude: 0, longitude: 0.05, anchorIsLiveFix: true)
         await suspendUntil.fire()
         _ = await firstRefresh
@@ -2019,27 +1888,19 @@ struct GeofenceSyncCoordinatorTests {
         #expect(triggerStarts.last?.center == movedTo)
     }
 
-    /// The two-step window: `acquireGate()` answering false and the record landing were separate,
-    /// so a holder could release AND drain between them. The record then arrived with the gate
-    /// already free and nothing left due to drain it, stranding the trigger on the circle the
-    /// device had just exited.
-    ///
-    /// Asserted as an invariant rather than by racing threads. The window is microseconds wide, so
-    /// a thread race would pass against the broken code on nearly every run and prove nothing; the
-    /// invariant it violates is checkable exactly. A call that TAKES the gate must leave no
-    /// deferral behind, and a call that does not take it must leave exactly one.
+    /// Taking the gate and recording a deferral must share one critical section. Asserted as an
+    /// invariant, since the race window is microseconds wide.
     @Test
     func acquireGateOrDefer_givenAFreeGate_expectItIsTakenAndAnyQueuedMovementSuperseded() async {
         let setup = await makeRegisteredSetup(regions: [], config: diffConfig, storage: makeStorage())
-        // Seeded, not left nil: starting from nil the assertion below holds even if the supersede
-        // clear sits OUTSIDE the critical section, which is the bug this test has to be able to
-        // see. A winner must clear a queued movement in the same section that took the gate.
+        // Seeded, not nil: from nil the assertion below holds even with the clear outside the
+        // critical section.
         setup.coordinator.deferredMovement.wrappedValue = GeofenceSyncCoordinatorImpl.DeferredMovement(
             latitude: 9, longitude: 9, anchorIsLiveFix: true,
             sequence: setup.coordinator.nextMovementSequence(), heldFix: nil
         )
-        // From the allocator, and read back BEFORE the call: a literal that happens to equal the
-        // next number the gate would mint cannot tell carrying from minting apart.
+        // From the allocator: a literal equal to the next minted number can't tell carrying from
+        // minting.
         let replay = setup.coordinator.nextMovementSequence()
 
         let taken = setup.coordinator.acquireGateOrDefer(
@@ -2047,25 +1908,18 @@ struct GeofenceSyncCoordinatorTests {
             replaySequence: replay, heldFix: nil
         )
 
-        // The replay's OWN sequence, not merely "taken": `handleMovement` publishes what comes
-        // back as applied, so a freshly minted one here would outrank a newer queued movement.
+        // The replay's OWN sequence: a freshly minted one would outrank a newer queued movement.
         #expect(taken == .taken(sequence: replay))
-        // A deferral surviving here is either never drained, or drained after this pass and so
-        // moves the trigger back to coordinates the device has already left.
         #expect(setup.coordinator.deferredMovement.wrappedValue?.latitude == nil)
         setup.coordinator.releaseGate()
     }
 
-    /// The other half: losing the gate must record, in the same critical section that observed the
-    /// gate held.
     @Test
     func acquireGateOrDefer_givenAHeldGate_expectTheMovementIsRecorded() async {
         let setup = await makeRegisteredSetup(regions: [], config: diffConfig, storage: makeStorage())
         #expect(setup.coordinator.acquireGate())
 
-        // From the allocator, not a literal: the registration in `makeRegisteredSetup` now plants
-        // the trigger and applies a sequence of its own, so a hand-picked 1 is already spent and
-        // the call is refused as overtaken — an ordering production cannot produce.
+        // From the allocator: `makeRegisteredSetup` has already spent a sequence.
         let taken = setup.coordinator.acquireGateOrDefer(
             latitude: 3, longitude: 4, anchorIsLiveFix: false,
             replaySequence: setup.coordinator.nextMovementSequence(), heldFix: nil
@@ -2077,14 +1931,11 @@ struct GeofenceSyncCoordinatorTests {
         setup.coordinator.releaseGate()
     }
 
-    /// A movement that runs must supersede an older one still queued, or the replay moves the
-    /// trigger BACK to coordinates the device has already left.
     @Test
     func handleMovement_givenANewerMovementRanFirst_expectTheStaleDeferralDropped() async {
         let storage = makeStorage()
         let setup = await makeRegisteredSetup(regions: [], config: diffConfig, storage: storage)
 
-        // Queue a stale movement by hand, as a losing pass would have.
         setup.coordinator.deferredMovement.wrappedValue = GeofenceSyncCoordinatorImpl.DeferredMovement(
             latitude: 0, longitude: 0, anchorIsLiveFix: true, sequence: 1, heldFix: nil
         )
@@ -2100,15 +1951,8 @@ struct GeofenceSyncCoordinatorTests {
         #expect(triggerStarts.last?.center == newer)
     }
 
-    /// A drained replay must not re-centre the trigger behind a movement that already ran.
-    ///
-    /// `drainDeferredMovement` clears the queue and frees the gate BEFORE its replay task starts,
-    /// so a newer movement can take that gate and re-centre first. Replaying afterwards moved the
-    /// trigger back to the older coordinates — the exact loss the deferral exists to prevent,
-    /// reached from the other side.
-    ///
-    /// Driven through the real gate rather than by racing tasks: the replay is retired on an
-    /// arrival-order comparison, so the ordering can be set up exactly instead of hoped for.
+    /// The gate frees and the queue clears BEFORE the replay task starts, so a newer movement can
+    /// re-centre first.
     @Test
     func drainDeferredMovement_givenANewerMovementAlreadyRan_expectTheReplayDiscarded() async {
         let setup = await makeRegisteredSetup(regions: [], config: diffConfig, storage: makeStorage())
@@ -2116,14 +1960,12 @@ struct GeofenceSyncCoordinatorTests {
             latitude: 0, longitude: 0, anchorIsLiveFix: true, sequence: 1, heldFix: nil
         )
 
-        // The newer movement arrives and completes first, as it would by taking the freed gate.
         let newer = LocationData(latitude: 0, longitude: 0.05)
         _ = await setup.coordinator.handleMovement(
             latitude: newer.latitude, longitude: newer.longitude, anchorIsLiveFix: true
         )
-        // Queued after that pass, standing in for the copy a drain has ALREADY taken off the
-        // queue — the winner's supersede clear cannot reach it, which is why the comparison at
-        // replay time is the thing under test.
+        // Stands in for a copy a drain already took off the queue, which the winner's clear can't
+        // reach.
         setup.coordinator.deferredMovement.wrappedValue = stale
         setup.coordinator.drainDeferredMovement(userChanged: false)
         try? await Task.sleep(nanoseconds: 300000000)
@@ -2132,15 +1974,8 @@ struct GeofenceSyncCoordinatorTests {
         #expect(triggerStarts.last?.center == newer)
     }
 
-    /// Built with `makeCoordinator`, not `makeRegisteredSetup`: these three drive the gate
-    /// directly, and a registration pass leaves a trailing `drainDeferredMovement` that can clear
-    /// a seeded deferral part-way through the assertions.
-    ///
-    /// The staleness test belongs INSIDE the gate's critical section.
-    ///
-    /// Checking before acquiring is the same two-step shape this gate exists to close: a newer
-    /// movement can take the gate, re-centre and publish its sequence between the check and the
-    /// acquisition, and the replay then runs at coordinates already superseded.
+    /// `makeCoordinator`, not `makeRegisteredSetup`: a registration's trailing drain can clear the
+    /// seeded deferral.
     @Test
     func acquireGateOrDefer_givenANewerMovementAlreadyApplied_expectOvertaken() {
         let setup = makeCoordinator(storage: makeStorage())
@@ -2156,12 +1991,7 @@ struct GeofenceSyncCoordinatorTests {
         #expect(setup.coordinator.deferredMovement.wrappedValue == nil)
     }
 
-    /// A fresh arrival outranks everything applied, so the staleness test must never catch one.
-    ///
-    /// The guarantee is that every applied sequence was issued by `nextMovementSequence`, which is
-    /// monotonic — so the next issue always postdates the highest applied. Driven through the
-    /// allocator here rather than with a literal, because a hand-picked `applied` value that the
-    /// allocator has not reached tests an ordering production cannot produce.
+    /// Driven through the allocator so the ordering is one production can produce.
     @Test
     func acquireGateOrDefer_givenAFreshArrivalAfterAnAppliedPass_expectItIsTaken() {
         let setup = makeCoordinator(storage: makeStorage())
@@ -2177,9 +2007,7 @@ struct GeofenceSyncCoordinatorTests {
         setup.coordinator.releaseGate()
     }
 
-    /// Losing the gate must not demote the queue. A replay carries its ORIGINAL sequence, so it
-    /// can arrive here after a newer movement has already queued — last-writer-wins would put the
-    /// older coordinates back in front and the drain would re-centre to them.
+    /// A replay keeps its ORIGINAL sequence, so it can lose the gate after a newer movement has queued.
     @Test
     func acquireGateOrDefer_givenAQueuedNewerMovement_expectAnOlderReplayDoesNotReplaceIt() {
         let setup = makeCoordinator(storage: makeStorage())
@@ -2199,9 +2027,6 @@ struct GeofenceSyncCoordinatorTests {
         setup.coordinator.releaseGate()
     }
 
-    /// A pass that failed re-centred nothing, so it must not claim to have done so — otherwise it
-    /// retires a deferral that is still the best information available and the trigger is left
-    /// wherever it already was.
     @Test
     func handleMovement_givenTheMovementFailed_expectNoReCentreClaimed() async {
         let contextStore = makeContextStore(userId: nil)
@@ -2215,9 +2040,7 @@ struct GeofenceSyncCoordinatorTests {
         #expect(setup.coordinator.appliedMovementSequence.wrappedValue == 0)
     }
 
-    /// The mirror of the held-gate case. A replay can acquire a briefly free gate while a NEWER
-    /// arrival is already queued behind it; clearing the queue unconditionally drops that arrival
-    /// outright, and the trigger ends at the replay's older coordinates.
+    /// A replay can take a briefly free gate while a NEWER arrival is queued behind it.
     @Test
     func acquireGateOrDefer_givenAQueuedNewerMovement_expectAFreeGateDoesNotClearIt() {
         let setup = makeCoordinator(storage: makeStorage())
@@ -2238,8 +2061,6 @@ struct GeofenceSyncCoordinatorTests {
         setup.coordinator.releaseGate()
     }
 
-    /// A pass this one outranks IS superseded, or every winner would leave its own loser queued
-    /// and the trigger would be walked back to it.
     @Test
     func acquireGateOrDefer_givenAQueuedOlderMovement_expectAFreeGateClearsIt() {
         let setup = makeCoordinator(storage: makeStorage())
@@ -2257,9 +2078,7 @@ struct GeofenceSyncCoordinatorTests {
         setup.coordinator.releaseGate()
     }
 
-    /// Success is the wrong signal for "the trigger moved". A failed remote refresh re-arms from
-    /// cache before returning its failure, and that re-centre is exactly what an older replay must
-    /// not undo — so the pass has to claim it despite reporting failure.
+    /// A failed remote refresh re-arms from cache before failing, so it must still claim the re-centre.
     @Test
     func handleMovement_givenAFailedFetchThatReArmed_expectTheReCentreIsClaimed() async {
         let storage = makeStorage()
@@ -2280,11 +2099,7 @@ struct GeofenceSyncCoordinatorTests {
         #expect(setup.coordinator.appliedMovementSequence.wrappedValue == 1)
     }
 
-    /// A reset must not leave an old profile's movement behind it.
-    ///
-    /// The discard and the release have to happen together: with two steps a movement publishes
-    /// between them, finds the gate still held, queues itself, and outlives the reset — a later
-    /// drain then re-centres the trigger to the signed-out profile's coordinates.
+    /// Discard and release must be one step, or a movement queues between them and outlives the reset.
     @Test
     func discardDeferredAndReleaseGate_expectTheQueueClearedAndTheGateFree() {
         let setup = makeCoordinator(storage: makeStorage())
@@ -2305,7 +2120,6 @@ struct GeofenceSyncCoordinatorTests {
         setup.coordinator.releaseGate()
     }
 
-    /// The same, through `reset` itself.
     @Test
     func reset_givenAQueuedMovement_expectItDiscardedAndTheGateFree() async {
         let storage = makeStorage()
@@ -2321,9 +2135,6 @@ struct GeofenceSyncCoordinatorTests {
         setup.coordinator.releaseGate()
     }
 
-    /// A refresh re-centres the trigger too, and a replay that does not know it happened walks
-    /// the trigger back. Found in peer review: the sequence only covered `handleMovement`, so
-    /// every other entry point that plants the trigger was invisible to the overtaken check.
     @Test
     func refresh_givenItReCentred_expectTheReCentreRecorded() async {
         let storage = makeStorage()
@@ -2339,7 +2150,6 @@ struct GeofenceSyncCoordinatorTests {
         #expect(setup.coordinator.appliedMovementSequence.wrappedValue > 0)
     }
 
-    /// The freshness skip moves nothing, so it must not retire a movement waiting behind it.
     @Test
     func refresh_givenTheFreshnessSkip_expectNoReCentreRecorded() async {
         let storage = makeStorage()
@@ -2353,8 +2163,7 @@ struct GeofenceSyncCoordinatorTests {
         #expect(setup.coordinator.appliedMovementSequence.wrappedValue == 0)
     }
 
-    /// A refresh superseded by a user change returns success WITHOUT registering anything, so it
-    /// moved no trigger and must not retire a movement waiting behind it.
+    /// A refresh superseded by a user change returns success WITHOUT registering anything.
     @Test
     func refresh_givenTheUserChangedMidFetch_expectNoReCentreRecorded() async {
         let contextStore = makeContextStore(userId: "user-1")
@@ -2379,8 +2188,7 @@ struct GeofenceSyncCoordinatorTests {
         #expect(setup.coordinator.appliedMovementSequence.wrappedValue == 0)
     }
 
-    /// `maxBusinessGeofences == 0` kill-switches registration, so the trigger is never planted
-    /// even though the pass reports success.
+    /// The kill switch reports success but plants no trigger.
     @Test
     func refresh_givenGeofencingKillSwitched_expectNoReCentreRecorded() async {
         let killSwitched = GeofenceConfig(
@@ -2400,8 +2208,8 @@ struct GeofenceSyncCoordinatorTests {
         #expect(setup.coordinator.appliedMovementSequence.wrappedValue == 0)
     }
 
-    /// Asking for the trigger is not planting it: the OS drops a region for blocked permission or
-    /// invalid coordinates, and the pass still succeeds.
+    /// The OS drops a region for blocked permission or invalid coordinates, and the pass still
+    /// succeeds.
     @Test
     func refresh_givenTheOsDroppedTheTrigger_expectNoReCentreRecorded() async {
         let monitor = MockGeofenceRegionMonitor()
@@ -2418,8 +2226,6 @@ struct GeofenceSyncCoordinatorTests {
         #expect(setup.coordinator.appliedMovementSequence.wrappedValue == 0)
     }
 
-    /// The same distinction on the restore path, which keyed on the intent to register rather than
-    /// on what the OS took.
     @Test
     func applyCachedRegistration_givenTheOsDroppedTheTrigger_expectNoReCentreRecorded() {
         let monitor = MockGeofenceRegionMonitor()
@@ -2436,8 +2242,6 @@ struct GeofenceSyncCoordinatorTests {
         #expect(setup.coordinator.appliedMovementSequence.wrappedValue == 0)
     }
 
-    /// The interleaving peer review described, end to end: a refresh lands between a drain and its
-    /// replay, and the replay must not undo it.
     @Test
     func drainDeferredMovement_givenARefreshReCentredFirst_expectTheReplayDiscarded() async {
         let storage = makeStorage()
@@ -2464,11 +2268,8 @@ struct GeofenceSyncCoordinatorTests {
         #expect(outcome == .overtaken)
     }
 
-    /// Whoever takes the gate first must hold the earlier sequence.
-    ///
-    /// Allocating after the acquisition inverts that: a movement arriving in the gap allocates
-    /// first, carries the LOWER sequence, and is then retired as overtaken by the refresh that was
-    /// already running — so the trigger finishes at the older coordinates.
+    /// Allocating after acquiring lets a movement in the gap take the LOWER sequence and be retired
+    /// as overtaken.
     @Test
     func acquireGateWithSequence_expectTheSequenceIsTakenWithTheGate() {
         let setup = makeCoordinator(storage: makeStorage())
@@ -2481,16 +2282,12 @@ struct GeofenceSyncCoordinatorTests {
         let arrival = setup.coordinator.nextMovementSequence()
 
         #expect(arrival > held)
-        // And the gate really is held, so that arrival defers rather than running.
         #expect(!setup.coordinator.acquireGate())
         setup.coordinator.releaseGate()
     }
 
-    /// The inversion where it is actually reachable: the cached restore's window spans the OS
-    /// registration, so a movement arriving mid-registration is easy to place exactly.
-    ///
-    /// Allocating at the end ranks the restore ABOVE that movement and retires it, leaving the
-    /// trigger on the restore's older anchor. Allocating with the gate ranks it below.
+    /// Reachable here: the restore's gate window spans the OS registration, so a mid-registration
+    /// movement can be placed exactly.
     @Test
     func applyCachedRegistration_givenAMovementArrivedMidRegistration_expectItOutranksTheRestore() async {
         let storage = makeStorage()
@@ -2516,10 +2313,8 @@ struct GeofenceSyncCoordinatorTests {
         #expect(arrival > setup.coordinator.appliedMovementSequence.wrappedValue)
     }
 
-    /// The same intent through `refresh`. Stated plainly: this does NOT discriminate the fix —
-    /// `refresh`'s acquire and allocate are adjacent synchronous statements with no suspension
-    /// between them, so a test cannot land inside that window. It pins the ordering the fix
-    /// guarantees; the restore test above is the one that fails without it.
+    /// Can't fail on a split acquire/allocate (adjacent sync statements); the restore test above
+    /// discriminates.
     @Test
     func refresh_givenAMovementQueuedWhileItRan_expectTheMovementOutranksIt() async {
         let storage = makeStorage()
@@ -2548,24 +2343,13 @@ struct GeofenceSyncCoordinatorTests {
 
         #expect(queued.errorOrNil == .alreadyInProgress)
         #expect(deferredSequence > 0)
-        // Compared after the refresh has applied its own: with the allocation split from the
-        // acquisition the refresh takes the HIGHER number and retires this movement, so the
-        // trigger keeps the refresh's older coordinates. Read from the captured sequence, not
-        // from the queue, because the refresh's release drains it on the way out.
+        // Read from the captured sequence: the refresh's release drains the queue.
         #expect(deferredSequence > setup.coordinator.appliedMovementSequence.wrappedValue)
     }
 
-    /// A live movement must never be refused as overtaken.
-    ///
-    /// Minting the sequence before the gate lets a pass that acquires LATER hold an earlier
-    /// number: the movement allocates, something else takes the free gate and re-centres with the
-    /// next sequence, and the movement then reaches the gate and is dropped — work the code
-    /// without any sequence would have run. Stamping inside the gate makes "took the gate later"
-    /// and "holds the later sequence" the same statement.
     @Test
     func acquireGateOrDefer_givenAFreshMovementAfterAnApplied_expectItIsNeverOvertaken() {
         let setup = makeCoordinator(storage: makeStorage())
-        // Something already re-centred and published a sequence.
         guard case .taken(let earlier) = setup.coordinator.acquireGateOrDefer(
             latitude: 0, longitude: 0, anchorIsLiveFix: true, replaySequence: nil, heldFix: nil
         ) else {
@@ -2587,7 +2371,6 @@ struct GeofenceSyncCoordinatorTests {
         setup.coordinator.releaseGate()
     }
 
-    /// A replay, by contrast, still is retired once something newer has re-centred.
     @Test
     func acquireGateOrDefer_givenAReplayOlderThanTheApplied_expectOvertaken() {
         let setup = makeCoordinator(storage: makeStorage())
@@ -2603,15 +2386,9 @@ struct GeofenceSyncCoordinatorTests {
 
     // MARK: - Teardown ordering
 
-    /// Teardown clears user-scoped state and stops the OS, and the two are separate awaits. A
-    /// polygon pass resuming between them reads a still-populated `monitoredGeofenceIds`, passes
-    /// the create guard in `recordPolygonMembership`, and emits an enter for a fence being torn
-    /// down. Clearing first makes such a pass fail closed.
-    ///
-    /// Asserted as an order, not by racing a pass into the gap: the gap is one suspension wide and
-    /// a racing test would pass against the wrong ordering on almost every run. Both steps record
-    /// onto one timeline because neither can observe the other — the clear is `async`, the stop is
-    /// `@MainActor`.
+    /// Clear BEFORE the OS stop, so a polygon pass resuming in between can't emit an enter for a
+    /// torn-down fence. Asserted as an order: the clear is `async` and the stop `@MainActor`, so
+    /// both land on one timeline.
     @Test
     func reset_expectUserScopedStateClearedBeforeTheOsStop() async {
         let recorder = TeardownOrderRecorder()
@@ -2630,15 +2407,13 @@ struct GeofenceSyncCoordinatorTests {
         #expect(recorder.recorded == ["clear", "stop"])
     }
 
-    /// The same ordering at the other teardown site. A user switch landing inside a gated operation
-    /// tears down through `cleanupIfUserChanged` rather than `reset`, and the window is identical.
+    /// Same ordering via `cleanupIfUserChanged`, the other teardown site.
     @Test
     func handleMovement_givenUserChangedMidFlight_expectStateClearedBeforeTheOsStop() async {
         let recorder = TeardownOrderRecorder()
         let backing = makeStorage()
         let contextStore = makeContextStore(userId: "user-1")
-        // Flipped inside the freshness read, so the operation completes for `user-1` and finds a
-        // different user at its single gated exit.
+        // Flipped inside the freshness read, so the pass finds a different user at its gated exit.
         let spy = SpyGeofenceSyncStorage(
             underlying: backing,
             onGetLastSync: { contextStore.setUserId("user-2") },
@@ -2646,8 +2421,7 @@ struct GeofenceSyncCoordinatorTests {
         )
         let monitor = MockGeofenceRegionMonitor()
         monitor.onStopAll = { recorder.record("stop") }
-        // The API mock never calls its completion unless given a closure, and the no-anchor path
-        // takes the remote branch — without this the pass suspends forever and hangs the suite.
+        // Without a completion closure the API mock never completes and the suite hangs.
         let api = GeofenceApiServiceMock()
         api.fetchNearbyGeofencesClosure = { _, _, completion in
             completion(.success(makeApiResponse(regions: [], config: diffConfig)))
@@ -2659,9 +2433,8 @@ struct GeofenceSyncCoordinatorTests {
         #expect(recorder.recorded == ["clear", "stop"])
     }
 
-    /// What the ordering buys, pinned at the layer that enforces it: once the clear has run, the
-    /// create guard refuses a belief for a fence that is no longer monitored. This is what a pass
-    /// resuming after the clear hits, and it is why clearing first fails closed.
+    /// Why clearing first fails closed: after it, the create guard refuses a belief for an
+    /// unmonitored fence.
     @Test
     func recordPolygonMembership_givenStateAlreadyCleared_expectSuppressedRatherThanAnEnter() async {
         let storage = makeStorage()
@@ -2703,7 +2476,6 @@ struct GeofenceSyncCoordinatorTests {
 
     @Test
     func reset_givenAnotherUserSignedIn_expectSkippedWithoutChanges() async {
-        // A re-login during the reset window must NOT wipe the new user's freshly-set state.
         let storage = makeStorage()
         await storage.setCachedGeofences([makeRegion(id: "keep", latitude: 0, longitude: 0)])
         await storage.recordSync(timestamp: Date(timeIntervalSince1970: 100), location: LocationData(latitude: 0, longitude: 0))
@@ -2770,7 +2542,6 @@ struct GeofenceSyncCoordinatorTests {
         let result = await refreshResult
 
         #expect(result.isSuccess)
-        // No register, no persistence — the result was attributed to a stale user.
         #expect(setup.monitor.startedRegions.isEmpty)
         let cached = await storage.getCachedGeofences()
         #expect(cached.isEmpty)
@@ -2808,9 +2579,8 @@ struct GeofenceSyncCoordinatorTests {
 
     @Test
     func refresh_givenInFlightHandleMovement_expectAlreadyInProgress() async {
-        // Reverse direction of the cross-entry gate — handleMovement holding it must
-        // short-circuit a concurrent refresh. Pinned independently because a regression
-        // that gave handleMovement its own gate would still pass the forward test.
+        // Pinned separately: a regression giving handleMovement its own gate would still pass the
+        // forward test.
         let storage = makeStorage()
         // No cached config → handleMovement falls back to `.fallback`; no anchor → remote bootstrap.
         let api = GeofenceApiServiceMock()
@@ -2836,11 +2606,8 @@ struct GeofenceSyncCoordinatorTests {
 
     // MARK: - Oversized covering circles
 
-    /// Both monitors clamp a radius to the OS limit. For a circle that is graceful — the monitored
-    /// circle IS the fence, so a smaller one just reports later. For a polygon it is not: a clamped
-    /// circle no longer contains the polygon, so the covering-circle exit stops being geometric
-    /// certainty and becomes a false exit. Such a polygon is dropped instead, while the circle
-    /// alongside it still registers — the control that proves the drop is selective.
+    /// A clamped circle no longer contains its polygon, so its exit would be false: the polygon is
+    /// dropped. The circle alongside is the control that the drop is selective.
     @Test
     func remoteRefresh_givenPolygonCoveringCircleOverOsLimit_expectDroppedButCircleRegistered() async {
         let anchor = LocationData(latitude: 0, longitude: 0)
@@ -2876,8 +2643,6 @@ struct GeofenceSyncCoordinatorTests {
         #expect(registered.contains("circle"))
     }
 
-    /// A polygon the OS will refuse must not consume one of `maxBusinessGeofences`: dropping it
-    /// after ranking left the slot empty even with a usable candidate waiting behind it.
     @Test
     func remoteRefresh_givenOversizedPolygonAndSpareCandidate_expectSlotGoesToTheNextRegion() async {
         let anchor = LocationData(latitude: 0, longitude: 0)
@@ -2894,7 +2659,7 @@ struct GeofenceSyncCoordinatorTests {
                 LocationData(latitude: 0.01, longitude: -0.01)
             ]
         )
-        // Nearer than the spare, so ranking puts it in the single available slot.
+        // The polygon is nearer, so without the pre-ranking drop it would take the single slot.
         let spare = Geofence(
             id: "spare", latitude: 0.02, longitude: 0.02, radius: 100, name: nil,
             transitionTypes: [.enter, .exit], lastUpdated: dateUtil.givenNow
@@ -2917,8 +2682,6 @@ struct GeofenceSyncCoordinatorTests {
         #expect(setup.monitor.startedRegions.map(\.identifier).contains("spare"))
     }
 
-    /// A polygon's covering circle is machinery: it must report both edges regardless of the
-    /// customer's transition types, or the resolver never sees the edge it needs to advance belief.
     @Test
     func remoteRefresh_givenEnterOnlyPolygon_expectCoveringCircleRegisteredWithBothEdges() async {
         let anchor = LocationData(latitude: 0, longitude: 0)
@@ -2954,9 +2717,8 @@ struct GeofenceSyncCoordinatorTests {
         #expect(circleRequest?.transitionTypes == [.enter])
     }
 
-    /// The dropped polygon must not be recorded as registered either: `evaluateAllPolygons` reads
-    /// that set, so recording it would have the resolver decide membership for a fence the OS never
-    /// took — an enter with no wake behind it and no exit to balance it.
+    /// `evaluateAllPolygons` reads the registered set: a dropped polygon there gets membership with
+    /// no OS wake.
     @Test
     func remoteRefresh_givenPolygonCoveringCircleOverOsLimit_expectNotRecordedAsRegistered() async {
         let anchor = LocationData(latitude: 0, longitude: 0)
@@ -2994,16 +2756,13 @@ struct GeofenceSyncCoordinatorTests {
 
     // MARK: - Initial enter-when-inside (diff-based, both monitor paths)
 
-    /// A polygon's `radius` is its covering circle, so the containment test that serves circles
-    /// would emit an enter for a device sitting in the annulus — a crossing that never happened.
-    /// Polygons are excluded here and decided by the resolver's gated evaluation instead.
-    ///
-    /// The circle in the same pass is the negative control: it proves the harness would have caught
-    /// an emit, so the polygon's silence is the exclusion working and not a dead assertion.
+    /// A polygon's `radius` is its covering circle, so the circle containment check would emit a
+    /// false enter. The circle in the same pass is the negative control, so the polygon's silence
+    /// isn't a dead assertion.
     @Test
     func remoteRefresh_givenNewPolygonCoveringAnchorButNotContainingIt_expectNoInitialEnter() async {
         let anchor = LocationData(latitude: 0, longitude: 0)
-        // Square sitting ~111 m north of the anchor: every vertex is inside the 400 m covering
+        // Rectangle starting ~111 m north of the anchor: every vertex is inside the 400 m covering
         // circle, while the anchor itself is outside the polygon.
         let polygon = Geofence(
             id: "poly", latitude: 0, longitude: 0, radius: 400, name: nil,
@@ -3028,8 +2787,7 @@ struct GeofenceSyncCoordinatorTests {
         #expect(emitted.first?.geofenceId == "circle")
     }
 
-    /// Drives a remote refresh that fetches `regions`, anchored at `anchor`, with `previousIds`
-    /// already recorded as registered. The emit is fire-and-forget, so callers poll via `awaitEmits`.
+    /// The emit is fire-and-forget, so callers poll via `awaitEmits`.
     private func runRemoteRefresh(regions: [Geofence], anchor: LocationData, previousIds: Set<String>) async -> TransitionEmitterSpy {
         let storage = makeStorage()
         // Stale sync so the freshness gate routes to a remote fetch.
@@ -3045,8 +2803,8 @@ struct GeofenceSyncCoordinatorTests {
         return setup.emitter
     }
 
-    /// Polls the fire-and-forget emit Task until it has recorded `count` calls, then yields a few more
-    /// times so any unwanted extra emit would surface before the caller asserts an exact set.
+    /// Yields a few extra times after `count` so an unwanted extra emit surfaces before the caller
+    /// asserts.
     private func awaitEmits(_ emitter: TransitionEmitterSpy, count: Int) async {
         for _ in 0 ..< 100 where emitter.calls.wrappedValue.count < count {
             await Task.yield()
@@ -3059,7 +2817,6 @@ struct GeofenceSyncCoordinatorTests {
     @Test
     func refresh_givenNewGeofenceDeviceInside_expectInitialEnterEmitted() async {
         let anchor = LocationData(latitude: 1.0, longitude: 2.0)
-        // Region centered on the anchor → device is inside; no prior registration → genuinely new.
         let emitter = await runRemoteRefresh(regions: [makeRegion(id: "g1", latitude: 1.0, longitude: 2.0)], anchor: anchor, previousIds: [])
         await awaitEmits(emitter, count: 1)
         #expect(emitter.calls.wrappedValue.map(\.geofenceId) == ["g1"])
@@ -3069,8 +2826,7 @@ struct GeofenceSyncCoordinatorTests {
     @Test
     func refresh_givenMixOfNewGeofences_expectOnlyContainingEnterTypeEmitted() async {
         let anchor = LocationData(latitude: 1.0, longitude: 2.0)
-        // inside+enter g1 → emitted; ~222m-away g2 → registered but outside; inside exit-only g3.
-        // Awaiting g1 proves the emit loop ran, so g2/g3 are conclusively excluded (non-vacuous).
+        // g2 is ~222 m away, g3 exit-only; awaiting g1 proves the loop ran, so their absence is real.
         let g2 = makeRegion(id: "g2", latitude: 1.002, longitude: 2.0)
         let g3 = Geofence(id: "g3", latitude: 1.0, longitude: 2.0, radius: 100, name: "g3", transitionTypes: [.exit], lastUpdated: Date(timeIntervalSince1970: 1700000000))
         let emitter = await runRemoteRefresh(regions: [makeRegion(id: "g1", latitude: 1.0, longitude: 2.0), g2, g3], anchor: anchor, previousIds: [])
@@ -3505,8 +3261,7 @@ struct GeofenceSyncCoordinatorTests {
     @Test
     func refresh_givenNewAndAlreadyRegisteredInside_expectOnlyNewEmitted() async {
         let anchor = LocationData(latitude: 1.0, longitude: 2.0)
-        // Both inside; gOld is already registered (a wholesale re-registration) → excluded by the diff;
-        // gNew is genuinely new → emitted. Emitting only gNew proves the diff, non-vacuously.
+        // Both inside; `gOld` is already registered, so only `gNew` is new.
         let regions = [makeRegion(id: "gOld", latitude: 1.0, longitude: 2.0), makeRegion(id: "gNew", latitude: 1.0, longitude: 2.0)]
         let emitter = await runRemoteRefresh(regions: regions, anchor: anchor, previousIds: ["gOld"])
         await awaitEmits(emitter, count: 1)
@@ -3515,8 +3270,7 @@ struct GeofenceSyncCoordinatorTests {
 
     @Test
     func localRefresh_givenNewGeofenceInside_expectInitialEnterEmitted() async {
-        // Cover the LOCAL refresh call site: recent sync (not time-stale) + cached region but no
-        // recorded registration → refreshAction routes to a local re-rank, not a fetch.
+        // Recent sync plus a cached region but no registration routes to a local re-rank.
         let anchor = LocationData(latitude: 1.0, longitude: 2.0)
         let storage = makeStorage()
         let dateUtil = DateUtilStub()
@@ -3534,8 +3288,6 @@ struct GeofenceSyncCoordinatorTests {
 
     @Test
     func refresh_givenNewGeofenceInsideButRegistrationRejected_expectNoInitialEnter() async {
-        // The device is inside a genuinely-new fence, but the monitor drops it (blocked permission /
-        // invalid coordinates), so it isn't monitored — no synthetic enter it could never balance.
         let anchor = LocationData(latitude: 1.0, longitude: 2.0)
         let storage = makeStorage()
         let dateUtil = DateUtilStub()
@@ -3550,19 +3302,15 @@ struct GeofenceSyncCoordinatorTests {
 
         _ = await setup.coordinator.refresh(latitude: anchor.latitude, longitude: anchor.longitude, anchorIsLiveFix: true)
 
-        // No count to await — assert nothing emitted after yielding the fire-and-forget window. The
-        // sibling "device inside" test proves this same setup DOES emit without the rejection, so
-        // this is non-vacuous.
+        // Non-vacuous: the "device inside" test proves this setup emits without the rejection.
         await awaitEmits(setup.emitter, count: 0)
         #expect(setup.emitter.calls.wrappedValue.isEmpty)
     }
 
     @Test
     func handleMovement_givenRegisteredRegionReshapedThenRejected_expectNoLongerReportedRegistered() async {
-        // A region already registered gets reshaped, and the monitor now rejects it (permission
-        // revoked, or the backend moved it to invalid coordinates). The stale claim must go with
-        // the failed re-registration — otherwise it keeps counting toward the registered set and
-        // `emitInitialEnters` can fire an enter for a region the OS is not monitoring.
+        // A failed re-registration must drop the claim, or `emitInitialEnters` can enter an
+        // unmonitored fence.
         let storage = makeStorage()
         let dateUtil = DateUtilStub()
         await storage.setCachedConfig(diffConfig)
@@ -3579,17 +3327,12 @@ struct GeofenceSyncCoordinatorTests {
         _ = await setup.coordinator.handleMovement(latitude: 0, longitude: 0.001, anchorIsLiveFix: true)
 
         #expect(!setup.monitor.monitoredRegionIdentifiers.contains("g1"))
-        // And the circle it held before the refused reshape is gone from the OS, not left occupying
-        // one of the 20 slots with nothing owning it and no later pass repairing it.
         #expect(!setup.monitor.osMonitoredRegions.contains("g1"))
         #expect(setup.monitor.osGeometry(for: "g1") == nil)
     }
 
     @Test
     func refresh_givenDeviceInsideConfiguredRadiusButOutsideOsCap_expectNoInitialEnter() async {
-        // The fence's configured radius exceeds the OS cap, so the monitor registers a smaller clamped
-        // circle. The device is inside the configured radius but outside the clamped one, so the inside
-        // check (which clamps to the same cap) must not emit a synthetic enter.
         let anchor = LocationData(latitude: 1.0, longitude: 2.0)
         let storage = makeStorage()
         let dateUtil = DateUtilStub()
@@ -3611,8 +3354,6 @@ struct GeofenceSyncCoordinatorTests {
         #expect(setup.emitter.calls.wrappedValue.isEmpty)
     }
 
-    /// Nothing crossed anything on this path, so the event time is when the sync noticed — read
-    /// from the injected clock, not the wall clock the tracker used to stamp with.
     @Test
     func refresh_givenNewInsideFences_expectStampedFromTheInjectedClock() async {
         let anchor = LocationData(latitude: 1.0, longitude: 2.0)
@@ -3638,8 +3379,6 @@ struct GeofenceSyncCoordinatorTests {
 
     @Test
     func refresh_givenUserChangesMidInitialEnterBatch_expectRemainingSuppressed() async {
-        // Two new-inside fences. The identity changes while the first enter is being delivered; the
-        // per-iteration guard must stop the batch so the second isn't stamped to the new user.
         let anchor = LocationData(latitude: 1.0, longitude: 2.0)
         let storage = makeStorage()
         let dateUtil = DateUtilStub()
@@ -3658,16 +3397,13 @@ struct GeofenceSyncCoordinatorTests {
 
         _ = await setup.coordinator.refresh(latitude: anchor.latitude, longitude: anchor.longitude, anchorIsLiveFix: true)
 
-        // Exactly one delivered: the guard stopped the batch after the first send changed identity.
-        // Without the per-iteration recheck, both would fire (count == 2).
         await awaitEmits(emitter, count: 1)
         #expect(emitter.calls.wrappedValue.count == 1)
     }
 
     @Test
     func refresh_givenSignOutDuringRegisterPersist_expectStaleStateUndone() async {
-        // Sign-out lands AFTER the post-fetch user check, during the register/persist window — where
-        // reset() would be dropped on the held gate. The refresh must undo its own stale-user state.
+        // After the post-fetch user check, where the sign-out's reset() is dropped on the held gate.
         let contextStore = makeContextStore(userId: "user-1")
         let backing = makeStorage()
         let dateUtil = DateUtilStub()
@@ -3683,8 +3419,6 @@ struct GeofenceSyncCoordinatorTests {
         let result = await setup.coordinator.refresh(latitude: 0, longitude: 0, anchorIsLiveFix: true)
 
         #expect(result.isSuccess)
-        // Cleanup ran: monitoring torn down wholesale, user-scoped state cleared, and no initial
-        // enters for the signed-out user.
         #expect(setup.monitor.stopAllCallCount == 1)
         #expect(setup.monitor.monitoredRegionIdentifiers.isEmpty)
         #expect(await backing.getRegisteredBusinessIds().isEmpty)
@@ -3694,9 +3428,6 @@ struct GeofenceSyncCoordinatorTests {
 
     @Test
     func refresh_givenSignOutBeforeFetchFailure_expectStaleStateUndone() async {
-        // Sign-out lands during the fetch and the fetch then fails — an early exit that used to
-        // return before any cleanup, leaving the previous user's registrations and sync anchors
-        // behind (their reset() was dropped on the held gate).
         let contextStore = makeContextStore(userId: "user-1")
         let storage = makeStorage()
         await storage.recordSync(timestamp: Date(timeIntervalSince1970: 1), location: LocationData(latitude: 0, longitude: 0))
@@ -3711,7 +3442,6 @@ struct GeofenceSyncCoordinatorTests {
         let result = await setup.coordinator.refresh(latitude: 0, longitude: 0, anchorIsLiveFix: true)
 
         #expect(result.errorOrNil == .fetchFailed(.transport))
-        // The exit cleanup ran: monitoring stopped and the stale user-scoped state cleared.
         #expect(setup.monitor.stopAllCallCount == 1)
         #expect(await storage.getRegisteredBusinessIds().isEmpty)
         #expect(await storage.getLastSync() == nil)
@@ -3719,9 +3449,6 @@ struct GeofenceSyncCoordinatorTests {
 
     @Test
     func refresh_givenSignOutDuringFreshnessSkip_expectStaleStateUndone() async {
-        // Sign-out lands while a refresh is deciding it has fresh data ("skip") — the shortest
-        // gated path, with no register/persist at all. The dropped reset()'s cleanup must still
-        // run before the gate is released.
         let contextStore = makeContextStore(userId: "user-1")
         let backing = makeStorage()
         let dateUtil = DateUtilStub()
@@ -3741,9 +3468,6 @@ struct GeofenceSyncCoordinatorTests {
 
     @Test
     func reset_givenDroppedDuringInFlightRefresh_expectCleanupBeforeGateRelease() async {
-        // The reviewer's end-to-end scenario: reset() fires while a refresh holds the gate and is
-        // dropped as .alreadyInProgress; the refresh (here failing its fetch) must run the
-        // sign-out's cleanup before releasing the gate.
         let contextStore = makeContextStore(userId: "user-1")
         let storage = makeStorage()
         await storage.recordRegistration(center: LocationData(latitude: 0, longitude: 0), businessIds: ["g1"])
@@ -3779,10 +3503,8 @@ struct GeofenceSyncCoordinatorTests {
 
     @Test
     func refresh_givenUserSwitchMidFetch_expectSelfHealRegistersNewUser() async {
-        // A signs out and B signs in while A's refresh is in flight: B's own refresh would be
-        // dropped on the held gate, and the exit cleanup stops everything — leaving the device
-        // unmonitored. The self-heal retry must re-run for B so the switch converges to a
-        // registered state instead of an outage until the next launch.
+        // B's refresh is dropped on the held gate and the exit cleanup stops everything; only the
+        // retry recovers.
         let contextStore = makeContextStore(userId: "user-1")
         let storage = makeStorage()
         let api = GeofenceApiServiceMock()
@@ -3792,8 +3514,7 @@ struct GeofenceSyncCoordinatorTests {
                 count += 1
                 return count
             }
-            // First fetch belongs to user-1; flip to user-2 mid-flight so the post-fetch check
-            // supersedes it and the exit cleanup + retry run.
+            // Flip to user-2 mid-flight so the post-fetch check supersedes user-1.
             if call == 1 { contextStore.setUserId("user-2") }
             completion(.success(makeApiResponse(regions: [makeRegion(id: "g1", latitude: 0, longitude: 0)])))
         }
@@ -3814,9 +3535,7 @@ struct GeofenceSyncCoordinatorTests {
     }
 }
 
-/// Holds a fetch completion across concurrency domains so a test can resolve it after
-/// choreographing concurrent calls. `@unchecked Sendable`: writes and reads are sequenced by the
-/// fetch-started signal.
+/// `@unchecked Sendable`: writes and reads are sequenced by the fetch-started signal.
 private final class CompletionBox: @unchecked Sendable {
     var completion: ((Result<GeofenceApiResponse, GeofenceApiError>) -> Void)?
 }
@@ -3835,8 +3554,6 @@ private extension Result where Success == Void {
 
 // MARK: - Storage spy
 
-/// Records calls in arrival order; delegates to a real `GeofenceStorage` so state
-/// correctness still flows through the production code.
 private actor SpyGeofenceSyncStorage: GeofenceSyncStorage {
     enum Operation: Sendable, Equatable {
         case getCachedConfig
@@ -3854,14 +3571,10 @@ private actor SpyGeofenceSyncStorage: GeofenceSyncStorage {
 
     private let underlying: GeofenceStorage
     private(set) var operations: [Operation] = []
-    /// Runs at the start of `setCachedGeofences` — the first storage write after the post-fetch user
-    /// check — so a test can flip the identified user inside the register/persist window.
+    /// Runs at the start of `setCachedGeofences`, the first write after the post-fetch user check.
     private let onSetCachedGeofences: (@Sendable () -> Void)?
-    /// Runs at the start of `getLastSync` — inside the freshness decision — so a test can flip the
-    /// identified user on a refresh that will exit via the skip path.
+    /// Runs at the start of `getLastSync`, inside the freshness decision.
     private let onGetLastSync: (@Sendable () -> Void)?
-    /// Runs at the start of `clearUserScopedState`, so a teardown test can put the clear on the
-    /// same timeline as the OS stop and assert their order.
     private let onClearUserScopedState: (@Sendable () -> Void)?
 
     init(
@@ -3937,7 +3650,6 @@ private actor SpyGeofenceSyncStorage: GeofenceSyncStorage {
 
 // MARK: - Transition emitter spy
 
-/// Records the synthetic transitions the coordinator fires for initial enter-when-inside.
 private final class TransitionEmitterSpy: GeofenceTransitionEmitting, @unchecked Sendable {
     struct Emit: Equatable, Sendable {
         let geofenceId: String
@@ -3946,8 +3658,7 @@ private final class TransitionEmitterSpy: GeofenceTransitionEmitting, @unchecked
     }
 
     let calls = Synchronized<[Emit]>([])
-    /// Invoked after each recorded emit with its 0-based index — lets a test mutate state mid-batch
-    /// (e.g. change the identified user) to exercise the per-iteration guard.
+    /// Called after each emit with its 0-based index.
     var onEmit: (@Sendable (Int) -> Void)?
 
     func trackTransition(geofenceId: String, transition: GeofenceTransition, occurredAt: Date) async {
@@ -4008,7 +3719,6 @@ private actor StallingEnterEmitter: GeofenceTransitionEmitting {
 
 // MARK: - Async signal helper
 
-/// One Task awaits `wait()` until another Task calls `fire()`.
 private actor AsyncSignal {
     private var continuation: CheckedContinuation<Void, Never>?
     private var fired = false

@@ -1,15 +1,7 @@
 #!/usr/bin/env python3
-"""Decides the geofence corpus replay check from the xcresult test tree.
+"""Grades the geofence replay check. A skipped suite exits 0, so at least one drive must run.
 
-xcodebuild's exit code is not enough: with no corpus the replay test is *skipped* by its
-`.enabled(if: Scenarios.isAvailable)` trait, and a skipped suite exits 0 — a pass that replayed
-nothing. So this requires at least one recorded drive to have actually run.
-
-The corpus is private, and this repo's Actions logs are public. Failure messages carry fence names
-and coordinates, so this prints only test and drive names with their outcome, never a message.
-
-Failure messages of *authored* scenarios (synthetic data, see `authored_names`) are printed so a
-CI failure can be diagnosed; recorded drives' are not.
+Private corpus, public logs: print only names and outcomes, plus authored scenarios' failures.
 
 Usage: xcrun xcresulttool get test-results tests --path R.xcresult > tests.json
        geofence_replay_gate.py tests.json [scenarios-dir]
@@ -23,11 +15,7 @@ REPLAY_CASE = "replay_givenRecordedDrive_expectRecordedDecisions"
 
 
 def authored_names(scenarios_dir):
-    """Scenario names whose header says `source.kind == authored`.
-
-    Authored scenarios are written by hand with synthetic coordinates and invented fence ids, so
-    their failure messages are safe to print. Recorded drives stay hidden: theirs carry real ones.
-    """
+    """`source.kind == authored` scenarios: synthetic data, so their failures are safe to print."""
     names = set()
     if not scenarios_dir:
         return names
@@ -71,9 +59,7 @@ def main(path, scenarios_dir=None):
         if not name.startswith(REPLAY_CASE):
             others.append((name, outcome(case)))
             continue
-        # One `Arguments` child per drive, and only those count as replays. A case with none either
-        # skipped or had no drives to expand — a corpus holding only the other platform's scenarios
-        # "passes" that way having replayed nothing — so it is reported but never counted.
+        # Only `Arguments` children (one per drive) count; a case with none is reported, never counted.
         arguments = [c for c in case.get("children", []) if c.get("nodeType") == "Arguments"]
         if arguments:
             for a in arguments:

@@ -5,8 +5,7 @@ import Foundation
 import SharedTests
 import Testing
 
-/// No Application Support directory, so the store can resolve no file at all — the state a
-/// sandbox failure produces and the only one that reaches the no-location branch.
+/// Resolves no Application Support directory: the only way to reach the no-location branch.
 private final class NoApplicationSupportFileManager: FileManager {
     override func urls(for directory: FileManager.SearchPathDirectory, in domainMask: FileManager.SearchPathDomainMask) -> [URL] {
         []
@@ -85,7 +84,6 @@ struct PendingGeofenceMetricStoreTests {
 
     @Test
     func decode_givenLegacyRowWithoutMetadata_expectNilMetadata() throws {
-        // A row persisted before metadata existed must still decode (missing key → nil).
         let legacy = """
         {"geofence_id":"geo_1","transition":"enter","timestamp":1,"user_id":"user_1","transition_id":"txn_1"}
         """
@@ -119,7 +117,7 @@ struct PendingGeofenceMetricStoreTests {
         defer { try? FileManager.default.removeItem(at: dir) }
         let store = makeStore(directory: dir)
 
-        // Append 105 metrics; cap is 100. First 5 should be dropped.
+        // Cap is 100, so the first 5 drop.
         for i in 0 ..< 105 {
             _ = await store.append([makeMetric(geofenceId: "geo_\(i)")])
         }
@@ -136,7 +134,7 @@ struct PendingGeofenceMetricStoreTests {
         defer { try? FileManager.default.removeItem(at: dir) }
         let store = makeStore(directory: dir)
 
-        // Append exactly 100 (the cap); guards against an off-by-one in the `>` check.
+        // Exactly the cap; guards an off-by-one in the `>` check.
         for i in 0 ..< 100 {
             _ = await store.append([makeMetric(geofenceId: "geo_\(i)")])
         }
@@ -153,7 +151,6 @@ struct PendingGeofenceMetricStoreTests {
         defer { try? FileManager.default.removeItem(at: dir) }
         let store = makeStore(directory: dir)
 
-        // A single batch larger than the cap must trim to the newest 100 in that one write.
         let batch = (0 ..< 105).map { makeMetric(geofenceId: "geo_\($0)") }
         _ = await store.append(batch)
         let items = await store.rows()
@@ -208,8 +205,7 @@ struct PendingGeofenceMetricStoreTests {
         let existing = makeMetric(geofenceId: "geo_1") // key already on disk
         _ = await store.append([existing])
 
-        // Batch repeats the on-disk key and an in-batch duplicate; both must be skipped so a
-        // cooldown-slip or re-fan-out can't produce duplicate rows.
+        // Repeats the on-disk key plus an in-batch duplicate.
         let batch = [existing, makeMetric(geofenceId: "geo_2"), makeMetric(geofenceId: "geo_2")]
         let appended = await store.append(batch)
         let items = await store.rows()
@@ -225,8 +221,7 @@ struct PendingGeofenceMetricStoreTests {
         defer { try? FileManager.default.removeItem(at: dir) }
         let store = makeStore(directory: dir)
         let timestamp = Date(timeIntervalSince1970: 1700000000)
-        // One physical transition fanned out to two geosets: identical
-        // (geofenceId, transition, timestamp), distinct geosetId suffixes. Persisted atomically.
+        // One transition fanned out to two geosets: same key fields, distinct `geosetId`.
         let rowY = PendingGeofenceMetric(
             geofenceId: "geo_1", transition: .enter, timestamp: timestamp,
             userId: "user_1", name: nil, transitionId: "txn", geosetId: "set_y"
@@ -261,8 +256,6 @@ struct PendingGeofenceMetricStoreTests {
 
     @Test
     func decode_givenLegacyRowWithoutGeosetId_expectNilGeosetId() throws {
-        // Rows persisted by pre-geoset SDK versions have no `geoset_id` field and
-        // must keep decoding after an upgrade.
         let legacyJson = """
         {"geofence_id":"geo_1","transition":"enter","timestamp":1700000000,"user_id":"user_1","transition_id":"txn_legacy"}
         """
@@ -274,9 +267,7 @@ struct PendingGeofenceMetricStoreTests {
         #expect(metric.key == "geo%5F1_enter_1700000000_user%5F1")
     }
 
-    /// The separator is escaped inside each component, so two rows whose components differ only in
-    /// where the boundary falls cannot key the same. Unescaped, `a_42` with no geoset and `a` in
-    /// geoset `42` both produce `..._a_42`, and the first row to send removes the other's.
+    /// Unescaped, `a_42` with no geoset and `a` in geoset `42` would both key `..._a_42`.
     @Test
     func key_givenAComponentHoldingTheSeparator_expectNoCollisionAcrossTheBoundary() {
         let timestamp = Date(timeIntervalSince1970: 1700000000)
@@ -349,7 +340,6 @@ struct PendingGeofenceMetricStoreTests {
 
     // MARK: - Resilience to bad rows and unreadable files
 
-    /// The queue file path, so a test can plant bytes the encoder would never produce.
     private func queueFile(in directory: URL) -> URL {
         directory.appendingPathComponent("pending_geofence_metrics.json")
     }
@@ -359,8 +349,7 @@ struct PendingGeofenceMetricStoreTests {
         try Data(json.utf8).write(to: queueFile(in: directory))
     }
 
-    /// A row missing `user_id` — the schema-evolution case, since `userId` is non-optional here
-    /// while Android's is nullable. One of these used to discard every other row with it.
+    /// A row missing `user_id` (non-optional here, nullable on Android).
     private static let oneGoodOneBadRow = """
     [
       {"geofence_id":"geo_1","transition":"enter","timestamp":1700000000,"user_id":"user_store","transition_id":"txn_store"},
@@ -368,9 +357,6 @@ struct PendingGeofenceMetricStoreTests {
     ]
     """
 
-    /// The one branch that returns `unreadable` without touching a file. It was silent, which in
-    /// this state means every append and every flush fails for the life of the process with
-    /// nothing in the log to say why.
     @Test
     func read_givenNoResolvableFileLocation_expectUnreadableAndLogged() async {
         let logger = LoggerMock()
@@ -406,8 +392,6 @@ struct PendingGeofenceMetricStoreTests {
 
         _ = await store.read()
 
-        // The count is the record: a backlog that shrank and one that was thrown away are the
-        // same observation without it.
         #expect(logger.errorReceivedInvocations.contains { $0.message.contains("skipped 1 of 2 row(s)") })
     }
 
@@ -423,11 +407,8 @@ struct PendingGeofenceMetricStoreTests {
         #expect(await store.rows().map(\.geofenceId) == ["geo_1", "geo_3"])
     }
 
-    /// The defect this ticket exists for. The file carries
-    /// `completeUntilFirstUserAuthentication`, so a geofence wake before the first unlock after a
-    /// reboot cannot read it — and an append that treats that as an empty queue overwrites rows
-    /// that were never lost. Modelled with a file the process may not read but whose directory it
-    /// may still write, which is the same shape: an atomic write would otherwise succeed.
+    /// A file the process can't read in a directory it can still write, so an atomic write would
+    /// otherwise succeed.
     @Test
     func append_givenAnUnreadableFile_expectRefusedAndTheQueueUntouched() async throws {
         let dir = makeTempDirectory()
@@ -478,8 +459,6 @@ struct PendingGeofenceMetricStoreTests {
         #expect(await store.remove(key: metric.key) == false)
     }
 
-    /// Read succeeded and the bytes are not a row array, so unlike a read failure there is nothing
-    /// left to preserve — the queue reads empty and the next write reclaims the file.
     @Test
     func append_givenAFileThatIsNotARowArray_expectTheWriteProceeds() async throws {
         let dir = makeTempDirectory()

@@ -18,7 +18,7 @@ struct PolygonWakeRadiusTests {
         )
     }
 
-    /// ~400 m square around `center`; the venue at the middle sits ~200 m from the nearest edge.
+    /// ~400 m square; `center` is ~200 m from its nearest edge.
     private func polygon(id: String, coveringRadius: Double = 500) -> Geofence {
         let ring = [
             LocationData(latitude: 31.3682, longitude: 74.1679),
@@ -33,7 +33,7 @@ struct PolygonWakeRadiusTests {
         )
     }
 
-    /// A ~4 km square around `center`, so its boundary is far from anything the tests probe.
+    /// ~4 km square; its boundary is far from every probe.
     private func widePolygon(id: String) -> Geofence {
         let ring = [
             LocationData(latitude: 31.35, longitude: 74.15),
@@ -56,14 +56,12 @@ struct PolygonWakeRadiusTests {
         )
     }
 
-    /// A workspace with no polygons must behave exactly as it does today.
     @Test
     func radius_givenNoPolygons_expectConfiguredRefreshRadius() {
         let r = PolygonWakeRadius.radius(at: Self.center, registeredPolygons: [circle(id: "1")], config: config())
         #expect(r == 1000)
     }
 
-    /// No boundary within the refresh radius, so there is nothing to tighten for.
     @Test
     func radius_givenNoBoundaryWithinRefreshRadius_expectConfiguredRefreshRadius() {
         let faraway = LocationData(latitude: 31.45, longitude: 74.17)
@@ -71,10 +69,6 @@ struct PolygonWakeRadiusTests {
         #expect(r == 1000)
     }
 
-    /// Outside the covering circle but near the ring. A covering-circle enter does not re-arm the
-    /// trigger, so if the radius ignored polygons the device has not yet reached, the device would
-    /// carry a wide trigger into the circle and across the boundary — no wake, no OS event, and an
-    /// exit over an unchanged belief on the way out, making the whole visit silent.
     @Test
     func radius_givenDeviceOutsideCoveringCircleButNearBoundary_expectDistanceToBoundary() {
         // ~600 m north of centre: beyond the 500 m covering circle, ~400 m from the ring's north edge.
@@ -90,13 +84,10 @@ struct PolygonWakeRadiusTests {
         #expect(r > 190 && r < 210, "got \(r)")
     }
 
-    /// The NEAREST boundary wins: a distant polygon must not let the device walk into a close one.
     @Test
     func radius_givenTwoPolygons_expectNearestBoundaryWins() {
         let near = LocationData(latitude: 31.3717, longitude: 74.17) // ~11 m inside the north edge
-        // The wide polygon's boundary is ~2 km away; the narrow one's is ~11 m. Sizing by the
-        // farthest instead of the nearest would return ~1000 m (capped) and let the device walk
-        // straight through the near boundary unwoken.
+        // The wide polygon's boundary is ~2 km away, so alone it caps at the config radius.
         let wideOnly = PolygonWakeRadius.radius(at: near, registeredPolygons: [widePolygon(id: "far")], config: config())
         #expect(wideOnly == 1000, "control: wide polygon alone should cap at config, got \(wideOnly)")
 
@@ -106,7 +97,6 @@ struct PolygonWakeRadiusTests {
         #expect(both == GeofenceConstants.polygonWakeMinRadius, "got \(both)")
     }
 
-    /// The floor is what stops the trigger shrinking into the range the OS promotes unreliably.
     @Test
     func radius_givenBoundaryNearerThanFloor_expectFloor() {
         let onEdge = LocationData(latitude: 31.37179, longitude: 74.17)
@@ -114,7 +104,6 @@ struct PolygonWakeRadiusTests {
         #expect(r == GeofenceConstants.polygonWakeMinRadius, "got \(r)")
     }
 
-    /// Never larger than the configured refresh radius, even when the boundary is far off.
     @Test
     func radius_givenBoundaryBeyondRefreshRadius_expectCappedAtConfig() {
         let r = PolygonWakeRadius.radius(
@@ -123,7 +112,6 @@ struct PolygonWakeRadiusTests {
         #expect(r == 150, "got \(r)")
     }
 
-    /// A config below the floor cannot push the trigger into the range the OS drops.
     @Test
     func radius_givenConfigBelowFloor_expectFloorWins() {
         let r = PolygonWakeRadius.radius(

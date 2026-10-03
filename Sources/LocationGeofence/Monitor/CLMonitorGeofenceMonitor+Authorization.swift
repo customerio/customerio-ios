@@ -24,10 +24,7 @@ extension CLMonitorGeofenceMonitor {
 
     // MARK: - Authorization
 
-    /// Fires once when the delegate is set (harmless) and again on every change, keeping the service
-    /// session in step with the granted tier. Surfaced UNFILTERED in BOTH directions: an improvement
-    /// lets the bootstrap re-attempt registration, and a downgrade is what disarms visit monitoring.
-    /// Internal (not private) only because the monitor's `init` wires it from the main file.
+    /// Unfiltered: an improvement re-attempts registration, and a downgrade disarms visits.
     func handleAuthorizationChange() {
         updateServiceSession()
         onAuthorizationChanged?()
@@ -35,11 +32,7 @@ extension CLMonitorGeofenceMonitor {
 
     // MARK: - Service session (iOS 18+)
 
-    /// On iOS 18+, `CLMonitor.events` stops yielding in the background unless a `CLServiceSession`
-    /// asserts continued interest — Always authorization alone no longer suffices. Held for the
-    /// monitor's lifetime, but only while Always is ALREADY granted: a session above the granted
-    /// tier can put up a permission prompt, and prompting is the host's decision, never the SDK's.
-    /// Internal (not private) only because the monitor's `init` calls it from the main file.
+    /// Held only while Always is ALREADY granted: a session above the granted tier can prompt.
     func updateServiceSession() {
         authManager.updateServiceSession(isAlwaysAuthorized: authManager.authorizationStatus == .authorizedAlways)
     }

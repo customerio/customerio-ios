@@ -1,34 +1,17 @@
 import CioInternalCommon
 import Foundation
 
-/// What the SDK believes about the device's position relative to a polygon geofence.
-///
-/// Tracked separately from the OS-facing dedup baseline in `MonitorRegionRecord`: the OS monitors
-/// the polygon's covering circle and knows nothing about the polygon itself, so circle state and
-/// polygon membership are different facts about the same geofence.
-///
-/// There is deliberately no `unknown` case — the absence of a record is what "not yet decided"
-/// means. An undecidable fix therefore leaves an existing belief untouched instead of overwriting
-/// it, which is what stops a coarse fix from erasing a known-inside state.
+/// No `unknown` case on purpose: a missing record means undecided, so an undecidable fix never
+/// overwrites a belief.
 enum PolygonMembership: String, Codable, Sendable {
     case inside
     case outside
 }
 
-/// Per-polygon membership bookkeeping, persisted alongside the rest of the geofence state so a
-/// cold wake compares against the pre-kill belief rather than starting over.
 struct PolygonMembershipRecord: Codable, Equatable, Sendable {
     var membership: PolygonMembership
-    /// Evidence time of the belief currently held: the timestamp of the newest fix or OS event to
-    /// establish it OR confirm it, not only the one that last changed it. Lets a late evaluation
-    /// defer to a newer decision, the same way `MonitorRegionRecord.lastStateChangedAt` guards the
-    /// baseline heal.
-    ///
-    /// Do not rename without a `CodingKeys` case mapping back to the literal `"lastChangedAt"`. The
-    /// synthesized keys make the property name the stored key, and a record written by an earlier
-    /// build then fails the whole `GeofenceState` decode — which `loadFromDisk` swallows with
-    /// `try?`, taking the cached geofences, monitor baselines, registration set and cooldowns with
-    /// it on the next write.
+    /// Newest evidence that set OR confirmed the belief. The name is the stored key: renaming it
+    /// without a `CodingKeys` mapping fails the whole `GeofenceState` decode.
     var lastChangedAt: Date
     /// The ring cached when the belief was written. An `outside` belief proves an observed entry
     /// only against this same ring: after a replacement, "outside the old shape" says nothing about
@@ -37,10 +20,8 @@ struct PolygonMembershipRecord: Codable, Equatable, Sendable {
     var ring: [LocationData]?
 }
 
-/// What `GeofenceStorage.recordPolygonMembership` decided about an evaluation.
 enum PolygonMembershipOutcome: Equatable {
-    /// Membership changed; the caller delivers this transition, subject to the geofence's own
-    /// transition-type filter.
+    /// The caller still applies the geofence's transition-type filter.
     case deliver(GeofenceTransition)
     /// The belief moved to inside with no recent outside belief for the same ring before it: the
     /// first decision for this polygon, the first after its ring was replaced, or one whose outside
@@ -49,14 +30,10 @@ enum PolygonMembershipOutcome: Equatable {
     /// has no known start and must not report `entered_at` or a visit duration.
     case discoveredInside
     case suppressedNoChange
-    /// A newer decision was already recorded — the evaluation's fix predates it.
     case suppressedNewerDecision
-    /// First decision for this polygon placed the device outside; there is no crossing to report.
+    /// First decision is outside: there is no crossing to report.
     case suppressedInitialOutside
-    /// The polygon is not in the registered set — an evaluation that raced a prune. Creating a
-    /// belief here would deliver an enter for a fence the OS is no longer watching.
+    /// Not registered. Creating a belief would deliver an enter for a fence the OS no longer watches.
     case suppressedUnmonitored
-    /// The ring the verdict was computed from is no longer the workspace's — a refresh replaced the
-    /// fence under the same id between the evaluation reading geometry and this write.
     case suppressedGeometryChanged
 }

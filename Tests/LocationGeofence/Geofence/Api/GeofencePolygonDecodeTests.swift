@@ -3,10 +3,7 @@
 import Foundation
 import Testing
 
-/// Contract tests for polygon geofences at the API boundary: a `shape` discriminator, a GeoJSON
-/// ring and an enclosing circle on the wire, canonicalized kernel vertices in the domain, and the
-/// "no illusions" rule — a region we can't read as described is dropped entirely, never degraded
-/// to whatever circle fields happen to be present.
+/// A region we can't read as described is dropped entirely, never degraded to its circle fields.
 @Suite("GeofencePolygonDecode")
 struct GeofencePolygonDecodeTests {
     private let decoder: JSONDecoder = {
@@ -21,7 +18,7 @@ struct GeofencePolygonDecodeTests {
 
     private static let centre = (latitude: 31.36896, longitude: 74.169508)
 
-    /// 400 m square around the centre, closed, longitude-first — the cross-SDK fixture family.
+    /// 400 m square around the centre, closed, longitude-first.
     private static let squareRing = """
     [[
       [74.1674038, 31.3671634],
@@ -62,8 +59,7 @@ struct GeofencePolygonDecodeTests {
         "{\"geofences\":[\(regions.joined(separator: ","))]}"
     }
 
-    /// A ring of `count` distinct positions well inside the enclosing circle, so a cap test fails
-    /// on the cap and not incidentally on the coverage guarantee.
+    /// A ring of `count` distinct positions ~90 m from the centre, well inside the enclosing circle.
     private static func ringInsideCircle(count: Int, repeatingFirstPosition: Bool = false) -> String {
         var positions = (0 ..< count).map { i -> String in
             let angle = 2 * Double.pi * Double(i) / Double(count)
@@ -83,7 +79,6 @@ struct GeofencePolygonDecodeTests {
         #expect(regions[0].polygonRegion == nil)
     }
 
-    /// v1 payloads carry no `shape` at all; they must keep decoding as circles.
     @Test
     func toDomain_givenNoShapeKey_expectCircleGeofence() throws {
         let regions = try decode(responseJson([circleJson(shape: nil)])).toDomainRegions()
@@ -91,7 +86,6 @@ struct GeofencePolygonDecodeTests {
         #expect(regions[0].vertices == nil)
     }
 
-    /// A shape from a future server must not be silently monitored as its circle fields.
     @Test
     func toDomain_givenUnknownShape_expectRegionDroppedNotCircled() throws {
         let response = try decode(responseJson([circleJson(shape: "corridor"), circleJson(id: 2)]))
@@ -114,8 +108,7 @@ struct GeofencePolygonDecodeTests {
         #expect(!polygon.contains(LocationData(latitude: 31.38, longitude: Self.centre.longitude)))
     }
 
-    /// Longitude comes first on the wire. If the two were ever swapped the ring would land off the
-    /// coast of Somalia, so assert the decoded corner rather than just the count.
+    /// Asserts the decoded corner, not the count: swapped axes would still yield 4 vertices.
     @Test
     func toDomain_givenGeoJsonOrdering_expectLongitudeFirst() throws {
         let regions = try decode(responseJson([polygonJson()])).toDomainRegions()
@@ -130,7 +123,6 @@ struct GeofencePolygonDecodeTests {
         #expect(regions[0].vertices?.count == 4)
     }
 
-    /// GeoJSON positions may carry a third elevation element; it is not ours to reject.
     @Test
     func toDomain_givenPositionsWithElevation_expectAccepted() throws {
         let ring = """
@@ -154,8 +146,6 @@ struct GeofencePolygonDecodeTests {
 
     // MARK: - "No illusions": unusable polygons drop the region
 
-    /// End-to-end at the API boundary: a bow-tie reaching the cache would fire enters for ground
-    /// the polygon never covered, so it must not survive decode.
     @Test
     func toDomain_givenSelfIntersectingRing_expectRegionDropped() throws {
         let bowtie = """
@@ -175,9 +165,6 @@ struct GeofencePolygonDecodeTests {
         #expect(response.toDomainRegions().isEmpty)
     }
 
-    /// A payload carrying polygon fields but no `shape` is inconsistent, not a v1 circle. Taking
-    /// the flat circle fields there would monitor a shape the server never described; Android drops
-    /// the same combination.
     @Test
     func toDomain_givenPolygonFieldsWithoutShape_expectRegionDropped() throws {
         let inconsistent = """
@@ -193,10 +180,8 @@ struct GeofencePolygonDecodeTests {
         #expect(reasons["1"] == .undescribedShape)
     }
 
-    /// An empty or whitespace `shape` is a serialization slip, not a shape the server named. As a
-    /// distinct string it would reach `default` and report `unknownShape` — the one reason the
-    /// all-dropped guard exempts — so a payload of these would clear the whole fence set. Both
-    /// forms must route as if the discriminator were absent.
+    /// As its own string a blank shape would report `unknownShape`, the one reason the all-dropped
+    /// guard exempts, so a payload of these would clear the whole fence set.
     @Test(arguments: ["\"\"", "\" \"", "\"  circle \""])
     func toDomain_givenBlankOrPaddedShape_expectRoutedAsIfAbsent(shapeJson: String) throws {
         let withPolygonFields = """
@@ -212,8 +197,8 @@ struct GeofencePolygonDecodeTests {
         if regions.isEmpty { #expect(reasons["1"] == .undescribedShape) }
     }
 
-    /// `geometry` and `enclosing_circle` decode with `try?`, so a malformed one becomes nil. Keyed
-    /// on the decoded value the region would read as a plain v1 circle and be monitored as one.
+    /// These fields decode with `try?`; keyed on the decoded value, a malformed one would read as a
+    /// v1 circle.
     @Test
     func toDomain_givenUndecodablePolygonFieldsWithoutShape_expectRegionDropped() throws {
         let malformed = """
@@ -226,8 +211,6 @@ struct GeofencePolygonDecodeTests {
         #expect(reasons["1"] == .undescribedShape)
     }
 
-    /// An explicit null is the server saying "no polygon here", which a v1 circle payload may carry
-    /// once the field ships. It must stay a circle.
     @Test
     func toDomain_givenNullPolygonFieldsWithoutShape_expectCircleAccepted() throws {
         let nulled = """
@@ -245,8 +228,6 @@ struct GeofencePolygonDecodeTests {
         #expect(response.toDomainRegions().isEmpty)
     }
 
-    /// Extra rings are holes. Honouring only the outer ring would report someone standing in a
-    /// hole as inside the fence, so the fence is dropped instead.
     @Test
     func toDomain_givenMultipleRings_expectRegionDropped() throws {
         let withHole = """
@@ -304,8 +285,6 @@ struct GeofencePolygonDecodeTests {
         #expect(response.toDomainRegions().isEmpty)
     }
 
-    /// Repeated positions collapse to the kernel's canonical unclosed ring, so the cache stores one
-    /// representation regardless of how the server spelled the boundary.
     @Test
     func toDomain_givenRepeatedPositions_expectCollapsedToUnique() throws {
         let unique = 500

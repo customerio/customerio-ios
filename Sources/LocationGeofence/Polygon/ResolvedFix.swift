@@ -2,17 +2,12 @@ import CioInternalCommon
 import CoreLocation
 import Foundation
 
-/// A fix a pass has already obtained and gated, carried to whatever runs next so the same moment
-/// is not requested twice.
-///
-/// A value type rather than `CLLocation` because it crosses task boundaries: `CLLocation` is a
-/// reference type the compiler cannot prove immutable, and the three fields below are all any
-/// consumer reads.
+/// A fix already obtained and gated. A value type, not `CLLocation`, because it crosses task
+/// boundaries.
 struct ResolvedFix: Equatable, Sendable {
     let latitude: Double
     let longitude: Double
     let horizontalAccuracy: CLLocationAccuracy
-    /// When the fix was taken — the field that decides whether a later pass may reuse it.
     let timestamp: Date
 
     init(latitude: Double, longitude: Double, horizontalAccuracy: CLLocationAccuracy, timestamp: Date) {
@@ -31,13 +26,8 @@ struct ResolvedFix: Equatable, Sendable {
         )
     }
 
-    /// Rebuilt with the same accuracy and timestamp: membership judges against both, so a fix that
-    /// lost them on the way through would be judged on different terms than the pass that took it.
-    ///
-    /// Altitude and vertical accuracy are NOT carried, and nothing on the membership path reads
-    /// them. Keep it that way: `alt=0` with no vertical accuracy is the signature our drive
-    /// analysis reads as a coarse cell fix, so routing one of these into `GeofenceLog.fixQuality`
-    /// would forge it.
+    /// Altitude and vertical accuracy are NOT carried. Keep this out of the fix-quality logs, where
+    /// `alt=0` reads as a coarse cell fix.
     var location: CLLocation {
         CLLocation(
             coordinate: CLLocationCoordinate2D(latitude: latitude, longitude: longitude),

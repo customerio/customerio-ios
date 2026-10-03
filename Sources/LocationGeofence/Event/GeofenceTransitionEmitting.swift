@@ -18,9 +18,7 @@ struct GeofenceExitContext: Sendable, Equatable {
     let detectionSource: String
 }
 
-/// Delivers a transition through the tracked path (cooldown dedup, per-geoset fan-out, persistence).
-/// Lets a caller such as `GeofenceSyncCoordinator` fire a synthetic initial ENTER for a newly
-/// registered geofence the device is already inside, without depending on the concrete tracker.
+/// Delivers a transition through the tracked path (cooldown, per-geoset fan-out, persistence).
 protocol GeofenceTransitionEmitting: Sendable {
     /// See `GeofenceEventTracker.trackTransition(geofenceId:transition:occurredAt:)`.
     func trackTransition(geofenceId: String, transition: GeofenceTransition, occurredAt: Date) async

@@ -2,12 +2,8 @@ import CioInternalCommon
 import CoreLocation
 import Foundation
 
-// The OS objects `CLMonitorGeofenceMonitor` talks to, behind protocols it can be handed. Between
-// them these cover every OS call the wrapper makes; everything above them is SDK decision.
-
 // MARK: - Condition monitoring (CLMonitor)
 
-/// What a monitored condition is currently known to be. Mirrors `CLMonitor.Event.State`.
 enum GeofenceConditionState: Sendable, Equatable {
     case satisfied
     case unsatisfied
@@ -16,11 +12,10 @@ enum GeofenceConditionState: Sendable, Equatable {
     case unmonitored
 }
 
-/// One state report for one condition.
 struct GeofenceConditionEvent: Sendable, Equatable {
     let identifier: String
     let state: GeofenceConditionState
-    /// When the OS dated the event, not when the SDK received it.
+    /// OS-dated, not receipt time.
     let date: Date
 }
 
@@ -28,12 +23,11 @@ struct GeofenceConditionEvent: Sendable, Equatable {
 protocol GeofenceConditionMonitoring: AnyObject, Sendable {
     /// Every condition the OS holds under the SDK's monitor name, including ones it has given up on.
     var identifiers: [String] { get async }
-    /// Every state report for every held condition. Single-consumer: a second live iteration
-    /// splits the events between the two rather than each seeing all of them.
+    /// Single-consumer: a second live iteration splits the events rather than duplicating them.
     var events: AsyncThrowingStream<GeofenceConditionEvent, Error> { get async }
     /// `assuming` seeds the OS's belief so a fresh add does not immediately report that state.
     func add(center: LocationData, radius: Double, identifier: String, assuming: GeofenceConditionState) async
-    /// Stops monitoring one condition. A no-op for an identifier the OS is not holding.
+    /// A no-op for an identifier the OS is not holding.
     func remove(_ identifier: String) async
 }
 
@@ -41,19 +35,12 @@ protocol GeofenceConditionMonitoring: AnyObject, Sendable {
 
 /// The `CLLocationManager` reads the CLMonitor path makes.
 protocol GeofenceLocationAuthority: AnyObject {
-    /// The tier currently granted, read synchronously. Never prompts.
+    /// Never prompts.
     var authorizationStatus: CLAuthorizationStatus { get }
-    /// The OS's cap on a monitored radius; a larger request is clamped to it before registration.
     var maximumRegionMonitoringDistance: CLLocationDistance { get }
-    /// The OS's cached position, a pull.
     var currentLocation: CLLocation? { get }
-    /// Fired when the granted tier changes.
-    ///
-    /// **Must be invoked on the main actor.** `CLMonitorGeofenceMonitor` installs a handler that
-    /// calls `MainActor.assumeIsolated`, which traps rather than hops if the contract is broken.
-    /// The live implementation satisfies it because `CLLocationManagerDelegate` callbacks arrive on
-    /// the thread the manager was created on, and the manager is created on the main thread; a
-    /// double standing in for it has to honour the same rule.
+    /// **Must be invoked on the main actor**: the handler calls `MainActor.assumeIsolated`, which
+    /// traps otherwise.
     var onAuthorizationChange: (() -> Void)? { get set }
     /// Holds a `CLServiceSession` while Always is granted (iOS 18+). Must never prompt.
     func updateServiceSession(isAlwaysAuthorized: Bool)
@@ -79,8 +66,6 @@ extension GeofenceConditionState {
     }
 }
 
-/// Adapts `CLMonitor` to `GeofenceConditionMonitoring`. Holds the one monitor: a second with the
-/// same name throws "already in use".
 @available(iOS 17.0, *)
 final class CoreLocationConditionMonitor: GeofenceConditionMonitoring, @unchecked Sendable {
     private let monitor: CLMonitor
@@ -93,7 +78,6 @@ final class CoreLocationConditionMonitor: GeofenceConditionMonitoring, @unchecke
         get async { await monitor.identifiers }
     }
 
-    /// Cancelled on termination: two live consumers would split the events between them.
     var events: AsyncThrowingStream<GeofenceConditionEvent, Error> {
         get async {
             let underlying = await monitor.events
@@ -108,11 +92,8 @@ final class CoreLocationConditionMonitor: GeofenceConditionMonitoring, @unchecke
                                     date: event.date
                                 )
                             )
-                            // The downstream stream is gone. `onTermination` cancels this task, but
-                            // that relies on the cancellation reaching `CLMonitor.Events`, which is
-                            // Apple's code; leaving the loop on the yield's own answer does not.
-                            // Without it a pump that outlives its consumer is a second live reader
-                            // of `monitor.events`, which the class comment says must never happen.
+                            // Don't rely on `onTermination`'s cancel reaching `CLMonitor.Events`:
+                            // breaking here guarantees a dead consumer leaves no second live reader.
                             if case .terminated = delivered { break }
                         }
                         continuation.finish()
@@ -138,7 +119,6 @@ final class CoreLocationConditionMonitor: GeofenceConditionMonitoring, @unchecke
     }
 }
 
-/// Adapts `CLLocationManager` to `GeofenceLocationAuthority`, owning the delegate conformance.
 @available(iOS 14.0, *)
 final class CoreLocationAuthority: NSObject, GeofenceLocationAuthority, CLLocationManagerDelegate {
     private let manager: CLLocationManager

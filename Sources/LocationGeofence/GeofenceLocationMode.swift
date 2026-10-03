@@ -1,16 +1,12 @@
 import Foundation
 
-/// Controls how the geofence module acquires the device location it needs to sync nearby geofences.
-///
-/// Location acquired for geofencing is never sent as a `CIO Location Update` analytics event, cached,
-/// or added to identify context — it is used for geofencing only.
+/// How the geofence module acquires location. Location acquired for geofencing is used only for
+/// geofencing: never cached, sent as a `CIO Location Update` event or added to identify context.
 public enum GeofenceLocationMode {
-    /// The SDK automatically acquires a location fix whenever geofencing needs one and none is
-    /// already available from location tracking (e.g. on identify). Default.
+    /// The SDK acquires a fix when geofencing needs one and location tracking has none. Default.
     case automatic
 
-    /// The SDK never acquires location on its own. The host app drives geofencing by calling
-    /// `CustomerIO.geofence.refreshFromCurrentLocation()` after granting location permission
-    /// (movement transitions still work once geofences are registered).
+    /// The SDK never acquires location itself; call `CustomerIO.geofence.refreshFromCurrentLocation()`.
+    /// Transitions still fire once geofences are registered.
     case manual
 }

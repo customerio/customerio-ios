@@ -111,7 +111,6 @@ struct GeofenceStorageTests {
         _ = await storage.tryAcquireCooldown(key: "geo_1:enter", now: firstAttempt, interval: 3600)
         let remaining = await storage.tryAcquireCooldown(key: "geo_1:enter", now: secondAttempt, interval: 3600)
 
-        // Half the interval has passed, so half of it is what is left to report.
         #expect(remaining == 1800)
         let cooldowns = await storage.getEventCooldowns()
         #expect(cooldowns["geo_1:enter"] == firstAttempt)
@@ -233,8 +232,6 @@ struct GeofenceStorageTests {
 
     @Test
     func decode_givenGeofenceCachedByPreGeosetVersion_expectEmptyGeosetIds() throws {
-        // Geofences cached to disk before the `geosetIds` field existed must keep
-        // decoding after an upgrade; a missing key means no geoset membership.
         let legacyJson = """
         {"id":"g1","latitude":1,"longitude":2,"radius":100,"name":"g1","transitionTypes":["enter"],"lastUpdated":1700000000}
         """
@@ -414,8 +411,6 @@ struct GeofenceStorageTests {
         let dir = makeTempDirectory()
         defer { try? FileManager.default.removeItem(at: dir) }
         try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-        // Write a state file with timestamp but no location — simulates a torn state from
-        // an older client or a partial future-schema migration.
         var partial = GeofenceState()
         partial.lastServerSyncTimestamp = Date(timeIntervalSince1970: 1700000000)
         let encoder = JSONEncoder()
@@ -703,15 +698,11 @@ struct GeofenceStorageTests {
         let config = await storage.getCachedConfig()
         #expect(cooldowns.isEmpty)
         #expect(lastSync == nil)
-        // Registration is user-scoped — cleared so the next user re-registers from their own refresh.
         #expect(await storage.getLastRegistrationCenter() == nil)
         #expect(await storage.getRegisteredBusinessIds().isEmpty)
         #expect(await storage.getDwellVisit(geofenceId: geofence.id) == nil)
         #expect(await storage.transitionTarget(id: "old-user-dwell-only") == .uncached(unconfigured: []))
-        // Monitor baseline is dropped: a post-clear event for the same id finds no record (no stale
-        // baseline inherited), so it re-establishes silently instead of comparing to the old state.
         #expect(await storage.recordMonitorEvent(.enter, forIdentifier: "g1") == .suppressedNoBaseline)
-        // Workspace cache is shared across users — preserved.
         #expect(regions.map(\.id) == ["g1"])
         #expect(config != nil)
     }
@@ -750,10 +741,8 @@ struct GeofenceStorageTests {
         let dir = makeTempDirectory()
         defer { try? FileManager.default.removeItem(at: dir) }
         let storage = makeStorage(directory: dir)
-        // A condition with no registration record: first observation is baseline, not a crossing.
         let outcome = await storage.recordMonitorEvent(.exit, forIdentifier: "geo_1")
         #expect(outcome == .suppressedNoBaseline)
-        // The same state replayed is now a no-change suppression.
         #expect(await storage.recordMonitorEvent(.exit, forIdentifier: "geo_1") == .suppressedNoChange)
     }
 
@@ -762,12 +751,8 @@ struct GeofenceStorageTests {
         let dir = makeTempDirectory()
         defer { try? FileManager.default.removeItem(at: dir) }
         let storage = makeStorage(directory: dir)
-        // Registered while the device is INSIDE the region → baseline seeded to the actual state
-        // (.enter). CLMonitor re-evaluating that same state is suppressed — the register-while-inside
-        // parity fix: no spurious enter at registration (classic is silent too).
         await storage.recordMonitorRegistration(identifier: "geo_1", transitionTypes: [.enter, .exit], initialState: .enter, center: LocationData(latitude: 10, longitude: 20), radius: 100)
         #expect(await storage.recordMonitorEvent(.enter, forIdentifier: "geo_1") == .suppressedNoChange)
-        // The subsequent genuine exit delivers.
         #expect(await storage.recordMonitorEvent(.exit, forIdentifier: "geo_1") == .deliver)
     }
 
@@ -776,8 +761,6 @@ struct GeofenceStorageTests {
         let dir = makeTempDirectory()
         defer { try? FileManager.default.removeItem(at: dir) }
         let storage = makeStorage(directory: dir)
-        // Registered outside (baseline .exit). CLMonitor emits no initial event (assumption matched);
-        // the first REAL crossing (walk in) must still deliver — the baseline isn't blank.
         await storage.recordMonitorRegistration(identifier: "geo_1", transitionTypes: [.enter, .exit], initialState: .exit, center: LocationData(latitude: 10, longitude: 20), radius: 100)
         #expect(await storage.recordMonitorEvent(.enter, forIdentifier: "geo_1") == .deliver)
     }
@@ -788,7 +771,6 @@ struct GeofenceStorageTests {
         defer { try? FileManager.default.removeItem(at: dir) }
         let storage = makeStorage(directory: dir)
         await storage.recordMonitorRegistration(identifier: "geo_1", transitionTypes: [.enter, .exit], initialState: .exit, center: LocationData(latitude: 10, longitude: 20), radius: 100)
-        // CLMonitor re-emitting the state we seeded at registration (relaunch/unlock replay).
         #expect(await storage.recordMonitorEvent(.exit, forIdentifier: "geo_1") == .suppressedNoChange)
     }
 
@@ -809,8 +791,7 @@ struct GeofenceStorageTests {
         let storage = makeStorage(directory: dir)
         let crossingAt = Date()
         await storage.recordMonitorRegistration(identifier: "geo_1", transitionTypes: [.enter, .exit], initialState: .exit, center: LocationData(latitude: 10, longitude: 20), radius: 100)
-        // A genuine OS crossing lands (baseline .enter, stamped at crossingAt) while a heal whose
-        // fix PREDATES it waits in the queue: the heal's reverse synthesis must lose.
+        // A real crossing lands while a heal whose fix predates it is queued; the heal must lose.
         #expect(await storage.recordMonitorEvent(.enter, forIdentifier: "geo_1", now: crossingAt) == .deliver)
         let outcome = await storage.recordMonitorEvent(
             .exit,
@@ -818,7 +799,6 @@ struct GeofenceStorageTests {
             onlyIfBaselinePredates: crossingAt.addingTimeInterval(-20)
         )
         #expect(outcome == .suppressedNewerBaseline)
-        // The suppressed write advanced nothing: the user's real exit still delivers.
         #expect(await storage.recordMonitorEvent(.exit, forIdentifier: "geo_1") == .deliver)
     }
 
@@ -829,16 +809,14 @@ struct GeofenceStorageTests {
         let storage = makeStorage(directory: dir)
         let seededAt = Date()
         await storage.recordMonitorRegistration(identifier: "geo_1", transitionTypes: [.enter, .exit], initialState: .exit, center: LocationData(latitude: 10, longitude: 20), radius: 100, now: seededAt)
-        // Evidence newer than the baseline's stamp passes the guard. Not asserted at exact
-        // equality: the stamp round-trips disk as seconds-since-1970, whose float conversion can
-        // shift it by nanoseconds in either direction.
+        // Not exact equality: the stamp round-trips disk as seconds-since-1970 and can shift by
+        // nanoseconds.
         #expect(await storage.recordMonitorEvent(.enter, forIdentifier: "geo_1", onlyIfBaselinePredates: seededAt.addingTimeInterval(1)) == .deliver)
     }
 
     @Test
     func recordMonitorEvent_givenGuardAgainstPreStampRecord_expectDeliver() async throws {
-        // A state file persisted before `lastStateChangedAt` existed: the record decodes with a
-        // nil stamp, and a nil stamp must never block a heal (fail open).
+        // Persisted before `lastStateChangedAt` existed; a nil stamp must fail open.
         let dir = makeTempDirectory()
         defer { try? FileManager.default.removeItem(at: dir) }
         let legacyState = """
@@ -861,7 +839,6 @@ struct GeofenceStorageTests {
         let eventAt = Date(timeIntervalSince1970: 1789215260.147529)
         await storage.recordMonitorRegistration(identifier: "geo_1", transitionTypes: [.enter, .exit], initialState: .exit, center: center, radius: 100, now: eventAt.addingTimeInterval(-600))
         #expect(await storage.recordMonitorEvent(.enter, forIdentifier: "geo_1", osEventDate: eventAt) == .deliver)
-        // CoreLocation hands the same event over again. Refused by identity, before any state compare.
         #expect(await storage.recordMonitorEvent(.enter, forIdentifier: "geo_1", osEventDate: eventAt) == .suppressedRedelivery)
     }
 
@@ -874,10 +851,8 @@ struct GeofenceStorageTests {
         let eventAt = Date(timeIntervalSince1970: 1789215260.147529)
         await storage.recordMonitorRegistration(identifier: "geo_1", transitionTypes: [.enter, .exit], initialState: .exit, center: center, radius: 100, now: eventAt.addingTimeInterval(-600))
         #expect(await storage.recordMonitorEvent(.enter, forIdentifier: "geo_1", osEventDate: eventAt) == .deliver)
-        // Copies are not always date-identical and not always delivered in date order (measured on
-        // device: sub-microsecond apart). An earlier-dated copy is still a copy.
+        // Copies aren't always date-identical or delivered in date order.
         #expect(await storage.recordMonitorEvent(.enter, forIdentifier: "geo_1", osEventDate: eventAt.addingTimeInterval(-0.000001)) == .suppressedRedelivery)
-        // And a genuinely later event of the other state still delivers.
         #expect(await storage.recordMonitorEvent(.exit, forIdentifier: "geo_1", osEventDate: eventAt.addingTimeInterval(60)) == .deliver)
     }
 
@@ -889,7 +864,6 @@ struct GeofenceStorageTests {
         let center = LocationData(latitude: 10, longitude: 20)
         let eventAt = Date(timeIntervalSince1970: 1789215260.147529)
         await storage.recordMonitorRegistration(identifier: "geo_1", transitionTypes: [.enter, .exit], initialState: .exit, center: center, radius: 100, now: eventAt.addingTimeInterval(-600))
-        // The daemon replaying the state we seeded: nothing to deliver, but now seen.
         #expect(await storage.recordMonitorEvent(.exit, forIdentifier: "geo_1", osEventDate: eventAt) == .suppressedNoChange)
         #expect(await storage.recordMonitorEvent(.exit, forIdentifier: "geo_1", osEventDate: eventAt) == .suppressedRedelivery)
     }
@@ -901,18 +875,15 @@ struct GeofenceStorageTests {
         let storage = makeStorage(directory: dir)
         let reshapedAt = Date(timeIntervalSince1970: 1789215260.748)
         await storage.recordMonitorRegistration(identifier: "trigger", transitionTypes: [.exit], initialState: .enter, center: LocationData(latitude: 10, longitude: 20), radius: 1000, now: reshapedAt.addingTimeInterval(-3600))
-        // The device exits the old circle; a movement pass re-centres the trigger on it.
+        // A business circle despite the id: exited, then re-centred.
         #expect(await storage.recordMonitorEvent(.exit, forIdentifier: "trigger", osEventDate: reshapedAt.addingTimeInterval(-0.2)) == .deliver)
         await storage.recordMonitorRegistration(identifier: "trigger", transitionTypes: [.exit], initialState: .enter, center: LocationData(latitude: 10.02, longitude: 20), radius: 1000, now: reshapedAt)
-        // A corrective the daemon computed against the OLD circle, dated 42 ms before the new one
-        // was installed (drive 5). Its state differs from the fresh seed, so by state alone it is a
-        // crossing — and the phone only absorbed it because its queue happened to drain later.
+        // A corrective computed against the old circle; by state alone it would read as a crossing.
         let oldExitAt = reshapedAt.addingTimeInterval(-0.042)
         #expect(await storage.recordMonitorEvent(
             .exit, forIdentifier: "trigger",
             onlyIfBaselinePredates: oldExitAt, osEventDate: oldExitAt, now: oldExitAt
         ) == .suppressedPredatesRegistration)
-        // The record is untouched: a real exit of the new circle still delivers.
         #expect(await storage.recordMonitorEvent(.exit, forIdentifier: "trigger", osEventDate: reshapedAt.addingTimeInterval(300)) == .deliver)
     }
 
@@ -924,12 +895,9 @@ struct GeofenceStorageTests {
         let id = GeofenceConstants.movementTriggerIdentifier
         let replantAt = Date(timeIntervalSince1970: 1789215260.748)
         await storage.recordMonitorRegistration(identifier: id, transitionTypes: [.exit], initialState: .enter, center: LocationData(latitude: 10, longitude: 20), radius: 1000, now: replantAt.addingTimeInterval(-3600))
-        // Wake-sizing re-plants the trigger at a smaller radius — its geometry changes every pass, so
-        // registeredAt moves forward. For a business circle this would be a new incarnation.
+        // Re-planted at a smaller radius, so `registeredAt` moves forward.
         await storage.recordMonitorRegistration(identifier: id, transitionTypes: [.exit], initialState: .enter, center: LocationData(latitude: 10, longitude: 20), radius: 100, now: replantAt)
-        // A genuine exit dated just before that re-plant. A business circle drops this as
-        // suppressedPredatesRegistration (see the test above); the movement trigger is exempt because
-        // it is re-planted routinely and the exit is real — it must reach the movement pass.
+        // Dated just before the re-plant: a business circle drops this, the movement trigger must not.
         let exitAt = replantAt.addingTimeInterval(-0.042)
         #expect(await storage.recordMonitorEvent(
             .exit, forIdentifier: id,
@@ -939,8 +907,7 @@ struct GeofenceStorageTests {
             .exit, forIdentifier: id,
             onlyIfBaselinePredates: exitAt, osEventDate: exitAt, now: exitAt
         ) == .suppressedRedelivery)
-        // The movement pass can fail before re-planting. The delayed exit belonged to the old
-        // circle, so it must not change the new circle's baseline and swallow its later exit.
+        // The delayed exit belonged to the old circle, so the new circle's later exit still delivers.
         let newExitAt = replantAt.addingTimeInterval(300)
         #expect(await storage.recordMonitorEvent(
             .exit, forIdentifier: id,
@@ -976,8 +943,7 @@ struct GeofenceStorageTests {
         let id = GeofenceConstants.movementTriggerIdentifier
         let replantAt = Date(timeIntervalSince1970: 1789215260.748)
         await storage.recordMonitorRegistration(identifier: id, transitionTypes: [.exit], initialState: .enter, center: LocationData(latitude: 10, longitude: 20), radius: 1000, now: replantAt.addingTimeInterval(-3600))
-        // A stale anchor can put the device outside the freshly planted trigger. The old
-        // circle's delayed exit is still the wake that can recenter it.
+        // A stale anchor can plant the trigger with the device already outside it.
         await storage.recordMonitorRegistration(identifier: id, transitionTypes: [.exit], initialState: .exit, center: LocationData(latitude: 10, longitude: 20), radius: 100, now: replantAt)
         let exitAt = replantAt.addingTimeInterval(-0.042)
         #expect(await storage.recordMonitorEvent(
@@ -998,8 +964,6 @@ struct GeofenceStorageTests {
         let center = LocationData(latitude: 10, longitude: 20)
         let registeredAt = Date(timeIntervalSince1970: 1789215000)
         await storage.recordMonitorRegistration(identifier: "geo_1", transitionTypes: [.enter, .exit], initialState: .exit, center: center, radius: 100, now: registeredAt)
-        // A process restart re-registers the same circle. Not a new incarnation: a crossing the OS
-        // detected while the app was dead, dated across the re-register, is a catch-up, not a replay.
         await storage.recordMonitorRegistration(identifier: "geo_1", transitionTypes: [.enter, .exit], initialState: .exit, center: center, radius: 100, now: registeredAt.addingTimeInterval(600))
         #expect(await storage.recordMonitorEvent(.enter, forIdentifier: "geo_1", osEventDate: registeredAt.addingTimeInterval(300)) == .deliver)
     }
@@ -1012,16 +976,13 @@ struct GeofenceStorageTests {
         let center = LocationData(latitude: 10, longitude: 20)
         let registeredAt = Date(timeIntervalSince1970: 1789215000)
         await storage.recordMonitorRegistration(identifier: "geo_1", transitionTypes: [.enter, .exit], initialState: .exit, center: center, radius: 100, now: registeredAt)
-        // The OS gave the condition up and the SDK re-registered it, same circle. Events the daemon
-        // held from the dead incarnation (drive 5 delivered fifteen of them 49 minutes late) predate it.
         await storage.recordMonitorRegistration(identifier: "geo_1", transitionTypes: [.enter, .exit], initialState: .exit, center: center, radius: 100, forceReseed: true, now: registeredAt.addingTimeInterval(600))
         #expect(await storage.recordMonitorEvent(.enter, forIdentifier: "geo_1", osEventDate: registeredAt.addingTimeInterval(300)) == .suppressedPredatesRegistration)
     }
 
     @Test
     func recordMonitorEvent_givenLegacyRecordWithoutIdentityFields_expectDeliver() async throws {
-        // A state file persisted before `registeredAt` / `lastEventDate` existed: both decode nil,
-        // and nil refuses nothing (fail open, as `lastStateChangedAt` already does).
+        // Persisted before `registeredAt` / `lastEventDate` existed; nil refuses nothing.
         let dir = makeTempDirectory()
         defer { try? FileManager.default.removeItem(at: dir) }
         let legacyState = """
@@ -1041,8 +1002,6 @@ struct GeofenceStorageTests {
         let crossingAt = Date()
         await storage.recordMonitorRegistration(identifier: "geo_1", transitionTypes: [.enter, .exit], initialState: .exit, center: LocationData(latitude: 10, longitude: 20), radius: 100, now: crossingAt.addingTimeInterval(-60))
         #expect(await storage.recordMonitorEvent(.enter, forIdentifier: "geo_1", now: crossingAt) == .deliver)
-        // An unchanged re-registration preserves the baseline AND its stamp: a heal fix taken just
-        // after the crossing must still pass the guard even though the re-registration ran later.
         await storage.recordMonitorRegistration(identifier: "geo_1", transitionTypes: [.enter, .exit], initialState: .exit, center: LocationData(latitude: 10, longitude: 20), radius: 100, now: crossingAt.addingTimeInterval(30))
         #expect(await storage.recordMonitorEvent(.exit, forIdentifier: "geo_1", onlyIfBaselinePredates: crossingAt.addingTimeInterval(5)) == .deliver)
     }
@@ -1054,8 +1013,6 @@ struct GeofenceStorageTests {
         let storage = makeStorage(directory: dir)
         let reshapedAt = Date()
         await storage.recordMonitorRegistration(identifier: "geo_1", transitionTypes: [.enter, .exit], initialState: .enter, center: LocationData(latitude: 10, longitude: 20), radius: 100, now: reshapedAt.addingTimeInterval(-60))
-        // A reshape reseeds the baseline and stamps it: evidence predating the reseed cannot
-        // contradict a baseline that was just derived from the device's actual position.
         await storage.recordMonitorRegistration(identifier: "geo_1", transitionTypes: [.enter, .exit], initialState: .exit, center: LocationData(latitude: 11, longitude: 20), radius: 200, now: reshapedAt)
         #expect(await storage.recordMonitorEvent(.enter, forIdentifier: "geo_1", onlyIfBaselinePredates: reshapedAt.addingTimeInterval(-5)) == .suppressedNewerBaseline)
     }
@@ -1067,9 +1024,7 @@ struct GeofenceStorageTests {
         let storage = makeStorage(directory: dir)
         await storage.recordMonitorRegistration(identifier: "geo_1", transitionTypes: [.enter, .exit], initialState: .exit, center: LocationData(latitude: 10, longitude: 20), radius: 100)
         #expect(await storage.recordMonitorEvent(.enter, forIdentifier: "geo_1") == .deliver) // walked in
-        // Sync re-registration (stop-all + start-all) with UNCHANGED geometry (same center/radius)
-        // preserves the baseline, so CLMonitor re-evaluating the still-inside state is suppressed. The
-        // reseed-guess passed here (.exit) must NOT override the tracked .enter.
+        // The reseed guess (.exit) must not override the tracked .enter.
         await storage.recordMonitorRegistration(identifier: "geo_1", transitionTypes: [.enter, .exit], initialState: .exit, center: LocationData(latitude: 10, longitude: 20), radius: 100)
         #expect(await storage.recordMonitorEvent(.enter, forIdentifier: "geo_1") == .suppressedNoChange)
     }
@@ -1081,12 +1036,9 @@ struct GeofenceStorageTests {
         let storage = makeStorage(directory: dir)
         // Inside the old circle → baseline .enter.
         await storage.recordMonitorRegistration(identifier: "geo_1", transitionTypes: [.enter, .exit], initialState: .enter, center: LocationData(latitude: 10, longitude: 20), radius: 100)
-        // Backend moves the geofence (same id, CHANGED center/radius). The device is now OUTSIDE the new
-        // circle, so the changed-geometry registration reseeds the baseline to .exit instead of carrying
-        // the stale .enter — CLMonitor re-evaluating "outside" is then suppressed, not fired as a spurious exit.
+        // Same id, changed geometry; the device is now outside the new circle.
         await storage.recordMonitorRegistration(identifier: "geo_1", transitionTypes: [.enter, .exit], initialState: .exit, center: LocationData(latitude: 11, longitude: 20), radius: 200)
         #expect(await storage.recordMonitorEvent(.exit, forIdentifier: "geo_1") == .suppressedNoChange)
-        // A real crossing into the new circle still delivers.
         #expect(await storage.recordMonitorEvent(.enter, forIdentifier: "geo_1") == .deliver)
     }
 
@@ -1098,9 +1050,6 @@ struct GeofenceStorageTests {
         let center = LocationData(latitude: 10, longitude: 20)
         await storage.recordMonitorRegistration(identifier: "geo_1", transitionTypes: [.enter, .exit], initialState: .exit, center: center, radius: 100)
         #expect(await storage.recordMonitorEvent(.enter, forIdentifier: "geo_1") == .deliver)
-        // CLMonitor reports .unmonitored. The region is still in the desired set, so the registration
-        // prune keeps its record; without this clear, the device can leave while unmonitored and the
-        // unchanged-geometry re-register carries the stale .enter, dropping the next real arrival.
         await storage.clearMonitorRegionRecord(identifier: "geo_1")
         await storage.recordMonitorRegistration(identifier: "geo_1", transitionTypes: [.enter, .exit], initialState: .exit, center: center, radius: 100)
         #expect(await storage.recordMonitorEvent(.enter, forIdentifier: "geo_1") == .deliver)
@@ -1114,9 +1063,7 @@ struct GeofenceStorageTests {
         let center = LocationData(latitude: 10, longitude: 20)
         await storage.recordMonitorRegistration(identifier: "geo_1", transitionTypes: [.enter, .exit], initialState: .exit, center: center, radius: 100)
         #expect(await storage.recordMonitorEvent(.enter, forIdentifier: "geo_1") == .deliver)
-        // The OS gave up on the condition and a registration with the SAME circle drained before the
-        // deferred record clear could run. Preserving `.enter` here would suppress the next arrival,
-        // because the device can have left while the region was unmonitored.
+        // A same-circle registration drained before the deferred record clear could run.
         await storage.recordMonitorRegistration(identifier: "geo_1", transitionTypes: [.enter, .exit], initialState: .exit, center: center, radius: 100, forceReseed: true)
         #expect(await storage.recordMonitorEvent(.enter, forIdentifier: "geo_1") == .deliver)
     }
@@ -1129,8 +1076,6 @@ struct GeofenceStorageTests {
         let center = LocationData(latitude: 10, longitude: 20)
         await storage.recordMonitorRegistration(identifier: "geo_1", transitionTypes: [.enter, .exit], initialState: .exit, center: center, radius: 100)
         #expect(await storage.recordMonitorEvent(.enter, forIdentifier: "geo_1") == .deliver)
-        // Ordinary re-registration still preserves the baseline, so CLMonitor re-evaluating the same
-        // state is not delivered twice.
         await storage.recordMonitorRegistration(identifier: "geo_1", transitionTypes: [.enter, .exit], initialState: .exit, center: center, radius: 100)
         #expect(await storage.recordMonitorEvent(.enter, forIdentifier: "geo_1") == .suppressedNoChange)
     }
@@ -1145,7 +1090,6 @@ struct GeofenceStorageTests {
         await storage.recordMonitorRegistration(identifier: "geo_2", transitionTypes: [.enter], initialState: .exit, center: center, radius: 100)
         await storage.clearMonitorRegionRecord(identifier: "geo_1")
         #expect(await storage.getMonitorRegionRecords().keys.sorted() == ["geo_2"])
-        // Clearing an identifier with no record must not disturb what is stored.
         await storage.clearMonitorRegionRecord(identifier: "absent")
         #expect(await storage.getMonitorRegionRecords().keys.sorted() == ["geo_2"])
     }
@@ -1171,7 +1115,6 @@ struct GeofenceStorageTests {
         await storage.recordMonitorRegistration(identifier: "geo_1", transitionTypes: [.enter, .exit], initialState: .exit, center: LocationData(latitude: 10, longitude: 20), radius: 100)
         await storage.recordMonitorRegistration(identifier: "geo_2", transitionTypes: [.enter, .exit], initialState: .exit, center: LocationData(latitude: 10, longitude: 20), radius: 100)
         #expect(await storage.recordMonitorEvent(.enter, forIdentifier: "geo_1") == .deliver)
-        // geo_2 has its own baseline, untouched by geo_1's events.
         #expect(await storage.recordMonitorEvent(.exit, forIdentifier: "geo_2") == .suppressedNoChange)
     }
 
@@ -1182,8 +1125,6 @@ struct GeofenceStorageTests {
         let first = makeStorage(directory: dir)
         await first.recordMonitorRegistration(identifier: "geo_1", transitionTypes: [.enter, .exit], initialState: .exit, center: LocationData(latitude: 10, longitude: 20), radius: 100)
         #expect(await first.recordMonitorEvent(.enter, forIdentifier: "geo_1") == .deliver) // walked in
-        // Cold-wake: a fresh storage instance compares CLMonitor's replay against the pre-kill state
-        // (inside). No re-registration happened, so the baseline is intact.
         let afterRelaunch = makeStorage(directory: dir)
         #expect(await afterRelaunch.recordMonitorEvent(.enter, forIdentifier: "geo_1") == .suppressedNoChange)
         #expect(await afterRelaunch.recordMonitorEvent(.exit, forIdentifier: "geo_1") == .deliver)
@@ -1191,8 +1132,7 @@ struct GeofenceStorageTests {
 
     @Test
     func getMonitorRegionRecords_givenRegistrationsAndEvents_expectGeometryAndBaselinesReturned() async {
-        // The adopt-time re-arm rebuilds CLMonitor conditions from this snapshot, so it must carry
-        // the registered geometry and the CURRENT baseline (not the registration-time state).
+        // The adopt-time re-arm rebuilds conditions from this, so it must carry the current baseline.
         let dir = makeTempDirectory()
         defer { try? FileManager.default.removeItem(at: dir) }
         let storage = makeStorage(directory: dir)
@@ -1226,8 +1166,7 @@ struct GeofenceStorageTests {
 
     @Test
     func recordRegistration_givenMovementTrigger_expectItsBaselineRetained() async {
-        // The trigger is never in `businessIds` but is always registered; pruning it would discard
-        // the baseline that makes its EXIT deliverable.
+        // The trigger is never in `businessIds`; pruning it would lose the baseline its exit needs.
         let dir = makeTempDirectory()
         defer { try? FileManager.default.removeItem(at: dir) }
         let storage = makeStorage(directory: dir)
@@ -1241,10 +1180,6 @@ struct GeofenceStorageTests {
 
     @Test
     func revisit_givenRegionEvictedWhileInside_expectGenuineEnterStillDelivered() async {
-        // The regression. A region evicted while the device is inside keeps a `.enter` baseline that
-        // no EXIT ever balances, because it is no longer monitored. Re-registering the same circle
-        // later preserves that baseline, so the arrival on a genuine revisit reads as no change and
-        // is dropped. Pruning on eviction is what keeps the revisit deliverable.
         let dir = makeTempDirectory()
         defer { try? FileManager.default.removeItem(at: dir) }
         let storage = makeStorage(directory: dir)
@@ -1265,8 +1200,6 @@ struct GeofenceStorageTests {
 
     @Test
     func recordRegistration_givenRetainedRegion_expectBaselinePreserved() async {
-        // Pruning must not touch a region that is still registered: its baseline is what keeps an
-        // unchanged re-register silent instead of re-delivering the state the device is already in.
         let dir = makeTempDirectory()
         defer { try? FileManager.default.removeItem(at: dir) }
         let storage = makeStorage(directory: dir)
@@ -1282,13 +1215,8 @@ struct GeofenceStorageTests {
 
     @Test
     func diagnosticReason_expectEverySuppressionNamedAndDeliverSilent() {
-        // The monitor logs this token when it discards a callback.
-        //
-        // A case added with no token at all is already a compile error — `diagnosticReason`
-        // switches exhaustively with no `default`. What the compiler cannot catch is a case wired
-        // to `nil`, which the caller's `if let` then swallows silently. Driven off `allCases` so
-        // that a newly added case is covered too; a hand-written list would simply not mention it.
-        // An unattributable disappearance is indistinguishable from the OS never delivering at all.
+        // A case wired to `nil` compiles, and the caller's `if let` swallows it. `allCases` covers
+        // new cases.
         let cases = GeofenceMonitorEventOutcome.allCases
         for outcome in cases {
             if case .deliver = outcome {
@@ -1307,7 +1235,7 @@ struct GeofenceStorageTests {
 
     // MARK: - Re-delivered OS events
 
-    /// CoreLocation re-delivers the same crossing; every copy carries the original event `date`.
+    /// Every re-delivered copy carries the original event `date`.
     private static let trigger = GeofenceConstants.movementTriggerIdentifier
     private static let eventDate = Date(timeIntervalSince1970: 1000060.107)
     private static let reseedAt = Date(timeIntervalSince1970: 1000060.238)

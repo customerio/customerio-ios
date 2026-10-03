@@ -17,14 +17,8 @@ extension GeofenceStorage {
         saveToDisk(state)
     }
 
-    /// Atomically checks whether the cooldown window for `key` has expired and, if so,
-    /// records the new timestamp. Returns `true` when the caller may proceed (no active
-    /// cooldown), `false` when the event should be suppressed. The whole check-and-record
-    /// runs inside the actor with no `await` between steps, so concurrent callers cannot
-    /// both observe an expired window and both fire the event.
-    /// `nil` when the cooldown was acquired. Otherwise the seconds still left on it — a value the
-    /// check already computes, returned rather than recomputed, so reporting it costs no second
-    /// load of the store on a background wake.
+    /// Checks and records in one step, so concurrent callers can't both fire.
+    /// - Returns: `nil` when acquired, otherwise the seconds still left on the cooldown.
     func tryAcquireCooldown(key: String, now: Date, interval: TimeInterval) -> TimeInterval? {
         var state = loadFromDisk() ?? GeofenceState()
         var cooldowns = state.eventCooldowns ?? [:]
@@ -38,9 +32,7 @@ extension GeofenceStorage {
         return nil
     }
 
-    /// Atomically removes cooldown entries whose recorded timestamp is older than `interval`
-    /// before `now`. Filtering happens inside the actor so a concurrent `tryAcquireCooldown`
-    /// cannot have its fresh write deleted by a stale snapshot.
+    /// Filtered inside the actor so a concurrent `tryAcquireCooldown` write can't be lost.
     func purgeExpiredCooldowns(now: Date, interval: TimeInterval) {
         var state = loadFromDisk() ?? GeofenceState()
         guard var cooldowns = state.eventCooldowns, !cooldowns.isEmpty else { return }
@@ -51,9 +43,7 @@ extension GeofenceStorage {
         saveToDisk(state)
     }
 
-    /// Removes the cooldown entry for `key`, if present. Called when persist-first fails after the
-    /// cooldown was already claimed, so the next transition of this type isn't suppressed against a
-    /// metric that never reached the pending queue.
+    /// For when persisting fails after the claim, so the next transition isn't suppressed.
     func releaseCooldown(key: String) {
         var state = loadFromDisk() ?? GeofenceState()
         guard var cooldowns = state.eventCooldowns, cooldowns.removeValue(forKey: key) != nil else { return }
