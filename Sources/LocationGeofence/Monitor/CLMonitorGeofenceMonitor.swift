@@ -61,8 +61,8 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring {
     /// Every timing decision reads this clock, never `Date()`.
     let dateUtil: DateUtil
     /// The dwell coordinator's clock, read as an event is recorded, so the visit it ends is ordered
-    /// against it as the coordinator orders its own EXITs.
-    private let clock: GeofenceClock
+    /// against it as the coordinator orders its own EXITs. Internal for the `+BaselineHeal` extension.
+    let clock: GeofenceClock
 
     private let makeConditionMonitor: @Sendable (String) async -> GeofenceConditionMonitoring
 
@@ -226,12 +226,19 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring {
         }
         // Dated by the OS, not by receipt, so no guard depends on drain speed. Read before the
         // write: it is when this event was processed, under the cap the circle was registered with.
-        let reading = clock.read()
+        // Attributed once, before the write too: the record may already be the replacing circle's
+        // while the event is still the replaced one's, which then closes no visit.
+        // The raw generation too, so an event of the replaced circle cannot advance the replacing
+        // circle's record. The movement trigger keeps its own delayed-exit rule.
+        let circle = eventCircle(for: identifier, raisedAt: event.date)
+        let reading = circle == .expired ? nil : clock.read()
         let maximumRadius = authManager.maximumRegionMonitoringDistance
+        let raisedUnder = identifier == GeofenceConstants.movementTriggerIdentifier ? nil
+            : GeofenceEventCircle(conditionLedger.attribution(for: identifier, raisedAt: event.date), maximumRadius: maximumRadius)
         let (outcome, crossingObserved) = await storage.recordMonitorTransition(
             transition, forIdentifier: identifier,
             onlyIfBaselinePredates: event.date, osEventDate: event.date, now: event.date,
-            processedAt: reading, maximumRadius: maximumRadius
+            processedAt: reading, maximumRadius: maximumRadius, raisedUnder: raisedUnder
         )
         guard case .deliver = outcome else {
             logDiscardedCallback(identifier: identifier, transition: transition, outcome: outcome)
@@ -243,15 +250,17 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring {
             // The pass re-centres on these coords, so resolve a fresh fix; fire-and-forget so a slow
             // fix can't stall the pending-event drain.
             movementFixResolver.resolve(cached: bestKnownFix(), purpose: .movement) { [weak self] location, isFresh in
-                self?.logger.geofenceCallbackDispatched(identifier: identifier, transition: transition)
-                self?.onTransition?(identifier, transition, location, event.date, isFresh, self?.eventCircle(for: identifier, raisedAt: event.date) ?? .unknown, crossingObserved)
+                guard let self else { return }
+                self.logger.geofenceCallbackDispatched(identifier: identifier, transition: transition)
+                let dispatched = self.dispatchedEventCircle(captured: circle, for: identifier, raisedAt: event.date)
+                self.onTransition?(identifier, transition, location, event.date, isFresh, dispatched, crossingObserved)
             }
             return
         }
         logger.geofenceCallbackDispatched(identifier: identifier, transition: transition)
         onTransition?(
             identifier, transition, currentLocationData(), event.date, false,
-            eventCircle(for: identifier, raisedAt: event.date), crossingObserved
+            dispatchedEventCircle(captured: circle, for: identifier, raisedAt: event.date), crossingObserved
         )
     }
 

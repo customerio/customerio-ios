@@ -56,6 +56,13 @@ struct MonitoredCircle: Equatable, Sendable {
             && abs(radius - min(geofence.radius, maximumRadius)) < Self.radiusTolerance
     }
 
+    /// Whether both are the same circle as registered, both already clamped; same tolerances.
+    func isSameCircle(as other: MonitoredCircle) -> Bool {
+        abs(center.latitude - other.center.latitude) < Self.coordinateTolerance
+            && abs(center.longitude - other.center.longitude) < Self.coordinateTolerance
+            && abs(radius - other.radius) < Self.radiusTolerance
+    }
+
     /// Keep in step with `GeofenceRegionRequest`'s tolerances.
     private static let coordinateTolerance = 1e-7
     private static let radiusTolerance = 0.5

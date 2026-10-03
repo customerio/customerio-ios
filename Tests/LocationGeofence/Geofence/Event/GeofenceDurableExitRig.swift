@@ -45,6 +45,8 @@ final class DurableExitDevice {
     var seeded = false
     /// Fresh fixes the dwell coordinator asked for.
     var fixesRequested = 0
+    /// Where the polygon resolver's fresh fixes are taken, north of the polygon's centre; nil fails them.
+    var polygonFixOffset: Double?
 
     init() {
         dateUtil.givenNow = clock.wall
@@ -117,9 +119,16 @@ final class DurableExitProcess {
             },
             evidenceRetryDelay: 3600, clock: device.clock, identityTracker: GeofenceIdentityTracker(contextStore: contextStore)
         )
+        let fixResolver = MovementFixResolver(logger: LoggerMock(), dateUtil: device.dateUtil)
+        fixResolver.systemCachedFix = { nil }
+        fixResolver.requestFreshFix = { [weak device, weak fixResolver] in
+            guard let device, let offset = device.polygonFixOffset else { return fixResolver?.handleRequestFailure() ?? () }
+            fixResolver?.handleResolvedFix(device.fix(at: DurableExitFences.polygon, latitudeOffset: offset))
+        }
         self.resolver = PolygonMembershipResolver(
             storage: storage, transitionEmitter: tracker, logger: LoggerMock(), contextStore: contextStore,
-            dateUtil: device.dateUtil, notificationCenter: NotificationCenter(), dwellCoordinator: dwell
+            dateUtil: device.dateUtil, fixResolver: fixResolver, notificationCenter: NotificationCenter(),
+            dwellCoordinator: dwell
         )
         let os = os
         self.monitor = CLMonitorGeofenceMonitor(

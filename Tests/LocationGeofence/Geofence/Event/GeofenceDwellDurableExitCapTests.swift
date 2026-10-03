@@ -62,6 +62,10 @@ struct GeofenceDwellDurableExitCapTests {
             await process.register(radius: 80)
         }
         await process.deliver(.satisfied)
+        // That registration's ENTER is not the cached circle's, so it starts no visit. The stay is
+        // recorded by the coordinator directly, as another producer's would be.
+        #expect(await process.visit() == nil)
+        await process.dwell.handleBoundary(geofence: Self.circle, transition: .enter, occurredAt: device.clock.wall)
         let stay = try #require(await process.visit())
         process.dwell.cancelEvidence(for: Self.circle.id)
         process.dieOnNextEvent()

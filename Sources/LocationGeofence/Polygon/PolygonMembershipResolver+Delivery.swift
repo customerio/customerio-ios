@@ -105,16 +105,23 @@ extension PolygonMembershipResolver {
     /// A user switch meanwhile drops rather than misattributes it. A transition that is not
     /// `crossingObserved` is still delivered: an ENTER's visit is a candidate that reports no entry,
     /// and an EXIT ends its visit without reporting a duration.
+    ///
+    /// `raisedByCurrentCircle` is false for an event an older generation of the circle raised, or
+    /// one whose circle is known gone (`circle(_:raisedEventsOf:)`). It crossed another circle than
+    /// the one a dwell is measured against, so it is still delivered but touches no visit: its ENTER
+    /// starts none, and its EXIT neither records an EXIT nor ends one, and carries no duration.
+    /// Ending a qualified visit would let the same unbroken stay qualify again.
     func forwardCircleTransition(
         geofence: Geofence,
         transition: GeofenceTransition,
         occurredAt: Date,
         receivedForUserId: String,
-        crossingObserved: Bool = true
+        crossingObserved: Bool = true,
+        raisedByCurrentCircle: Bool = true
     ) async {
         switch transition {
         case .enter:
-            let dwellCoordinator = dwellCoordinator
+            let dwellCoordinator = raisedByCurrentCircle ? dwellCoordinator : nil
             async let visitRecorded: GeofenceExitContext? = dwellCoordinator?.handleBoundary(
                 geofence: geofence, transition: .enter, occurredAt: occurredAt, expectedUserId: receivedForUserId,
                 crossingObserved: crossingObserved
@@ -124,10 +131,12 @@ extension PolygonMembershipResolver {
             }
             _ = await visitRecorded
         case .exit:
-            let exitContext = await dwellCoordinator?.handleBoundary(
-                geofence: geofence, transition: .exit, occurredAt: occurredAt, expectedUserId: receivedForUserId,
-                crossingObserved: crossingObserved
-            )
+            let exitContext = raisedByCurrentCircle
+                ? await dwellCoordinator?.handleBoundary(
+                    geofence: geofence, transition: .exit, occurredAt: occurredAt, expectedUserId: receivedForUserId,
+                    crossingObserved: crossingObserved
+                )
+                : nil
             guard geofence.transitionTypes.contains(.exit) else { return }
             await transitionEmitter.trackExit(
                 geofenceId: geofence.id, occurredAt: occurredAt, context: exitContext,
@@ -136,6 +145,18 @@ extension PolygonMembershipResolver {
         case .dwell:
             // Core Location never produces one; dwell is the coordinator's own decision.
             return
+        }
+    }
+
+    /// Whether an event attributed to `eventCircle` was raised by `geofence`'s current circle, as
+    /// registered: clamped to the cap, matched as registration matches it. A cold-wake event with
+    /// no recorded generation is taken as current, as its producer requires; one whose circle is
+    /// known gone proves nothing about the current geometry.
+    static func circle(_ eventCircle: GeofenceEventCircle, raisedEventsOf geofence: Geofence) -> Bool {
+        switch eventCircle {
+        case .circle(let raised): return raised.matches(geofence)
+        case .unknown: return true
+        case .expired: return false
         }
     }
 
