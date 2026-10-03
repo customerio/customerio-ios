@@ -213,16 +213,18 @@ struct PolygonMembershipResolverTests {
     /// observed case is the control that the visit was otherwise timed.
     @Test(arguments: [true, false])
     func circleExit_givenObservedVisit_expectDurationOnlyWhenExitObserved(crossingObserved: Bool) async {
-        let setup = await makeSetup(fix: nil, withDwellCoordinator: true)
-        let circle = circleGeofence(dwellThresholdSeconds: 60)
-        await setup.storage.setCachedGeofences([circle])
         // Whole seconds, so the persisted `enteredAt` round-trips exactly.
         let entry = Date(timeIntervalSince1970: clock.now.timeIntervalSince1970.rounded(.down) - 7200)
+        let dwellClock = ManualGeofenceClock(wall: entry)
+        let setup = await makeSetup(fix: nil, withDwellCoordinator: true, dwellClock: dwellClock)
+        let circle = circleGeofence(dwellThresholdSeconds: 60)
+        await setup.storage.setCachedGeofences([circle])
         await setup.resolver.handleTransition(
             identifier: circle.id, transition: .enter, occurredAt: entry, receivedForUserId: "user-1"
         )
         #expect(await setup.storage.getDwellVisit(geofenceId: circle.id)?.entryObserved == true)
 
+        dwellClock.advance(to: entry.addingTimeInterval(7200))
         await setup.resolver.handleTransition(
             identifier: circle.id, transition: .exit, occurredAt: entry.addingTimeInterval(7200),
             receivedForUserId: "user-1", crossingObserved: crossingObserved
@@ -241,16 +243,19 @@ struct PolygonMembershipResolverTests {
     /// can time the polygon stay, although both deliver the EXIT and close the visit.
     @Test(arguments: [true, false])
     func coveringCircleExit_givenObservedPolygonVisit_expectNoDuration(crossingObserved: Bool) async {
-        let setup = await makeSetup(fix: nil, withDwellCoordinator: true)
+        let entry = Date(timeIntervalSince1970: 1000)
+        let dwellClock = ManualGeofenceClock(wall: entry.addingTimeInterval(-60))
+        let setup = await makeSetup(fix: nil, withDwellCoordinator: true, dwellClock: dwellClock)
         let geofence = polygonGeofence(transitionTypes: [.enter, .exit])
         await setup.storage.setCachedGeofences([geofence])
-        let entry = Date(timeIntervalSince1970: 1000)
         await setup.resolver.apply(
             .outside, to: geofence, evidence: entry.addingTimeInterval(-60), confirmedByFix: true
         )
+        dwellClock.advance(to: entry)
         await setup.resolver.apply(.inside, to: geofence, evidence: entry, confirmedByFix: true)
         #expect(await setup.storage.getDwellVisit(geofenceId: geofence.id)?.entryObserved == true)
 
+        dwellClock.advance(to: entry.addingTimeInterval(600))
         await setup.resolver.handleTransition(
             identifier: geofence.id, transition: .exit, occurredAt: entry.addingTimeInterval(600),
             crossingObserved: crossingObserved
@@ -303,7 +308,11 @@ struct PolygonMembershipResolverTests {
         }
     }
 
-    private func resolver(_ setup: Setup, emitter: GeofenceTransitionEmitting) -> PolygonMembershipResolver {
+    private func resolver(
+        _ setup: Setup,
+        emitter: GeofenceTransitionEmitting,
+        dwellClock: GeofenceClock = SystemGeofenceClock()
+    ) -> PolygonMembershipResolver {
         PolygonMembershipResolver(
             storage: setup.storage,
             transitionEmitter: emitter,
@@ -319,7 +328,8 @@ struct PolygonMembershipResolverTests {
                 logger: setup.logger,
                 notificationCenter: setup.notificationCenter,
                 // No deadline evidence: these tests are about boundary ordering, not dwell.
-                freshFixProvider: { nil }
+                freshFixProvider: { nil },
+                clock: dwellClock
             )
         )
     }
@@ -742,10 +752,11 @@ struct PolygonMembershipResolverTests {
         let circle = circleGeofence(dwellThresholdSeconds: 60)
         await setup.storage.setCachedGeofences([circle])
         let emitter = StalledEnterEmitter()
-        let resolver = resolver(setup, emitter: emitter)
         // Whole seconds: a visit's `enteredAt` round-trips through JSON, and a fractional one
         // comes back a hair off, which the whole-second duration then truncates.
         let firstEntry = Date(timeIntervalSince1970: clock.now.timeIntervalSince1970.rounded(.down) - 7200)
+        let dwellClock = ManualGeofenceClock(wall: firstEntry)
+        let resolver = resolver(setup, emitter: emitter, dwellClock: dwellClock)
         let firstExit = firstEntry.addingTimeInterval(60)
         let reentry = firstEntry.addingTimeInterval(3600)
         let finalExit = reentry.addingTimeInterval(120)
@@ -760,6 +771,7 @@ struct PolygonMembershipResolverTests {
         await waitUntil { await setup.storage.getDwellVisit(geofenceId: circle.id) != nil }
         #expect(await setup.storage.getDwellVisit(geofenceId: circle.id)?.enteredAt == firstEntry)
 
+        dwellClock.advance(to: firstExit)
         await resolver.handleTransition(
             identifier: circle.id, transition: .exit, occurredAt: firstExit, receivedForUserId: "user-1"
         )
@@ -767,10 +779,12 @@ struct PolygonMembershipResolverTests {
         _ = await stalledEnter.value
         #expect(await setup.storage.getDwellVisit(geofenceId: circle.id) == nil)
 
+        dwellClock.advance(to: reentry)
         await resolver.handleTransition(
             identifier: circle.id, transition: .enter, occurredAt: reentry, receivedForUserId: "user-1"
         )
         #expect(await setup.storage.getDwellVisit(geofenceId: circle.id)?.enteredAt == reentry)
+        dwellClock.advance(to: finalExit)
         await resolver.handleTransition(
             identifier: circle.id, transition: .exit, occurredAt: finalExit, receivedForUserId: "user-1"
         )
@@ -889,15 +903,18 @@ struct PolygonMembershipResolverTests {
     /// carries the observed entry and duration.
     @Test
     func apply_givenOutsideThenInside_expectExitCarriesObservedEntryAndDuration() async {
-        let setup = await makeSetup(fix: nil, withDwellCoordinator: true)
+        let entry = Date(timeIntervalSince1970: 1000)
+        let dwellClock = ManualGeofenceClock(wall: entry.addingTimeInterval(-60))
+        let setup = await makeSetup(fix: nil, withDwellCoordinator: true, dwellClock: dwellClock)
         let geofence = polygonGeofence(transitionTypes: [.enter, .exit])
         await setup.storage.setCachedGeofences([geofence])
-        let entry = Date(timeIntervalSince1970: 1000)
 
         await setup.resolver.apply(
             .outside, to: geofence, evidence: entry.addingTimeInterval(-60), confirmedByFix: true
         )
+        dwellClock.advance(to: entry)
         await setup.resolver.apply(.inside, to: geofence, evidence: entry, confirmedByFix: true)
+        dwellClock.advance(to: entry.addingTimeInterval(600))
         await setup.resolver.apply(
             .outside, to: geofence, evidence: entry.addingTimeInterval(600), confirmedByFix: true
         )

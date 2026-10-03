@@ -2880,15 +2880,17 @@ struct GeofenceSyncCoordinatorTests {
             longitude: anchor.longitude,
             anchorIsLiveFix: true
         )
-        for _ in 0 ..< 50 {
-            await Task.yield()
+        // Bounded on the write, not a yield count: the visit is recorded on a task of its own.
+        for _ in 0 ..< 200 where await storage.getDwellVisit(geofenceId: region.id) == nil {
+            try? await Task.sleep(nanoseconds: 10000000)
         }
 
         #expect(emitter.calls.wrappedValue.isEmpty)
         let visit = await storage.getDwellVisit(geofenceId: region.id)
         #expect(visit != nil)
-        // Registered around a device already inside: discovery, not an entry a dwell may report.
-        #expect(visit?.entryObserved == false)
+        // Registered around a device already inside: discovery, not an entry a dwell may report,
+        // and the anchor proves no presence until a fresh fix does.
+        #expect(visit?.entryObserved == false && visit?.awaitsPresenceProof == true)
     }
 
     /// The refresh records a widened edge before registering and keeps the record through the

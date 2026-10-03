@@ -54,6 +54,7 @@ extension GeofenceDwellCoordinator {
     /// background — the app moving between foreground and background.
     func lossOvertook(_ visit: GeofenceDwellVisit, geofenceId: String) -> Bool {
         guard let timing = visit.timing else { return false }
+        if identityTracker.interrupted(visit) { return true }
         var losses = [continuityLostUptime[geofenceId], allContinuityLostUptime]
         if Self.observesOnlyInForeground(visit) { losses.append(foregroundOnlyLostUptime) }
         guard let lostUptime = losses.compactMap({ $0 }).max() else { return false }
@@ -64,10 +65,15 @@ extension GeofenceDwellCoordinator {
     /// every read and before a dwell is admitted, so a loss already recorded counts before the
     /// task removing the visit has run; and it catches a reboot or an access loss nothing
     /// reported, which iOS signals to no process that was not running.
-    func continuityHolds(for visit: GeofenceDwellVisit, geofenceId: String) -> Bool {
+    ///
+    /// `ignoringLaterEnter` is only for a visit an EXIT already ended, judged up to that EXIT: the
+    /// re-entry after it is a later stay, not a break in this one.
+    func continuityHolds(for visit: GeofenceDwellVisit, geofenceId: String, ignoringLaterEnter: Bool = false) -> Bool {
         // No timing: recorded by a build that kept none, on a boot nothing identifies.
         guard let timing = visit.timing, timing.isCurrent(at: readClock()) else { return false }
-        guard !lossOvertook(visit, geofenceId: geofenceId) else { return false }
+        guard !lossOvertook(visit, geofenceId: geofenceId),
+              ignoringLaterEnter || !enterSuperseded(visit, geofenceId: geofenceId)
+        else { return false }
         // The app was not running for some time between processes, and under this access nothing
         // relaunches it for an EXIT.
         if Self.observesOnlyInForeground(visit), !visitsRecordedHere.contains(visit.visitId) { return false }
@@ -119,6 +125,21 @@ extension GeofenceDwellCoordinator {
         guard let userId = contextStore.currentUserId, !userId.isEmpty else { return }
         for geofence in await storage.getCachedGeofences() where tracksVisit(geofence) {
             _ = await currentVisit(geofence: geofence, userId: userId)
+        }
+    }
+
+    /// A profile was identified. Identifying another user rewrites the identity without any
+    /// reset, so visits recorded under an identity version no longer in force end: they must not be
+    /// picked up again, as stays continuous across identities, when their user comes back. The
+    /// tracker already refuses them; this removes them. Judged by version alone, so a late or
+    /// replayed event, or a shifted wall clock, cannot remove a visit recorded since.
+    func identityChanged() async {
+        let tracker = identityTracker
+        let removed = await storage.removeDwellVisits { _, visit in
+            tracker.interrupted(visit)
+        }
+        for (id, visitId) in removed {
+            cancelEvidence(for: id, ifVisit: visitId)
         }
     }
 

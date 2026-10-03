@@ -41,8 +41,8 @@ extension GeofenceDwellCoordinator {
     }
 
     /// The duration an EXIT carries for `visit`; nil when the visit's start was not an observed
-    /// entry, the customer did not configure EXIT, outside evidence ended the visit too, or the
-    /// span is not on one timeline.
+    /// entry, nothing has yet proved the device there, the customer did not configure EXIT, outside
+    /// evidence ended the visit too, or the span is not on one timeline.
     private func exitContext(
         for visit: GeofenceDwellVisit,
         geofence: Geofence,
@@ -50,7 +50,7 @@ extension GeofenceDwellCoordinator {
         processedAt reading: GeofenceClockReading,
         source: String
     ) -> GeofenceExitContext? {
-        guard visit.entryObserved, geofence.transitionTypes.contains(.exit),
+        guard visit.entryObserved, !visit.awaitsPresenceProof, geofence.transitionTypes.contains(.exit),
               !outsideEvidenceOvertook(visit, geofenceId: geofence.id),
               Self.spanIsTimeable(visit, exitedAt: exit.date, processedAt: reading)
         else { return nil }
@@ -99,12 +99,37 @@ extension GeofenceDwellCoordinator {
     /// Remembers `visit`, which a re-ENTER replaced because an EXIT overtook it, under the exact
     /// dates of the EXIT events that did: one of them may still be in flight to report it. Not
     /// when outside evidence overtook it too, which no EXIT may time across, nor when only outside
-    /// evidence did, which no EXIT event will come to claim.
-    func rememberVisitEndedByPendingExit(_ visit: GeofenceDwellVisit, geofenceId: String) {
+    /// evidence did, which no EXIT event will come to claim. With `reenteredAt`, only EXITs that
+    /// ENTER followed count.
+    func rememberVisitEndedByPendingExit(
+        _ visit: GeofenceDwellVisit,
+        geofenceId: String,
+        reenteredAt reentry: GeofenceExitMark? = nil
+    ) {
         let overtaking = (exitMarks[geofenceId] ?? []).filter { $0.overtakes(visit) }
-        let exitDates = Set(overtaking.filter { $0.source == .exitEvent }.map(\.date))
+        let exitDates = Set(overtaking.filter { exit in
+            exit.source == .exitEvent && (reentry.map { Self.enter($0, follows: exit) } ?? true)
+        }.map(\.date))
         guard !exitDates.isEmpty, !overtaking.contains(where: { $0.source == .outsideEvidence }) else { return }
         visitsEndedByPendingExit[geofenceId] = (visit, exitDates)
+    }
+
+    /// `currentVisit` is removing `visit` because a later native ENTER superseded it. When an EXIT
+    /// already seen ended it before that ENTER, the ENTER is the re-entry after it, not a crossing
+    /// that shows the EXIT was lost: the visit is remembered for that EXIT, which may still be in
+    /// flight. Any other break in its continuity leaves nothing to report.
+    func rememberIfReenteredAfterItsExit(_ visit: GeofenceDwellVisit, geofenceId: String) {
+        guard let reentry = enterMarks[geofenceId], reentry.supersedes(visit),
+              continuityHolds(for: visit, geofenceId: geofenceId, ignoringLaterEnter: true)
+        else { return }
+        rememberVisitEndedByPendingExit(visit, geofenceId: geofenceId, reenteredAt: reentry)
+    }
+
+    /// Whether `enter` came after `exit`, on one wall-clock timeline. Across a step neither date
+    /// orders against the other, so it did not, as far as anything here can tell.
+    private static func enter(_ enter: GeofenceExitMark, follows exit: GeofenceExitMark) -> Bool {
+        abs(enter.wallOffset - exit.wallOffset) <= GeofenceConstants.dwellWallClockStepTolerance
+            && enter.mappedUptime >= exit.mappedUptime
     }
 
     /// Takes the visit an overlapping re-ENTER replaced for exactly this EXIT — one of the EXIT
@@ -121,7 +146,8 @@ extension GeofenceDwellCoordinator {
         guard ended.visit.userId == userId,
               ended.visit.geometryRevision == geofence.dwellRevision,
               exit.overtakes(ended.visit),
-              continuityHolds(for: ended.visit, geofenceId: geofence.id)
+              // Judged up to this EXIT: the re-entry that replaced it is a later stay.
+              continuityHolds(for: ended.visit, geofenceId: geofence.id, ignoringLaterEnter: true)
         else { return nil }
         return ended.visit
     }

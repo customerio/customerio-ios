@@ -19,7 +19,7 @@ extension GeofenceDwellCoordinator {
         // `visit` may be a copy read before a loss its removal has not yet reached. Admission is
         // judged now; a dwell already admitted goes on to its outbox row, a fact about the stay
         // before the loss.
-        guard continuityHolds(for: visit, geofenceId: geofence.id) else { return }
+        guard continuityHolds(for: visit, geofenceId: geofence.id), !visit.awaitsPresenceProof else { return }
         guard let proposed = Self.qualifiedReservation(
             for: visit, observedAt: observedAt, at: readClock(),
             thresholdSeconds: geofence.dwellThresholdSeconds, source: source

@@ -113,6 +113,16 @@ extension GeofenceStorage {
         saveToDisk(state)
     }
 
+    func getClockReference() -> GeofenceClockReading? {
+        loadFromDisk()?.clockReference
+    }
+
+    func setClockReference(_ reading: GeofenceClockReading) {
+        var state = loadFromDisk() ?? GeofenceState()
+        state.clockReference = reading
+        saveToDisk(state)
+    }
+
     /// Removes the captured visit only when it is stale against what is stored NOW: another user's,
     /// or recorded against geometry the cached fence no longer has. A caller holding an older
     /// snapshot of the fence or user must not delete a visit written after its read.

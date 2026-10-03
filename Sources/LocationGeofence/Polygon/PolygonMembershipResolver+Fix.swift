@@ -15,17 +15,20 @@ extension PolygonMembershipResolver {
     /// second request answered by a CoreLocation echo is refused.
     func heldFixUse(_ heldFix: ResolvedFix?) -> HeldFixDecision {
         guard let heldFix else { return HeldFixDecision(use: .none, age: 0, newerFix: nil) }
+        // A negative age is a fix from before the clock was set back: no age at all can be placed.
+        let tolerance = GeofenceConstants.dwellWallClockStepTolerance
         if let latest = fixResolver.latestFix, latest.timestamp > heldFix.timestamp {
             // Judged on the NEWER fix's age, not the held one's.
             let age = dateUtil.now.timeIntervalSince(latest.timestamp)
-            guard age <= GeofenceConstants.movementFixMaxAge else {
+            guard age >= -tolerance, age <= GeofenceConstants.movementFixMaxAge else {
                 return HeldFixDecision(use: .tooOld, age: age, newerFix: nil)
             }
             return HeldFixDecision(use: .newer, age: age, newerFix: latest)
         }
         let age = dateUtil.now.timeIntervalSince(heldFix.timestamp)
         return HeldFixDecision(
-            use: age <= GeofenceConstants.movementFixMaxAge ? .reused : .tooOld, age: age, newerFix: nil
+            use: age >= -tolerance && age <= GeofenceConstants.movementFixMaxAge ? .reused : .tooOld,
+            age: age, newerFix: nil
         )
     }
 

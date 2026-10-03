@@ -23,9 +23,10 @@ extension GeofenceDwellCoordinator {
         }
         // Elapsed as qualifying measures it, so a wall-clock step moves the deadline no more than
         // it moves qualification.
+        // A candidate awaiting proof asks for it at once: its time has not started.
         let now = readClock()
         let elapsed = visit.timing?.elapsed(enteredAt: visit.enteredAt, until: now.wall, at: now)?.qualifyingSeconds ?? 0
-        let delay = min(
+        let delay = visit.awaitsPresenceProof ? 0 : min(
             TimeInterval(GeofenceDwellLimits.maxThresholdSeconds),
             max(0, TimeInterval(geofence.dwellThresholdSeconds) - elapsed)
         )
@@ -127,8 +128,12 @@ extension GeofenceDwellCoordinator {
         case undecided
     }
 
+    /// A fix dated in the future of the clock — taken before the clock was set back — cannot be
+    /// placed in time, so it proves nothing either way.
     func circleVerdict(of fix: CLLocation, for geofence: Geofence) -> CircleFixVerdict {
-        guard fix.horizontalAccuracy > 0, CLLocationCoordinate2DIsValid(fix.coordinate) else { return .undecided }
+        guard fix.horizontalAccuracy > 0, CLLocationCoordinate2DIsValid(fix.coordinate),
+              fix.timestamp.timeIntervalSince(readClock().wall) <= GeofenceConstants.dwellWallClockStepTolerance
+        else { return .undecided }
         let distance = fix.distance(from: CLLocation(latitude: geofence.latitude, longitude: geofence.longitude))
         if distance + fix.horizontalAccuracy <= geofence.radius { return .inside }
         guard distance - fix.horizontalAccuracy > geofence.radius,

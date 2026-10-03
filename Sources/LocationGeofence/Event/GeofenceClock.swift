@@ -9,7 +9,7 @@ protocol GeofenceClock {
 }
 
 /// One reading of `GeofenceClock`.
-struct GeofenceClockReading: Equatable, Sendable {
+struct GeofenceClockReading: Codable, Equatable, Sendable {
     let wall: Date
     /// Seconds of continuous uptime: counts through sleep, restarts at boot, and is never moved by
     /// a wall-clock change.

@@ -1,12 +1,15 @@
 import Foundation
 
-/// An EXIT, or a decisive outside fix that orders like one, as the coordinator processed it.
+/// An EXIT, or a decisive outside fix that orders like one, as the coordinator processed it; or a
+/// native ENTER, noted with the same ordering to tell a later crossing from a copy.
 struct GeofenceExitMark: Equatable {
     /// What recorded the mark. Only an EXIT event is delivered, and may still be in flight to
-    /// report the visit it ended; outside evidence ends a visit with no event of its own.
+    /// report the visit it ended; outside evidence ends a visit with no event of its own. A native
+    /// ENTER is noted with the same ordering, in `enterMarks` only.
     enum Source: Equatable {
         case exitEvent
         case outsideEvidence
+        case enterEvent
     }
 
     /// The date the OS or the fix stamped it with. For an EXIT event, also the event's identity:
@@ -44,6 +47,19 @@ struct GeofenceExitMark: Equatable {
         return processedUptime >= timing.recordedUptime || date >= visit.enteredAt
     }
 
+    /// For a native ENTER: whether it is a later crossing than the one `visit` began with, so the
+    /// visit is not the stay it reports. A copy of the visit's own ENTER — dated within the
+    /// tolerance of its entry — is not. Across a wall-clock step the dates cannot be ordered: the
+    /// ENTER then counts as later when it was processed after the visit was recorded.
+    func supersedes(_ visit: GeofenceDwellVisit) -> Bool {
+        guard let timing = visit.timing else { return true }
+        let tolerance = GeofenceConstants.dwellWallClockStepTolerance
+        if abs(wallOffset - timing.wallOffset) <= tolerance {
+            return mappedUptime > timing.enteredUptime + tolerance
+        }
+        return processedUptime > timing.recordedUptime
+    }
+
     /// Whether this mark overtakes every visit `other` does, which `other` then adds nothing to.
     /// Only on the same timeline: across a step, neither mark's dates order against the other's.
     /// Only of the same source, so outside evidence never stands in for an EXIT event, nor an EXIT
@@ -63,7 +79,8 @@ extension GeofenceDwellCoordinator {
     /// Reads `clock`, noting a wall-clock step since this coordinator's previous reading.
     func readClock() -> GeofenceClockReading {
         let reading = clock.read()
-        if let lastWallOffset, abs(reading.wallOffset - lastWallOffset) > GeofenceConstants.dwellWallClockStepTolerance {
+        let previousOffset = lastWallOffset ?? firstReading.wallOffset
+        if abs(reading.wallOffset - previousOffset) > GeofenceConstants.dwellWallClockStepTolerance {
             wallStepSeenUptime = reading.uptime
         }
         lastWallOffset = reading.wallOffset
@@ -80,6 +97,23 @@ extension GeofenceDwellCoordinator {
         exitMarks[geofenceId] = marks
     }
 
+    /// Notes a native ENTER as the OS delivers it, ahead of any evidence its wake re-arms.
+    func noteEnter(_ mark: GeofenceExitMark, geofenceId: String) {
+        if let noted = enterMarks[geofenceId], noted.processedUptime >= mark.processedUptime,
+           noted.mappedUptime >= mark.mappedUptime { return }
+        enterMarks[geofenceId] = mark
+    }
+
+    /// Notes a native ENTER from the OS callback itself, before its routing task runs.
+    func noteEnter(geofenceId: String, occurredAt: Date) {
+        noteEnter(GeofenceExitMark(date: occurredAt, processedAt: readClock(), source: .enterEvent), geofenceId: geofenceId)
+    }
+
+    /// Whether a native ENTER this process has seen is a later crossing than `visit`'s.
+    func enterSuperseded(_ visit: GeofenceDwellVisit, geofenceId: String) -> Bool {
+        enterMarks[geofenceId]?.supersedes(visit) ?? false
+    }
+
     /// Whether an EXIT this process has seen for the fence ends `visit`.
     func exitOvertook(_ visit: GeofenceDwellVisit, geofenceId: String) -> Bool {
         exitMarks[geofenceId]?.contains { $0.overtakes(visit) } ?? false
@@ -89,11 +123,42 @@ extension GeofenceDwellCoordinator {
     /// wall clock in force now. A date in the reading's future, or one placed before a step this
     /// coordinator has seen, may have been taken before the step: the visit it starts still counts
     /// time from when it was recorded, but its date is reportable against nothing.
+    ///
+    /// An entry dated before this coordinator's first reading — an event the OS raised before the
+    /// process, or the coordinator, existed — is on the current clock only if an earlier process's
+    /// persisted reference shows the same boot and wall offset as that first reading, and the entry
+    /// is no older than the reference. Otherwise the clock may have stepped between the entry and
+    /// the first reading, and nothing this process saw can tell.
     func entryIsOnCurrentClock(_ timing: GeofenceVisitTiming, enteredAt: Date, reading: GeofenceClockReading) -> Bool {
-        guard enteredAt.timeIntervalSince(reading.wall) <= GeofenceConstants.dwellWallClockStepTolerance else {
-            return false
+        let tolerance = GeofenceConstants.dwellWallClockStepTolerance
+        guard enteredAt.timeIntervalSince(reading.wall) <= tolerance else { return false }
+        if let wallStepSeenUptime, timing.enteredUptime < wallStepSeenUptime { return false }
+        guard timing.enteredUptime < firstReading.uptime else { return true }
+        guard let reference = clockReferenceAtLaunch,
+              reference.boot.isSameBoot(as: firstReading.boot),
+              abs(reference.wallOffset - firstReading.wallOffset) <= tolerance
+        else { return false }
+        return timing.enteredUptime >= reference.uptime
+    }
+
+    /// Loads the reference an earlier process left, once, then persists this process's clock
+    /// whenever it differs from what is persisted: a new boot, or a wall-clock step.
+    func syncClockReference(_ reading: GeofenceClockReading) async {
+        if clockReferenceLoad == nil {
+            let storage = storage
+            clockReferenceLoad = Task { await storage.getClockReference() }
         }
-        guard let wallStepSeenUptime else { return true }
-        return timing.enteredUptime >= wallStepSeenUptime
+        guard let load = clockReferenceLoad else { return }
+        let launchReference = await load.value
+        if persistedClockReference == nil {
+            clockReferenceAtLaunch = launchReference
+            persistedClockReference = launchReference
+        }
+        if let persisted = persistedClockReference, persisted.boot.isSameBoot(as: reading.boot),
+           abs(persisted.wallOffset - reading.wallOffset) <= GeofenceConstants.dwellWallClockStepTolerance {
+            return
+        }
+        persistedClockReference = reading
+        await storage.setClockReference(reading)
     }
 }
