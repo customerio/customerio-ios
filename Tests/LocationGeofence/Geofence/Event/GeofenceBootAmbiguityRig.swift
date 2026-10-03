@@ -91,7 +91,9 @@ final class BootAmbiguityProcess {
     let tracker: GeofenceEventTracker
     let dwell: GeofenceDwellCoordinator
     let resolver: PolygonMembershipResolver
-    private let sync = GeofenceSyncCoordinatorMock()
+    /// The bound binder's follow-up target: a routed polygon ENTER whose evaluation returned a fix
+    /// ends with `handleMovement`, then `refresh`.
+    let sync = GeofenceSyncCoordinatorMock()
 
     init(device: BootAmbiguityDevice) async {
         let polygon = BootAmbiguityDevice.polygon
