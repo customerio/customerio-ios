@@ -19,7 +19,11 @@ extension GeofenceSyncCoordinatorImpl {
         let newPolygons = newlyRegistered.filter { $0.vertices != nil }
         let newInside = newlyRegistered.filter { region in
             region.vertices == nil
-                && (region.transitionTypes.contains(.enter) || region.dwellThresholdSeconds > 0)
+                && (
+                    region.transitionTypes.contains(.enter) ||
+                        region.dwellThresholdSeconds > 0 ||
+                        region.transitionTypes.contains(.exit)
+                )
                 && region.distanceTo(anchor) <= min(region.radius, osRegistration.maxMonitoringRadius)
         }
         if !newPolygons.isEmpty {
@@ -35,16 +39,16 @@ extension GeofenceSyncCoordinatorImpl {
             for region in newInside {
                 // Per iteration: an awaited send can span a user switch.
                 guard contextStore.currentUserId == expectedUserId else { return }
-                async let visitRecorded: Void? = dwellCoordinator?.handleBoundary(
+                async let visitRecorded: GeofenceExitContext? = dwellCoordinator?.handleBoundary(
                     geofence: region,
                     transition: .enter,
                     occurredAt: discoveredAt,
                     expectedUserId: expectedUserId,
                     // Discovery, not a crossing: the stay began at some unknown earlier time, so
-                    // `discoveredAt` is never a reported entry. Nor is presence proven: the anchor
-                    // may be a stored location, and it carries no accuracy. The candidate counts
-                    // time only from the first fresh fix wholly inside.
-                    entryObserved: false,
+                    // `discoveredAt` is never a reported entry, so never a reported duration. Nor is
+                    // presence proven: the anchor may be a stored location, and it carries no
+                    // accuracy. The candidate counts time only from the first fresh fix wholly inside.
+                    crossingObserved: false,
                     presenceProven: false
                 )
                 if region.transitionTypes.contains(.enter) {

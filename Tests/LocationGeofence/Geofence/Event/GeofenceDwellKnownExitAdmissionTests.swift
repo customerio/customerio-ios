@@ -31,7 +31,7 @@ struct GeofenceDwellKnownExitAdmissionTests {
         let first = try await Self.enter(rig)
         rig.advance(600)
         let exitedAt = rig.clock.wall
-        rig.dwell.recordExit(GeofenceExitMark(date: exitedAt, processedAt: rig.dwell.readClock()), geofenceId: Self.circle.id)
+        rig.dwell.recordExit(GeofenceExitMark(date: exitedAt, processedAt: rig.dwell.readClock(), source: .exitEvent), geofenceId: Self.circle.id)
         rig.advance(0.1)
         await rig.dwell.requestQualifyingEvidence(geofenceId: Self.circle.id)
 
@@ -52,7 +52,7 @@ struct GeofenceDwellKnownExitAdmissionTests {
         let first = try await Self.enter(rig)
         rig.advance(600)
         let outside = rig.fix(latitudeOffset: 0.01, accuracy: 10)
-        rig.dwell.recordExit(GeofenceExitMark(date: outside.timestamp, processedAt: rig.dwell.readClock()), geofenceId: Self.circle.id)
+        rig.dwell.recordExit(GeofenceExitMark(date: outside.timestamp, processedAt: rig.dwell.readClock(), source: .outsideEvidence), geofenceId: Self.circle.id)
         rig.advance(0.1)
         await rig.dwell.requestQualifyingEvidence(geofenceId: Self.circle.id)
 
@@ -72,7 +72,7 @@ struct GeofenceDwellKnownExitAdmissionTests {
         let stay = try await Self.enter(rig)
         rig.advance(30)
         let staleExit = stay.enteredAt.addingTimeInterval(-30)
-        rig.dwell.recordExit(GeofenceExitMark(date: staleExit, processedAt: rig.dwell.readClock()), geofenceId: Self.circle.id)
+        rig.dwell.recordExit(GeofenceExitMark(date: staleExit, processedAt: rig.dwell.readClock(), source: .exitEvent), geofenceId: Self.circle.id)
         await rig.dwell.handleBoundary(geofence: Self.circle, transition: .exit, occurredAt: staleExit)
         rig.advance(570)
         await rig.dwell.requestQualifyingEvidence(geofenceId: Self.circle.id)
@@ -100,7 +100,7 @@ struct GeofenceDwellKnownExitAdmissionTests {
         try #require(await rig.storage.saveDwellVisit(reserved, geofenceId: Self.circle.id))
         rig.advance(700)
         let exitedAt = rig.clock.wall
-        rig.dwell.recordExit(GeofenceExitMark(date: exitedAt, processedAt: rig.dwell.readClock()), geofenceId: Self.circle.id)
+        rig.dwell.recordExit(GeofenceExitMark(date: exitedAt, processedAt: rig.dwell.readClock(), source: .exitEvent), geofenceId: Self.circle.id)
         rig.advance(0.1)
         await rig.dwell.requestQualifyingEvidence(geofenceId: Self.circle.id)
         await rig.dwell.handleBoundary(geofence: Self.circle, transition: .exit, occurredAt: exitedAt)
@@ -126,7 +126,7 @@ struct GeofenceDwellKnownExitAdmissionTests {
         rig.stepWall(step)
         rig.advance(300)
         let exitedAt = rig.clock.wall
-        rig.dwell.recordExit(GeofenceExitMark(date: exitedAt, processedAt: rig.dwell.readClock()), geofenceId: Self.circle.id)
+        rig.dwell.recordExit(GeofenceExitMark(date: exitedAt, processedAt: rig.dwell.readClock(), source: .exitEvent), geofenceId: Self.circle.id)
         rig.advance(0.1)
         await rig.dwell.requestQualifyingEvidence(geofenceId: Self.circle.id)
 

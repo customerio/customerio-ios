@@ -29,7 +29,7 @@ struct GeofenceDwellBootReleaseTests {
         second.bind(monitor)
         monitor.simulateTransition(
             identifier: Self.polygon.id, transition: .enter, location: nil, occurredAt: device.clock.wall,
-            entryObserved: crossing
+            crossingObserved: crossing
         )
         // The routed ENTER's evaluation has returned once the binder refreshes from its fix.
         let sync = second.sync

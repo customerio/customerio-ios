@@ -17,17 +17,18 @@ enum GeofenceMonitorBinder {
         monitor.setOnMonitoringInterrupted { [weak dwellCoordinator] geofenceId in
             dwellCoordinator?.interruptContinuity(geofenceId: geofenceId)
         }
-        monitor.setOnTransition { [weak resolver, weak coordinator, weak dwellCoordinator] identifier, transition, location, occurredAt, locationIsFresh, eventCircle, entryObserved in
+        monitor.setOnTransition { [weak resolver, weak coordinator, weak dwellCoordinator] identifier, transition, location, occurredAt, locationIsFresh, eventCircle, crossingObserved in
             // Before the re-arm below: evidence it requests must not qualify a visit this ENTER
             // supersedes ahead of the task that routes the ENTER. Not for a replaced circle's
             // ENTER: it crossed no circle the stay is measured against.
             if transition == .enter {
                 if eventCircle != .expired {
-                    noteEnter(dwellCoordinator, geofenceId: identifier, occurredAt: occurredAt, crossing: entryObserved)
+                    noteEnter(dwellCoordinator, geofenceId: identifier, occurredAt: occurredAt, crossing: crossingObserved)
                 }
             } else if transition == .exit, identifier != GeofenceConstants.movementTriggerIdentifier {
-                // Before the re-arm too: until the task below routes this EXIT, it holds back a
-                // first DWELL that evidence requested meanwhile would admit across it.
+                // In OS order: the ENTERs noted so far are what this EXIT knew of the stay's end. Before
+                // the re-arm too: until the task below routes this EXIT, it holds back a first DWELL
+                // that evidence requested meanwhile would admit across it.
                 noteExit(dwellCoordinator, geofenceId: identifier, occurredAt: occurredAt)
             }
             rearmDwellEvidence(dwellCoordinator)
@@ -61,7 +62,7 @@ enum GeofenceMonitorBinder {
                 let outcome = await resolver?.handleTransition(
                     identifier: identifier, transition: transition,
                     occurredAt: occurredAt, eventCircle: eventCircle,
-                    receivedForUserId: receivedForUserId, entryObserved: entryObserved
+                    receivedForUserId: receivedForUserId, crossingObserved: crossingObserved
                 ) ?? .nothingToRearm
                 // Whatever the resolver made of it, this EXIT is no longer being routed.
                 if transition == .exit { await dwellCoordinator?.exitCallbackRouted(geofenceId: identifier, occurredAt: occurredAt) }

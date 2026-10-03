@@ -23,6 +23,7 @@ public protocol GeofenceMetric {
     var enteredAt: Date? { get }
     var dwellThresholdSeconds: Int? { get }
     var dwellDurationSeconds: Int? { get }
+    var visitDurationSeconds: Int? { get }
     var detectionSource: String? { get }
 }
 
@@ -33,6 +34,7 @@ public extension GeofenceMetric {
     var dwellThresholdSeconds: Int? { nil }
     var dwellDurationSeconds: Int? { nil }
     var detectionSource: String? { nil }
+    var visitDurationSeconds: Int? { nil }
 
     /// `/track` event name. The same name for every transition; the direction is the
     /// `transition` property.
@@ -58,6 +60,7 @@ public extension GeofenceMetric {
         if let enteredAt { properties["enteredAt"] = Int(enteredAt.timeIntervalSince1970) }
         if let dwellThresholdSeconds { properties["dwellThresholdSeconds"] = dwellThresholdSeconds }
         if let dwellDurationSeconds { properties["dwellDurationSeconds"] = dwellDurationSeconds }
+        if let visitDurationSeconds { properties["visitDurationSeconds"] = visitDurationSeconds }
         if let detectionSource { properties["detectionSource"] = detectionSource }
         return properties
     }

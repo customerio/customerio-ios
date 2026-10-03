@@ -235,7 +235,7 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring {
         let maximumRadius = authManager.maximumRegionMonitoringDistance
         let raisedUnder = identifier == GeofenceConstants.movementTriggerIdentifier ? nil
             : GeofenceEventCircle(conditionLedger.attribution(for: identifier, raisedAt: event.date), maximumRadius: maximumRadius)
-        let (outcome, entryObserved) = await storage.recordMonitorTransition(
+        let (outcome, crossingObserved) = await storage.recordMonitorTransition(
             transition, forIdentifier: identifier,
             onlyIfBaselinePredates: event.date, osEventDate: event.date, now: event.date,
             processedAt: reading, maximumRadius: maximumRadius, raisedUnder: raisedUnder
@@ -253,14 +253,14 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring {
                 guard let self else { return }
                 self.logger.geofenceCallbackDispatched(identifier: identifier, transition: transition)
                 let dispatched = self.dispatchedEventCircle(captured: circle, for: identifier, raisedAt: event.date)
-                self.onTransition?(identifier, transition, location, event.date, isFresh, dispatched, entryObserved)
+                self.onTransition?(identifier, transition, location, event.date, isFresh, dispatched, crossingObserved)
             }
             return
         }
         logger.geofenceCallbackDispatched(identifier: identifier, transition: transition)
         onTransition?(
             identifier, transition, currentLocationData(), event.date, false,
-            dispatchedEventCircle(captured: circle, for: identifier, raisedAt: event.date), entryObserved
+            dispatchedEventCircle(captured: circle, for: identifier, raisedAt: event.date), crossingObserved
         )
     }
 

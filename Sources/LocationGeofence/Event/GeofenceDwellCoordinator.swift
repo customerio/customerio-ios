@@ -41,6 +41,9 @@ final class GeofenceDwellCoordinator {
     /// a visit write that lands after the loss's removal ran but began before the loss. Internal for `+Continuity`.
     var continuityLostUptime: [String: TimeInterval] = [:]
     var allContinuityLostUptime: TimeInterval?
+    /// What EXIT durations keep between callbacks; see `GeofenceExitDurationState`. Internal for
+    /// the `+ExitDuration` extension.
+    var exitDuration = GeofenceExitDurationState()
     // `internal`, not `private`, only because the `+Evidence` extension file uses them.
     let storage: GeofenceStorage
     let contextStore: BackgroundDeliveryContextStore
@@ -111,29 +114,33 @@ final class GeofenceDwellCoordinator {
     }
 
     /// - Parameters:
-    ///   - entryObserved: for an ENTER, whether it is a crossing the OS observed. False for one
-    ///     synthesized for a fence registered around a device already inside, or an OS correction of
-    ///     an assumed state: the visit it starts supports dwell, but its start is discovery, so the
-    ///     dwell reports neither it nor a duration.
+    ///   - crossingObserved: whether `occurredAt` is when the boundary was crossed, not when it, or a
+    ///     side, was discovered: false for a synthesized discovery, an OS correction of an assumed
+    ///     state, or a heal. A discovered ENTER's visit reports no entry or duration on its dwell or
+    ///     EXIT; a discovered EXIT ends its visit, untimed, as the device left at some earlier time.
     ///   - presenceProven: for an ENTER, whether anything showed the device there: false only for
     ///     an ENTER synthesized from the refresh anchor, a location nothing proved current. The
     ///     candidate it starts counts no time until a fresh fix proves it.
+    @discardableResult
     func handleBoundary(
         geofence: Geofence,
         transition: GeofenceTransition,
         occurredAt: Date,
         expectedUserId: String? = nil,
-        entryObserved: Bool = true,
+        detectionSource: String? = nil,
+        crossingObserved: Bool = true,
         presenceProven: Bool = true
-    ) async {
+    ) async -> GeofenceExitContext? {
         // Placed on the monotonic timeline as it is processed, before any await.
         let reading = readClock()
-        let exitMark = GeofenceExitMark(date: occurredAt, processedAt: reading)
+        let source: GeofenceExitMark.Source = transition == .enter ? .enterEvent : .exitEvent
+        let mark = GeofenceExitMark(date: occurredAt, processedAt: reading, source: source)
         // Before the user check and every await: leaving is geometry, whoever is signed in, and an
         // ENTER write already in flight must see it.
-        if transition == .exit { recordExit(exitMark, geofenceId: geofence.id) }
-        if transition == .enter, presenceProven { noteEnter(exitMark, geofenceId: geofence.id, crossing: entryObserved) }
-        if let expectedUserId, contextStore.currentUserId != expectedUserId { return }
+        if transition == .exit { recordExitEvent(mark, geofenceId: geofence.id) }
+        defer { if transition == .exit { exitRoutingEnded(at: mark.date, geofenceId: geofence.id) } }
+        if transition == .enter, presenceProven { noteEnter(mark, geofenceId: geofence.id, crossing: crossingObserved) }
+        if let expectedUserId, contextStore.currentUserId != expectedUserId { return nil }
         await syncClockReference(reading)
         switch transition {
         case .enter:
@@ -141,26 +148,34 @@ final class GeofenceDwellCoordinator {
                 geofence: geofence,
                 enteredAt: occurredAt,
                 expectedUserId: expectedUserId,
-                entryObserved: entryObserved,
+                entryObserved: crossingObserved,
                 presenceProven: presenceProven
             )
+            return nil
         case .exit:
+            let result = await exitContext(
+                geofence: geofence,
+                exit: mark, processedAt: reading,
+                detectionSource: detectionSource ?? (geofence.vertices == nil ? "native" : "location_evidence"),
+                expectedUserId: expectedUserId
+            )
+            // The visit ends either way; a discovered EXIT only withholds the duration it would carry.
+            let context = crossingObserved ? result.context : nil
             // Only the visit this EXIT read and judged: an overlapping ENTER may have written a newer
             // one since, and a delayed EXIT that found none has nothing to end.
-            guard let endedVisitId = await visitEnded(
-                geofence: geofence, exit: exitMark, expectedUserId: expectedUserId
-            ) else { return }
+            guard let endedVisitId = result.endedVisitId else { return context }
             cancelEvidence(for: geofence.id, ifVisit: endedVisitId)
             await storage.removeDwellVisit(geofenceId: geofence.id, ifStill: endedVisitId)
+            return context
         case .dwell:
-            return
+            return nil
         }
     }
 
     /// Accept only evidence already validated against the real shape by the caller.
     /// - Parameters:
     ///   - beginsNewVisit: the evidence is an observed entry. Otherwise, with no visit stored, it
-    ///     starts a candidate whose start is not reported as an entry.
+    ///     starts a candidate that supports dwell but no EXIT duration.
     ///   - continuingVisitId: evidence requested for this visit only. If that visit has ended by
     ///     the time the evidence is applied, the evidence is dropped rather than starting another.
     func recordInsideEvidence(
@@ -244,6 +259,7 @@ final class GeofenceDwellCoordinator {
         ) else { return }
         if contextStore.currentUserId == userId,
            await saveNewVisit(visit, geofenceId: geofence.id, replacing: existing?.visitId) {
+            if let existing { rememberVisitEndedByPendingExit(existing, geofenceId: geofence.id) }
             scheduleDeadline(for: geofence, visit: visit)
         }
     }
@@ -298,28 +314,12 @@ final class GeofenceDwellCoordinator {
             return nil
         }
         guard continuityHolds(for: visit, geofenceId: geofence.id) else {
+            rememberIfReenteredAfterItsExit(visit, geofenceId: geofence.id)
             cancelEvidence(for: geofence.id, ifVisit: visit.visitId)
             await storage.removeDwellVisit(geofenceId: geofence.id, ifStill: visit.visitId)
             return nil
         }
         return visit
-    }
-
-    /// The visit an EXIT reads and ends; nil when it found none, or found one it must leave — a
-    /// visit that began after this EXIT.
-    private func visitEnded(
-        geofence: Geofence,
-        exit: GeofenceExitMark,
-        expectedUserId: String?
-    ) async -> String? {
-        guard let userId = contextStore.currentUserId, !userId.isEmpty,
-              expectedUserId == nil || expectedUserId == userId,
-              let visit = await currentVisit(geofence: geofence, userId: userId),
-              // A delayed exit from an older visit must not clear a newer visit; see
-              // `GeofenceExitMark.overtakes` for the order across a wall-clock step.
-              exit.overtakes(visit)
-        else { return nil }
-        return visit.visitId
     }
 
     /// Whole seconds from `start` to `end`. A persisted date comes back up to one ulp (~1.2e-7 s)
@@ -332,7 +332,7 @@ final class GeofenceDwellCoordinator {
 
     /// Internal for the `+Continuity` extension.
     func tracksVisit(_ geofence: Geofence) -> Bool {
-        geofence.dwellThresholdSeconds > 0
+        geofence.dwellThresholdSeconds > 0 || geofence.transitionTypes.contains(.exit)
     }
 }
 

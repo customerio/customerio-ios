@@ -57,7 +57,8 @@ extension CLMonitorGeofenceMonitor {
                         center: condition.center, radius: condition.radius,
                         maximumRadius: self.authManager.maximumRegionMonitoringDistance
                     )),
-                    // The OS missed this crossing, so the fix only dates when it was noticed.
+                    // The OS missed this crossing, so the fix only dates when it was noticed: neither
+                    // a healed ENTER nor a healed EXIT can bound a visit's duration.
                     false
                 )
             }

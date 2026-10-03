@@ -70,8 +70,8 @@ final class PolygonMembershipResolver {
     /// than reporting a covering-circle-shaped one. It carries no visit, having no fence to measure.
     /// - Parameter receivedForUserId: who was identified when the OS delivered the callback, read
     ///   synchronously in it; `""` when anonymous. Nil reads it on entry instead.
-    /// - Parameter entryObserved: whether a circle fence's ENTER may start an observed visit; see
-    ///   `GeofenceTransitionHandler`.
+    /// - Parameter crossingObserved: whether the boundary was crossed at `occurredAt`, so the
+    ///   visit this event starts or ends may be timed by it; see `GeofenceTransitionHandler`.
     @discardableResult
     func handleTransition(
         identifier: String,
@@ -79,7 +79,7 @@ final class PolygonMembershipResolver {
         occurredAt: Date,
         eventCircle: GeofenceEventCircle = .unknown,
         receivedForUserId: String? = nil,
-        entryObserved: Bool = true
+        crossingObserved: Bool = true
     ) async -> PolygonTransitionOutcome {
         // A switch during the awaits below must not relabel this crossing or its visit. Anonymous
         // maps to "" so no later sign-in can claim it either.
@@ -100,7 +100,7 @@ final class PolygonMembershipResolver {
         guard geofence.vertices != nil else {
             await forwardCircleTransition(
                 geofence: geofence, transition: transition, occurredAt: occurredAt,
-                receivedForUserId: receivedForUserId, entryObserved: entryObserved,
+                receivedForUserId: receivedForUserId, crossingObserved: crossingObserved,
                 raisedByCurrentCircle: Self.circle(eventCircle, raisedEventsOf: geofence)
             )
             return .nothingToRearm
@@ -111,7 +111,10 @@ final class PolygonMembershipResolver {
             // resolver supplies fresh, real-shape membership evidence to the dwell coordinator.
             return .nothingToRearm
         case .exit:
-            await applyCoveringCircleExit(geofence: geofence, eventCircle: eventCircle, occurredAt: occurredAt)
+            await applyCoveringCircleExit(
+                geofence: geofence, eventCircle: eventCircle, occurredAt: occurredAt, crossingObserved: crossingObserved
+            )
+            // Boundary now behind us; the next registration re-sizes from wherever the device is.
             return .nothingToRearm
         case .enter:
             guard geofence.polygonRegion != nil else {

@@ -146,7 +146,7 @@ struct GeofenceEventTrackerTests {
         )
 
         await tracker.trackTransition(geofenceId: "geo_1", transition: .enter, occurredAt: crossedAt)
-        await tracker.trackExit(geofenceId: "geo_1", occurredAt: crossedAt.addingTimeInterval(300), expectedUserId: nil)
+        await tracker.trackExit(geofenceId: "geo_1", occurredAt: crossedAt.addingTimeInterval(300), context: nil, expectedUserId: nil)
         await tracker.trackTransition(geofenceId: "geo_1", transition: .enter, occurredAt: crossedAt.addingTimeInterval(600))
         let persisted = await tracker.trackDwell(
             geofenceId: "geo_1",
@@ -157,11 +157,47 @@ struct GeofenceEventTrackerTests {
             ),
             expectedUserId: "user_42"
         )
-        await tracker.trackExit(geofenceId: "geo_1", occurredAt: crossedAt.addingTimeInterval(3000), expectedUserId: nil)
+        await tracker.trackExit(geofenceId: "geo_1", occurredAt: crossedAt.addingTimeInterval(3000), context: nil, expectedUserId: nil)
 
         #expect(persisted)
         #expect(delivery.trackMetricReceivedInvocations.map(\.metric.transition) == [.enter, .exit, .dwell])
         #expect(delivery.trackMetricReceivedInvocations.last?.metric.visitId == "visit-2")
+    }
+
+    @Test
+    func trackExitGivenObservedVisitAddsDurationProperties() async {
+        let dir = makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let pending = makePendingStore(directory: dir)
+        let delivery = GeofenceDeliveryTrackerMock()
+        delivery.trackMetricClosure = { _, _, onComplete in onComplete(.success(())) }
+        let tracker = makeTracker(
+            storage: makeStorage(directory: dir),
+            pendingStore: pending,
+            deliveryTracker: delivery,
+            contextStore: makeContextStore(userId: "user_42")
+        )
+        let enteredAt = crossedAt.addingTimeInterval(-75)
+
+        await tracker.trackExit(
+            geofenceId: "geo_1",
+            occurredAt: crossedAt,
+            context: GeofenceExitContext(
+                visitId: "visit-1",
+                enteredAt: enteredAt,
+                durationSeconds: 75,
+                detectionSource: "native"
+            ),
+            expectedUserId: "user_42"
+        )
+
+        let properties = delivery.trackMetricReceivedArguments?.metric.trackEventProperties
+        #expect(delivery.trackMetricReceivedArguments?.metric.transitionId != "visit-1")
+        #expect(properties?["visitId"] as? String == "visit-1")
+        #expect(properties?["enteredAt"] as? Int == Int(enteredAt.timeIntervalSince1970))
+        #expect(properties?["visitDurationSeconds"] as? Int == 75)
+        #expect(properties?["detectionSource"] as? String == "native")
+        #expect(properties?["dwellDurationSeconds"] == nil)
     }
 
     @Test
@@ -178,8 +214,18 @@ struct GeofenceEventTrackerTests {
             contextStore: makeContextStore(userId: "user_B")
         )
 
-        // user_A's crossing, reaching the tracker after user_B signed in.
-        await tracker.trackExit(geofenceId: "geo_1", occurredAt: crossedAt, expectedUserId: "user_A")
+        // user_A's crossing and visit, reaching the tracker after user_B signed in.
+        await tracker.trackExit(
+            geofenceId: "geo_1",
+            occurredAt: crossedAt,
+            context: GeofenceExitContext(
+                visitId: "visit-of-A",
+                enteredAt: crossedAt.addingTimeInterval(-75),
+                durationSeconds: 75,
+                detectionSource: "native"
+            ),
+            expectedUserId: "user_A"
+        )
 
         #expect(delivery.trackMetricCallsCount == 0)
         #expect(await pending.rows().isEmpty)

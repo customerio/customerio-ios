@@ -33,8 +33,8 @@ struct GeofenceDwellVisit: Codable, Equatable, Sendable {
     let userId: String
     var emitted: Bool
     /// False for a candidate started from mid-visit inside evidence after continuity was lost: it
-    /// can still support a best-effort dwell, but its start is not an entry, so the dwell reports
-    /// neither `enteredAt` nor a duration.
+    /// can still support a best-effort dwell, but its start is not an entry, so its EXIT carries no
+    /// visit duration.
     var entryObserved = true
     /// The dwell this visit qualified, fixed before its outbox write. Every attempt to deliver the
     /// dwell sends exactly this, so a retry after a failed `emitted` write or a relaunch repeats
@@ -189,7 +189,8 @@ struct MonitorRegionRecord: Codable, Equatable, Sendable {
     /// Whether `lastState` was observed — an OS-reported change, or a fix that settled the side —
     /// rather than assumed at registration. `CLMonitor` answers a wrong `assuming:` with an event of
     /// the real state, so an ENTER out of an assumed `.exit` can be that correction for a device
-    /// inside all along: no crossing a visit can date from. Optional for records persisted before
-    /// the field; `nil` counts as assumed.
+    /// inside all along, and an EXIT out of an assumed `.enter` one for a device never inside:
+    /// neither is a crossing a visit can be timed by. Optional for records persisted before the
+    /// field; `nil` counts as assumed.
     var lastStateObserved: Bool?
 }

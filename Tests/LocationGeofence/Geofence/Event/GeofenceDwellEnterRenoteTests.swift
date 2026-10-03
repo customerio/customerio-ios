@@ -283,7 +283,7 @@ struct GeofenceDwellEnterRenoteTests {
     /// What an ENTER's routing task does for a circle.
     private static func route(_ rig: GeofenceDwellFollowupTests.Rig, at date: Date, crossing: Bool) async {
         await rig.dwell.handleBoundary(
-            geofence: circle, transition: .enter, occurredAt: date, expectedUserId: "user-1", entryObserved: crossing
+            geofence: circle, transition: .enter, occurredAt: date, expectedUserId: "user-1", crossingObserved: crossing
         )
     }
 }

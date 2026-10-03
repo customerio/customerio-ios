@@ -4,11 +4,11 @@ import Foundation
 import SharedTests
 import Testing
 
-/// Whether a delivered CLMonitor ENTER is a crossing since registration, or may be the OS
-/// correcting an `assuming:` the SDK could not back with a fix. The ENTER is delivered either way;
-/// only the visit it starts differs.
-@Suite("GeofenceStorage entry observation")
-struct MonitorEntryObservedTests {
+/// Whether a delivered CLMonitor transition is a crossing since registration, or may be the OS
+/// correcting an `assuming:` the SDK could not back with a fix. The transition is delivered either
+/// way; only how its visit is timed differs.
+@Suite("GeofenceStorage crossing observation")
+struct MonitorCrossingObservedTests {
     private let center = LocationData(latitude: 10, longitude: 20)
 
     private func withStorage(_ body: (GeofenceStorage) async -> Void) async {
@@ -30,7 +30,7 @@ struct MonitorEntryObservedTests {
         )
     }
 
-    private func record(_ storage: GeofenceStorage, _ transition: GeofenceTransition) async -> (outcome: GeofenceMonitorEventOutcome, entryObserved: Bool) {
+    private func record(_ storage: GeofenceStorage, _ transition: GeofenceTransition) async -> (outcome: GeofenceMonitorEventOutcome, crossingObserved: Bool) {
         await storage.recordMonitorTransition(transition, forIdentifier: "geo_1")
     }
 
@@ -42,7 +42,7 @@ struct MonitorEntryObservedTests {
             let result = await record(storage, .enter)
 
             #expect(result.outcome == .deliver)
-            #expect(result.entryObserved == false)
+            #expect(result.crossingObserved == false)
         }
     }
 
@@ -54,7 +54,7 @@ struct MonitorEntryObservedTests {
             let result = await record(storage, .enter)
 
             #expect(result.outcome == .deliver)
-            #expect(result.entryObserved == true)
+            #expect(result.crossingObserved == true)
         }
     }
 
@@ -68,7 +68,7 @@ struct MonitorEntryObservedTests {
             let result = await record(storage, .enter)
 
             #expect(result.outcome == .deliver)
-            #expect(result.entryObserved == false)
+            #expect(result.crossingObserved == false)
         }
     }
 
@@ -78,24 +78,55 @@ struct MonitorEntryObservedTests {
     func recordMonitorTransition_givenObservedExitAfterAssumedEntry_expectNextEnterObserved() async {
         await withStorage { storage in
             await register(storage, observed: false)
-            #expect(await record(storage, .enter).entryObserved == false)
+            #expect(await record(storage, .enter).crossingObserved == false)
             #expect(await record(storage, .exit).outcome == .deliver)
 
             let result = await record(storage, .enter)
 
             #expect(result.outcome == .deliver)
-            #expect(result.entryObserved == true)
+            #expect(result.crossingObserved == true)
         }
     }
 
-    /// Wrongly assumed inside: the OS corrects with an EXIT, and that correction IS an observation.
+    /// Wrongly assumed inside: the OS corrects with an EXIT. The correction settles the side, so the
+    /// next ENTER is a crossing — but the EXIT itself is not one: the device was never seen inside,
+    /// or left at some unknown earlier time, so its date cannot end a timed visit.
     @Test
-    func recordMonitorTransition_givenAssumedInsideCorrected_expectNextEnterObserved() async {
+    func recordMonitorTransition_givenAssumedInsideCorrected_expectExitNotObservedButNextEnterObserved() async {
         await withStorage { storage in
             await register(storage, initialState: .enter, observed: false)
-            #expect(await record(storage, .exit).outcome == .deliver)
+            let correction = await record(storage, .exit)
+            #expect(correction.outcome == .deliver)
+            #expect(correction.crossingObserved == false)
 
-            #expect(await record(storage, .enter).entryObserved == true)
+            #expect(await record(storage, .enter).crossingObserved == true)
+        }
+    }
+
+    /// Settled inside by a fix at registration, the OS's EXIT is a real departure.
+    @Test
+    func recordMonitorTransition_givenSettledInside_expectExitObserved() async {
+        await withStorage { storage in
+            await register(storage, initialState: .enter, observed: true)
+
+            let result = await record(storage, .exit)
+
+            #expect(result.outcome == .deliver)
+            #expect(result.crossingObserved == true)
+        }
+    }
+
+    /// The common path end to end: an observed ENTER, then the EXIT out of the state it observed.
+    @Test
+    func recordMonitorTransition_givenObservedEnter_expectFollowingExitObserved() async {
+        await withStorage { storage in
+            await register(storage, observed: true)
+            #expect(await record(storage, .enter).crossingObserved == true)
+
+            let result = await record(storage, .exit)
+
+            #expect(result.outcome == .deliver)
+            #expect(result.crossingObserved == true)
         }
     }
 
@@ -107,7 +138,7 @@ struct MonitorEntryObservedTests {
             await register(storage, observed: false)
             await register(storage, observed: true)
 
-            #expect(await record(storage, .enter).entryObserved == false)
+            #expect(await record(storage, .enter).crossingObserved == false)
         }
     }
 
@@ -118,7 +149,7 @@ struct MonitorEntryObservedTests {
             // The OS stopped monitoring: the device may have moved while unwatched.
             await register(storage, observed: false, forceReseed: true)
 
-            #expect(await record(storage, .enter).entryObserved == false)
+            #expect(await record(storage, .enter).crossingObserved == false)
         }
     }
 
@@ -128,7 +159,7 @@ struct MonitorEntryObservedTests {
             await register(storage, observed: false)
             await register(storage, observed: true, radius: 150)
 
-            #expect(await record(storage, .enter).entryObserved == true)
+            #expect(await record(storage, .enter).crossingObserved == true)
         }
     }
 
@@ -145,6 +176,21 @@ struct MonitorEntryObservedTests {
         let result = await storage.recordMonitorTransition(.enter, forIdentifier: "geo_1")
 
         #expect(result.outcome == .deliver)
-        #expect(result.entryObserved == false)
+        #expect(result.crossingObserved == false)
+    }
+
+    @Test
+    func recordMonitorTransition_givenLegacyInsideRecord_expectExitNotObserved() async throws {
+        let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: dir) }
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        let legacy = #"{"monitorRegionRecords":{"geo_1":{"lastState":"enter","transitionTypes":["enter","exit"]}}}"#
+        try Data(legacy.utf8).write(to: dir.appendingPathComponent("geofenceState.json"))
+        let storage = GeofenceStorage(fileManager: .default, directoryURL: dir)
+
+        let result = await storage.recordMonitorTransition(.exit, forIdentifier: "geo_1")
+
+        #expect(result.outcome == .deliver)
+        #expect(result.crossingObserved == false)
     }
 }

@@ -1000,14 +1000,16 @@ private actor QueueingThenHeldEmitter: GeofenceTransitionEmitting {
 
     func trackTransition(geofenceId: String, transition: GeofenceTransition, occurredAt: Date) async {}
 
-    func trackExit(geofenceId: String, occurredAt: Date, expectedUserId: String?) async {}
+    func trackExit(
+        geofenceId: String, occurredAt: Date, context: GeofenceExitContext?, expectedUserId: String?
+    ) async {}
 
     func trackDwell(
         geofenceId: String, occurredAt: Date, context: GeofenceDwellContext, expectedUserId: String?
     ) async -> Bool {
         let crossing = GeofenceCrossing(
             geofenceId: geofenceId, transition: .dwell, occurredAt: occurredAt,
-            dwell: context, expectedUserId: expectedUserId
+            dwell: context, exit: nil, expectedUserId: expectedUserId
         )
         guard await outbox.append(crossing.pendingMetrics(userId: "user-1", cachedGeofence: nil)) == .persisted
         else { return false }
@@ -1085,7 +1087,9 @@ private actor ContinuityEmitterSpy: GeofenceTransitionEmitting {
         if transition == .exit { exits += 1 }
     }
 
-    func trackExit(geofenceId: String, occurredAt: Date, expectedUserId: String?) async {
+    func trackExit(
+        geofenceId: String, occurredAt: Date, context: GeofenceExitContext?, expectedUserId: String?
+    ) async {
         exits += 1
     }
 

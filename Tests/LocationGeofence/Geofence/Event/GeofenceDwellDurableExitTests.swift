@@ -88,7 +88,7 @@ struct GeofenceDwellDurableExitTests {
 
         let second = await DurableExitProcess(device: device)
         await second.dwell.handleBoundary(
-            geofence: Self.circle, transition: .enter, occurredAt: device.clock.wall, entryObserved: false, presenceProven: false
+            geofence: Self.circle, transition: .enter, occurredAt: device.clock.wall, crossingObserved: false, presenceProven: false
         )
         #expect(await second.visit()?.visitId != stay.visitId)
         await second.dwell.requestQualifyingEvidence(geofenceId: Self.circle.id)

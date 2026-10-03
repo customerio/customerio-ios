@@ -1,9 +1,21 @@
 import Foundation
 
-/// An EXIT, or a decisive outside fix that orders like one, as the coordinator processed it.
+/// An EXIT, or a decisive outside fix that orders like one, as the coordinator processed it; or a
+/// native ENTER, noted with the same ordering to tell a later crossing from a copy.
 struct GeofenceExitMark: Equatable {
-    /// The date the OS or the fix stamped it with.
+    /// What recorded the mark. Only an EXIT event is delivered, and may still be in flight to
+    /// report the visit it ended; outside evidence ends a visit with no event of its own. A native
+    /// ENTER is noted with the same ordering, in `enterMarks` only.
+    enum Source: Equatable {
+        case exitEvent
+        case outsideEvidence
+        case enterEvent
+    }
+
+    /// The date the OS or the fix stamped it with. For an EXIT event, also the event's identity:
+    /// the same EXIT carries this exact date however late, or on whatever clock, it is read.
     let date: Date
+    let source: Source
     /// `date` placed on the monotonic timeline at processing (`GeofenceVisitTiming.uptime(of:at:)`).
     let mappedUptime: TimeInterval
     /// The uptime it was processed at: the real order of processing, whatever the wall clock did.
@@ -11,8 +23,9 @@ struct GeofenceExitMark: Equatable {
     /// `GeofenceClockReading.wallOffset` at processing.
     let wallOffset: TimeInterval
 
-    init(date: Date, processedAt reading: GeofenceClockReading) {
+    init(date: Date, processedAt reading: GeofenceClockReading, source: Source) {
         self.date = date
+        self.source = source
         self.mappedUptime = GeofenceVisitTiming.uptime(of: date, at: reading)
         self.processedUptime = reading.uptime
         self.wallOffset = reading.wallOffset
@@ -61,8 +74,11 @@ struct GeofenceExitMark: Equatable {
 
     /// Whether this mark overtakes every visit `other` does, which `other` then adds nothing to.
     /// Only on the same timeline: across a step, neither mark's dates order against the other's.
+    /// Only of the same source, so outside evidence never stands in for an EXIT event, nor an EXIT
+    /// for the outside evidence that withholds a duration.
     func subsumes(_ other: GeofenceExitMark) -> Bool {
-        abs(wallOffset - other.wallOffset) < 0.001
+        source == other.source
+            && abs(wallOffset - other.wallOffset) < 0.001
             && mappedUptime >= other.mappedUptime
             && processedUptime >= other.processedUptime
             && date >= other.date
@@ -81,9 +97,17 @@ struct GeofenceEnterMarks {
     /// which restarts at it, since nothing watched the time the OS assumed the device outside. A
     /// dwell already emitted or reserved stands, so the stay does not qualify a second time.
     func supersede(_ visit: GeofenceDwellVisit) -> Bool {
-        if crossing?.supersedes(visit) == true { return true }
-        guard !visit.emitted, visit.dwellReservation == nil else { return false }
-        return correction?.supersedes(visit) == true
+        !superseding(visit).isEmpty
+    }
+
+    /// The ENTERs that end `visit`, by the rule of `supersede`.
+    func superseding(_ visit: GeofenceDwellVisit) -> [GeofenceExitMark] {
+        var ending: [GeofenceExitMark] = []
+        if let crossing, crossing.supersedes(visit) { ending.append(crossing) }
+        if !visit.emitted, visit.dwellReservation == nil, let correction, correction.supersedes(visit) {
+            ending.append(correction)
+        }
+        return ending
     }
 }
 
@@ -132,7 +156,8 @@ extension GeofenceDwellCoordinator {
 
     /// Notes a native ENTER from the OS callback itself, before its routing task runs.
     func noteEnter(geofenceId: String, occurredAt: Date, crossing: Bool) {
-        noteEnter(GeofenceExitMark(date: occurredAt, processedAt: readClock()), geofenceId: geofenceId, crossing: crossing)
+        let mark = GeofenceExitMark(date: occurredAt, processedAt: readClock(), source: .enterEvent)
+        noteEnter(mark, geofenceId: geofenceId, crossing: crossing)
     }
 
     /// Whether a native ENTER this process has seen ends `visit` (`GeofenceEnterMarks.supersede`).
@@ -148,10 +173,12 @@ extension GeofenceDwellCoordinator {
     /// Notes a native EXIT in the OS callback, before the binder re-arms evidence or starts the
     /// task that routes it. It is not an EXIT mark: a polygon's covering-circle EXIT may prove
     /// nothing, so it ends no visit. It only holds back a first DWELL while it is being routed
-    /// (`exitCallbackPendingOvertook`). The binder pairs it with `exitCallbackRouted` once that
-    /// task is done, whatever it made of the EXIT; no time limit.
+    /// (`exitCallbackPendingOvertook`). In OS order, it also keeps the native ENTERs noted so far,
+    /// for timing this EXIT (`exitRoutingBegan`). The binder pairs it with `exitCallbackRouted` once
+    /// that task is done, whatever it made of the EXIT; no time limit.
     func noteExitCallback(geofenceId: String, occurredAt: Date) {
-        let mark = GeofenceExitMark(date: occurredAt, processedAt: readClock())
+        exitRoutingBegan(at: occurredAt, geofenceId: geofenceId)
+        let mark = GeofenceExitMark(date: occurredAt, processedAt: readClock(), source: .exitEvent)
         var pending = pendingExitCallbacks[geofenceId]?[occurredAt] ?? GeofencePendingExitCallback(marks: [], count: 0)
         // As `recordExit` keeps them: across a clock step no delivery's mark orders the others, and a
         // later one can end fewer visits than an earlier one did.
@@ -165,6 +192,7 @@ extension GeofenceDwellCoordinator {
 
     /// The routing task of an EXIT callback `noteExitCallback` noted has finished.
     func exitCallbackRouted(geofenceId: String, occurredAt: Date) {
+        exitRoutingEnded(at: occurredAt, geofenceId: geofenceId)
         guard var pending = pendingExitCallbacks[geofenceId]?[occurredAt] else { return }
         pending.count -= 1
         pendingExitCallbacks[geofenceId]?[occurredAt] = pending.count > 0 ? pending : nil

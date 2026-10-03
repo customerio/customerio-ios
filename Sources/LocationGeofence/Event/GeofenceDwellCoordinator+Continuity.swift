@@ -73,7 +73,10 @@ extension GeofenceDwellCoordinator {
     /// stay already had its DWELL. It measures no time there, and every other check still ends it.
     /// A visit not yet qualified ends: none of its time can be counted, and its stay starts over
     /// at its next fresh proof.
-    func continuityHolds(for visit: GeofenceDwellVisit, geofenceId: String) -> Bool {
+    ///
+    /// `ignoringLaterEnter` is only for a visit an EXIT already ended, judged up to that EXIT: the
+    /// re-entry after it is a later stay, not a break in this one.
+    func continuityHolds(for visit: GeofenceDwellVisit, geofenceId: String, ignoringLaterEnter: Bool = false) -> Bool {
         // No timing: recorded by a build that kept none, on a boot nothing identifies.
         guard let timing = visit.timing else { return false }
         switch timing.bootRelation(at: readClock()) {
@@ -85,7 +88,7 @@ extension GeofenceDwellCoordinator {
             return false
         }
         guard !lossOvertook(visit, geofenceId: geofenceId),
-              !enterSuperseded(visit, geofenceId: geofenceId)
+              ignoringLaterEnter || !enterSuperseded(visit, geofenceId: geofenceId)
         else { return false }
         // The app was not running for some time between processes, and under this access nothing
         // relaunches it for an EXIT.
