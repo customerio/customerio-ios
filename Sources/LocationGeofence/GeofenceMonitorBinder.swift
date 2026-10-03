@@ -19,9 +19,12 @@ enum GeofenceMonitorBinder {
         }
         monitor.setOnTransition { [weak resolver, weak coordinator, weak dwellCoordinator] identifier, transition, location, occurredAt, locationIsFresh, eventCircle, entryObserved in
             // Before the re-arm below: evidence it requests must not qualify a visit this ENTER
-            // supersedes ahead of the task that routes the ENTER.
+            // supersedes ahead of the task that routes the ENTER. Not for a replaced circle's
+            // ENTER: it crossed no circle the stay is measured against.
             if transition == .enter {
-                noteEnter(dwellCoordinator, geofenceId: identifier, occurredAt: occurredAt, crossing: entryObserved)
+                if eventCircle != .expired {
+                    noteEnter(dwellCoordinator, geofenceId: identifier, occurredAt: occurredAt, crossing: entryObserved)
+                }
             } else if transition == .exit, identifier != GeofenceConstants.movementTriggerIdentifier {
                 // Before the re-arm too: until the task below routes this EXIT, it holds back a
                 // first DWELL that evidence requested meanwhile would admit across it.

@@ -69,11 +69,14 @@ actor GeofenceStorage {
         forIdentifier identifier: String,
         onlyIfBaselinePredates evidenceTimestamp: Date? = nil,
         osEventDate: Date? = nil,
-        now: Date? = nil
+        now: Date? = nil,
+        processedAt reading: GeofenceClockReading? = nil,
+        maximumRadius: Double = .infinity
     ) -> GeofenceMonitorEventOutcome {
         recordMonitorTransition(
             transition, forIdentifier: identifier,
-            onlyIfBaselinePredates: evidenceTimestamp, osEventDate: osEventDate, now: now
+            onlyIfBaselinePredates: evidenceTimestamp, osEventDate: osEventDate, now: now,
+            processedAt: reading, maximumRadius: maximumRadius
         ).outcome
     }
 
@@ -83,6 +86,8 @@ actor GeofenceStorage {
     /// - Parameter reading: when the producer read the dwell clock before this call; with it, a
     ///   delivered change also closes the circle visit it ends, in the same write (`closeVisit`).
     /// - Parameter maximumRadius: the radius cap the monitor registered the circle under.
+    /// - Parameter raisedUnder: the generation the producer attributed the event to, if any; see
+    ///   `outcome(ofEventRaisedUnder:)`.
     func recordMonitorTransition(
         _ transition: GeofenceTransition,
         forIdentifier identifier: String,
@@ -90,7 +95,8 @@ actor GeofenceStorage {
         osEventDate: Date? = nil,
         now: Date? = nil,
         processedAt reading: GeofenceClockReading? = nil,
-        maximumRadius: Double = .infinity
+        maximumRadius: Double = .infinity,
+        raisedUnder: GeofenceEventCircle? = nil
     ) -> (outcome: GeofenceMonitorEventOutcome, entryObserved: Bool) {
         var state = loadFromDisk() ?? GeofenceState()
         var records = state.monitorRegionRecords ?? [:]
@@ -104,6 +110,7 @@ actor GeofenceStorage {
             saveToDisk(state)
             return (.suppressedNoBaseline, false)
         }
+        if let outcome = outcome(ofEventRaisedUnder: raisedUnder, transition, record: record, osEventDate: osEventDate, evidenceTimestamp: evidenceTimestamp) { return (outcome, false) }
         let delayedMovementExit = Self.isDelayedMovementExit(
             transition, identifier: identifier, osEventDate: osEventDate, record: record
         )
@@ -139,9 +146,7 @@ actor GeofenceStorage {
         let delivered = record.transitionTypes.contains(transition)
         let crossing = transition == .enter && leftObservedState
         if delivered, let reading, transition == .exit || crossing, let center = record.center, let radius = record.radius {
-            let registered = MonitoredCircle(center: center, radius: radius, maximumRadius: maximumRadius)
-            let mark = GeofenceExitMark(date: osEventDate ?? now ?? dateUtil.now, processedAt: reading)
-            Self.closeVisit(in: &state, identifier: identifier, registered: registered, endedBy: transition, mark: mark)
+            Self.closeVisit(in: &state, identifier: identifier, registered: MonitoredCircle(center: center, radius: radius, maximumRadius: maximumRadius), endedBy: transition, mark: GeofenceExitMark(date: osEventDate ?? now ?? dateUtil.now, processedAt: reading))
         }
         saveToDisk(state)
         return (delivered ? .deliver : .suppressedFilteredType, crossing)
@@ -340,5 +345,38 @@ extension GeofenceStorage {
     private static func stamp(_ stamp: Date?, ordering eventDate: Date, now: Date) -> Date? {
         guard let stamp, stamp > now, eventDate <= now else { return stamp }
         return nil
+    }
+}
+
+/// Outside the type body, which is at its cap; same file, so it shares `refusedByDate`.
+extension GeofenceStorage {
+    /// For an event raised under another circle than `record` now holds — the replaced generation,
+    /// still live while the replacing one's record is already written — or under a generation known
+    /// gone: what it would have been delivered as, judged on a copy. It never advances the record,
+    /// whose baseline belongs to the replacing circle and dedups that circle's own events, and
+    /// closes no visit. Nil for an event of the record's own circle, or of no recorded generation.
+    private func outcome(
+        ofEventRaisedUnder raisedUnder: GeofenceEventCircle?,
+        _ transition: GeofenceTransition,
+        record: MonitorRegionRecord,
+        osEventDate: Date?,
+        evidenceTimestamp: Date?
+    ) -> GeofenceMonitorEventOutcome? {
+        switch raisedUnder {
+        case .circle(let raised):
+            guard let center = record.center, let radius = record.radius,
+                  !MonitoredCircle(center: center, radius: radius, maximumRadius: raised.maximumRadius).isSameCircle(as: raised)
+            else { return nil }
+        case .expired:
+            break
+        case .unknown, nil:
+            return nil
+        }
+        var probe = record
+        if let refused = Self.refusedByDate(&probe, osEventDate: osEventDate, evidenceTimestamp: evidenceTimestamp, delayedMovementExit: false, now: dateUtil.now) {
+            return refused
+        }
+        guard probe.lastState != transition else { return .suppressedNoChange }
+        return probe.transitionTypes.contains(transition) ? .deliver : .suppressedFilteredType
     }
 }

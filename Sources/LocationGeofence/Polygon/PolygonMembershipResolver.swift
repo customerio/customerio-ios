@@ -100,7 +100,8 @@ final class PolygonMembershipResolver {
         guard geofence.vertices != nil else {
             await forwardCircleTransition(
                 geofence: geofence, transition: transition, occurredAt: occurredAt,
-                receivedForUserId: receivedForUserId, entryObserved: entryObserved
+                receivedForUserId: receivedForUserId, entryObserved: entryObserved,
+                raisedByCurrentCircle: Self.circle(eventCircle, raisedEventsOf: geofence)
             )
             return .nothingToRearm
         }

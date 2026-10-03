@@ -31,14 +31,20 @@ final class CoreLocationGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @pr
 
     let dateUtil: DateUtil
     private let readLocationAccess: @MainActor (CLLocationManager) -> GeofenceLocationAccess
+    /// The region the OS monitors now under an id; internal for the `+PendingEvents` extension.
+    let monitoredRegion: @MainActor (CLLocationManager, String) -> CLCircularRegion?
 
     init(
         logger: Logger,
         dateUtil: DateUtil = DIGraphShared.shared.dateUtil,
-        readLocationAccess: @escaping @MainActor (CLLocationManager) -> GeofenceLocationAccess = GeofenceLocationAccess.current(of:)
+        readLocationAccess: @escaping @MainActor (CLLocationManager) -> GeofenceLocationAccess = GeofenceLocationAccess.current(of:),
+        monitoredRegion: @escaping @MainActor (CLLocationManager, String) -> CLCircularRegion? = { manager, identifier in
+            manager.monitoredRegions.first { $0.identifier == identifier } as? CLCircularRegion
+        }
     ) {
         self.dateUtil = dateUtil
         self.readLocationAccess = readLocationAccess
+        self.monitoredRegion = monitoredRegion
         self.manager = CLLocationManager()
         self.logger = logger
         self.movementFixResolver = MovementFixResolver(
