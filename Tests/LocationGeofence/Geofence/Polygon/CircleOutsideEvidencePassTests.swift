@@ -108,6 +108,43 @@ struct CircleOutsideEvidencePassTests {
 
     // MARK: - Setup
 
+    @Test
+    func heldOutsideFixEndsACircleVisitWhenNoPolygonsAreRegistered() async throws {
+        let setup = await makeSetup()
+        await setup.storage.setCachedGeofences([Self.circle])
+        await setup.storage.recordRegistration(
+            center: LocationData(latitude: 0, longitude: 0), businessIds: [Self.circle.id]
+        )
+        await setup.enterCircle()
+        setup.advance(30)
+        let heldFix = ResolvedFix(
+            latitude: 0.01, longitude: 0, horizontalAccuracy: 10, timestamp: setup.clock.wall
+        )
+
+        await setup.resolver.evaluateAllPolygons(reason: .movement, heldFix: heldFix)
+
+        #expect(await setup.storage.getDwellVisit(geofenceId: Self.circle.id) == nil)
+        #expect(await setup.outbox.rows().filter { $0.transition == .exit || $0.transition == .dwell }.isEmpty)
+    }
+
+    @Test
+    func circleOnlyPassWithoutAHeldFixKeepsItsVisitAndRequestsNoFix() async throws {
+        let setup = await makeSetup()
+        await setup.storage.setCachedGeofences([Self.circle])
+        await setup.storage.recordRegistration(
+            center: LocationData(latitude: 0, longitude: 0), businessIds: [Self.circle.id]
+        )
+        await setup.enterCircle()
+        let visit = try #require(await setup.storage.getDwellVisit(geofenceId: Self.circle.id))
+        setup.advance(30)
+        setup.deliverFix(latitude: 0.01, accuracy: 10)
+
+        await setup.resolver.evaluateAllPolygons(reason: .movement, requiresFreshFix: true)
+
+        #expect(await setup.storage.getDwellVisit(geofenceId: Self.circle.id)?.visitId == visit.visitId)
+        #expect(setup.nextFix != nil)
+    }
+
     @MainActor
     private final class Setup {
         let storage: GeofenceStorage

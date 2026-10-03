@@ -254,7 +254,15 @@ final class GeofenceDwellCoordinator {
     }
 
     private func isOvertaken(_ visit: GeofenceDwellVisit, geofenceId: String) -> Bool {
-        exitOvertook(visit, geofenceId: geofenceId) || lossOvertook(visit, geofenceId: geofenceId)
+        // An old ENTER dated before a backward clock step may arrive after an EXIT dated on
+        // the new clock. Neither its date nor its later receipt proves re-entry. Fresh inside
+        // evidence can start another candidate on the current clock instead.
+        if let timing = visit.timing,
+           visit.enteredAt.timeIntervalSince1970 > timing.wallOffset + timing.recordedUptime + GeofenceConstants.dwellWallClockStepTolerance,
+           exitMarks[geofenceId]?.isEmpty == false {
+            return true
+        }
+        return exitOvertook(visit, geofenceId: geofenceId) || lossOvertook(visit, geofenceId: geofenceId)
     }
 
     /// The stored visit, when it still belongs to `userId` and to `geofence`'s geometry, and its
@@ -267,11 +275,13 @@ final class GeofenceDwellCoordinator {
         geofence: Geofence,
         userId: String
     ) async -> GeofenceDwellVisit? {
-        guard let visit = await storage.getDwellVisit(geofenceId: geofence.id) else { return nil }
+        guard let visit = await storage.getDwellVisit(geofenceId: geofence.id),
+              contextStore.currentUserId == userId
+        else { return nil }
         guard visit.userId == userId,
               visit.geometryRevision == geofence.dwellRevision
         else {
-            await storage.removeDwellVisitIfStale(geofenceId: geofence.id, currentUserId: userId)
+            await storage.removeDwellVisitIfStale(geofenceId: geofence.id, currentUserId: userId, ifStill: visit.visitId)
             return nil
         }
         guard continuityHolds(for: visit, geofenceId: geofence.id) else {
