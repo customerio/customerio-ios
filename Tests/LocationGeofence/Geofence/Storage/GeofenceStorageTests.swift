@@ -527,8 +527,10 @@ struct GeofenceStorageTests {
         #expect(await storage.getDwellVisit(geofenceId: geofence.id) == nil)
     }
 
+    /// A visit from before `entryObserved` also predates identity provenance: it still decodes,
+    /// keeps its id, reports no entry, and, being unqualified, awaits its next fresh proof.
     @Test
-    func getDwellVisit_givenVisitPersistedBeforeEntryObserved_expectObservedEntry() async throws {
+    func getDwellVisit_givenVisitPersistedBeforeEntryObserved_expectDecodedConservatively() async throws {
         let dir = makeTempDirectory()
         defer { try? FileManager.default.removeItem(at: dir) }
         let legacyState = """
@@ -541,7 +543,9 @@ struct GeofenceStorageTests {
         let visit = await storage.getDwellVisit(geofenceId: "g1")
 
         #expect(visit?.visitId == "visit-1")
-        #expect(visit?.entryObserved == true)
+        #expect(visit?.entryObserved == false)
+        #expect(visit?.awaitsPresenceProof == true)
+        #expect(visit?.identityVersion == nil)
     }
 
     @Test

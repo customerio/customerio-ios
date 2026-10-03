@@ -21,6 +21,9 @@ struct GeofenceState: Codable, Equatable, Sendable {
     /// `Geofence.unconfiguredOsTransitions`). Outlives the fence's cache entry, which is the point:
     /// an OS callback for a fence the cache has dropped carries no configuration of its own.
     var unconfiguredOsTransitions: [String: Set<GeofenceTransition>]?
+    /// The dwell coordinator's clock as an earlier process last saw it change: lets a new process
+    /// tell whether an event dated before its first clock reading is on the wall clock now in force.
+    var clockReference: GeofenceClockReading?
 }
 
 struct GeofenceDwellVisit: Codable, Equatable, Sendable {
@@ -42,6 +45,18 @@ struct GeofenceDwellVisit: Codable, Equatable, Sendable {
     let timing: GeofenceVisitTiming?
     /// The location access in force when the visit was recorded; nil when unknown.
     var locationAccess: GeofenceLocationAccess?
+    /// A candidate discovered from a location nothing proved current — the refresh anchor — rather
+    /// than from an OS crossing or a fresh fix. Its time counts toward nothing until the first fresh
+    /// inside fix, which re-starts it from that fix. See the decoder for visits persisted before
+    /// the field.
+    var awaitsPresenceProof = false
+    /// The context store's identity version the visit was recorded under (`GeofenceIdentity`): the
+    /// visit holds only while that is still the version. Nil when no store was observed; always
+    /// written, as null then, so a visit without the key is known to predate it.
+    var identityVersion: UInt64?
+    /// The lineage `identityVersion` counts in, stamped with it; the visit holds only while both
+    /// are still the store's. Always written, like `identityVersion`.
+    var identityLineage: String?
 }
 
 /// A dwell occurrence, stored as integer epoch milliseconds so a disk round trip cannot move it: a
@@ -66,6 +81,11 @@ struct GeofenceDwellReservation: Codable, Equatable, Sendable {
 }
 
 extension GeofenceDwellVisit {
+    enum CodingKeys: String, CodingKey {
+        case visitId, enteredAt, geometryRevision, userId, emitted, entryObserved, dwellReservation
+        case timing, locationAccess, awaitsPresenceProof, identityVersion, identityLineage
+    }
+
     /// Custom decode so visits persisted before `entryObserved` still decode; those were only ever
     /// started from an observed entry. Visits persisted before `dwellReservation`, `timing` or
     /// `locationAccess` hold none.
@@ -80,6 +100,39 @@ extension GeofenceDwellVisit {
         self.dwellReservation = try container.decodeIfPresent(GeofenceDwellReservation.self, forKey: .dwellReservation)
         self.timing = try container.decodeIfPresent(GeofenceVisitTiming.self, forKey: .timing)
         self.locationAccess = try container.decodeIfPresent(GeofenceLocationAccess.self, forKey: .locationAccess)
+        self.identityVersion = try container.decodeIfPresent(UInt64.self, forKey: .identityVersion)
+        self.identityLineage = try container.decodeIfPresent(String.self, forKey: .identityLineage)
+        let unqualified = !emitted && dwellReservation == nil
+        guard container.contains(.identityVersion) else {
+            // Written before identity provenance: nothing says which identities the visit spanned,
+            // nor whether it was a stale-anchor discovery. Its entry is not reported, and while its
+            // dwell is unqualified its time counts from its next fresh proof. A reserved or emitted
+            // dwell keeps its id and its facts exactly as they are: it is never qualified again.
+            self.entryObserved = false
+            self.awaitsPresenceProof = unqualified
+            return
+        }
+        // Earlier builds with provenance persisted stale-anchor discoveries as unknown-entry
+        // candidates; the flag tells them apart where present.
+        self.awaitsPresenceProof = try container.decodeIfPresent(Bool.self, forKey: .awaitsPresenceProof)
+            ?? (!entryObserved && unqualified)
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(visitId, forKey: .visitId)
+        try container.encode(enteredAt, forKey: .enteredAt)
+        try container.encode(geometryRevision, forKey: .geometryRevision)
+        try container.encode(userId, forKey: .userId)
+        try container.encode(emitted, forKey: .emitted)
+        try container.encode(entryObserved, forKey: .entryObserved)
+        try container.encodeIfPresent(dwellReservation, forKey: .dwellReservation)
+        try container.encodeIfPresent(timing, forKey: .timing)
+        try container.encodeIfPresent(locationAccess, forKey: .locationAccess)
+        try container.encode(awaitsPresenceProof, forKey: .awaitsPresenceProof)
+        // Null rather than absent when unknown: absent marks a visit from before the field.
+        try container.encode(identityVersion, forKey: .identityVersion)
+        try container.encode(identityLineage, forKey: .identityLineage)
     }
 }
 

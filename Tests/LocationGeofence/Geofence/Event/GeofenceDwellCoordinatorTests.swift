@@ -12,6 +12,9 @@ import UIKit
 @Suite("GeofenceDwellCoordinator", .serialized)
 @MainActor
 struct GeofenceDwellCoordinatorTests {
+    /// A copy of the ENTER that opened the visit — same date — keeps it. A later-dated ENTER is a
+    /// crossing of its own (see `GeofenceDwellFollowupTests`): classic monitoring reports only
+    /// crossings, and `CLMonitor` drops a same-state repeat.
     @Test
     func redeliveredCircleEnterPreservesTheCurrentVisit() async {
         let setup = await makeSetup(isPolygon: false)
@@ -21,9 +24,8 @@ struct GeofenceDwellCoordinatorTests {
         )
         let firstVisit = await setup.storage.getDwellVisit(geofenceId: setup.geofence.id)
 
-        let returnEntry = firstEntry.addingTimeInterval(3600)
         await setup.coordinator.handleBoundary(
-            geofence: setup.geofence, transition: .enter, occurredAt: returnEntry
+            geofence: setup.geofence, transition: .enter, occurredAt: firstEntry
         )
 
         let secondVisit = await setup.storage.getDwellVisit(geofenceId: setup.geofence.id)
@@ -61,7 +63,9 @@ struct GeofenceDwellCoordinatorTests {
         #expect(dwells.first?.context.durationSeconds == nil)
     }
 
-    /// A correction racing the visit an earlier ENTER already opened keeps that visit as it is.
+    /// A correction racing the visit an earlier ENTER already opened — the same arrival, dated
+    /// within the 1 s tolerance — keeps that visit as it is. Half a second, not exactly the
+    /// tolerance: two clock reads microseconds apart would put a 1 s gap a hair either side of it.
     @Test
     func unobservedEnterForAnOpenVisitKeepsIt() async {
         let setup = await makeSetup(isPolygon: false)
@@ -72,7 +76,7 @@ struct GeofenceDwellCoordinatorTests {
         let first = await setup.storage.getDwellVisit(geofenceId: setup.geofence.id)
 
         await setup.coordinator.handleBoundary(
-            geofence: setup.geofence, transition: .enter, occurredAt: enteredAt.addingTimeInterval(1)
+            geofence: setup.geofence, transition: .enter, occurredAt: enteredAt.addingTimeInterval(0.5)
         )
 
         #expect(await setup.storage.getDwellVisit(geofenceId: setup.geofence.id) == first)

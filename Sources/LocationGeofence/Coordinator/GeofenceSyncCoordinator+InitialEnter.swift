@@ -41,8 +41,11 @@ extension GeofenceSyncCoordinatorImpl {
                     occurredAt: discoveredAt,
                     expectedUserId: expectedUserId,
                     // Discovery, not a crossing: the stay began at some unknown earlier time, so
-                    // `discoveredAt` may anchor the dwell threshold but never a reported duration.
-                    entryObserved: false
+                    // `discoveredAt` is never a reported entry. Nor is presence proven: the anchor
+                    // may be a stored location, and it carries no accuracy. The candidate counts
+                    // time only from the first fresh fix wholly inside.
+                    entryObserved: false,
+                    presenceProven: false
                 )
                 if region.transitionTypes.contains(.enter) {
                     logger.geofenceTransitionSynthesized(geofenceId: region.id, transition: .enter)

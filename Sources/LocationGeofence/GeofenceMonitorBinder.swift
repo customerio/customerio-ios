@@ -18,6 +18,9 @@ enum GeofenceMonitorBinder {
             dwellCoordinator?.interruptContinuity(geofenceId: geofenceId)
         }
         monitor.setOnTransition { [weak resolver, weak coordinator, weak dwellCoordinator] identifier, transition, location, occurredAt, locationIsFresh, eventCircle, entryObserved in
+            // Before the re-arm below: evidence it requests must not qualify a visit this ENTER
+            // supersedes ahead of the task that routes the ENTER.
+            if transition == .enter { noteEnter(dwellCoordinator, geofenceId: identifier, occurredAt: occurredAt) }
             rearmDwellEvidence(dwellCoordinator)
             if identifier == GeofenceConstants.movementTriggerIdentifier {
                 guard transition == .exit else {
@@ -129,6 +132,18 @@ enum GeofenceMonitorBinder {
                 }
             }
             return true
+        }
+    }
+
+    /// The OS invokes the transition handler on the main actor, though not statically isolated.
+    private nonisolated static func noteEnter(
+        _ dwellCoordinator: GeofenceDwellCoordinator?,
+        geofenceId: String,
+        occurredAt: Date
+    ) {
+        guard let dwellCoordinator else { return }
+        MainActor.assumeIsolated {
+            dwellCoordinator.noteEnter(geofenceId: geofenceId, occurredAt: occurredAt)
         }
     }
 

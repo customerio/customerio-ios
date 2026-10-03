@@ -28,6 +28,8 @@ final class GeofenceModuleState {
         defer { lock.unlock() }
         guard !didSetup else { return }
         didSetup = true
+        // First: from here on every user change is recorded as the producer makes it.
+        _ = di.geofenceIdentityTracker
 
         let trigger = GeofenceRefreshTrigger(
             storage: di.geofenceStorage,
@@ -55,6 +57,10 @@ final class GeofenceModuleState {
 
     private func registerEventSubscriptions(di: DIGraphShared, trigger: GeofenceRefreshTrigger) {
         di.eventBusHandler.addObserver(ProfileIdentifiedEvent.self) { _ in
+            // Identifying another user resets nothing. The tracker already holds the change, from
+            // the context store's durable identity version; this only removes the visits it ends.
+            // The event's timing — late, replayed — decides nothing.
+            Task { @MainActor in await di.geofenceDwellCoordinator.identityChanged() }
             Task { await di.geofenceEventTracker.flushPending() }
             // `wireMonitor` usually ran before identify and left visits off; this arms them.
             Task { @MainActor in await GeofenceBootstrap.armVisitMonitoring(di: di) }
