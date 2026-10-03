@@ -146,11 +146,15 @@ final class DurableExitProcess {
     /// Registers `geofence`'s circle with `CLMonitor`, seen from `fix`: inside or outside it is an
     /// observed state; with none, the state is assumed outside. Then lets the contradiction gate's
     /// replay window pass.
-    func register(_ geofence: Geofence = DurableExitFences.circle, seenAt fix: CLLocation? = nil) async {
+    /// `center` and `radius` replace the fence's, as an older registration of the same id would.
+    func register(
+        _ geofence: Geofence = DurableExitFences.circle, seenAt fix: CLLocation? = nil,
+        center: LocationData? = nil, radius: Double? = nil
+    ) async {
         authority.answerCachedLocation = { fix }
         monitor.startMonitoring(
-            identifier: geofence.id, center: LocationData(latitude: geofence.latitude, longitude: geofence.longitude),
-            radius: geofence.radius, transitionTypes: [.enter, .exit]
+            identifier: geofence.id, center: center ?? LocationData(latitude: geofence.latitude, longitude: geofence.longitude),
+            radius: radius ?? geofence.radius, transitionTypes: [.enter, .exit]
         )
         _ = await settleOnMain { self.os.held[geofence.id] != nil }
         for _ in 0 ..< 200 where await storage.getMonitorRegionRecords()[geofence.id] == nil {

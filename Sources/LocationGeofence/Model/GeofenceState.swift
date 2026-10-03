@@ -61,6 +61,11 @@ struct GeofenceDwellVisit: Codable, Equatable, Sendable {
     /// circle visit, written in the same storage write as the monitor's record (see
     /// `GeofenceStorage.closeVisit`). Survives a process dying before the visit's removal, so the
     /// visit never qualifies a first dwell, nor is adopted, after it. Set once; nil when none.
+    ///
+    /// Kept exactly as the OS dated the event, to the last bit: the visit's own EXIT is recognised by
+    /// comparing its date with this one for equality, and a different EXIT in the same millisecond
+    /// must not match. The storage's seconds-since-1970 date encoding shifts many dates by a bit on
+    /// the way through, so this is stored as the raw bits of its reference-date interval instead.
     var closedByObservedBoundary: Date?
 }
 
@@ -89,7 +94,8 @@ extension GeofenceDwellVisit {
     enum CodingKeys: String, CodingKey {
         case visitId, enteredAt, geometryRevision, userId, emitted, entryObserved, dwellReservation
         case timing, locationAccess, awaitsPresenceProof, identityVersion, identityLineage
-        case closedByObservedBoundary
+        /// `closedByObservedBoundary`, as the decimal bit pattern of its `timeIntervalSinceReferenceDate`.
+        case closedByObservedBoundaryReferenceBits
     }
 
     /// Custom decode so visits persisted before `entryObserved` still decode; those were only ever
@@ -108,7 +114,7 @@ extension GeofenceDwellVisit {
         self.locationAccess = try container.decodeIfPresent(GeofenceLocationAccess.self, forKey: .locationAccess)
         self.identityVersion = try container.decodeIfPresent(UInt64.self, forKey: .identityVersion)
         self.identityLineage = try container.decodeIfPresent(String.self, forKey: .identityLineage)
-        self.closedByObservedBoundary = try container.decodeIfPresent(Date.self, forKey: .closedByObservedBoundary)
+        self.closedByObservedBoundary = try Self.decodeClosure(from: container)
         let unqualified = !emitted && dwellReservation == nil
         guard container.contains(.identityVersion) else {
             // Written before identity provenance: nothing says which identities the visit spanned,
@@ -140,7 +146,24 @@ extension GeofenceDwellVisit {
         // Null rather than absent when unknown: absent marks a visit from before the field.
         try container.encode(identityVersion, forKey: .identityVersion)
         try container.encode(identityLineage, forKey: .identityLineage)
-        try container.encodeIfPresent(closedByObservedBoundary, forKey: .closedByObservedBoundary)
+        try container.encodeIfPresent(
+            closedByObservedBoundary.map { String($0.timeIntervalSinceReferenceDate.bitPattern) },
+            forKey: .closedByObservedBoundaryReferenceBits
+        )
+    }
+
+    /// The closure exactly as encoded; nil when the key is absent. Bits that are not a finite
+    /// interval are rejected rather than read as no closure, which would let a closed visit resume.
+    private static func decodeClosure(from container: KeyedDecodingContainer<CodingKeys>) throws -> Date? {
+        guard let bits = try container.decodeIfPresent(String.self, forKey: .closedByObservedBoundaryReferenceBits) else {
+            return nil
+        }
+        guard let pattern = UInt64(bits), Double(bitPattern: pattern).isFinite else {
+            throw DecodingError.dataCorruptedError(
+                forKey: .closedByObservedBoundaryReferenceBits, in: container, debugDescription: "Not a finite interval: \(bits)"
+            )
+        }
+        return Date(timeIntervalSinceReferenceDate: Double(bitPattern: pattern))
     }
 }
 

@@ -82,13 +82,15 @@ actor GeofenceStorage {
     /// correcting its `assuming:` for a device that never left. False for every other outcome.
     /// - Parameter reading: when the producer read the dwell clock before this call; with it, a
     ///   delivered change also closes the circle visit it ends, in the same write (`closeVisit`).
+    /// - Parameter maximumRadius: the radius cap the monitor registered the circle under.
     func recordMonitorTransition(
         _ transition: GeofenceTransition,
         forIdentifier identifier: String,
         onlyIfBaselinePredates evidenceTimestamp: Date? = nil,
         osEventDate: Date? = nil,
         now: Date? = nil,
-        processedAt reading: GeofenceClockReading? = nil
+        processedAt reading: GeofenceClockReading? = nil,
+        maximumRadius: Double = .infinity
     ) -> (outcome: GeofenceMonitorEventOutcome, entryObserved: Bool) {
         var state = loadFromDisk() ?? GeofenceState()
         var records = state.monitorRegionRecords ?? [:]
@@ -136,11 +138,10 @@ actor GeofenceStorage {
         state.monitorRegionRecords = records
         let delivered = record.transitionTypes.contains(transition)
         let crossing = transition == .enter && leftObservedState
-        if delivered, let reading, transition == .exit || crossing {
-            Self.closeVisit(
-                in: &state, identifier: identifier, record: record, endedBy: transition,
-                mark: GeofenceExitMark(date: osEventDate ?? now ?? dateUtil.now, processedAt: reading)
-            )
+        if delivered, let reading, transition == .exit || crossing, let center = record.center, let radius = record.radius {
+            let registered = MonitoredCircle(center: center, radius: radius, maximumRadius: maximumRadius)
+            let mark = GeofenceExitMark(date: osEventDate ?? now ?? dateUtil.now, processedAt: reading)
+            Self.closeVisit(in: &state, identifier: identifier, registered: registered, endedBy: transition, mark: mark)
         }
         saveToDisk(state)
         return (delivered ? .deliver : .suppressedFilteredType, crossing)

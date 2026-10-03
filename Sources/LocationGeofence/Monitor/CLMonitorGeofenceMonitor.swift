@@ -225,11 +225,13 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring {
             return
         }
         // Dated by the OS, not by receipt, so no guard depends on drain speed. Read before the
-        // write: it is when this event was processed.
+        // write: it is when this event was processed, under the cap the circle was registered with.
         let reading = clock.read()
+        let maximumRadius = authManager.maximumRegionMonitoringDistance
         let (outcome, entryObserved) = await storage.recordMonitorTransition(
             transition, forIdentifier: identifier,
-            onlyIfBaselinePredates: event.date, osEventDate: event.date, now: event.date, processedAt: reading
+            onlyIfBaselinePredates: event.date, osEventDate: event.date, now: event.date,
+            processedAt: reading, maximumRadius: maximumRadius
         )
         guard case .deliver = outcome else {
             logDiscardedCallback(identifier: identifier, transition: transition, outcome: outcome)
