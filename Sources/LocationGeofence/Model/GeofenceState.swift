@@ -57,6 +57,11 @@ struct GeofenceDwellVisit: Codable, Equatable, Sendable {
     /// The lineage `identityVersion` counts in, stamped with it; the visit holds only while both
     /// are still the store's. Always written, like `identityVersion`.
     var identityLineage: String?
+    /// The OS date of the observed EXIT, or crossing ENTER, that `CLMonitor` recorded as ending this
+    /// circle visit, written in the same storage write as the monitor's record (see
+    /// `GeofenceStorage.closeVisit`). Survives a process dying before the visit's removal, so the
+    /// visit never qualifies a first dwell, nor is adopted, after it. Set once; nil when none.
+    var closedByObservedBoundary: Date?
 }
 
 /// A dwell occurrence, stored as integer epoch milliseconds so a disk round trip cannot move it: a
@@ -84,6 +89,7 @@ extension GeofenceDwellVisit {
     enum CodingKeys: String, CodingKey {
         case visitId, enteredAt, geometryRevision, userId, emitted, entryObserved, dwellReservation
         case timing, locationAccess, awaitsPresenceProof, identityVersion, identityLineage
+        case closedByObservedBoundary
     }
 
     /// Custom decode so visits persisted before `entryObserved` still decode; those were only ever
@@ -102,6 +108,7 @@ extension GeofenceDwellVisit {
         self.locationAccess = try container.decodeIfPresent(GeofenceLocationAccess.self, forKey: .locationAccess)
         self.identityVersion = try container.decodeIfPresent(UInt64.self, forKey: .identityVersion)
         self.identityLineage = try container.decodeIfPresent(String.self, forKey: .identityLineage)
+        self.closedByObservedBoundary = try container.decodeIfPresent(Date.self, forKey: .closedByObservedBoundary)
         let unqualified = !emitted && dwellReservation == nil
         guard container.contains(.identityVersion) else {
             // Written before identity provenance: nothing says which identities the visit spanned,
@@ -133,6 +140,7 @@ extension GeofenceDwellVisit {
         // Null rather than absent when unknown: absent marks a visit from before the field.
         try container.encode(identityVersion, forKey: .identityVersion)
         try container.encode(identityLineage, forKey: .identityLineage)
+        try container.encodeIfPresent(closedByObservedBoundary, forKey: .closedByObservedBoundary)
     }
 }
 

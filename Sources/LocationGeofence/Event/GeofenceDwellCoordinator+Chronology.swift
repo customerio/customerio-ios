@@ -88,10 +88,11 @@ struct GeofenceEnterMarks {
 }
 
 /// A native EXIT callback the binder has handed to a routing task that has not finished, by its
-/// exact date: the mark of its latest delivery, and how many deliveries are still being routed.
-/// Until its routing records it, nothing else tells the coordinator the stay may have ended.
+/// exact date: the marks of its deliveries that no other subsumes, and how many deliveries are
+/// still being routed. Until its routing records it, nothing else tells the coordinator the stay
+/// may have ended.
 struct GeofencePendingExitCallback {
-    var mark: GeofenceExitMark
+    var marks: [GeofenceExitMark]
     var count: Int
 }
 
@@ -151,9 +152,13 @@ extension GeofenceDwellCoordinator {
     /// task is done, whatever it made of the EXIT; no time limit.
     func noteExitCallback(geofenceId: String, occurredAt: Date) {
         let mark = GeofenceExitMark(date: occurredAt, processedAt: readClock())
-        var pending = pendingExitCallbacks[geofenceId]?[occurredAt] ?? GeofencePendingExitCallback(mark: mark, count: 0)
-        // The latest delivery's mark: processed later, it ends every visit an earlier one would.
-        pending.mark = mark
+        var pending = pendingExitCallbacks[geofenceId]?[occurredAt] ?? GeofencePendingExitCallback(marks: [], count: 0)
+        // As `recordExit` keeps them: across a clock step no delivery's mark orders the others, and a
+        // later one can end fewer visits than an earlier one did.
+        if !pending.marks.contains(where: { $0.subsumes(mark) }) {
+            pending.marks.removeAll { mark.subsumes($0) }
+            pending.marks.append(mark)
+        }
         pending.count += 1
         pendingExitCallbacks[geofenceId, default: [:]][occurredAt] = pending
     }
@@ -169,7 +174,7 @@ extension GeofenceDwellCoordinator {
     /// Whether a native EXIT callback still being routed would end `visit`, by the same order as a
     /// recorded EXIT: a late EXIT dated before the visit began does not.
     func exitCallbackPendingOvertook(_ visit: GeofenceDwellVisit, geofenceId: String) -> Bool {
-        pendingExitCallbacks[geofenceId]?.values.contains { $0.mark.overtakes(visit) } ?? false
+        pendingExitCallbacks[geofenceId]?.values.contains { $0.marks.contains { $0.overtakes(visit) } } ?? false
     }
 
     /// Whether an entry dated `enteredAt`, recorded at `reading` with `timing`, was dated on the

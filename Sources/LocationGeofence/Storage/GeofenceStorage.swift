@@ -80,12 +80,15 @@ actor GeofenceStorage {
     /// `recordMonitorEvent`, also answering whether a delivered ENTER left an OBSERVED `.exit`.
     /// Only then is it a crossing since registration; out of an assumed one it may be `CLMonitor`
     /// correcting its `assuming:` for a device that never left. False for every other outcome.
+    /// - Parameter reading: when the producer read the dwell clock before this call; with it, a
+    ///   delivered change also closes the circle visit it ends, in the same write (`closeVisit`).
     func recordMonitorTransition(
         _ transition: GeofenceTransition,
         forIdentifier identifier: String,
         onlyIfBaselinePredates evidenceTimestamp: Date? = nil,
         osEventDate: Date? = nil,
-        now: Date? = nil
+        now: Date? = nil,
+        processedAt reading: GeofenceClockReading? = nil
     ) -> (outcome: GeofenceMonitorEventOutcome, entryObserved: Bool) {
         var state = loadFromDisk() ?? GeofenceState()
         var records = state.monitorRegionRecords ?? [:]
@@ -131,11 +134,16 @@ actor GeofenceStorage {
         record.lastStateObserved = true
         records[identifier] = record
         state.monitorRegionRecords = records
+        let delivered = record.transitionTypes.contains(transition)
+        let crossing = transition == .enter && leftObservedState
+        if delivered, let reading, transition == .exit || crossing {
+            Self.closeVisit(
+                in: &state, identifier: identifier, record: record, endedBy: transition,
+                mark: GeofenceExitMark(date: osEventDate ?? now ?? dateUtil.now, processedAt: reading)
+            )
+        }
         saveToDisk(state)
-        return (
-            record.transitionTypes.contains(transition) ? .deliver : .suppressedFilteredType,
-            transition == .enter && leftObservedState
-        )
+        return (delivered ? .deliver : .suppressedFilteredType, crossing)
     }
 
     /// A trigger exit can arrive just after a re-plant, carrying the old circle's date. Only the

@@ -233,7 +233,7 @@ final class GeofenceDwellCoordinator {
         // ending does not count: that EXIT may still be suspended before its removal, and adopting
         // the visit would leave this re-entry with none once it lands. Nor does a candidate awaiting
         // proof, when this ENTER is proof.
-        if let existing, !exitOvertook(existing, geofenceId: geofence.id),
+        if let existing, !exitOvertook(existing, geofenceId: geofence.id), existing.closedByObservedBoundary == nil,
            !(presenceProven && existing.awaitsPresenceProof) {
             scheduleDeadline(for: geofence, visit: existing)
             return

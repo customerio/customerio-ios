@@ -230,6 +230,8 @@ extension GeofenceDwellCoordinator {
                   userId: userId
               ),
               !visit.emitted,
+              // Closed by an observed boundary: no evidence can qualify it; a reservation still delivers.
+              visit.closedByObservedBoundary == nil || visit.dwellReservation != nil,
               visitId == nil || visit.visitId == visitId
         else { return nil }
         return visit
