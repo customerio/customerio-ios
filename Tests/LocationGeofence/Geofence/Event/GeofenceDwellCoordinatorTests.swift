@@ -1130,6 +1130,7 @@ struct GeofenceDwellCoordinatorTests {
         )
         #expect(await setup.storage.getDwellVisit(geofenceId: setup.geofence.id) != nil)
 
+        setup.coordinator.contextStore.setUserId("user-2")
         _ = await setup.coordinator.currentVisit(geofence: setup.geofence, userId: "user-2")
 
         #expect(await setup.storage.getDwellVisit(geofenceId: setup.geofence.id) == nil)

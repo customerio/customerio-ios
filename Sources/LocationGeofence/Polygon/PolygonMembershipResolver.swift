@@ -183,7 +183,21 @@ final class PolygonMembershipResolver {
         let pass = nextPass()
         let heldFixDecision = heldFixUse(heldFix)
         logger.geofencePolygonPassStarted(reason: reason, count: polygons.count, pass: pass, heldFix: heldFixDecision.use)
-        guard polygons.isEmpty == false else { return }
+        guard polygons.isEmpty == false else {
+            // A circle-only pass needs no new location request, but a fresh fix already held
+            // by the caller can still prove an existing circle visit ended.
+            guard heldFixDecision.age >= 0 else { return }
+            let location: CLLocation?
+            switch heldFixDecision.use {
+            case .reused: location = heldFix?.location
+            case .newer: location = heldFixDecision.newerFix
+            case .none, .tooOld: location = nil
+            }
+            if let location {
+                await dwellCoordinator?.recordOutsideEvidence(fix: location, expectedUserId: nil)
+            }
+            return
+        }
         // One request per pass: per-polygon requests would each hold the main actor for a timeout.
         guard let fix = await passFix(heldFix: heldFix, decision: heldFixDecision, requiringFresh: requiresFreshFix) else {
             for geofence in polygons {

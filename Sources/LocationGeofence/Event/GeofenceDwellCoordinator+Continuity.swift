@@ -31,7 +31,7 @@ extension GeofenceDwellCoordinator {
     /// Records that continuity was lost now, for one fence or (nil) every fence, and returns the
     /// instant. From here on, a visit write entered no later than it is refused.
     func continuityLost(geofenceId: String?) -> GeofenceClockReading {
-        let reading = clock.read()
+        let reading = readClock()
         if let geofenceId {
             continuityLostUptime[geofenceId] = reading.uptime
         } else {
@@ -43,7 +43,7 @@ extension GeofenceDwellCoordinator {
     /// Ends the continuity of the visits `lostAt` interrupted; nil means now. A visit entered
     /// after it, by a callback that ran before this did, is left alone.
     func invalidateContinuity(geofenceId: String? = nil, lostAt: GeofenceClockReading? = nil) async {
-        let removed = await storage.removeDwellVisits(geofenceId: geofenceId, spanning: lostAt ?? clock.read())
+        let removed = await storage.removeDwellVisits(geofenceId: geofenceId, spanning: lostAt ?? readClock())
         for (id, visitId) in removed {
             cancelEvidence(for: id, ifVisit: visitId)
         }
@@ -66,7 +66,7 @@ extension GeofenceDwellCoordinator {
     /// reported, which iOS signals to no process that was not running.
     func continuityHolds(for visit: GeofenceDwellVisit, geofenceId: String) -> Bool {
         // No timing: recorded by a build that kept none, on a boot nothing identifies.
-        guard let timing = visit.timing, timing.isCurrent(at: clock.read()) else { return false }
+        guard let timing = visit.timing, timing.isCurrent(at: readClock()) else { return false }
         guard !lossOvertook(visit, geofenceId: geofenceId) else { return false }
         // The app was not running for some time between processes, and under this access nothing
         // relaunches it for an EXIT.
@@ -100,7 +100,7 @@ extension GeofenceDwellCoordinator {
     /// would not have reached the SDK. Dated now; the removal follows on a task. Under background
     /// delivery this changes nothing: suspension alone interrupts no monitoring.
     func foregroundChanged() {
-        let reading = clock.read()
+        let reading = readClock()
         foregroundOnlyLostUptime = reading.uptime
         Task { [weak self] in
             guard let self else { return }

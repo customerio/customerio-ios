@@ -21,7 +21,7 @@ extension GeofenceDwellCoordinator {
         // before the loss.
         guard continuityHolds(for: visit, geofenceId: geofence.id) else { return }
         guard let proposed = Self.qualifiedReservation(
-            for: visit, observedAt: observedAt, at: clock.read(),
+            for: visit, observedAt: observedAt, at: readClock(),
             thresholdSeconds: geofence.dwellThresholdSeconds, source: source
         ) else { return }
         guard contextStore.currentUserId == userId else { return }

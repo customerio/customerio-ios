@@ -675,6 +675,210 @@ struct GeofenceDwellContinuityTests {
         setup.coordinator.cancelEvidence(for: setup.geofence.id)
     }
 
+    // MARK: - Events dated before a wall-clock step, processed after it
+
+    /// The EXIT is dated on the clock before a forward step and processed after it, so its
+    /// wall-clock age reads an hour too long and it lands before the visit's entry on the
+    /// monotonic timeline. It still ends the visit: once the clock has stepped, that date cannot be
+    /// ordered against the entry, and keeping the visit would carry its stay across a real EXIT.
+    /// The re-entry 450 s later is a stay of its own and cannot qualify a 600 s dwell.
+    @Test
+    func exitDatedBeforeAForwardStepEndsTheVisitSoAShortReentryCannotQualify() async {
+        let clock = ManualGeofenceClock()
+        let setup = await makeSetup(dwellThresholdSeconds: 600, clock: clock)
+        await setup.coordinator.handleBoundary(geofence: setup.geofence, transition: .enter, occurredAt: clock.wall)
+        let first = await setup.storage.getDwellVisit(geofenceId: setup.geofence.id)
+        clock.advance(50)
+        let exitDatedAt = clock.wall
+        clock.advance(50)
+        clock.stepWall(3600)
+        clock.advance(10)
+
+        await setup.coordinator.handleBoundary(geofence: setup.geofence, transition: .exit, occurredAt: exitDatedAt)
+        #expect(await setup.storage.getDwellVisit(geofenceId: setup.geofence.id) == nil)
+
+        clock.advance(40)
+        await setup.coordinator.handleBoundary(geofence: setup.geofence, transition: .enter, occurredAt: clock.wall)
+        let reentry = await setup.storage.getDwellVisit(geofenceId: setup.geofence.id)
+        #expect(reentry != nil)
+        #expect(reentry?.visitId != first?.visitId)
+        clock.advance(450)
+        await setup.coordinator.recordInsideEvidence(geofence: setup.geofence, at: clock.wall, source: "location_evidence")
+
+        #expect(await setup.emitter.dwells().isEmpty)
+    }
+
+    /// The deadline's fix is wholly outside the circle but was taken before a forward step: it
+    /// still ends the visit it was requested for.
+    @Test
+    func decisiveOutsideFixTakenBeforeAForwardStepEndsTheVisit() async {
+        let clock = ManualGeofenceClock()
+        let fixes = FixScript()
+        let setup = await makeSetup(isPolygon: false, clock: clock, freshFixProvider: { fixes.next() })
+        _ = await seedVisit(setup, clock: clock)
+        clock.advance(120)
+        let fixTakenAt = clock.wall
+        clock.stepWall(3600)
+        clock.advance(10)
+
+        fixes.queue(Self.fix(latitude: 0.51, accuracy: 5, at: fixTakenAt))
+        await setup.coordinator.requestQualifyingEvidence(geofenceId: setup.geofence.id)
+
+        #expect(await setup.storage.getDwellVisit(geofenceId: setup.geofence.id) == nil)
+        setup.coordinator.cancelEvidence(for: setup.geofence.id)
+    }
+
+    /// The EXIT was processed before a backward step; a late copy of the visit's own ENTER arrives
+    /// after it. Its old date reads as no age at all on the stepped-back clock, which would place it
+    /// after the EXIT. It must not reopen the visit the EXIT ended.
+    @Test
+    func lateEnterCopyAfterABackwardStepCannotReopenTheExitedVisit() async {
+        let clock = ManualGeofenceClock()
+        let setup = await makeSetup(clock: clock)
+        let enteredAt = clock.wall
+        await setup.coordinator.handleBoundary(geofence: setup.geofence, transition: .enter, occurredAt: enteredAt)
+        clock.advance(50)
+        await setup.coordinator.handleBoundary(geofence: setup.geofence, transition: .exit, occurredAt: clock.wall)
+        clock.stepWall(-3600)
+        clock.advance(10)
+
+        await setup.coordinator.handleBoundary(geofence: setup.geofence, transition: .enter, occurredAt: enteredAt)
+
+        #expect(await setup.storage.getDwellVisit(geofenceId: setup.geofence.id) == nil)
+    }
+
+    /// An ENTER dated before a forward step and processed after it: the visit qualifies on time
+    /// actually spent, but its date is on the old clock, so neither it nor a duration from it is
+    /// reported.
+    @Test
+    func enterDatedBeforeAStepWithholdsTheEntryAndDuration() async throws {
+        let clock = ManualGeofenceClock()
+        let setup = await makeSetup(dwellThresholdSeconds: 600, clock: clock)
+        await setup.coordinator.handleBoundary(geofence: setup.geofence, transition: .enter, occurredAt: clock.wall)
+        clock.advance(30)
+        await setup.coordinator.handleBoundary(geofence: setup.geofence, transition: .exit, occurredAt: clock.wall)
+        clock.advance(30)
+        let reenteredAt = clock.wall
+        clock.stepWall(3600)
+        clock.advance(10)
+        await setup.coordinator.handleBoundary(geofence: setup.geofence, transition: .enter, occurredAt: reenteredAt)
+        #expect(await setup.storage.getDwellVisit(geofenceId: setup.geofence.id) != nil)
+
+        clock.advance(600)
+        await setup.coordinator.recordInsideEvidence(geofence: setup.geofence, at: clock.wall, source: "location_evidence")
+
+        let dwells = await setup.emitter.dwells()
+        try #require(dwells.count == 1)
+        #expect(dwells[0].context.enteredAt == nil)
+        #expect(dwells[0].context.durationSeconds == nil)
+    }
+
+    /// Control, coherent clock: a delayed EXIT dated inside an older visit leaves the visit entered
+    /// after it, and that visit still reports its entry.
+    @Test
+    func staleExitFromAnOlderVisitLeavesTheNewerVisitUnderACoherentClock() async throws {
+        let clock = ManualGeofenceClock()
+        let setup = await makeSetup(dwellThresholdSeconds: 600, clock: clock)
+        await setup.coordinator.handleBoundary(geofence: setup.geofence, transition: .enter, occurredAt: clock.wall)
+        clock.advance(20)
+        let staleExitAt = clock.wall
+        clock.advance(10)
+        await setup.coordinator.handleBoundary(geofence: setup.geofence, transition: .exit, occurredAt: clock.wall)
+        clock.advance(20)
+        let reenteredAt = clock.wall
+        await setup.coordinator.handleBoundary(geofence: setup.geofence, transition: .enter, occurredAt: reenteredAt)
+        let newer = try #require(await setup.storage.getDwellVisit(geofenceId: setup.geofence.id))
+        clock.advance(10)
+
+        await setup.coordinator.handleBoundary(geofence: setup.geofence, transition: .exit, occurredAt: staleExitAt)
+        #expect(await setup.storage.getDwellVisit(geofenceId: setup.geofence.id)?.visitId == newer.visitId)
+
+        clock.advance(590)
+        await setup.coordinator.recordInsideEvidence(geofence: setup.geofence, at: clock.wall, source: "location_evidence")
+        let dwells = await setup.emitter.dwells()
+        try #require(dwells.count == 1)
+        #expect(dwells[0].context.visitId == newer.visitId)
+        #expect(dwells[0].context.enteredAt == reenteredAt)
+    }
+
+    /// Control: a stale EXIT for the visit ended before a step, processed after it, leaves the
+    /// distinct visit a re-entry opened after the step; that visit's entry is on the new clock.
+    @Test
+    func staleExitProcessedAfterAStepLeavesTheReentryOpenedAfterIt() async throws {
+        let clock = ManualGeofenceClock()
+        let setup = await makeSetup(dwellThresholdSeconds: 600, clock: clock)
+        await setup.coordinator.handleBoundary(geofence: setup.geofence, transition: .enter, occurredAt: clock.wall)
+        let first = try #require(await setup.storage.getDwellVisit(geofenceId: setup.geofence.id))
+        clock.advance(30)
+        let exitedAt = clock.wall
+        await setup.coordinator.handleBoundary(geofence: setup.geofence, transition: .exit, occurredAt: exitedAt)
+        clock.stepWall(3600)
+        clock.advance(30)
+        await setup.coordinator.handleBoundary(geofence: setup.geofence, transition: .enter, occurredAt: clock.wall)
+        let reentry = try #require(await setup.storage.getDwellVisit(geofenceId: setup.geofence.id))
+        #expect(reentry.visitId != first.visitId)
+        clock.advance(10)
+
+        await setup.coordinator.handleBoundary(geofence: setup.geofence, transition: .exit, occurredAt: exitedAt)
+
+        #expect(await setup.storage.getDwellVisit(geofenceId: setup.geofence.id)?.visitId == reentry.visitId)
+    }
+
+    @Test
+    func staleUserVisitReadKeepsTheNewUsersVisit() async throws {
+        let clock = ManualGeofenceClock()
+        let setup = await makeSetup(clock: clock)
+        setup.coordinator.contextStore.setUserId("user-2")
+        await setup.coordinator.handleBoundary(geofence: setup.geofence, transition: .enter, occurredAt: clock.wall)
+        let current = try #require(await setup.storage.getDwellVisit(geofenceId: setup.geofence.id))
+
+        #expect(await setup.coordinator.currentVisit(geofence: setup.geofence, userId: "user-1") == nil)
+        #expect(await setup.storage.getDwellVisit(geofenceId: setup.geofence.id)?.visitId == current.visitId)
+    }
+
+    @Test
+    func oldEnterDatedBeforeABackwardStepCannotReopenAnExitDatedAfterIt() async {
+        let clock = ManualGeofenceClock()
+        let setup = await makeSetup(dwellThresholdSeconds: 600, clock: clock)
+        let oldEnteredAt = clock.wall
+        await setup.coordinator.handleBoundary(geofence: setup.geofence, transition: .enter, occurredAt: oldEnteredAt)
+        clock.advance(30)
+        clock.stepWall(-3600)
+        await setup.coordinator.handleBoundary(geofence: setup.geofence, transition: .exit, occurredAt: clock.wall)
+        clock.advance(10)
+
+        await setup.coordinator.handleBoundary(geofence: setup.geofence, transition: .enter, occurredAt: oldEnteredAt)
+        #expect(await setup.storage.getDwellVisit(geofenceId: setup.geofence.id) == nil)
+
+        // The clock has caught up with the old entry's date, but the device returns only now.
+        // This fresh observation starts a candidate now, rather than counting the time outside.
+        clock.advance(4200)
+        await setup.coordinator.recordInsideEvidence(geofence: setup.geofence, at: clock.wall, source: "location_evidence")
+        #expect(await setup.emitter.dwells().isEmpty)
+        clock.advance(600)
+        await setup.coordinator.recordInsideEvidence(geofence: setup.geofence, at: clock.wall, source: "location_evidence")
+        #expect(await setup.emitter.dwells().count == 1)
+        #expect(await setup.emitter.dwells().first?.context.enteredAt == nil)
+        setup.coordinator.cancelEvidence(for: setup.geofence.id)
+    }
+
+    @Test
+    func staleCleanupKeepsTheVisitWrittenAfterItsRead() async throws {
+        let clock = ManualGeofenceClock()
+        let setup = await makeSetup(clock: clock)
+        await setup.coordinator.handleBoundary(geofence: setup.geofence, transition: .enter, occurredAt: clock.wall)
+        let old = try #require(await setup.storage.getDwellVisit(geofenceId: setup.geofence.id))
+        clock.advance(1)
+        setup.coordinator.contextStore.setUserId("user-2")
+        await setup.coordinator.handleBoundary(geofence: setup.geofence, transition: .enter, occurredAt: clock.wall)
+        let current = try #require(await setup.storage.getDwellVisit(geofenceId: setup.geofence.id))
+
+        await setup.storage.removeDwellVisitIfStale(geofenceId: setup.geofence.id, currentUserId: "user-1", ifStill: old.visitId)
+
+        #expect(current.visitId != old.visitId)
+        #expect(await setup.storage.getDwellVisit(geofenceId: setup.geofence.id)?.visitId == current.visitId)
+    }
+
     // MARK: - Helpers
 
     private func makeSetup(

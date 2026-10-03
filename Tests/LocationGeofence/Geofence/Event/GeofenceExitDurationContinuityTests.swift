@@ -192,26 +192,27 @@ struct GeofenceExitDurationContinuityTests {
 
     // MARK: - Delayed and overlapping EXITs
 
-    /// An EXIT from a stay before this visit, delivered late after the clock was set back: its date
-    /// is ahead of the clock now, but on the visit's own timeline it predates the entry. It must
-    /// neither end the visit nor report a duration.
+    /// An EXIT delivered late after the clock was set back is dated ahead of the clock now. Across
+    /// the step nothing says which clock dated it, so it cannot be told from this visit's own EXIT:
+    /// the pair is unknown. It closes the visit, as every boundary check orders it
+    /// (`GeofenceExitMark.overtakes`), and reports no duration. Under a coherent clock the same
+    /// stale EXIT leaves the visit; see `delayedExitDatedBeforeTheVisitLeavesItAndReportsNothing`.
     @Test
-    func staleExitDatedBeforeTheVisitIsRejectedAfterABackwardStep() async {
+    func exitDatedAheadOfASetBackClockClosesTheVisitUntimed() async {
         let clock = ManualGeofenceClock()
         let setup = await makeSetup(clock: clock)
-        let staleExitAt = clock.wall.addingTimeInterval(-100)
+        let exitDatedOnTheOldClock = clock.wall.addingTimeInterval(-100)
         await setup.coordinator.handleBoundary(geofence: setup.geofence, transition: .enter, occurredAt: clock.wall)
-        let visit = await setup.storage.getDwellVisit(geofenceId: setup.geofence.id)
+        #expect(await setup.storage.getDwellVisit(geofenceId: setup.geofence.id) != nil)
 
         clock.advance(600)
         clock.stepWall(-7200)
         let context = await setup.coordinator.handleBoundary(
-            geofence: setup.geofence, transition: .exit, occurredAt: staleExitAt
+            geofence: setup.geofence, transition: .exit, occurredAt: exitDatedOnTheOldClock
         )
 
         #expect(context == nil)
-        #expect(visit != nil)
-        #expect(await setup.storage.getDwellVisit(geofenceId: setup.geofence.id) == visit)
+        #expect(await setup.storage.getDwellVisit(geofenceId: setup.geofence.id) == nil)
     }
 
     /// A delayed EXIT dated before the current visit's entry belongs to an older stay.
@@ -327,6 +328,65 @@ struct GeofenceExitDurationContinuityTests {
         #expect(closed?.visitId == first.visitId)
         #expect(closed?.durationSeconds == 60)
         #expect(await setup.storage.getDwellVisit(geofenceId: setup.geofence.id)?.enteredAt == reentry)
+    }
+
+    /// A decisive outside fix has recorded its exit mark and is still removing the visit when the
+    /// visit's EXIT reads it — the state `endContinuity` leaves across its storage hop. The fix saw
+    /// the device away before this EXIT, so the stay may span an excursion: the EXIT ends the
+    /// visit untimed.
+    @Test
+    func exitReadWhileOutsideEvidenceIsEndingTheVisitReportsNoDuration() async {
+        let clock = ManualGeofenceClock()
+        let setup = await makeSetup(clock: clock)
+        await setup.coordinator.handleBoundary(geofence: setup.geofence, transition: .enter, occurredAt: clock.wall)
+        clock.advance(120)
+        setup.coordinator.recordExit(
+            GeofenceExitMark(date: clock.wall, processedAt: clock.read(), source: .outsideEvidence),
+            geofenceId: setup.geofence.id
+        )
+        clock.advance(60)
+
+        let context = await setup.coordinator.handleBoundary(
+            geofence: setup.geofence, transition: .exit, occurredAt: clock.wall
+        )
+
+        #expect(context == nil)
+        #expect(await setup.storage.getDwellVisit(geofenceId: setup.geofence.id) == nil)
+    }
+
+    /// The replaced visit's EXIT is still in flight, and outside evidence taken before that EXIT
+    /// also ended the visit: an excursion the OS may have missed. The EXIT still reports no
+    /// duration for it, and the re-entry is left for its own, timed EXIT.
+    @Test
+    func replacedVisitWithOutsideEvidenceBeforeItsExitIsReportedUntimed() async throws {
+        let clock = ManualGeofenceClock()
+        let setup = await makeSetup(clock: clock)
+        await setup.coordinator.handleBoundary(geofence: setup.geofence, transition: .enter, occurredAt: clock.wall)
+        clock.advance(30)
+        setup.coordinator.recordExit(
+            GeofenceExitMark(date: clock.wall, processedAt: clock.read(), source: .outsideEvidence),
+            geofenceId: setup.geofence.id
+        )
+        clock.advance(30)
+        let exitedAt = clock.wall
+        await setup.coordinator.handleBoundary(
+            geofence: setup.geofence, transition: .exit, occurredAt: exitedAt, expectedUserId: "someone-else"
+        )
+        clock.advance(1)
+        let reentry = clock.wall
+        await setup.coordinator.handleBoundary(geofence: setup.geofence, transition: .enter, occurredAt: reentry)
+        let newer = try #require(await setup.storage.getDwellVisit(geofenceId: setup.geofence.id))
+
+        let closed = await setup.coordinator.handleBoundary(geofence: setup.geofence, transition: .exit, occurredAt: exitedAt)
+
+        #expect(closed == nil)
+        #expect(newer.enteredAt == reentry)
+        clock.advance(90)
+        let reentryExit = await setup.coordinator.handleBoundary(
+            geofence: setup.geofence, transition: .exit, occurredAt: clock.wall
+        )
+        #expect(reentryExit?.visitId == newer.visitId)
+        #expect(reentryExit?.durationSeconds == 90)
     }
 
     /// The same overlap across an hour's forward step: the replaced visit is still the one the EXIT
