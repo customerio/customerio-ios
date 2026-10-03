@@ -138,6 +138,7 @@ final class GeofenceDwellCoordinator {
         // Before the user check and every await: leaving is geometry, whoever is signed in, and an
         // ENTER write already in flight must see it.
         if transition == .exit { recordExitEvent(mark, geofenceId: geofence.id) }
+        defer { if transition == .exit { exitRoutingEnded(at: mark.date, geofenceId: geofence.id) } }
         if transition == .enter, presenceProven { noteEnter(mark, geofenceId: geofence.id, crossing: crossingObserved) }
         if let expectedUserId, contextStore.currentUserId != expectedUserId { return nil }
         await syncClockReference(reading)
@@ -215,7 +216,7 @@ final class GeofenceDwellCoordinator {
         // The first fresh inside proof for a candidate discovered from the anchor: the candidate
         // re-starts here, as a stay this evidence opens, so none of the time before it counts.
         if let stored, !stored.awaitsPresenceProof,
-           !beginsNewVisit || (stored.timing?.enteredUptime ?? .infinity) > observedUptime {
+           !beginsNewVisit || (stored.timing?.entryUptime(orderedAt: readClock()) ?? .infinity) > observedUptime {
             return stored
         }
         guard let visit = makeVisit(

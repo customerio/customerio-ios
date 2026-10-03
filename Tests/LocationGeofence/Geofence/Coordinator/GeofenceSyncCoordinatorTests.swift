@@ -2974,8 +2974,9 @@ struct GeofenceSyncCoordinatorTests {
             longitude: anchor.longitude,
             anchorIsLiveFix: true
         )
-        for _ in 0 ..< 50 {
-            await Task.yield()
+        // Bounded on the write, not a yield count: the visit is recorded on a task of its own.
+        for _ in 0 ..< 200 where await storage.getDwellVisit(geofenceId: region.id) == nil {
+            try? await Task.sleep(nanoseconds: 10000000)
         }
 
         #expect(emitter.calls.wrappedValue.isEmpty)

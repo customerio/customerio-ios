@@ -68,30 +68,54 @@ extension GeofenceDwellCoordinator {
     /// native ENTERs noted so far are what the EXIT knew of the stay's end (`keepEntersKnown`). A
     /// burst — ENTER, EXIT, ENTER — reaches the binder before any routing task runs, so by the time
     /// the EXIT is recorded a later ENTER may already have replaced an earlier one in its slot.
+    /// The binder pairs this with `exitCallbackRouted` once the callback's routing task is done.
     func noteExitCallback(geofenceId: String, occurredAt: Date) {
-        exitDuration.latestExitCallback[geofenceId] = occurredAt
-        keepEntersKnown(at: occurredAt, geofenceId: geofenceId)
+        exitRoutingBegan(at: occurredAt, geofenceId: geofenceId)
     }
 
-    /// Records an EXIT event, and what it knew of the stay's end if its callback did not note it:
-    /// an EXIT from a direct caller, or a polygon verdict dated by its fix.
+    /// The routing task of an EXIT callback `noteExitCallback` noted has finished.
+    func exitCallbackRouted(geofenceId: String, occurredAt: Date) {
+        exitRoutingEnded(at: occurredAt, geofenceId: geofenceId)
+    }
+
+    /// Records an EXIT event before its first await, and what it knew of the stay's end if no
+    /// callback noted it — an EXIT from a direct caller, or a polygon verdict dated by its fix.
+    /// `handleBoundary` pairs it with `exitRoutingEnded` when it returns.
     func recordExitEvent(_ exit: GeofenceExitMark, geofenceId: String) {
         recordExit(exit, geofenceId: geofenceId)
-        keepEntersKnown(at: exit.date, geofenceId: geofenceId)
+        exitRoutingBegan(at: exit.date, geofenceId: geofenceId)
     }
 
-    /// Keeps, on an EXIT's first note by its exact date, the native ENTERs then noted for its fence,
-    /// which no later callback can erase by replacing an ENTER in its slot; a copy of the same EXIT
-    /// keeps the first. Each record lives only while its EXIT's mark does (`exitMarks`, pruned as
-    /// marks are subsumed), a visit is remembered for it, or it is the fence's latest EXIT callback,
-    /// whose routing may still be on its way.
-    private func keepEntersKnown(at date: Date, geofenceId: String) {
-        var known = exitDuration.entersKnownAtExit[geofenceId] ?? [:]
-        if known[date] == nil { known[date] = enterMarks[geofenceId] ?? GeofenceEnterMarks() }
-        var live = Set((exitMarks[geofenceId] ?? []).filter { $0.source == .exitEvent }.map(\.date))
+    /// An EXIT, by its exact date, is now being routed. Its first note keeps the native ENTERs then
+    /// noted for its fence, which no later callback can erase by replacing an ENTER in its slot;
+    /// another note of the same EXIT shares them.
+    private func exitRoutingBegan(at date: Date, geofenceId: String) {
+        exitDuration.routingsInFlight[geofenceId, default: [:]][date, default: 0] += 1
+        if exitDuration.entersKnownAtExit[geofenceId]?[date] == nil {
+            exitDuration.entersKnownAtExit[geofenceId, default: [:]][date] = enterMarks[geofenceId] ?? GeofenceEnterMarks()
+        }
+        pruneEntersKnown(geofenceId: geofenceId)
+    }
+
+    func exitRoutingEnded(at date: Date, geofenceId: String) {
+        let remaining = (exitDuration.routingsInFlight[geofenceId]?[date] ?? 1) - 1
+        exitDuration.routingsInFlight[geofenceId]?[date] = remaining > 0 ? remaining : nil
+        pruneEntersKnown(geofenceId: geofenceId)
+    }
+
+    /// Keeps what each EXIT knew for as long as anything can still time a visit by it: while it is
+    /// being routed, while its mark is held (`exitMarks`, pruned as marks are subsumed), or while a
+    /// visit is remembered for it. Nothing is dropped while it may still be needed, so no EXIT falls
+    /// back to a later, emptier view; and an EXIT the resolver never records leaves nothing once its
+    /// routing is done.
+    private func pruneEntersKnown(geofenceId: String) {
+        let inFlight = exitDuration.routingsInFlight[geofenceId] ?? [:]
+        let live = Set((exitMarks[geofenceId] ?? []).filter { $0.source == .exitEvent }.map(\.date))
             .union(exitDuration.visitsEndedByPendingExit[geofenceId]?.exitDates ?? [])
-        if let callback = exitDuration.latestExitCallback[geofenceId] { live.insert(callback) }
-        exitDuration.entersKnownAtExit[geofenceId] = known.filter { live.contains($0.key) }
+            .union(inFlight.keys)
+        let kept = (exitDuration.entersKnownAtExit[geofenceId] ?? [:]).filter { live.contains($0.key) }
+        exitDuration.entersKnownAtExit[geofenceId] = kept.isEmpty ? nil : kept
+        exitDuration.routingsInFlight[geofenceId] = inFlight.isEmpty ? nil : inFlight
     }
 
     /// Whether an ENTER noted by the time this EXIT was first noted ended `visit` before the EXIT
@@ -205,6 +229,6 @@ struct GeofenceExitDurationState {
     var visitsEndedByPendingExit: [String: (visit: GeofenceDwellVisit, exitDates: Set<Date>)] = [:]
     /// Per fence and EXIT event date, the native ENTERs noted when that EXIT was first noted.
     var entersKnownAtExit: [String: [Date: GeofenceEnterMarks]] = [:]
-    /// Per fence, the date of the latest EXIT its OS callback noted.
-    var latestExitCallback: [String: Date] = [:]
+    /// Per fence and EXIT event date, how many routings of that EXIT are still in flight.
+    var routingsInFlight: [String: [Date: Int]] = [:]
 }

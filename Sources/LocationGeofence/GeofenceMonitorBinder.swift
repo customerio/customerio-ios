@@ -53,12 +53,14 @@ enum GeofenceMonitorBinder {
             // belongs to whoever was identified when the OS delivered it.
             let receivedForUserId = resolver?.identifiedUserId ?? ""
             // One Task: parallel dispatch would lose the coordinator's gate.
-            Task {
+            Task { [dwellCoordinator] in
                 let outcome = await resolver?.handleTransition(
                     identifier: identifier, transition: transition,
                     occurredAt: occurredAt, eventCircle: eventCircle,
                     receivedForUserId: receivedForUserId, crossingObserved: crossingObserved
                 ) ?? .nothingToRearm
+                // Whatever the resolver made of it, this EXIT is no longer being routed.
+                if transition == .exit { await dwellCoordinator?.exitCallbackRouted(geofenceId: identifier, occurredAt: occurredAt) }
 
                 await dispatchFollowUp(
                     outcome: outcome, coordinator: coordinator,

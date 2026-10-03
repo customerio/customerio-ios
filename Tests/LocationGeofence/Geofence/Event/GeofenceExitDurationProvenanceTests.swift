@@ -27,6 +27,17 @@ struct GeofenceExitDurationProvenanceTests {
         transitionTypes: [.enter, .exit], lastUpdated: Date(timeIntervalSince1970: 1),
         dwellThresholdSeconds: 600
     )
+    /// Far from the circles; its covering circle's EXIT is the resolver's to judge.
+    private static let polygon = Geofence(
+        id: "polygon", latitude: 5, longitude: 6, radius: 300, name: "polygon",
+        transitionTypes: [.enter, .exit], lastUpdated: Date(timeIntervalSince1970: 1),
+        vertices: [
+            LocationData(latitude: 4.9992, longitude: 5.9992),
+            LocationData(latitude: 4.9992, longitude: 6.0008),
+            LocationData(latitude: 5.0008, longitude: 6.0008),
+            LocationData(latitude: 5.0008, longitude: 5.9992)
+        ]
+    )
 
     // MARK: - Identity
 
@@ -734,6 +745,227 @@ struct GeofenceExitDurationProvenanceTests {
         #expect(Set(known.keys) == Set(marks.map(\.date)))
     }
 
+    // MARK: - EXIT callbacks still being routed
+
+    /// One classic drain delivers ENTER 10, EXIT 20, ENTER 30, EXIT 40 and ENTER 50 to the binder
+    /// before any routing task runs. EXIT 20's callback knew of the ENTER at 10, which shows the
+    /// stay ended at an EXIT the SDK never saw. EXIT 40's callback arrives while EXIT 20 is still
+    /// being routed: it must not discard what EXIT 20 knew, or EXIT 20, routed next, learns only the
+    /// ENTERs at 30 and 50 and times the old visit across the missed EXIT. Same-kind crossings,
+    /// same-kind corrections of an EXIT-only stay that never qualifies, and mixed kinds. Internal
+    /// chronology: the five synchronous calls are those the binder makes in each OS callback; the
+    /// real binder's own schedule is the next test.
+    @Test(arguments: [[true, true, true], [false, false, false], [true, false, true]])
+    func fiveCallbackBurstLeavesTheFirstExitUntimed(crossings: [Bool]) async throws {
+        let files = Files()
+        let process = await Process(files: files)
+        await process.crossing(.enter, Self.exitOnly)
+        let first = try #require(await process.storage.getDwellVisit(geofenceId: Self.exitOnly.id))
+        let start = files.clock.wall
+        files.advance(60)
+        process.dwell.noteEnter(geofenceId: Self.exitOnly.id, occurredAt: start.addingTimeInterval(10), crossing: crossings[0])
+        process.dwell.noteExitCallback(geofenceId: Self.exitOnly.id, occurredAt: start.addingTimeInterval(20))
+        process.dwell.noteEnter(geofenceId: Self.exitOnly.id, occurredAt: start.addingTimeInterval(30), crossing: crossings[1])
+        process.dwell.noteExitCallback(geofenceId: Self.exitOnly.id, occurredAt: start.addingTimeInterval(40))
+        process.dwell.noteEnter(geofenceId: Self.exitOnly.id, occurredAt: start.addingTimeInterval(50), crossing: crossings[2])
+
+        await process.crossing(.exit, Self.exitOnly, at: start.addingTimeInterval(20))
+
+        let row = try #require(await process.exitRows().last)
+        #expect(row.visitId == nil)
+        #expect(row.visitId != first.visitId)
+        #expect(row.enteredAt == nil)
+        #expect(row.visitDurationSeconds == nil)
+    }
+
+    /// The same five callbacks through the real GeofenceMonitorBinder, in one main-actor turn, then
+    /// the routing tasks, re-arms and storage hops in whatever order the executor picks. No EXIT
+    /// row may carry the old visit, and none may report more than the 10 s any later stay can span.
+    @Test
+    func realBinderFiveCallbackBurstNeverTimesTheOldVisit() async throws {
+        let files = Files()
+        let process = await Process(files: files)
+        await process.crossing(.enter, Self.exitOnly)
+        let first = try #require(await process.storage.getDwellVisit(geofenceId: Self.exitOnly.id))
+        let monitor = process.boundMonitor()
+        let start = files.clock.wall
+        files.advance(60)
+
+        let burst: [(TimeInterval, GeofenceTransition)] = [(10, .enter), (20, .exit), (30, .enter), (40, .exit), (50, .enter)]
+        for (offset, transition) in burst {
+            monitor.simulateTransition(
+                identifier: Self.exitOnly.id, transition: transition, location: nil,
+                occurredAt: start.addingTimeInterval(offset)
+            )
+        }
+        await settleQuietly(0.5)
+
+        let rows = await process.exitRows()
+        try #require(rows.count == 2)
+        #expect(rows.allSatisfy { $0.visitId != first.visitId })
+        #expect(rows.allSatisfy { ($0.visitDurationSeconds ?? 0) <= 10 })
+        #expect(
+            process.dwell.exitDuration.entersKnownAtExit[Self.exitOnly.id].map { Set($0.keys) }
+                == Set((process.dwell.exitMarks[Self.exitOnly.id] ?? []).map(\.date))
+        )
+        withExtendedLifetime(monitor) {}
+    }
+
+    /// EXIT callbacks the resolver never turns into a dwell EXIT — a polygon's covering circle when
+    /// the polygon decides nothing, and a fence no longer cached — leave no exit mark and no
+    /// provenance once their routing has finished: nothing accumulates, and no polygon visit is
+    /// ended by a raw covering-circle EXIT.
+    @Test
+    func exitCallbacksTheResolverSuppressesLeaveNothingBehind() async throws {
+        let files = Files()
+        let process = await Process(files: files)
+        let monitor = process.boundMonitor()
+
+        for offset in 1 ... 3 {
+            files.advance(10)
+            for identifier in [Self.polygon.id, "uncached-fence"] {
+                monitor.simulateTransition(
+                    identifier: identifier, transition: .exit, location: nil, occurredAt: files.clock.wall.addingTimeInterval(-Double(offset))
+                )
+            }
+        }
+        await settleQuietly(0.5)
+
+        for identifier in [Self.polygon.id, "uncached-fence"] {
+            #expect(process.dwell.exitMarks[identifier]?.isEmpty ?? true)
+            #expect(process.dwell.exitDuration.entersKnownAtExit[identifier]?.isEmpty ?? true)
+        }
+        #expect(await process.exitRows().allSatisfy { $0.visitDurationSeconds == nil })
+        withExtendedLifetime(monitor) {}
+    }
+
+    // MARK: - Ambiguous boots
+
+    /// A stay whose dwell is emitted, or reserved, survives into a process that cannot prove it is
+    /// on the same boot: the wall clock was set forward or back (and `kern.boottime` with it), or
+    /// the boot time is unreadable. The visit stays as the marker of its dwell, with its id and its
+    /// reservation, but nothing is measured across the boot: its EXIT reports no entry or duration.
+    @Test(arguments: [0, 1, 2], [true, false])
+    func qualifiedStayAcrossAnAmbiguousBootKeepsItsFactsAndItsExitIsUntimed(boot: Int, emitted: Bool) async throws {
+        let files = Files()
+        var process = await Process(files: files)
+        let visit = try await process.qualifiedDwellCircleStay(emitted: emitted)
+        switch boot {
+        case 0: files.stepWallAndBoot(3600)
+        case 1: files.stepWallAndBoot(-3600)
+        default: files.bootTimeUnreadable()
+        }
+        files.advance(60)
+
+        process = await Process(files: files)
+        await process.dwell.revalidateVisits()
+        let kept = try #require(await process.storage.getDwellVisit(geofenceId: Self.dwellCircle.id))
+        await process.crossing(.exit, Self.dwellCircle)
+
+        #expect(kept.visitId == visit.visitId)
+        #expect(kept.emitted == visit.emitted)
+        #expect(kept.dwellReservation == visit.dwellReservation)
+        let row = try #require(await process.exitRows().last)
+        #expect(row.visitId == nil)
+        #expect(row.enteredAt == nil)
+        #expect(row.visitDurationSeconds == nil)
+        #expect(await process.storage.getDwellVisit(geofenceId: Self.dwellCircle.id) == nil)
+        process.dwell.cancelEvidence(for: Self.dwellCircle.id)
+    }
+
+    /// Control: a restart on the same boot, with nothing interrupting the stay, still times its
+    /// EXIT — here zero whole seconds, which is a measured duration.
+    @Test
+    func sameBootRestartStillTimesAZeroSecondStay() async throws {
+        let files = Files()
+        var process = await Process(files: files)
+        files.advance(0.2)
+        let entry = files.clock.wall
+        await process.crossing(.enter, Self.exitOnly)
+        let visit = try #require(await process.storage.getDwellVisit(geofenceId: Self.exitOnly.id))
+        files.advance(0.5)
+
+        process = await Process(files: files)
+        await process.crossing(.exit, Self.exitOnly)
+
+        let row = try #require(await process.exitRows().last)
+        #expect(row.visitId == visit.visitId)
+        #expect(row.enteredAt.map { Int($0.timeIntervalSince1970) } == Int(entry.timeIntervalSince1970))
+        #expect(row.visitDurationSeconds == 0)
+    }
+
+    /// A known reboot — uptime behind the record — ends even an emitted stay; its EXIT is untimed,
+    /// and the next stay, entered and left by native crossings, measures its own pair.
+    @Test
+    func knownRebootEndsAQualifiedStayAndTheNextNativeStayIsTimed() async throws {
+        let files = Files()
+        var process = await Process(files: files)
+        let visit = try await process.qualifiedDwellCircleStay(emitted: true)
+        files.reboot()
+
+        process = await Process(files: files)
+        await process.crossing(.exit, Self.dwellCircle)
+        let untimed = try #require(await process.exitRows().last)
+        files.advance(60)
+        let reentry = files.clock.wall
+        await process.crossing(.enter, Self.dwellCircle)
+        files.advance(90)
+        await process.crossing(.exit, Self.dwellCircle)
+
+        #expect(untimed.visitId == nil)
+        #expect(untimed.visitDurationSeconds == nil)
+        let row = try #require(await process.exitRows().last)
+        #expect(row.visitId != visit.visitId)
+        #expect(row.enteredAt.map { Int($0.timeIntervalSince1970) } == Int(reentry.timeIntervalSince1970))
+        #expect(row.visitDurationSeconds == 90)
+        process.dwell.cancelEvidence(for: Self.dwellCircle.id)
+    }
+
+    /// The marker kept across an ambiguous boot is released by a native crossing — the device
+    /// arrived again after an EXIT the SDK missed — and the next stay measures its own pair. The
+    /// marker's dwell is not repeated.
+    @Test
+    func crossingAfterAnAmbiguousBootReleasesTheMarkerAndTimesItsOwnStay() async throws {
+        let files = Files()
+        var process = await Process(files: files)
+        let visit = try await process.qualifiedDwellCircleStay(emitted: true)
+        files.stepWallAndBoot(3600)
+        files.advance(60)
+
+        process = await Process(files: files)
+        let reentry = files.clock.wall
+        await process.crossing(.enter, Self.dwellCircle)
+        let released = try #require(await process.storage.getDwellVisit(geofenceId: Self.dwellCircle.id))
+        files.advance(90)
+        await process.crossing(.exit, Self.dwellCircle)
+
+        #expect(released.visitId != visit.visitId)
+        let row = try #require(await process.exitRows().last)
+        #expect(row.visitId == released.visitId)
+        #expect(row.enteredAt.map { Int($0.timeIntervalSince1970) } == Int(reentry.timeIntervalSince1970))
+        #expect(row.visitDurationSeconds == 90)
+        #expect(await process.rows(.dwell).count == 1)
+        process.dwell.cancelEvidence(for: Self.dwellCircle.id)
+    }
+
+    /// A stay not yet qualified keeps nothing across an ambiguous boot: none of its time counts,
+    /// so its EXIT cannot report the old duration.
+    @Test(arguments: [3600.0, -3600.0])
+    func unqualifiedStayAcrossAnAmbiguousBootReportsNoOldDuration(step: TimeInterval) async throws {
+        let files = Files()
+        var process = await Process(files: files)
+        await process.crossing(.enter, Self.exitOnly)
+        files.advance(600)
+        files.stepWallAndBoot(step)
+
+        process = await Process(files: files)
+        await process.crossing(.exit, Self.exitOnly)
+
+        let row = try #require(await process.exitRows().last)
+        #expect(row.visitId == nil)
+        #expect(row.visitDurationSeconds == nil)
+    }
+
     // MARK: - First clock reading
 
     /// A cold wake handles an ENTER the OS dated before this process's first clock reading. With no
@@ -802,6 +1034,25 @@ struct GeofenceExitDurationProvenanceTests {
             clock.advance(seconds)
             dateUtil.givenNow = clock.wall
         }
+
+        /// The wall clock is set by `seconds`. XNU moves `kern.boottime` with it, so the next
+        /// process reads a boot time `seconds` away: the same boot, but not provably so.
+        func stepWallAndBoot(_ seconds: TimeInterval) {
+            clock.stepWall(seconds)
+            clock.boot = GeofenceBootIdentity(bootTime: (clock.boot.bootTime ?? 0) + seconds, processToken: nil)
+            dateUtil.givenNow = clock.wall
+        }
+
+        /// The next process cannot read the boot time, so it knows its boot only by its own token.
+        func bootTimeUnreadable() {
+            clock.boot = GeofenceBootIdentity(bootTime: nil, processToken: UUID().uuidString)
+        }
+
+        /// The device restarts: uptime starts over, behind every earlier record.
+        func reboot() {
+            clock.reboot(secondsLater: 60, uptimeAfterBoot: 30)
+            dateUtil.givenNow = clock.wall
+        }
     }
 
     /// What a process builds at launch from those files.
@@ -825,7 +1076,10 @@ struct GeofenceExitDurationProvenanceTests {
                 files.seeded = true
                 contextStore.setUserId("user-a")
                 contextStore.setCdpApiKey("cdp-key")
-                let fences = [GeofenceExitDurationProvenanceTests.exitOnly, GeofenceExitDurationProvenanceTests.dwellCircle]
+                let fences = [
+                    GeofenceExitDurationProvenanceTests.exitOnly, GeofenceExitDurationProvenanceTests.dwellCircle,
+                    GeofenceExitDurationProvenanceTests.polygon
+                ]
                 await storage.setCachedGeofences(fences)
                 await storage.recordRegistration(center: LocationData(latitude: 0, longitude: 0), businessIds: Set(fences.map(\.id)))
             }
@@ -874,6 +1128,30 @@ struct GeofenceExitDurationProvenanceTests {
                 identifier: geofence.id, transition: transition, occurredAt: date ?? files.clock.wall,
                 receivedForUserId: userId ?? contextStore.currentUserId ?? "", crossingObserved: crossingObserved
             )
+        }
+
+        /// A stay on the dwell circle entered by a native crossing, then 600 s later either emitted
+        /// by inside evidence or left with a reservation never queued — a failed outbox write.
+        /// Evidence scheduling is cancelled, as the process that recorded it is about to die.
+        func qualifiedDwellCircleStay(emitted: Bool) async throws -> GeofenceDwellVisit {
+            let circle = GeofenceExitDurationProvenanceTests.dwellCircle
+            let entry = files.clock.wall
+            await crossing(.enter, circle)
+            let visit = try #require(await storage.getDwellVisit(geofenceId: circle.id))
+            files.advance(600)
+            if emitted {
+                await dwell.recordInsideEvidence(geofence: circle, at: files.clock.wall, source: "location_evidence")
+                try #require(await rows(.dwell).count == 1)
+            } else {
+                let reservation = GeofenceDwellReservation(
+                    occurredAtEpochMilliseconds: Int64(files.clock.wall.timeIntervalSince1970 * 1000),
+                    enteredAtEpochMilliseconds: Int64(entry.timeIntervalSince1970 * 1000), durationSeconds: 600,
+                    thresholdSeconds: 600, detectionSource: "location_evidence"
+                )
+                try #require(await storage.reserveDwellEmission(reservation, for: visit, geofenceId: circle.id) == .reserved(reservation))
+            }
+            dwell.cancelEvidence(for: circle.id)
+            return try #require(await storage.getDwellVisit(geofenceId: circle.id))
         }
 
         /// A mock monitor bound through the real GeofenceMonitorBinder to this process's resolver
