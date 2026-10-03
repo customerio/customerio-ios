@@ -47,6 +47,18 @@ struct GeofenceExitMark: Equatable {
         return processedUptime > timing.recordedUptime
     }
 
+    /// For a native ENTER already noted: whether it ends every visit `other` would, so `other`
+    /// need not replace it. On one wall-clock timeline the later date is the later crossing,
+    /// whichever was processed last — an older ENTER's routing re-notes it after a later ENTER's
+    /// callback did. Across a step the dates do not order, so this one stays only if it was both
+    /// processed and dated no earlier.
+    func outranksEnter(_ other: GeofenceExitMark) -> Bool {
+        if abs(wallOffset - other.wallOffset) <= GeofenceConstants.dwellWallClockStepTolerance {
+            return mappedUptime >= other.mappedUptime
+        }
+        return processedUptime >= other.processedUptime && mappedUptime >= other.mappedUptime
+    }
+
     /// Whether this mark overtakes every visit `other` does, which `other` then adds nothing to.
     /// Only on the same timeline: across a step, neither mark's dates order against the other's.
     func subsumes(_ other: GeofenceExitMark) -> Bool {
@@ -104,8 +116,7 @@ extension GeofenceDwellCoordinator {
     func noteEnter(_ mark: GeofenceExitMark, geofenceId: String, crossing: Bool) {
         let slot: WritableKeyPath<GeofenceEnterMarks, GeofenceExitMark?> = crossing ? \.crossing : \.correction
         var marks = enterMarks[geofenceId] ?? GeofenceEnterMarks()
-        if let noted = marks[keyPath: slot], noted.processedUptime >= mark.processedUptime,
-           noted.mappedUptime >= mark.mappedUptime { return }
+        if let noted = marks[keyPath: slot], noted.outranksEnter(mark) { return }
         marks[keyPath: slot] = mark
         enterMarks[geofenceId] = marks
     }
