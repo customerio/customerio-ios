@@ -37,6 +37,11 @@ struct GeofenceDwellVisit: Codable, Equatable, Sendable {
     /// dwell sends exactly this, so a retry after a failed `emitted` write or a relaunch repeats
     /// the first attempt's row rather than describing a later instant under the same visit id.
     var dwellReservation: GeofenceDwellReservation?
+    /// The monotonic timeline and boot the entry was recorded on. Nil on visits persisted before
+    /// the field: nothing says which boot they began on, so they support no dwell.
+    let timing: GeofenceVisitTiming?
+    /// The location access in force when the visit was recorded; nil when unknown.
+    var locationAccess: GeofenceLocationAccess?
 }
 
 /// A dwell occurrence, stored as integer epoch milliseconds so a disk round trip cannot move it: a
@@ -62,7 +67,8 @@ struct GeofenceDwellReservation: Codable, Equatable, Sendable {
 
 extension GeofenceDwellVisit {
     /// Custom decode so visits persisted before `entryObserved` still decode; those were only ever
-    /// started from an observed entry. Visits persisted before `dwellReservation` hold none.
+    /// started from an observed entry. Visits persisted before `dwellReservation`, `timing` or
+    /// `locationAccess` hold none.
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         self.visitId = try container.decode(String.self, forKey: .visitId)
@@ -72,6 +78,8 @@ extension GeofenceDwellVisit {
         self.emitted = try container.decode(Bool.self, forKey: .emitted)
         self.entryObserved = try container.decodeIfPresent(Bool.self, forKey: .entryObserved) ?? true
         self.dwellReservation = try container.decodeIfPresent(GeofenceDwellReservation.self, forKey: .dwellReservation)
+        self.timing = try container.decodeIfPresent(GeofenceVisitTiming.self, forKey: .timing)
+        self.locationAccess = try container.decodeIfPresent(GeofenceLocationAccess.self, forKey: .locationAccess)
     }
 }
 

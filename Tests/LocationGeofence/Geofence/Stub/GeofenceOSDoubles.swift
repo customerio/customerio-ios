@@ -139,6 +139,8 @@ final class FakeConditionMonitor: GeofenceConditionMonitoring {
 final class FakeLocationAuthority: GeofenceLocationAuthority {
     var authorizationStatus: CLAuthorizationStatus = .authorizedAlways
 
+    var isFullAccuracy = true
+
     /// Large enough that clamping never fires.
     var maximumRegionMonitoringDistance: CLLocationDistance = 100000
 
@@ -165,8 +167,14 @@ final class FakeLocationAuthority: GeofenceLocationAuthority {
         onAuthorizationChange?()
     }
 
+    func setFullAccuracy(_ fullAccuracy: Bool) {
+        isFullAccuracy = fullAccuracy
+        onAuthorizationChange?()
+    }
+
     func reset() {
         authorizationStatus = .authorizedAlways
+        isFullAccuracy = true
         cacheReadCount = 0
         isHoldingServiceSession = false
     }

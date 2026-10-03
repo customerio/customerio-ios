@@ -12,8 +12,10 @@ enum GeofenceMonitorBinder {
         dwellCoordinator: GeofenceDwellCoordinator? = nil,
         backgroundTaskRunner: BackgroundTaskRunner = GeofenceBackgroundTime.runner(name: "io.customer.geofence.movement-pass")
     ) {
-        monitor.setOnMonitoringInterrupted { geofenceId in
-            Task { await dwellCoordinator?.invalidateContinuity(geofenceId: geofenceId) }
+        // Dated here, synchronously: a visit entered before the removal task runs is not one the
+        // loss interrupted.
+        monitor.setOnMonitoringInterrupted { [weak dwellCoordinator] geofenceId in
+            dwellCoordinator?.interruptContinuity(geofenceId: geofenceId)
         }
         monitor.setOnTransition { [weak resolver, weak coordinator, weak dwellCoordinator] identifier, transition, location, occurredAt, locationIsFresh, eventCircle, entryObserved in
             rearmDwellEvidence(dwellCoordinator)

@@ -277,7 +277,8 @@ struct PolygonMembershipResolverTests {
         logger: LoggerMock = LoggerMock(),
         contextStore: BackgroundDeliveryContextStore? = nil,
         onFixDelivered: (@Sendable () -> Void)? = nil,
-        withDwellCoordinator: Bool = false
+        withDwellCoordinator: Bool = false,
+        dwellClock: GeofenceClock = SystemGeofenceClock()
     ) async -> Setup {
         // Own centre: a `willEnterForeground` on the default one reaches every other test's resolver.
         let notificationCenter = NotificationCenter()
@@ -307,7 +308,8 @@ struct PolygonMembershipResolverTests {
             transitionEmitter: emitter,
             contextStore: contextStore,
             logger: logger,
-            notificationCenter: notificationCenter
+            notificationCenter: notificationCenter,
+            clock: dwellClock
         ) : nil
         return Setup(
             resolver: PolygonMembershipResolver(
@@ -1413,12 +1415,14 @@ struct PolygonMembershipResolverTests {
     /// and the stay still qualifies a DWELL, but that DWELL reports no `enteredAt` or duration.
     @Test
     func apply_givenFirstVerdictInside_expectEnterAndDwellWithoutEnteredAtOrDuration() async {
-        let setup = await makeSetup(fix: nil, withDwellCoordinator: true)
+        let discovered = Date(timeIntervalSince1970: 1000)
+        let dwellClock = ManualGeofenceClock(wall: discovered)
+        let setup = await makeSetup(fix: nil, withDwellCoordinator: true, dwellClock: dwellClock)
         let geofence = polygonGeofence(dwellThresholdSeconds: 60)
         await setup.storage.setCachedGeofences([geofence])
-        let discovered = Date(timeIntervalSince1970: 1000)
 
         await setup.resolver.apply(.inside, to: geofence, evidence: discovered, confirmedByFix: true)
+        dwellClock.advance(to: discovered.addingTimeInterval(120))
         await setup.resolver.apply(
             .inside, to: geofence, evidence: discovered.addingTimeInterval(120), confirmedByFix: true
         )
@@ -1436,10 +1440,11 @@ struct PolygonMembershipResolverTests {
     /// begins is discovered, so its DWELL reports no `enteredAt` or duration.
     @Test
     func apply_givenOutsideTheReplacedRingThenInsideTheNewOne_expectEnterAndDwellWithoutEnteredAtOrDuration() async {
-        let setup = await makeSetup(fix: nil, withDwellCoordinator: true)
+        let entry = Date(timeIntervalSince1970: 1000)
+        let dwellClock = ManualGeofenceClock(wall: entry.addingTimeInterval(-60))
+        let setup = await makeSetup(fix: nil, withDwellCoordinator: true, dwellClock: dwellClock)
         let original = polygonGeofence(dwellThresholdSeconds: 60)
         await setup.storage.setCachedGeofences([original])
-        let entry = Date(timeIntervalSince1970: 1000)
         await setup.resolver.apply(
             .outside, to: original, evidence: entry.addingTimeInterval(-60), confirmedByFix: true
         )
@@ -1451,9 +1456,11 @@ struct PolygonMembershipResolverTests {
         )
         await setup.storage.setCachedGeofences([replacement])
 
+        dwellClock.advance(to: entry)
         await setup.resolver.apply(
             .inside, to: replacement, evidence: entry, confirmedByFix: true, evaluatedRing: shifted
         )
+        dwellClock.advance(to: entry.addingTimeInterval(120))
         await setup.resolver.apply(
             .inside, to: replacement, evidence: entry.addingTimeInterval(120), confirmedByFix: true,
             evaluatedRing: shifted
@@ -1471,15 +1478,18 @@ struct PolygonMembershipResolverTests {
     /// and its DWELL carries the observed entry and the time since it.
     @Test
     func apply_givenOutsideThenInsideOnTheSameRing_expectDwellCarriesObservedEntryAndDuration() async {
-        let setup = await makeSetup(fix: nil, withDwellCoordinator: true)
+        let entry = Date(timeIntervalSince1970: 1000)
+        let dwellClock = ManualGeofenceClock(wall: entry.addingTimeInterval(-60))
+        let setup = await makeSetup(fix: nil, withDwellCoordinator: true, dwellClock: dwellClock)
         let geofence = polygonGeofence(dwellThresholdSeconds: 60)
         await setup.storage.setCachedGeofences([geofence])
-        let entry = Date(timeIntervalSince1970: 1000)
 
         await setup.resolver.apply(
             .outside, to: geofence, evidence: entry.addingTimeInterval(-60), confirmedByFix: true
         )
+        dwellClock.advance(to: entry)
         await setup.resolver.apply(.inside, to: geofence, evidence: entry, confirmedByFix: true)
+        dwellClock.advance(to: entry.addingTimeInterval(120))
         await setup.resolver.apply(
             .inside, to: geofence, evidence: entry.addingTimeInterval(120), confirmedByFix: true
         )
@@ -1500,15 +1510,18 @@ struct PolygonMembershipResolverTests {
     /// `enteredAt` or duration — the stale proof must not date the entry to the inside fix.
     @Test
     func apply_givenStaleOutsideThenInsideOnTheSameRing_expectEnterAndDwellWithoutEnteredAtOrDuration() async {
-        let setup = await makeSetup(fix: nil, withDwellCoordinator: true)
+        let entry = Date(timeIntervalSince1970: 100000)
+        let dwellClock = ManualGeofenceClock(wall: entry.addingTimeInterval(-3 * 60 * 60))
+        let setup = await makeSetup(fix: nil, withDwellCoordinator: true, dwellClock: dwellClock)
         let geofence = polygonGeofence(dwellThresholdSeconds: 60)
         await setup.storage.setCachedGeofences([geofence])
-        let entry = Date(timeIntervalSince1970: 100000)
 
         await setup.resolver.apply(
             .outside, to: geofence, evidence: entry.addingTimeInterval(-3 * 60 * 60), confirmedByFix: true
         )
+        dwellClock.advance(to: entry)
         await setup.resolver.apply(.inside, to: geofence, evidence: entry, confirmedByFix: true)
+        dwellClock.advance(to: entry.addingTimeInterval(120))
         await setup.resolver.apply(
             .inside, to: geofence, evidence: entry.addingTimeInterval(120), confirmedByFix: true
         )
@@ -1528,18 +1541,22 @@ struct PolygonMembershipResolverTests {
     /// held belief — makes the entry observed again, and its payload is dated from the inside fix.
     @Test
     func apply_givenStaleOutsideReconfirmedBeforeInside_expectDwellCarriesObservedEntryAndDuration() async {
-        let setup = await makeSetup(fix: nil, withDwellCoordinator: true)
+        let entry = Date(timeIntervalSince1970: 100000)
+        let dwellClock = ManualGeofenceClock(wall: entry.addingTimeInterval(-3 * 60 * 60))
+        let setup = await makeSetup(fix: nil, withDwellCoordinator: true, dwellClock: dwellClock)
         let geofence = polygonGeofence(dwellThresholdSeconds: 60)
         await setup.storage.setCachedGeofences([geofence])
-        let entry = Date(timeIntervalSince1970: 100000)
 
         await setup.resolver.apply(
             .outside, to: geofence, evidence: entry.addingTimeInterval(-3 * 60 * 60), confirmedByFix: true
         )
+        dwellClock.advance(to: entry.addingTimeInterval(-15))
         await setup.resolver.apply(
             .outside, to: geofence, evidence: entry.addingTimeInterval(-15), confirmedByFix: true
         )
+        dwellClock.advance(to: entry)
         await setup.resolver.apply(.inside, to: geofence, evidence: entry, confirmedByFix: true)
+        dwellClock.advance(to: entry.addingTimeInterval(120))
         await setup.resolver.apply(
             .inside, to: geofence, evidence: entry.addingTimeInterval(120), confirmedByFix: true
         )

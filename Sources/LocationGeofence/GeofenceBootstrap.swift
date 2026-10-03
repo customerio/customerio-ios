@@ -54,8 +54,9 @@ enum GeofenceBootstrap {
         installRerunHandlers(di: di, monitor: monitor, coordinator: coordinator)
 
         // Adopt only the COMPLETE set; a partial overlap re-registers so missing geofences return.
-        // Fences the OS stopped monitoring since last session; their visits lost continuity.
-        var droppedBusinessRegions: Set<String> = []
+        // Fences the OS stopped monitoring since last session; their visits lost continuity, dated
+        // here, before registering, so the initial ENTER a re-register synthesizes is not caught.
+        var droppedBusinessRegions: [String: GeofenceClockReading] = [:]
         if di.backgroundDeliveryContextStore.currentUserId != userId {
             // Identity changed during the reads: adopting now could resurrect regions a sign-out
             // reset just removed. The next identify registers instead.
@@ -64,7 +65,10 @@ enum GeofenceBootstrap {
             monitor.adoptExistingRegions(matching: expectedOwnedRegions, records: monitorRecords)
         } else {
             // Read before registering, which re-adds them.
-            droppedBusinessRegions = lastRegisteredBusinessIds.subtracting(monitor.osMonitoredRegionIdentifiers)
+            let dropped = lastRegisteredBusinessIds.subtracting(monitor.osMonitoredRegionIdentifiers)
+            for geofenceId in dropped {
+                droppedBusinessRegions[geofenceId] = di.geofenceDwellCoordinator.continuityLost(geofenceId: geofenceId)
+            }
             let registration = coordinator.applyCachedRegistration(
                 cachedRegions: cachedRegions,
                 anchor: restoreAnchor,
@@ -89,21 +93,24 @@ enum GeofenceBootstrap {
     }
 
     /// Drops the visits of fences the OS stopped monitoring, then re-arms the deadlines of the
-    /// rest. Launched, not awaited: dwell is best-effort bookkeeping, and every await it adds to
-    /// the run chain delays the rest of setup — and every later setup queued behind it — by storage
-    /// round trips, which is the window a sign-out or a queued crossing lands in. Chained so two
-    /// setups' invalidate-then-resume pairs cannot interleave.
+    /// rest. The resume validates every visit it re-arms, adopted or re-registered: iOS reports no
+    /// reboot, and an adopted region raises nothing for a device back in its stored state, so a
+    /// visit from an earlier boot or under since-reduced location access is dropped there.
+    /// Launched, not awaited: dwell is best-effort bookkeeping, and every await it adds to the run
+    /// chain delays the rest of setup — and every later setup queued behind it — by storage round
+    /// trips, which is the window a sign-out or a queued crossing lands in. Chained so two setups'
+    /// invalidate-then-resume pairs cannot interleave.
     private static func reconcileDwellContinuity(
         di: DIGraphShared,
-        droppedGeofenceIds: Set<String>,
+        droppedGeofenceIds: [String: GeofenceClockReading],
         cachedRegions: [Geofence]
     ) {
         let dwellCoordinator = di.geofenceDwellCoordinator
         let previous = lastDwellReconcile
         lastDwellReconcile = Task { @MainActor in
             await previous?.value
-            for geofenceId in droppedGeofenceIds {
-                await dwellCoordinator.invalidateContinuity(geofenceId: geofenceId)
+            for (geofenceId, lostAt) in droppedGeofenceIds {
+                await dwellCoordinator.invalidateContinuity(geofenceId: geofenceId, lostAt: lostAt)
             }
             await dwellCoordinator.resumePendingVisits(geofences: cachedRegions)
         }

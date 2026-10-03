@@ -163,7 +163,8 @@ final class ReplayHarness {
             transitionEmitter: tracker,
             contextStore: contextStore,
             logger: logger,
-            freshFixProvider: { [weak self] in self?.fixes.currentPosition() }
+            freshFixProvider: { [weak self] in self?.fixes.currentPosition() },
+            clock: DateUtilGeofenceClock(dateUtil: clock)
         )
 
         resolver = makePolygonResolver()

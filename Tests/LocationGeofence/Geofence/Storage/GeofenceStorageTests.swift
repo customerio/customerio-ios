@@ -514,7 +514,7 @@ struct GeofenceStorageTests {
                 enteredAt: Date(timeIntervalSince1970: 100),
                 geometryRevision: geofence.dwellRevision,
                 userId: "user-1",
-                emitted: false
+                emitted: false, timing: nil
             ),
             geofenceId: geofence.id
         ))
@@ -562,7 +562,8 @@ struct GeofenceStorageTests {
                 geometryRevision: geofence.dwellRevision,
                 userId: "user-1",
                 emitted: false,
-                entryObserved: false
+                entryObserved: false,
+                timing: nil
             ),
             geofenceId: geofence.id
         ))
@@ -588,7 +589,7 @@ struct GeofenceStorageTests {
                 enteredAt: Date(timeIntervalSince1970: 100),
                 geometryRevision: geofence.dwellRevision,
                 userId: "user-1",
-                emitted: false
+                emitted: false, timing: nil
             ),
             geofenceId: geofence.id
         )
@@ -622,7 +623,7 @@ struct GeofenceStorageTests {
                 enteredAt: Date(timeIntervalSince1970: 100),
                 geometryRevision: first.dwellRevision,
                 userId: "user-1",
-                emitted: false
+                emitted: false, timing: nil
             ),
             geofenceId: first.id
         ))
@@ -652,7 +653,7 @@ struct GeofenceStorageTests {
                 enteredAt: Date(timeIntervalSince1970: 50),
                 geometryRevision: geofence.dwellRevision,
                 userId: "user-1",
-                emitted: false
+                emitted: false, timing: nil
             ),
             geofenceId: geofence.id
         ))
@@ -838,6 +839,60 @@ struct GeofenceStorageTests {
         await storage.recordMonitorRegistration(identifier: "geo_1", transitionTypes: [.enter, .exit], initialState: .exit, center: center, radius: 100, now: eventAt.addingTimeInterval(-600))
         #expect(await storage.recordMonitorEvent(.exit, forIdentifier: "geo_1", osEventDate: eventAt) == .suppressedNoChange)
         #expect(await storage.recordMonitorEvent(.exit, forIdentifier: "geo_1", osEventDate: eventAt) == .suppressedRedelivery)
+    }
+
+    /// The wall clock is set back an hour after an ENTER. Every stamp the record holds is then in
+    /// the future, and a genuine EXIT dated on the corrected clock must not be refused as a
+    /// redelivery, as predating registration, or as older than the baseline.
+    @Test
+    func recordMonitorTransition_givenWallClockSetBackSinceTheLastEvent_expectNewCrossingDelivered() async {
+        let dir = makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let clock = DateUtilStub()
+        let registeredAt = Date(timeIntervalSince1970: 1789215000)
+        clock.givenNow = registeredAt
+        let storage = GeofenceStorage(fileManager: .default, directoryURL: dir, dateUtil: clock)
+        await storage.recordMonitorRegistration(
+            identifier: "geo_1", transitionTypes: [.enter, .exit], initialState: .exit,
+            center: LocationData(latitude: 10, longitude: 20), radius: 100
+        )
+        let enteredAt = registeredAt.addingTimeInterval(60)
+        clock.givenNow = enteredAt
+        #expect(await storage.recordMonitorEvent(
+            .enter, forIdentifier: "geo_1", onlyIfBaselinePredates: enteredAt, osEventDate: enteredAt, now: enteredAt
+        ) == .deliver)
+
+        let exitedAt = enteredAt.addingTimeInterval(600 - 3600)
+        clock.givenNow = exitedAt
+        #expect(await storage.recordMonitorEvent(
+            .exit, forIdentifier: "geo_1", onlyIfBaselinePredates: exitedAt, osEventDate: exitedAt, now: exitedAt
+        ) == .deliver)
+        // Ordering resumes on the corrected clock: a copy of that EXIT is still a redelivery.
+        #expect(await storage.recordMonitorEvent(
+            .exit, forIdentifier: "geo_1", onlyIfBaselinePredates: exitedAt, osEventDate: exitedAt, now: exitedAt
+        ) == .suppressedRedelivery)
+    }
+
+    /// A copy of an event from before the clock was set back is dated in that same future, so it
+    /// is still ordered against the stamps it left behind.
+    @Test
+    func recordMonitorTransition_givenCopyFromBeforeTheClockWasSetBack_expectStillRedelivered() async {
+        let dir = makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let clock = DateUtilStub()
+        let registeredAt = Date(timeIntervalSince1970: 1789215000)
+        clock.givenNow = registeredAt
+        let storage = GeofenceStorage(fileManager: .default, directoryURL: dir, dateUtil: clock)
+        await storage.recordMonitorRegistration(
+            identifier: "geo_1", transitionTypes: [.enter, .exit], initialState: .exit,
+            center: LocationData(latitude: 10, longitude: 20), radius: 100
+        )
+        let exitedAt = registeredAt.addingTimeInterval(30)
+        let enteredAt = registeredAt.addingTimeInterval(60)
+        #expect(await storage.recordMonitorEvent(.enter, forIdentifier: "geo_1", osEventDate: enteredAt, now: enteredAt) == .deliver)
+
+        clock.givenNow = enteredAt.addingTimeInterval(-3600)
+        #expect(await storage.recordMonitorEvent(.exit, forIdentifier: "geo_1", osEventDate: exitedAt, now: exitedAt) == .suppressedRedelivery)
     }
 
     @Test

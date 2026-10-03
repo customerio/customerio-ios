@@ -3004,7 +3004,7 @@ struct GeofenceSyncCoordinatorTests {
         for fence in fences {
             let visit = GeofenceDwellVisit(
                 visitId: "visit-\(fence.id)", enteredAt: Date(), geometryRevision: fence.dwellRevision,
-                userId: "user-1", emitted: false
+                userId: "user-1", emitted: false, timing: .recorded()
             )
             #expect(await storage.saveDwellVisit(visit, geofenceId: fence.id))
         }

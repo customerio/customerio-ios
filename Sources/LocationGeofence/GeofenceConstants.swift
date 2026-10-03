@@ -59,4 +59,14 @@ enum GeofenceConstants {
     /// real entry could be; an older proof leaves the entry time honestly unknown. Matches Android's
     /// `MAX_OUTSIDE_PROOF_AGE_MS`.
     static let polygonOutsideProofMaxAge: TimeInterval = 2 * 60
+
+    /// How far the wall clock may move against uptime over a visit before a dwell stops reporting
+    /// its wall-clock entry and duration. One second, because the event carries whole seconds: a
+    /// smaller disagreement cannot move a reported duration by more than the truncation already
+    /// in it, and the two clocks are read back to back (`SystemGeofenceClock`), so read skew is
+    /// microseconds. Anything larger is a step the reported fields would carry. Time sync also
+    /// slews the wall clock against uptime by the oscillator's error, ppm-scale, so a stay of many
+    /// hours can cross this without any user change; it then withholds the entry and duration and
+    /// still qualifies on uptime — a conservative cost, not a fabricated span.
+    static let dwellWallClockStepTolerance: TimeInterval = 1
 }

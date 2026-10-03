@@ -127,11 +127,28 @@ extension GeofenceStorage {
         saveToDisk(state)
     }
 
-    func clearDwellVisits() {
+    /// Removes the visits — of one fence, or (nil) every fence — whose continuity spans `loss`:
+    /// entered no later than it, recorded on another boot, or recorded with no timing at all. A
+    /// visit entered after the loss was seen is not one it interrupted, however late this runs.
+    /// - Returns: the removed visit id per fence.
+    @discardableResult
+    func removeDwellVisits(geofenceId: String?, spanning loss: GeofenceClockReading) -> [String: String] {
+        removeDwellVisits { id, visit in
+            (geofenceId == nil || id == geofenceId) && (visit.timing?.spans(loss) ?? true)
+        }
+    }
+
+    /// Removes every visit `matching` selects, in one write.
+    /// - Returns: the removed visit id per fence.
+    @discardableResult
+    func removeDwellVisits(matching: (String, GeofenceDwellVisit) -> Bool) -> [String: String] {
         var state = loadFromDisk() ?? GeofenceState()
-        guard state.dwellVisits != nil else { return }
-        state.dwellVisits = nil
+        guard let visits = state.dwellVisits else { return [:] }
+        let removed = visits.filter { matching($0.key, $0.value) }
+        guard !removed.isEmpty else { return [:] }
+        state.dwellVisits = visits.filter { removed[$0.key] == nil }
         saveToDisk(state)
+        return removed.mapValues(\.visitId)
     }
 
     /// The stored visits that still describe a cached fence: one that still tracks a visit and has

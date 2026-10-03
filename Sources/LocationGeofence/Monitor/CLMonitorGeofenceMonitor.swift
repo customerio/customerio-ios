@@ -25,9 +25,12 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring {
     /// Internal (not private) for the `+Authorization` extension, which fires it.
     var onAuthorizationChanged: GeofenceAuthorizationChangedHandler?
     private var onReconciled: GeofenceReconciledHandler?
-    private var onMonitoringInterrupted: GeofenceMonitoringInterruptedHandler?
+    /// Internal (not private) for the `+Authorization` extension, which fires it on access loss.
+    var onMonitoringInterrupted: GeofenceMonitoringInterruptedHandler?
     /// Internal (not private) for the `+Authorization` extension's tier dedup.
     var lastLoggedPermissionTier: CoreLocationGeofenceMonitor.PermissionTier?
+    /// Internal (not private) for the `+Authorization` extension: only a drop from it interrupts.
+    var lastObservedAccess: GeofenceLocationAccess?
 
     var ownedRegionIdentifiers: Set<String> = []
     var knownConditionIdentifiers: Set<String> = []
@@ -83,6 +86,7 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring {
             dateUtil: dateUtil
         )
         super.init()
+        self.lastObservedAccess = locationAccess
         let mirrored = Set(userDefaults.stringArray(forKey: Self.conditionMirrorKey) ?? [])
         self.knownConditionIdentifiers = mirrored
         // Owned from process start: a cold-wake event must pass the filter before any async work.

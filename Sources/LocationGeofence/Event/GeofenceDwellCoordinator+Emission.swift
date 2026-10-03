@@ -16,8 +16,12 @@ extension GeofenceDwellCoordinator {
         userId: String
     ) async {
         guard geofence.dwellThresholdSeconds > 0, !visit.emitted else { return }
+        // `visit` may be a copy read before a loss its removal has not yet reached. Admission is
+        // judged now; a dwell already admitted goes on to its outbox row, a fact about the stay
+        // before the loss.
+        guard continuityHolds(for: visit, geofenceId: geofence.id) else { return }
         guard let proposed = Self.qualifiedReservation(
-            for: visit, observedAt: observedAt,
+            for: visit, observedAt: observedAt, at: clock.read(),
             thresholdSeconds: geofence.dwellThresholdSeconds, source: source
         ) else { return }
         guard contextStore.currentUserId == userId else { return }
@@ -75,41 +79,47 @@ extension GeofenceDwellCoordinator {
         )
     }
 
+    /// Qualifies on time no wall-clock step can lengthen (`GeofenceVisitElapsed`), judged as the
+    /// evidence is processed at `reading`.
     private static func qualifiedReservation(
         for visit: GeofenceDwellVisit,
         observedAt: Date,
+        at reading: GeofenceClockReading,
         thresholdSeconds: Int,
         source: String
     ) -> GeofenceDwellReservation? {
         // Already qualified when reserved; later evidence neither re-qualifies nor moves it.
         if let reserved = visit.dwellReservation { return reserved }
-        guard observedAt >= visit.enteredAt,
-              wholeSeconds(from: visit.enteredAt, to: observedAt) >= thresholdSeconds
+        guard let elapsed = visit.timing?.elapsed(enteredAt: visit.enteredAt, until: observedAt, at: reading),
+              elapsed.reaches(thresholdSeconds)
         else { return nil }
         return dwellReservation(
             for: visit, observedAt: observedAt,
-            thresholdSeconds: thresholdSeconds, source: source
+            thresholdSeconds: thresholdSeconds, source: source,
+            reportsEntry: visit.entryObserved && elapsed.wallClockAgrees
         )
     }
 
     /// Fixes the dwell as its event will report it. A candidate's start is its first inside
     /// evidence, not an entry, so neither it nor the time since it is reported — matching Android.
-    /// It still qualifies the dwell.
+    /// Nor is an entry the wall clock has since stepped away from: it is on another timeline than
+    /// the dwell's own timestamp. Either still qualifies the dwell.
     private static func dwellReservation(
         for visit: GeofenceDwellVisit,
         observedAt: Date,
         thresholdSeconds: Int,
-        source: String
+        source: String,
+        reportsEntry: Bool
     ) -> GeofenceDwellReservation {
         let occurredAtMilliseconds = Self.epochMilliseconds(observedAt)
         let enteredAtMilliseconds = Self.epochMilliseconds(visit.enteredAt)
         return GeofenceDwellReservation(
             occurredAtEpochMilliseconds: occurredAtMilliseconds,
-            enteredAtEpochMilliseconds: visit.entryObserved ? enteredAtMilliseconds : nil,
+            enteredAtEpochMilliseconds: reportsEntry ? enteredAtMilliseconds : nil,
             // The difference of the two whole epoch seconds the event carries, so the three agree.
-            // Can be a second more than `wholeSeconds` (100.9 s → 160.1 s reports 60, not 59);
-            // qualifying stays on `wholeSeconds`, the elapsed time actually observed.
-            durationSeconds: visit.entryObserved
+            // Can be a second more than the elapsed time qualifying used (100.9 s → 160.1 s reports
+            // 60, not 59).
+            durationSeconds: reportsEntry
                 ? Int(max(0, occurredAtMilliseconds / 1000 - enteredAtMilliseconds / 1000))
                 : nil,
             thresholdSeconds: thresholdSeconds,
