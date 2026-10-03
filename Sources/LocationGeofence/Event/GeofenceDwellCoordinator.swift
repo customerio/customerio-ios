@@ -21,10 +21,10 @@ final class GeofenceDwellCoordinator {
     /// then qualify a dwell for a stay that had already ended. In memory only: the ENTER whose write
     /// it guards lives in the same process, and dies with it. Internal for `+Chronology`.
     var exitMarks: [String: [GeofenceExitMark]] = [:]
-    /// The latest native ENTER each fence has seen in this process, noted as the OS delivers it,
-    /// before the callback re-arms any evidence. A visit that began before it is not the stay it
-    /// reports. Internal for `+Chronology`.
-    var enterMarks: [String: GeofenceExitMark] = [:]
+    /// The latest native ENTERs each fence has seen in this process, a crossing and a correction,
+    /// noted as the OS delivers them, before the callback re-arms any evidence. A visit one ends is
+    /// not the stay it reports. Internal for `+Chronology`.
+    var enterMarks: [String: GeofenceEnterMarks] = [:]
     /// This coordinator's first clock reading, taken when it was built; the wall offset of its
     /// previous reading, and the uptime it last saw the wall clock step at. Internal for
     /// `+Chronology`.
@@ -132,7 +132,7 @@ final class GeofenceDwellCoordinator {
         // Before the user check and every await: leaving is geometry, whoever is signed in, and an
         // ENTER write already in flight must see it.
         if transition == .exit { recordExit(exitMark, geofenceId: geofence.id) }
-        if transition == .enter, presenceProven { noteEnter(exitMark, geofenceId: geofence.id) }
+        if transition == .enter, presenceProven { noteEnter(exitMark, geofenceId: geofence.id, crossing: entryObserved) }
         if let expectedUserId, contextStore.currentUserId != expectedUserId { return }
         await syncClockReference(reading)
         switch transition {
