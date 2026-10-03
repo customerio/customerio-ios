@@ -23,7 +23,7 @@ extension GeofenceDwellCoordinator {
         }
         // Elapsed as qualifying measures it, so a wall-clock step moves the deadline no more than
         // it moves qualification.
-        let now = clock.read()
+        let now = readClock()
         let elapsed = visit.timing?.elapsed(enteredAt: visit.enteredAt, until: now.wall, at: now)?.qualifyingSeconds ?? 0
         let delay = min(
             TimeInterval(GeofenceDwellLimits.maxThresholdSeconds),
@@ -92,22 +92,18 @@ extension GeofenceDwellCoordinator {
             scheduleEvidenceRetry(for: geofence, visit: remaining)
             return
         }
-        let center = CLLocation(latitude: geofence.latitude, longitude: geofence.longitude)
-        let distance = fix.distance(from: center)
-        // The point alone is not a verdict. Only an accuracy circle wholly inside the region is
-        // qualifying dwell evidence, and only one wholly outside it is evidence of leaving.
-        // Anything between withholds the dwell and leaves teardown to Core Location's real EXIT.
-        guard fix.horizontalAccuracy > 0 else {
+        switch circleVerdict(of: fix, for: geofence) {
+        case .outside:
+            if await !endContinuity(of: remaining, geofence: geofence, observedOutsideAt: fix.timestamp) {
+                scheduleEvidenceRetry(for: geofence, visit: remaining)
+            }
+            return
+        case .undecided:
+            // Teardown is left to Core Location's real EXIT.
             scheduleEvidenceRetry(for: geofence, visit: remaining)
             return
-        }
-        if distance - fix.horizontalAccuracy > geofence.radius {
-            await endContinuity(of: remaining, geofence: geofence, observedOutsideAt: fix.timestamp)
-            return
-        }
-        guard distance + fix.horizontalAccuracy <= geofence.radius else {
-            scheduleEvidenceRetry(for: geofence, visit: remaining)
-            return
+        case .inside:
+            break
         }
         await recordInsideEvidence(
             geofence: geofence,
@@ -121,6 +117,47 @@ extension GeofenceDwellCoordinator {
         await retryIfStillPending(geofence: geofence, visitId: visit.visitId, expectedUserId: expectedUserId)
     }
 
+    /// What a fix proves about a circle. The point alone is not a verdict: only an accuracy circle
+    /// wholly inside the region is qualifying dwell evidence, and only one wholly outside it is
+    /// evidence of leaving. Approximate location blurs the coordinate by design, so under it no fix
+    /// proves leaving.
+    enum CircleFixVerdict {
+        case inside
+        case outside
+        case undecided
+    }
+
+    func circleVerdict(of fix: CLLocation, for geofence: Geofence) -> CircleFixVerdict {
+        guard fix.horizontalAccuracy > 0, CLLocationCoordinate2DIsValid(fix.coordinate) else { return .undecided }
+        let distance = fix.distance(from: CLLocation(latitude: geofence.latitude, longitude: geofence.longitude))
+        if distance + fix.horizontalAccuracy <= geofence.radius { return .inside }
+        guard distance - fix.horizontalAccuracy > geofence.radius,
+              currentLocationAccess()?.fullAccuracy ?? true
+        else { return .undecided }
+        return .outside
+    }
+
+    /// A fix a resolver pass already holds — fresh, or no older than `movementFixMaxAge` — ends
+    /// the visit of every registered circle it is wholly outside, as the dwell deadline's own fix
+    /// does. Core Location stays the authority for the circle's ENTER and EXIT: nothing is
+    /// delivered here, and an excursion it missed only stops this visit continuing across it.
+    func recordOutsideEvidence(fix: CLLocation, expectedUserId: String?) async {
+        guard let userId = contextStore.currentUserId, !userId.isEmpty,
+              expectedUserId == nil || expectedUserId == userId
+        else { return }
+        let registered = await storage.getRegisteredBusinessIds()
+        var judged: Set<String> = []
+        for geofence in await storage.getCachedGeofences()
+            where geofence.vertices == nil && tracksVisit(geofence) && registered.contains(geofence.id) {
+            // The first occurrence of a duplicated id decides, as every cache lookup does.
+            guard judged.insert(geofence.id).inserted,
+                  circleVerdict(of: fix, for: geofence) == .outside,
+                  let visit = await currentVisit(geofence: geofence, userId: userId)
+            else { continue }
+            await endContinuity(of: visit, geofence: geofence, observedOutsideAt: fix.timestamp)
+        }
+    }
+
     /// A fresh fix wholly outside the circle: the SDK saw the device away, so a later return must
     /// not continue this visit into a dwell spanning the absence. Core Location's exit hysteresis
     /// may mean no EXIT and no new ENTER follow, so this stay's unconfirmed dwell is lost; that is
@@ -128,15 +165,15 @@ extension GeofenceDwellCoordinator {
     /// was not observed. Compare-and-remove, so a visit a raced re-entry opened since survives,
     /// and a fix older than the visit says nothing about it. Ordered like an EXIT, so a late copy
     /// of the ENTER that began the visit cannot reopen it from before the absence.
-    private func endContinuity(of visit: GeofenceDwellVisit, geofence: Geofence, observedOutsideAt: Date) async {
-        let fixUptime = GeofenceVisitTiming.uptime(of: observedOutsideAt, at: clock.read())
-        guard let timing = visit.timing, fixUptime >= timing.enteredUptime else {
-            scheduleEvidenceRetry(for: geofence, visit: visit)
-            return
-        }
-        recordExit(geofenceId: geofence.id, atUptime: fixUptime)
+    /// - Returns: whether the fix ended the visit.
+    @discardableResult
+    private func endContinuity(of visit: GeofenceDwellVisit, geofence: Geofence, observedOutsideAt: Date) async -> Bool {
+        let exit = GeofenceExitMark(date: observedOutsideAt, processedAt: readClock())
+        guard exit.overtakes(visit) else { return false }
+        recordExit(exit, geofenceId: geofence.id)
         cancelEvidence(for: geofence.id, ifVisit: visit.visitId)
         await storage.removeDwellVisit(geofenceId: geofence.id, ifStill: visit.visitId)
+        return true
     }
 
     /// After evidence was applied: stop when the visit ended or emitted, retry while it is the
