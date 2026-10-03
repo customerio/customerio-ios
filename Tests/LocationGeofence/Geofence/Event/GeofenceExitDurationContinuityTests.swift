@@ -267,6 +267,68 @@ struct GeofenceExitDurationContinuityTests {
         #expect(finalExit?.durationSeconds == 122)
     }
 
+    /// The boundary flaps: the EXIT ending the first visit is still suspended when a re-entry and a
+    /// second EXIT, both within a second of it, complete. That second EXIT ends the re-entry; it is
+    /// a different EXIT, so it must leave the replaced visit for the EXIT that ended it.
+    @Test
+    func secondExitWithinASecondDoesNotTakeTheReplacedVisitFromItsOwnExit() async throws {
+        let clock = ManualGeofenceClock()
+        let setup = await makeSetup(clock: clock)
+        await setup.coordinator.handleBoundary(geofence: setup.geofence, transition: .enter, occurredAt: clock.wall)
+        let first = try #require(await setup.storage.getDwellVisit(geofenceId: setup.geofence.id))
+        clock.advance(60)
+        let firstExit = clock.wall
+        await setup.coordinator.handleBoundary(
+            geofence: setup.geofence, transition: .exit, occurredAt: firstExit, expectedUserId: "someone-else"
+        )
+        clock.advance(0.4)
+        await setup.coordinator.handleBoundary(geofence: setup.geofence, transition: .enter, occurredAt: clock.wall)
+        let reentry = try #require(await setup.storage.getDwellVisit(geofenceId: setup.geofence.id))
+        clock.advance(0.4)
+
+        let secondExit = await setup.coordinator.handleBoundary(
+            geofence: setup.geofence, transition: .exit, occurredAt: clock.wall
+        )
+        let closed = await setup.coordinator.handleBoundary(
+            geofence: setup.geofence, transition: .exit, occurredAt: firstExit
+        )
+
+        #expect(secondExit?.visitId == reentry.visitId)
+        #expect(closed?.visitId == first.visitId)
+        #expect(closed?.durationSeconds == 60)
+    }
+
+    /// A duplicate delivery of the EXIT, dated at its own receipt a fraction of a second later,
+    /// reads the store after the re-entry: it ended no visit of its own, so it reports none, and
+    /// the replaced visit stays with the EXIT that ended it.
+    @Test
+    func duplicateExitDeliveryDoesNotReportTheReplacedVisit() async throws {
+        let clock = ManualGeofenceClock()
+        let setup = await makeSetup(clock: clock)
+        await setup.coordinator.handleBoundary(geofence: setup.geofence, transition: .enter, occurredAt: clock.wall)
+        let first = try #require(await setup.storage.getDwellVisit(geofenceId: setup.geofence.id))
+        clock.advance(60)
+        let firstExit = clock.wall
+        await setup.coordinator.handleBoundary(
+            geofence: setup.geofence, transition: .exit, occurredAt: firstExit, expectedUserId: "someone-else"
+        )
+        clock.advance(1)
+        let reentry = clock.wall
+        await setup.coordinator.handleBoundary(geofence: setup.geofence, transition: .enter, occurredAt: reentry)
+
+        let duplicate = await setup.coordinator.handleBoundary(
+            geofence: setup.geofence, transition: .exit, occurredAt: firstExit.addingTimeInterval(0.3)
+        )
+        let closed = await setup.coordinator.handleBoundary(
+            geofence: setup.geofence, transition: .exit, occurredAt: firstExit
+        )
+
+        #expect(duplicate == nil)
+        #expect(closed?.visitId == first.visitId)
+        #expect(closed?.durationSeconds == 60)
+        #expect(await setup.storage.getDwellVisit(geofenceId: setup.geofence.id)?.enteredAt == reentry)
+    }
+
     /// The same overlap across an hour's forward step: the replaced visit is still the one the EXIT
     /// ended, but its wall-clock span crosses the step, so it is reported without a duration.
     @Test

@@ -26,12 +26,17 @@ final class GeofenceDwellCoordinator {
     /// began before the loss. Internal for the `+Continuity` extension.
     var continuityLostUptime: [String: TimeInterval] = [:]
     var allContinuityLostUptime: TimeInterval?
+    /// The EXIT event behind `latestExitUptime`: its uptime and its date as delivered. The date
+    /// identifies the event — the same EXIT carries the same one however late or on whatever
+    /// clock it is read — where an uptime placed again at a later reading only approximates it.
+    /// Not set by outside evidence, which records an exit uptime but is no EXIT.
+    private var latestExitEvent: [String: (uptime: TimeInterval, date: Date)] = [:]
     /// A visit an overlapping re-ENTER replaced after seeing the EXIT that ends it, but possibly
-    /// before that EXIT read the store, with that EXIT's uptime. The EXIT still describes this
+    /// before that EXIT read the store, with that EXIT's date. The EXIT still describes this
     /// visit, so it takes its duration from here rather than finding only the newer visit and
     /// reporting none. In memory for the same reason as `latestExitUptime`.
     /// Internal, not private, only because the `+ExitDuration` extension file uses it.
-    var visitsEndedByPendingExit: [String: (visit: GeofenceDwellVisit, exitUptime: TimeInterval)] = [:]
+    var visitsEndedByPendingExit: [String: (visit: GeofenceDwellVisit, exitedAt: Date)] = [:]
     // `internal`, not `private`, only because the `+Evidence` extension file uses them.
     let storage: GeofenceStorage
     let contextStore: BackgroundDeliveryContextStore
@@ -116,7 +121,12 @@ final class GeofenceDwellCoordinator {
         let eventUptime = GeofenceVisitTiming.uptime(of: occurredAt, at: reading)
         // Before the user check and every await: leaving is geometry, whoever is signed in, and an
         // ENTER write already in flight must see it.
-        if transition == .exit { recordExit(geofenceId: geofence.id, atUptime: eventUptime) }
+        if transition == .exit {
+            recordExit(geofenceId: geofence.id, atUptime: eventUptime)
+            if (latestExitEvent[geofence.id]?.uptime ?? -.infinity) < eventUptime {
+                latestExitEvent[geofence.id] = (eventUptime, occurredAt)
+            }
+        }
         if let expectedUserId, contextStore.currentUserId != expectedUserId { return nil }
         switch transition {
         case .enter:
@@ -222,9 +232,10 @@ final class GeofenceDwellCoordinator {
         let visit = makeVisit(geofence: geofence, enteredAt: enteredAt, userId: userId, entryObserved: entryObserved)
         if contextStore.currentUserId == userId,
            await saveNewVisit(visit, geofenceId: geofence.id, replacing: existing?.visitId) {
-            // Only an overtaken visit reaches here, so `latestExitUptime` is the EXIT that ended it.
-            if let existing, let exitUptime = latestExitUptime[geofence.id] {
-                visitsEndedByPendingExit[geofence.id] = (existing, exitUptime)
+            // Only an overtaken visit reaches here, so the latest exit ended it. Kept only when that
+            // exit is an EXIT event, which can still arrive to report the visit.
+            if let existing, let exit = latestExitEvent[geofence.id], exit.uptime == latestExitUptime[geofence.id] {
+                visitsEndedByPendingExit[geofence.id] = (existing, exit.date)
             }
             scheduleDeadline(for: geofence, visit: visit)
         }

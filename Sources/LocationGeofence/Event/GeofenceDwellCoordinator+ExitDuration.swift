@@ -104,22 +104,19 @@ extension GeofenceDwellCoordinator {
         max(0, Int(end.timeIntervalSince1970) - Int(start.timeIntervalSince1970))
     }
 
-    /// Takes the visit an overlapping re-ENTER replaced for exactly this EXIT — the one recorded at
-    /// its uptime — if it still belongs to `userId` and the fence's geometry, and its continuity
-    /// still holds. Consumed, so no other EXIT can report it.
+    /// Takes the visit an overlapping re-ENTER replaced for exactly this EXIT — the one recorded
+    /// with its date — if it still belongs to `userId` and the fence's geometry, and its continuity
+    /// still holds. Consumed, so no other EXIT can report it, and left for its own EXIT by any
+    /// other, however close in time.
     private func takeVisitEndedByPendingExit(
         geofence: Geofence,
         exitedAt: Date,
         processedAt reading: GeofenceClockReading,
         userId: String
     ) -> GeofenceDwellVisit? {
-        let exitUptime = GeofenceVisitTiming.uptime(of: exitedAt, at: reading)
-        // The same EXIT, placed again when read: uptime less wall time since its date, which moves
-        // no more than the two clocks drift apart between the readings.
-        guard let ended = visitsEndedByPendingExit[geofence.id],
-              abs(ended.exitUptime - exitUptime) <= GeofenceConstants.dwellWallClockStepTolerance
-        else { return nil }
+        guard let ended = visitsEndedByPendingExit[geofence.id], ended.exitedAt == exitedAt else { return nil }
         visitsEndedByPendingExit.removeValue(forKey: geofence.id)
+        let exitUptime = GeofenceVisitTiming.uptime(of: exitedAt, at: reading)
         guard ended.visit.userId == userId,
               ended.visit.geometryRevision == geofence.dwellRevision,
               Self.exit(exitedAt, atUptime: exitUptime, processedAt: reading, follows: ended.visit),
