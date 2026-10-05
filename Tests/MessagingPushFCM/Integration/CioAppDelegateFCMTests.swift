@@ -185,6 +185,54 @@ class CioAppDelegateFCMTests: XCTestCase {
         XCTAssertEqual(mockMessagingPush.registerDeviceTokenFCMReceivedArguments, fcmToken)
     }
 
+    func testDidReceiveRegistration_whenCalled_thenWrappedFirebaseServiceDelegateIsCalled() {
+        _ = appDelegateFCM.application(UIApplication.shared, didFinishLaunchingWithOptions: nil)
+
+        mockFirebaseService.simulateRegistration("fid-value")
+
+        XCTAssertEqual(mockFirebaseServiceDelegate.receivedRegistrations, ["fid-value"])
+    }
+
+    func testDidReceiveRegistration_whenCalled_thenInstallationIdIsForwardedToCIO() {
+        _ = appDelegateFCM.application(UIApplication.shared, didFinishLaunchingWithOptions: nil)
+
+        mockFirebaseService.simulateRegistration("fid-value")
+
+        XCTAssertEqual(mockMessagingPush.didReceiveRegistrationCallsCount, 1)
+        XCTAssertEqual(mockMessagingPush.didReceiveRegistrationReceivedArguments?.installationId, "fid-value")
+        XCTAssertFalse(mockFirebaseServiceDelegate.didReceiveRegistrationTokenCalled)
+    }
+
+    func testDidUnregister_whenCalled_thenWrappedDelegateIsCalledAndDeviceIsKept() {
+        _ = appDelegateFCM.application(UIApplication.shared, didFinishLaunchingWithOptions: nil)
+
+        mockFirebaseService.simulateUnregister("fid-value")
+
+        XCTAssertEqual(mockFirebaseServiceDelegate.receivedUnregistrations, ["fid-value"])
+        XCTAssertFalse(mockMessagingPush.deleteDeviceTokenCalled)
+        XCTAssertFalse(mockMessagingPush.registerDeviceTokenFCMCalled)
+        XCTAssertFalse(mockMessagingPush.didReceiveRegistrationCalled)
+        XCTAssertTrue(mockLogger.debugReceivedInvocations.contains {
+            $0.message == "CIO: App unregistered Firebase Installation ID from FCM: fid-value"
+        })
+    }
+
+    func testFirebaseServiceDelegate_whenDelegateHasNoFidSupport_thenFidCallbacksStillReachCIO() {
+        // A delegate written before FID support, e.g. a customer's own
+        class TokenOnlyDelegate: FirebaseServiceDelegate {
+            func didReceiveRegistrationToken(_ token: String?) {}
+        }
+        let tokenOnlyDelegate = TokenOnlyDelegate()
+        mockFirebaseService.delegate = tokenOnlyDelegate
+        _ = appDelegateFCM.application(UIApplication.shared, didFinishLaunchingWithOptions: nil)
+
+        mockFirebaseService.simulateRegistration("fid-value")
+        mockFirebaseService.simulateUnregister("fid-value")
+
+        XCTAssertEqual(mockMessagingPush.didReceiveRegistrationReceivedArguments?.installationId, "fid-value")
+        XCTAssertFalse(mockMessagingPush.deleteDeviceTokenCalled)
+    }
+
     // MARK: - Tests for inherited AppDelegate functionality
 
     func testDidFailToRegisterForRemoteNotifications_whenCalled_thenSuperIsCalled() {
