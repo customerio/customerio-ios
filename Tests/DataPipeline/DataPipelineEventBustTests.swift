@@ -170,6 +170,22 @@ class DataPipelineEventBustTests: IntegrationTest {
         XCTAssertEqual(trackEvent.deviceToken, givenToken)
     }
 
+    func testSubscribeToJourneyEvents_givenRegisterDeviceEventWithType_expectTypeInProperties() async {
+        let givenToken = String.random
+
+        deviceAttributesMock.getDefaultDeviceAttributesClosure = { $0([:]) }
+
+        await eventBusHandler.postEventAndWait(RegisterDeviceTokenEvent(token: givenToken, tokenType: .fid))
+
+        guard let trackEvent = outputReader.lastEvent as? TrackEvent else {
+            XCTFail("recorded event is not an instance of TrackEvent")
+            return
+        }
+
+        XCTAssertEqual(trackEvent.deviceToken, givenToken)
+        XCTAssertEqual(trackEvent.properties?["_cio_token_type"]?.stringValue, "fid")
+    }
+
     func testGetOptionalDataPipelineTracking_returnsImplementationAndTrackSendsToAnalytics() {
         // DataPipeline registers as DataPipelineTracking on init; Location (and others) resolve via getOptional.
         let pipeline = diGraphShared.getOptional(DataPipelineTracking.self)

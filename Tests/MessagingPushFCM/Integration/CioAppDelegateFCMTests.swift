@@ -180,9 +180,10 @@ class CioAppDelegateFCMTests: XCTestCase {
         // Call method directly
         appDelegateFCM.didReceiveRegistrationToken(fcmToken)
 
-        // Verify behavior
-        XCTAssertTrue(mockMessagingPush.registerDeviceTokenFCMCalled)
-        XCTAssertEqual(mockMessagingPush.registerDeviceTokenFCMReceivedArguments, fcmToken)
+        // Verify behavior - forwarded as a Firebase token callback, so the SDK knows its type
+        XCTAssertTrue(mockMessagingPush.didReceiveRegistrationTokenCalled)
+        XCTAssertEqual(mockMessagingPush.didReceiveRegistrationTokenReceivedArguments?.fcmToken, fcmToken)
+        XCTAssertFalse(mockMessagingPush.registerDeviceTokenFCMCalled)
     }
 
     func testDidReceiveRegistration_whenCalled_thenWrappedFirebaseServiceDelegateIsCalled() {
@@ -260,7 +261,10 @@ class CioAppDelegateFCMTests: XCTestCase {
         XCTAssertEqual(mockFirebaseService.apnsToken, apnsToken)
         XCTAssertEqual(mockFirebaseService.fetchTokenCallCount, 1)
         XCTAssertEqual(mockFirebaseService.fetchInstallationIdCallCount, 0)
-        XCTAssertEqual(mockMessagingPush.registerDeviceTokenFCMReceivedInvocations, ["fcm-token"])
+        // Forwarded as a Firebase token callback, so the SDK knows its type
+        XCTAssertEqual(mockMessagingPush.didReceiveRegistrationTokenReceivedInvocations.map(\.fcmToken), ["fcm-token"])
+        XCTAssertFalse(mockMessagingPush.didReceiveRegistrationCalled)
+        XCTAssertFalse(mockMessagingPush.registerDeviceTokenFCMCalled)
     }
 
     func testDidRegisterForRemoteNotifications_whenFidMode_thenFetchedFidIsRegistered() {
@@ -274,7 +278,10 @@ class CioAppDelegateFCMTests: XCTestCase {
         XCTAssertEqual(mockFirebaseService.apnsToken, apnsToken)
         XCTAssertEqual(mockFirebaseService.fetchInstallationIdCallCount, 1)
         XCTAssertEqual(mockFirebaseService.fetchTokenCallCount, 0)
-        XCTAssertEqual(mockMessagingPush.registerDeviceTokenFCMReceivedInvocations, ["fid-value"])
+        // Forwarded as a Firebase FID callback, so the SDK knows its type
+        XCTAssertEqual(mockMessagingPush.didReceiveRegistrationReceivedInvocations.map(\.installationId), ["fid-value"])
+        XCTAssertFalse(mockMessagingPush.didReceiveRegistrationTokenCalled)
+        XCTAssertFalse(mockMessagingPush.registerDeviceTokenFCMCalled)
     }
 
     func testDidRegisterForRemoteNotifications_whenFidFetchFails_thenNothingIsRegistered() {
@@ -284,6 +291,7 @@ class CioAppDelegateFCMTests: XCTestCase {
         appDelegateFCM.application(UIApplication.shared, didRegisterForRemoteNotificationsWithDeviceToken: Data())
         mockFirebaseService.simulateInstallationIdError(NSError(domain: "test", code: 1))
 
+        XCTAssertFalse(mockMessagingPush.didReceiveRegistrationCalled)
         XCTAssertFalse(mockMessagingPush.registerDeviceTokenFCMCalled)
     }
 

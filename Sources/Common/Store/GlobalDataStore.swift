@@ -4,9 +4,22 @@ import Foundation
 public protocol GlobalDataStore: AutoMockable {
     // APN or FCM device token
     var pushDeviceToken: String? { get set }
+    // Type of `pushDeviceToken`, when the SDK knows it
+    var pushDeviceTokenType: DeviceTokenType? { get set }
 
     // Used for testing
     func deleteAll()
+}
+
+public extension GlobalDataStore {
+    /// Saves the device token with its type.
+    /// Saving the same token without a type keeps the stored type, so re-registering a stored token doesn't drop it.
+    mutating func savePushDeviceToken(_ deviceToken: String, type: DeviceTokenType?) {
+        if type != nil || deviceToken != pushDeviceToken {
+            pushDeviceTokenType = type
+        }
+        pushDeviceToken = deviceToken
+    }
 }
 
 // sourcery: InjectRegisterShared = "GlobalDataStore"
@@ -19,6 +32,15 @@ public class CioSharedDataStore: GlobalDataStore {
         }
         set {
             keyValueStorage.setString(newValue, forKey: .pushDeviceToken)
+        }
+    }
+
+    public var pushDeviceTokenType: DeviceTokenType? {
+        get {
+            keyValueStorage.string(.pushDeviceTokenType).flatMap(DeviceTokenType.init(rawValue:))
+        }
+        set {
+            keyValueStorage.setString(newValue?.rawValue, forKey: .pushDeviceTokenType)
         }
     }
 

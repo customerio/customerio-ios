@@ -125,7 +125,7 @@ class DataPipelineImplementation: DataPipelineInstance, DataPipelineTracking, Ba
         }
 
         eventBusHandler.addObserver(RegisterDeviceTokenEvent.self) { event in
-            self.registerDeviceToken(event.token)
+            self.registerDeviceToken(event.token, tokenType: event.tokenType)
         }
     }
 
@@ -302,22 +302,28 @@ class DataPipelineImplementation: DataPipelineInstance, DataPipelineTracking, Ba
             deleteDeviceToken()
         }
         contextPlugin.deviceToken = deviceToken
+        // Sent even when automatic device attributes are off, as the backend uses it to tell FIDs from tokens.
+        let tokenType = globalDataStore.pushDeviceToken == token ? globalDataStore.pushDeviceTokenType : nil
 
         // Consolidate all Apple platforms under iOS
         deviceAttributesProvider.getDefaultDeviceAttributes { defaultDeviceAttributes in
-            let deviceAttributes: [String: Any] = defaultDeviceAttributes.mergeWith(customAttributes)
-            self.contextPlugin.attributes = deviceAttributes
-
-            guard self.contextPlugin.deviceToken != nil else {
-                self.logger.debug("no device token found, ignoring device attributes request")
+            // A token registered since then sends its own event, and the plugin would stamp it on this one.
+            guard self.contextPlugin.deviceToken == token else {
+                self.logger.debug("device token changed or removed, ignoring device attributes request")
                 return
             }
 
+            let deviceAttributes = defaultDeviceAttributes.mergeWith(customAttributes.withDeviceTokenType(tokenType, logger: self.dataPipelinesLogger))
+            self.contextPlugin.attributes = deviceAttributes
             self.analytics.track(name: "Device Created or Updated", properties: deviceAttributes)
         }
     }
 
     func registerDeviceToken(_ deviceToken: String) {
+        registerDeviceToken(deviceToken, tokenType: nil)
+    }
+
+    func registerDeviceToken(_ deviceToken: String, tokenType: DeviceTokenType?) {
         if deviceToken.isBlankOrEmpty() {
             dataPipelinesLogger.logStoringBlankPushToken()
             return
@@ -326,7 +332,7 @@ class DataPipelineImplementation: DataPipelineInstance, DataPipelineTracking, Ba
         // save the device token for later use.
         // segment plugin doesn't store token anywhere so we need to pass token to it every time
         // storing it so we can reference the token and update device plugin app relaunch
-        globalDataStore.pushDeviceToken = deviceToken
+        globalDataStore.savePushDeviceToken(deviceToken, type: tokenType)
 
         dataPipelinesLogger.logRegisteringPushToken(token: deviceToken, userId: registeredUserId)
         addDeviceAttributes(token: deviceToken)

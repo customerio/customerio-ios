@@ -24,9 +24,15 @@ public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, Messagi
 
     private var globalDataStore: GlobalDataStore
 
-    /// Last token passed to the implementation, with the token stored at that time. DataPipeline stores the token
-    /// later via the event bus, so this skips the same token arriving again before then.
-    private let lastRegistration = Synchronized<(token: String, storedToken: String?)?>(nil)
+    /// Last token passed to the implementation, with its type and the token stored at that time. DataPipeline stores
+    /// the token later via the event bus, so this skips the same token arriving again before then.
+    private let lastRegistration = Synchronized<DeviceTokenRegistration?>(nil)
+
+    private struct DeviceTokenRegistration {
+        let token: String
+        let tokenType: DeviceTokenType?
+        let storedToken: String?
+    }
 
     /// Holds a strong reference to the installed CioNotificationCenterDelegate. UNUserNotificationCenter only holds a weak reference.
     /// AnyObject avoids a stored-property availability conflict (CioNotificationCenterDelegate is unavailable in app extensions).
@@ -182,22 +188,40 @@ public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, Messagi
      is no active customer, this will fail to register the device
      */
     public func registerDeviceToken(_ deviceToken: String) {
-        // Compare the new deviceToken with the one stored in globalDataStore.
-        // If they are different, proceed with registering the device token.
-        // This check helps to avoid duplicate requests, as registerDeviceToken is already called on SDK initialization.
+        registerDeviceToken(deviceToken, tokenType: nil)
+    }
+
+    /// Registers a token the SDK fetched from Firebase, along with its type.
+    @_spi(Internal)
+    public func registerDeviceToken(_ deviceToken: String, tokenType: DeviceTokenType?) {
+        // Skip tokens already registered, as registerDeviceToken is already called on SDK initialization.
+        // A newly known type still goes through, so tokens stored before types existed get one.
         let storedToken = globalDataStore.pushDeviceToken
-        if deviceToken != storedToken {
-            // Call the registerDeviceToken method on the implementation.
-            // This method is responsible for registering the device token and updating the globalDataStore as well.
-            if let implementation = implementation {
-                let previous = lastRegistration.atomicSetAndFetch((deviceToken, storedToken))
-                guard previous?.token != deviceToken || previous?.storedToken != storedToken else { return }
-                implementation.registerDeviceToken(deviceToken)
-            } else {
-                // Update the globalDataStore with the new device token.
-                // The implementation may be nil due to lifecycle issues in wrappers SDKs.
-                globalDataStore.pushDeviceToken = deviceToken
+        let isNewType = tokenType != nil && tokenType != globalDataStore.pushDeviceTokenType
+        guard deviceToken != storedToken || isNewType else { return }
+
+        // The implementation registers the token and updates the globalDataStore as well.
+        if let implementation = implementation {
+            // Skip a repeat that adds no type, unless the stored token changed in between
+            let isRepeat = lastRegistration.mutating { last -> Bool in
+                if let last = last, last.token == deviceToken, last.storedToken == storedToken,
+                   tokenType == nil || tokenType == last.tokenType {
+                    return true
+                }
+                last = DeviceTokenRegistration(token: deviceToken, tokenType: tokenType, storedToken: storedToken)
+                return false
             }
+            guard !isRepeat else { return }
+
+            // The typed call isn't on the public MessagingPushInstance protocol
+            if let implementation = implementation as? MessagingPushImplementation {
+                implementation.registerDeviceToken(deviceToken, tokenType: tokenType)
+            } else {
+                implementation.registerDeviceToken(deviceToken)
+            }
+        } else {
+            // The implementation may be nil due to lifecycle issues in wrappers SDKs.
+            globalDataStore.savePushDeviceToken(deviceToken, type: tokenType)
         }
     }
 

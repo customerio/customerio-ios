@@ -1,5 +1,5 @@
 @testable import CioInternalCommon
-@testable import CioMessagingPush
+@_spi(Internal) @testable import CioMessagingPush
 @testable import CioMessagingPushMocks
 import SharedTests
 import XCTest
@@ -20,6 +20,22 @@ class MessagingPushRegisterDeviceTokenTest: UnitTest {
     func test_registerDeviceToken_whenSameNewTokenTwice_thenRegisteredOnce() {
         MessagingPush.shared.registerDeviceToken("new-token")
         MessagingPush.shared.registerDeviceToken("new-token")
+
+        XCTAssertEqual(implementationMock.registerDeviceTokenReceivedInvocations, ["new-token"])
+    }
+
+    // e.g. the app forwards the token itself, then the SDK receives it from Firebase with its type
+    func test_registerDeviceToken_whenSameNewTokenWithoutThenWithType_thenTypedOneIsRegisteredToo() {
+        MessagingPush.shared.registerDeviceToken("new-token")
+        MessagingPush.shared.registerDeviceToken("new-token", tokenType: .fid)
+
+        XCTAssertEqual(implementationMock.registerDeviceTokenReceivedInvocations, ["new-token", "new-token"])
+    }
+
+    func test_registerDeviceToken_whenSameNewTokenWithThenWithoutType_thenRegisteredOnce() {
+        MessagingPush.shared.registerDeviceToken("new-token", tokenType: .fid)
+        MessagingPush.shared.registerDeviceToken("new-token")
+        MessagingPush.shared.registerDeviceToken("new-token", tokenType: .fid)
 
         XCTAssertEqual(implementationMock.registerDeviceTokenReceivedInvocations, ["new-token"])
     }

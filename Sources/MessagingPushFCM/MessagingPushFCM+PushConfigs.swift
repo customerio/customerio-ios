@@ -35,8 +35,8 @@ extension MessagingPushFCM {
     @objc
     func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
         // Use Self.shared because after swizzling, `self` is the AppDelegate, not MessagingPushFCM
-        Self.shared.fetchFirebaseRegistration(apnsToken: deviceToken) { token in
-            Self.shared.registerDeviceToken(fcmToken: token)
+        Self.shared.fetchFirebaseRegistration(apnsToken: deviceToken) { registration, tokenType in
+            Self.shared.registerFirebaseDeviceToken(registration, tokenType: tokenType)
         }
     }
 }
