@@ -24,6 +24,10 @@ public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, Messagi
 
     private var globalDataStore: GlobalDataStore
 
+    /// Last token passed to the implementation, with the token stored at that time. DataPipeline stores the token
+    /// later via the event bus, so this skips the same token arriving again before then.
+    private let lastRegistration = Synchronized<(token: String, storedToken: String?)?>(nil)
+
     /// Holds a strong reference to the installed CioNotificationCenterDelegate. UNUserNotificationCenter only holds a weak reference.
     /// AnyObject avoids a stored-property availability conflict (CioNotificationCenterDelegate is unavailable in app extensions).
     @Atomic var notificationCenterDelegate: AnyObject?
@@ -181,10 +185,13 @@ public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, Messagi
         // Compare the new deviceToken with the one stored in globalDataStore.
         // If they are different, proceed with registering the device token.
         // This check helps to avoid duplicate requests, as registerDeviceToken is already called on SDK initialization.
-        if deviceToken != globalDataStore.pushDeviceToken {
+        let storedToken = globalDataStore.pushDeviceToken
+        if deviceToken != storedToken {
             // Call the registerDeviceToken method on the implementation.
             // This method is responsible for registering the device token and updating the globalDataStore as well.
             if let implementation = implementation {
+                let previous = lastRegistration.atomicSetAndFetch((deviceToken, storedToken))
+                guard previous?.token != deviceToken || previous?.storedToken != storedToken else { return }
                 implementation.registerDeviceToken(deviceToken)
             } else {
                 // Update the globalDataStore with the new device token.
