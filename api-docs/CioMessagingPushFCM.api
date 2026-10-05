@@ -8,7 +8,6 @@ public interface CioMessagingPushFCM.FirebaseService {
 public interface CioMessagingPushFCM.FirebaseServiceDelegate {
 	public fun func didReceiveRegistrationToken(_ token: String?);
 	public fun func didReceiveRegistration(_ installationId: String?);
-	public fun func didUnregister(_ installationId: String);
 }
 public final class CioMessagingPushFCM.MessagingPushFCM {
 	public fun func registerDeviceToken(fcmToken: String?);

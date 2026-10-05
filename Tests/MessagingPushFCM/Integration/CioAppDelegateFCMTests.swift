@@ -203,21 +203,7 @@ class CioAppDelegateFCMTests: XCTestCase {
         XCTAssertFalse(mockFirebaseServiceDelegate.didReceiveRegistrationTokenCalled)
     }
 
-    func testDidUnregister_whenCalled_thenWrappedDelegateIsCalledAndDeviceIsKept() {
-        _ = appDelegateFCM.application(UIApplication.shared, didFinishLaunchingWithOptions: nil)
-
-        mockFirebaseService.simulateUnregister("fid-value")
-
-        XCTAssertEqual(mockFirebaseServiceDelegate.receivedUnregistrations, ["fid-value"])
-        XCTAssertFalse(mockMessagingPush.deleteDeviceTokenCalled)
-        XCTAssertFalse(mockMessagingPush.registerDeviceTokenFCMCalled)
-        XCTAssertFalse(mockMessagingPush.didReceiveRegistrationCalled)
-        XCTAssertTrue(mockLogger.debugReceivedInvocations.contains {
-            $0.message == "CIO: App unregistered Firebase Installation ID from FCM: fid-value"
-        })
-    }
-
-    func testFirebaseServiceDelegate_whenDelegateHasNoFidSupport_thenFidCallbacksStillReachCIO() {
+    func testFirebaseServiceDelegate_whenDelegateHasNoFidSupport_thenFidRegistrationStillReachesCIO() {
         // A delegate written before FID support, e.g. a customer's own
         class TokenOnlyDelegate: FirebaseServiceDelegate {
             func didReceiveRegistrationToken(_ token: String?) {}
@@ -227,10 +213,8 @@ class CioAppDelegateFCMTests: XCTestCase {
         _ = appDelegateFCM.application(UIApplication.shared, didFinishLaunchingWithOptions: nil)
 
         mockFirebaseService.simulateRegistration("fid-value")
-        mockFirebaseService.simulateUnregister("fid-value")
 
         XCTAssertEqual(mockMessagingPush.didReceiveRegistrationReceivedArguments?.installationId, "fid-value")
-        XCTAssertFalse(mockMessagingPush.deleteDeviceTokenCalled)
     }
 
     // MARK: - Tests for inherited AppDelegate functionality

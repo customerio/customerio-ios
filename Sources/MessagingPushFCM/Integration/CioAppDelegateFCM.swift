@@ -68,12 +68,6 @@ open class CioAppDelegate: CioProviderAgnosticAppDelegate, FirebaseServiceDelega
 
         messagingPushFCM?.messaging(self, didReceiveRegistration: installationId)
     }
-
-    public func didUnregister(_ installationId: String) {
-        wrappedFirebaseDelegate?.didUnregister(installationId)
-
-        logger.debug("CIO: App unregistered Firebase Installation ID from FCM: \(installationId)")
-    }
 }
 
 @available(iOSApplicationExtension, unavailable)

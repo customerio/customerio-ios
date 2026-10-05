@@ -72,10 +72,6 @@ class MockFirebaseService: FirebaseService {
         mockDelegate?.didReceiveRegistration(installationId)
     }
 
-    func simulateUnregister(_ installationId: String) {
-        mockDelegate?.didUnregister(installationId)
-    }
-
     func reset() {
         mockApnsToken = nil
         mockDelegate = nil
@@ -94,7 +90,6 @@ class MockFirebaseServiceDelegate: FirebaseServiceDelegate {
     var tokenCallCount = 0
     var didReceiveRegistrationTokenCalled = false
     var receivedRegistrations: [String?] = []
-    var receivedUnregistrations: [String] = []
 
     func didReceiveRegistrationToken(_ token: String?) {
         receivedToken = token
@@ -106,15 +101,10 @@ class MockFirebaseServiceDelegate: FirebaseServiceDelegate {
         receivedRegistrations.append(installationId)
     }
 
-    func didUnregister(_ installationId: String) {
-        receivedUnregistrations.append(installationId)
-    }
-
     func reset() {
         receivedToken = nil
         tokenCallCount = 0
         didReceiveRegistrationTokenCalled = false
         receivedRegistrations = []
-        receivedUnregistrations = []
     }
 }
