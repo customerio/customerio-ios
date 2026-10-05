@@ -250,6 +250,7 @@ extension EngineWeb: WKNavigationDelegate {
         applyInterfaceStyle(resolvedScheme)
         currentConfiguration = EngineWebConfiguration(
             siteId: currentConfiguration.siteId,
+            key: currentConfiguration.key,
             dataCenter: currentConfiguration.dataCenter,
             instanceId: currentConfiguration.instanceId,
             endpoint: currentConfiguration.endpoint,

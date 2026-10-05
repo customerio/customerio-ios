@@ -2,6 +2,8 @@ import Foundation
 
 struct EngineWebConfiguration: Encodable {
     let siteId: String
+    /// Public `wk_` key, so the renderer loads messages with `?key=` instead of the site ID.
+    let key: String?
     let dataCenter: String
     let instanceId: String
     let endpoint: String
@@ -12,6 +14,7 @@ struct EngineWebConfiguration: Encodable {
 
     init(
         siteId: String,
+        key: String? = nil,
         dataCenter: String,
         instanceId: String,
         endpoint: String,
@@ -20,6 +23,7 @@ struct EngineWebConfiguration: Encodable {
         colorScheme: String? = nil
     ) {
         self.siteId = siteId
+        self.key = key
         self.dataCenter = dataCenter
         self.instanceId = instanceId
         self.endpoint = endpoint
