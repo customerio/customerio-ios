@@ -14,6 +14,13 @@ class MessagingInAppConfigBuilderTest: UnitTest {
         XCTAssertEqual(config.region, givenRegion)
     }
 
+    func test_initializeWithoutSiteId_expectNilSiteId() {
+        let config = MessagingInAppConfigBuilder(region: .EU).build()
+
+        XCTAssertNil(config.siteId)
+        XCTAssertEqual(config.region, .EU)
+    }
+
     func test_build_givenNoNotificationInboxAccessibilityLabels_expectAllNil() {
         let config = MessagingInAppConfigBuilder(siteId: String.random, region: .US).build()
 
@@ -115,6 +122,28 @@ class MessagingInAppConfigBuilderTest: UnitTest {
 
     func test_initializeFromEmptyDictionary_expectThrowError() {
         let givenDict: [String: Any] = [
+            "inApp": [:]
+        ]
+
+        XCTAssertThrowsError(try MessagingInAppConfigBuilder.build(from: givenDict)) { error in
+            XCTAssertEqual(error as? MessagingInAppConfigBuilderError, MessagingInAppConfigBuilderError.missingSiteId)
+        }
+    }
+
+    func test_initializeFromDictionaryWithoutSiteId_givenPublicKey_expectConfig() throws {
+        let givenDict: [String: Any] = [
+            "cdpApiKey": "wk_us_\(String.random)",
+            "inApp": [:]
+        ]
+
+        let config = try XCTUnwrap(MessagingInAppConfigBuilder.build(from: givenDict))
+
+        XCTAssertNil(config.siteId)
+    }
+
+    func test_initializeFromDictionaryWithoutSiteId_givenLegacyKey_expectThrowError() {
+        let givenDict: [String: Any] = [
+            "cdpApiKey": String.random,
             "inApp": [:]
         ]
 
