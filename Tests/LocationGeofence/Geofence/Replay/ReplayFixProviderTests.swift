@@ -63,4 +63,27 @@ struct ReplayFixProviderTests {
 
         #expect(provider.requestedAnswer(within: 10) == nil)
     }
+
+    @Test
+    func currentPosition_whenDriveTimeAdvances_thenCachedFixKeepsOriginalTimestamp() {
+        let epoch = Date(timeIntervalSince1970: 1000000000)
+        let fixes = ReplayFixProvider(epoch: epoch)
+        fixes.load(stimuli: [30], samples: [
+            .init(at: 30, location: .init(latitude: 10, longitude: 20), accuracy: 10, age: 5)
+        ])
+        fixes.now = 30
+        #expect(fixes.currentPosition()?.timestamp == epoch.addingTimeInterval(25))
+        fixes.now = 90
+        #expect(fixes.currentPosition()?.timestamp == epoch.addingTimeInterval(25))
+    }
+
+    @Test
+    func currentPosition_whenRecordedReadFollowsStimulus_thenTimestampIsNotInTheFuture() {
+        let fixes = ReplayFixProvider(epoch: epoch)
+        fixes.load(stimuli: [30], samples: [.init(at: 35, location: .init(latitude: 10, longitude: 20), accuracy: 10, age: 5)])
+        fixes.now = 30
+        #expect(fixes.currentPosition()?.timestamp == epoch.addingTimeInterval(25))
+        fixes.now = 90
+        #expect(fixes.currentPosition()?.timestamp == epoch.addingTimeInterval(30))
+    }
 }

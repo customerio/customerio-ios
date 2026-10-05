@@ -102,7 +102,9 @@ final class ReplayFixProvider {
             altitude: 0,
             horizontalAccuracy: read.accuracy,
             verticalAccuracy: -1,
-            timestamp: epoch.addingTimeInterval(now - read.age)
+            // A repeated read must not refresh the recorded fix's timestamp. A read logged just
+            // after its stimulus is clamped to that stimulus rather than dated in the future.
+            timestamp: epoch.addingTimeInterval(min(read.at, now) - read.age)
         )
     }
 

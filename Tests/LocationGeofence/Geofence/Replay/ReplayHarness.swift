@@ -27,6 +27,7 @@ final class ReplayHarness {
     let logger: CapturingLogger
 
     let gate = ReplayBoundaryGate()
+    let dwellScheduler = ReplayDwellScheduler()
 
     // MARK: - The SDK
 
@@ -166,8 +167,10 @@ final class ReplayHarness {
             transitionEmitter: tracker,
             contextStore: contextStore,
             logger: logger,
-            freshFixProvider: { [weak self] in self?.fixes.currentPosition() },
-            clock: DateUtilGeofenceClock(dateUtil: clock)
+            // Dwell cannot use a fix from a later input window to qualify or close a visit early.
+            fixResolver: makeReplayFixResolver(answerWindow: 0),
+            clock: DateUtilGeofenceClock(dateUtil: clock),
+            waitForEvidence: { [dwellScheduler] in try await dwellScheduler.sleep(nanoseconds: $0) }
         )
 
         resolver = makePolygonResolver()
@@ -236,6 +239,7 @@ final class ReplayHarness {
         // The old consume task stays parked; the new wrapper's subscription supersedes it.
         monitor.setOnTransition(nil)
         detachFromBootstrap()
+        dwellScheduler.cancelAll()
         composeSDK()
     }
 
@@ -296,8 +300,8 @@ final class ReplayHarness {
         logger.reset()
     }
 
-    /// The default `fixResolver` would issue a live `CLLocationManager` request from a unit test.
-    private func makePolygonResolver() -> PolygonMembershipResolver {
+    /// OS answers pass through the shipping resolver's freshness filter.
+    private func makeReplayFixResolver(answerWindow: TimeInterval) -> MovementFixResolver {
         let fixResolver = MovementFixResolver(
             logger: logger,
             dateUtil: clock,
@@ -308,11 +312,17 @@ final class ReplayHarness {
             guard let self, let fixResolver else { return }
             self.fixRequestCount += 1
             // Through `handleDeliveredFix`, so a fix older than `maxAge` is refused as on a device.
-            let answer = self.fixes.requestedAnswer(within: GeofenceConstants.movementFixRequestTimeout)
+            let answer = self.fixes.requestedAnswer(within: answerWindow)
             if let fix = answer ?? self.fixes.currentPosition() {
                 fixResolver.handleDeliveredFix(fix)
             }
         }
+        return fixResolver
+    }
+
+    /// The default resolver would issue a live `CLLocationManager` request from a unit test.
+    private func makePolygonResolver() -> PolygonMembershipResolver {
+        let fixResolver = makeReplayFixResolver(answerWindow: GeofenceConstants.movementFixRequestTimeout)
         return PolygonMembershipResolver(
             storage: storage,
             transitionEmitter: tracker,

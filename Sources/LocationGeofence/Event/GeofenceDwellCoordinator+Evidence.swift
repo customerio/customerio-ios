@@ -33,8 +33,9 @@ extension GeofenceDwellCoordinator {
             max(0, TimeInterval(geofence.dwellThresholdSeconds) - elapsed)
         )
         let delayNanoseconds = UInt64(delay * 1000000000)
+        let wait = waitForEvidence
         deadlineTasks[geofence.id] = Task { [weak self] in
-            try? await Task.sleep(nanoseconds: delayNanoseconds)
+            do { try await wait(delayNanoseconds) } catch { return }
             guard !Task.isCancelled, let self else { return }
             await self.requestQualifyingEvidence(geofenceId: geofence.id)
         }
@@ -250,8 +251,9 @@ extension GeofenceDwellCoordinator {
         evidenceRetries[geofence.id] = state
         deadlineTasks.removeValue(forKey: geofence.id)?.cancel()
         let delay = max(0, evidenceRetryDelay)
+        let wait = waitForEvidence
         deadlineTasks[geofence.id] = Task { [weak self] in
-            try? await Task.sleep(nanoseconds: UInt64(delay * 1000000000))
+            do { try await wait(UInt64(delay * 1000000000)) } catch { return }
             guard !Task.isCancelled, let self else { return }
             await self.requestQualifyingEvidence(geofenceId: geofence.id)
         }
