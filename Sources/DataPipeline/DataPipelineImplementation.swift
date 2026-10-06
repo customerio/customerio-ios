@@ -307,8 +307,6 @@ class DataPipelineImplementation: DataPipelineInstance, DataPipelineTracking, Ba
             deleteDeviceToken()
         }
         contextPlugin.deviceToken = deviceToken
-        // Sent even when automatic device attributes are off, as the backend uses it to tell FIDs from tokens.
-        let tokenType = globalDataStore.pushDeviceToken == token ? globalDataStore.pushDeviceTokenType : nil
 
         // Consolidate all Apple platforms under iOS
         deviceAttributesProvider.getDefaultDeviceAttributes { defaultDeviceAttributes in
@@ -321,6 +319,9 @@ class DataPipelineImplementation: DataPipelineInstance, DataPipelineTracking, Ba
                 return
             }
 
+            // Read here, as the same token can get a type while attributes load.
+            // Sent even when automatic device attributes are off, as the backend uses it to tell FIDs from tokens.
+            let tokenType = self.globalDataStore.pushDeviceToken == token ? self.globalDataStore.pushDeviceTokenType : nil
             let deviceAttributes = defaultDeviceAttributes.mergeWith(customAttributes.withDeviceTokenType(tokenType, logger: self.dataPipelinesLogger))
             self.contextPlugin.attributes = deviceAttributes
             self.analytics.track(name: "Device Created or Updated", properties: deviceAttributes)
