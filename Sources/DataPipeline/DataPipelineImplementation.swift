@@ -372,6 +372,9 @@ extension DataPipelineImplementation {
     }
 
     func registerDeviceToken(_ deviceToken: String, tokenType: DeviceTokenType?) {
+        // Apps can call this directly while the event handler registers a token
+        deviceTokenLock.lock()
+        defer { deviceTokenLock.unlock() }
         if deviceToken.isBlankOrEmpty() {
             dataPipelinesLogger.logStoringBlankPushToken()
             return

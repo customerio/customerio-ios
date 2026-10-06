@@ -242,6 +242,28 @@ class DataPipelineEventBustTests: IntegrationTest {
         XCTAssertEqual(deviceEvents().filter { $0 == "Device Created or Updated token-a" }.count, 2)
     }
 
+    // e.g. the app calls CustomerIO.shared.registerDeviceToken while the SDK registers a token from Firebase
+    func testSubscribeToJourneyEvents_givenDirectRegistrationsAlongsideEvents_expectNoCrash() async {
+        deviceAttributesMock.getDefaultDeviceAttributesClosure = { $0([:]) }
+        // Its event list isn't thread-safe
+        customerIO.remove(plugin: outputReader)
+
+        await withTaskGroup(of: Void.self) { group in
+            for index in 0 ..< 200 {
+                group.addTask {
+                    let token = "token-\(index % 3)"
+                    if index.isMultiple(of: 3) {
+                        _ = self.customerIO.registeredDeviceToken
+                    } else if index.isMultiple(of: 2) {
+                        self.customerIO.registerDeviceToken(token)
+                    } else {
+                        await self.eventBusHandler.postEventAndWait(RegisterDeviceTokenEvent(token: token))
+                    }
+                }
+            }
+        }
+    }
+
     private func deviceEvents() -> [String] {
         outputReader.events.compactMap { $0 as? TrackEvent }
             .filter { $0.event.hasPrefix("Device") }
