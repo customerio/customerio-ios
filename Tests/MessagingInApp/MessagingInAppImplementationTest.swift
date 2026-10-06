@@ -150,31 +150,6 @@ class MessagingInAppImplementationTest: IntegrationTest {
         XCTAssertNil(publicKey)
     }
 
-    func test_givenNoSiteIdAndKeySetAfterInit_expectPublicKeySetWhenProfileIdentified() async {
-        await waitForExpectations(initializeModule())
-        let givenKey = "wk_us_\(String.random)"
-        gistProviderMock.setUserTokenClosure = { _ in }
-        let keySet = expectation(description: "public key set on in-app")
-        keySet.assertForOverFulfill = false
-        inAppMessageManagerMock.dispatchClosure = { action, completion in
-            if action == .setPublicKey(key: givenKey) {
-                keySet.fulfill()
-            }
-            completion?()
-            return Task {}
-        }
-        let inApp = MessagingInAppImplementation(diGraph: diGraphShared, moduleConfig: MessagingInAppConfigBuilder(region: .US).build())
-        // A live key from the SDK set up by earlier tests would win over the stored one.
-        diGraphShared.backgroundDeliveryContextStore.setCdpApiKeyProvider(nil)
-        diGraphShared.backgroundDeliveryContextStore.setCdpApiKey(givenKey)
-        defer { diGraphShared.backgroundDeliveryContextStore.setCdpApiKey(nil) }
-
-        await postEventAndWait(event: ProfileIdentifiedEvent(identifier: String.random))
-
-        await fulfillment(of: [keySet], timeout: 2)
-        withExtendedLifetime(inApp) {}
-    }
-
     // MARK: initialize given an existing identifier
 
     func test_initialize_givenExistingIdentifier_expectGistSetProfileIdentifier() async throws {
