@@ -189,8 +189,9 @@ struct DwellReplayTests {
             let visit = try #require(await harness.storedVisit(fence: "A"))
             let oldCoordinator = try #require(harness.dwellCoordinator)
             let oldDelivery = try #require(harness.deliveryTracker)
+            let oldScheduler = harness.dwellScheduler
             harness.reenterProcess()
-            #expect(harness.dwellScheduler.nextDeadline == nil, "the dead process still has a pending timer")
+            #expect(oldScheduler.nextDeadline == nil, "the dead process still has a pending timer")
             await harness.wireMonitor()
             harness.enterForeground()
             try await harness.settleBoundaries()
