@@ -12,6 +12,8 @@ class AnalyticsStorageMigrationTests: UnitTest {
     override func setUp() {
         super.setUp()
 
+        // The SDK set up by `UnitTest` saves its own key as the last key used.
+        UserDefaults.standard.removeObject(forKey: "io.customer.sdk.analyticsWriteKey")
         eventsDirectory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
     }
 
@@ -20,7 +22,9 @@ class AnalyticsStorageMigrationTests: UnitTest {
         for key in usedKeys {
             UserDefaults.standard.removePersistentDomain(forName: "com.segment.storage.\(key)")
             Analytics.removeActiveWriteKey(key)
+            UserDefaults.standard.removeObject(forKey: "io.customer.sdk.analyticsPendingEventsFrom.\(key)")
         }
+        UserDefaults.standard.removeObject(forKey: "io.customer.sdk.analyticsWriteKey")
 
         super.tearDown()
     }
@@ -96,6 +100,39 @@ class AnalyticsStorageMigrationTests: UnitTest {
 
         XCTAssertEqual(anonymousId(writeKey: newKey), "anon-recent")
         XCTAssertEqual(anonymousId(writeKey: olderKey), "anon-older")
+    }
+
+    func test_migrate_givenLastKeyHasNoEventsFolder_expectIdentityCarriesOver() throws {
+        let oldKey = givenKey(String.random)
+        let newKey = givenKey("wk_us_\(String.random)")
+        migration().migrate(to: oldKey)
+        givenIdentity(writeKey: oldKey, anonymousId: "anon-1")
+        try FileManager.default.removeItem(at: eventsDirectory.appendingPathComponent(oldKey))
+
+        migration().migrate(to: newKey)
+
+        XCTAssertEqual(anonymousId(writeKey: newKey), "anon-1")
+    }
+
+    func test_migrate_givenEventsFailToMove_expectRetriedOnNextLaunch() throws {
+        let oldKey = givenKey(String.random)
+        let newKey = givenKey("wk_us_\(String.random)")
+        givenIdentity(writeKey: oldKey, anonymousId: "anon-1")
+        let queuedFile = givenQueuedEventsFile(writeKey: oldKey)
+        // A file where the new events folder should be makes the move fail.
+        let newDirectory = eventsDirectory.appendingPathComponent(newKey)
+        try Data().write(to: newDirectory)
+
+        migration().migrate(to: newKey)
+
+        XCTAssertEqual(anonymousId(writeKey: newKey), "anon-1")
+        XCTAssertTrue(FileManager.default.fileExists(atPath: queuedFile.path))
+
+        try FileManager.default.removeItem(at: newDirectory)
+        migration().migrate(to: newKey)
+
+        XCTAssertTrue(FileManager.default.fileExists(atPath: newDirectory.appendingPathComponent(queuedFile.lastPathComponent).path))
+        XCTAssertFalse(FileManager.default.fileExists(atPath: eventsDirectory.appendingPathComponent(oldKey).path))
     }
 
     func test_migrate_givenNoPreviousKey_expectNothingMoved() {
