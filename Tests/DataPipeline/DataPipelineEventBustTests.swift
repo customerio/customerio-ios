@@ -16,14 +16,16 @@ class DataPipelineEventBustTests: IntegrationTest {
 
     private let deviceAttributesMock = DeviceAttributesProviderMock()
     private let globalDataStoreMock = GlobalDataStoreMock()
+    private let dataPipelinesLoggerMock = DataPipelinesLoggerMock()
 
     override func setUpDependencies() {
         super.setUpDependencies()
 
-        mockCollection.add(mocks: [deviceAttributesMock, globalDataStoreMock])
+        mockCollection.add(mocks: [deviceAttributesMock, globalDataStoreMock, dataPipelinesLoggerMock])
 
         diGraphShared.override(value: deviceAttributesMock, forType: DeviceAttributesProvider.self)
         diGraphShared.override(value: globalDataStoreMock, forType: GlobalDataStore.self)
+        diGraphShared.override(value: dataPipelinesLoggerMock, forType: DataPipelinesLogger.self)
     }
 
     override func setUp() {
@@ -168,6 +170,47 @@ class DataPipelineEventBustTests: IntegrationTest {
         XCTAssertEqual(trackEvent.type, "track")
         XCTAssertEqual(trackEvent.event, "Device Created or Updated")
         XCTAssertEqual(trackEvent.deviceToken, givenToken)
+    }
+
+    func testSubscribeToJourneyEvents_givenSameTokenPostedConcurrently_expectDeviceRegisteredOnce() async {
+        deviceAttributesMock.getDefaultDeviceAttributesClosure = { $0([:]) }
+        // Logged between the stored-token check and the store, so concurrent handlers overlap there
+        dataPipelinesLoggerMock.logStoringDevicePushTokenClosure = { _, _ in Thread.sleep(forTimeInterval: 0.02) }
+
+        await withTaskGroup(of: Void.self) { group in
+            for _ in 0 ..< 10 {
+                group.addTask { await self.eventBusHandler.postEventAndWait(RegisterDeviceTokenEvent(token: "token-a")) }
+            }
+        }
+
+        XCTAssertEqual(deviceEvents(), ["Device Created or Updated token-a"])
+    }
+
+    func testSubscribeToJourneyEvents_givenTokenAlreadyStored_expectDeviceNotRegistered() async {
+        deviceAttributesMock.getDefaultDeviceAttributesClosure = { $0([:]) }
+        globalDataStoreMock.underlyingPushDeviceToken = "token-a"
+
+        await eventBusHandler.postEventAndWait(RegisterDeviceTokenEvent(token: "token-a"))
+
+        XCTAssertEqual(deviceEvents(), [])
+    }
+
+    // e.g. the app restored the old token with CustomerIO.shared.registerDeviceToken
+    func testSubscribeToJourneyEvents_givenStoredTokenChangesAndChangesBack_expectSameTokenRegisteredAgain() async {
+        deviceAttributesMock.getDefaultDeviceAttributesClosure = { $0([:]) }
+        customerIO.registerDeviceToken("token-x")
+
+        await eventBusHandler.postEventAndWait(RegisterDeviceTokenEvent(token: "token-a"))
+        customerIO.registerDeviceToken("token-x")
+        await eventBusHandler.postEventAndWait(RegisterDeviceTokenEvent(token: "token-a"))
+
+        XCTAssertEqual(deviceEvents().filter { $0 == "Device Created or Updated token-a" }.count, 2)
+    }
+
+    private func deviceEvents() -> [String] {
+        outputReader.events.compactMap { $0 as? TrackEvent }
+            .filter { $0.event.hasPrefix("Device") }
+            .map { "\($0.event) \($0.deviceToken ?? "nil")" }
     }
 
     func testGetOptionalDataPipelineTracking_returnsImplementationAndTrackSendsToAnalytics() {

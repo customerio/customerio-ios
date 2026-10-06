@@ -9,6 +9,7 @@ class DataPipelineImplementation: DataPipelineInstance, DataPipelineTracking, Ba
     let eventBusHandler: EventBusHandler
 
     private var globalDataStore: GlobalDataStore
+    private let deviceTokenLock = Lock.unsafeInit()
     private let deviceAttributesProvider: DeviceAttributesProvider
     private let dateUtil: DateUtil
     private let deviceInfo: DeviceInfo
@@ -125,6 +126,10 @@ class DataPipelineImplementation: DataPipelineInstance, DataPipelineTracking, Ba
         }
 
         eventBusHandler.addObserver(RegisterDeviceTokenEvent.self) { event in
+            // Events are delivered concurrently, and the same token can be posted again before it's stored
+            self.deviceTokenLock.lock()
+            defer { self.deviceTokenLock.unlock() }
+            guard event.token != self.globalDataStore.pushDeviceToken else { return }
             self.registerDeviceToken(event.token)
         }
     }
