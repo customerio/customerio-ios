@@ -17,6 +17,14 @@ public protocol MessagingPushFCMInstance: AutoMockable {
         didReceiveRegistrationToken fcmToken: String?
     )
 
+    // sourcery:Name=didReceiveRegistration
+    /// Registers the app's Firebase Installation ID (FID) with Customer.io.
+    /// Call this from your `MessagingDelegate.messaging(_:didReceiveRegistration:)` when you register the device yourself.
+    func messaging(
+        _ messaging: Any,
+        didReceiveRegistration installationId: String?
+    )
+
     // sourcery:Name=didFailToRegisterForRemoteNotifications
     func application(
         _ application: Any,
@@ -43,6 +51,11 @@ public protocol MessagingPushFCMInstance: AutoMockable {
     // sourcery:IfCanImport=UserNotifications
     func serviceExtensionTimeWillExpire()
     #endif
+}
+
+// Default keeps conformers written before FID support compiling.
+public extension MessagingPushFCMInstance {
+    func messaging(_ messaging: Any, didReceiveRegistration installationId: String?) {}
 }
 
 public class MessagingPushFCM: MessagingPushFCMInstance {
@@ -110,6 +123,13 @@ public class MessagingPushFCM: MessagingPushFCMInstance {
             return
         }
         registerDeviceToken(fcmToken: deviceToken)
+    }
+
+    public func messaging(_ messaging: Any, didReceiveRegistration installationId: String?) {
+        guard let installationId = installationId else {
+            return
+        }
+        registerDeviceToken(fcmToken: installationId)
     }
 
     public func application(_ application: Any, didFailToRegisterForRemoteNotificationsWithError error: Error) {

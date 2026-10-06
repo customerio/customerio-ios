@@ -50,6 +50,12 @@ class MessagingPushFCMAPITest: UnitTest {
         MessagingPush.shared.messaging("", didReceiveRegistrationToken: nil)
         mock.messaging("", didReceiveRegistrationToken: nil)
 
+        MessagingPush.shared.messaging("", didReceiveRegistration: "installation-id")
+        mock.messaging("", didReceiveRegistration: "installation-id")
+
+        MessagingPush.shared.messaging("", didReceiveRegistration: nil)
+        mock.messaging("", didReceiveRegistration: nil)
+
         MessagingPush.shared.application(
             "",
             didFailToRegisterForRemoteNotificationsWithError: GenericError.registrationFailed

@@ -62,6 +62,12 @@ open class CioAppDelegate: CioProviderAgnosticAppDelegate, FirebaseServiceDelega
         // Forward the device token to the Customer.io SDK:
         messagingPushFCM?.registerDeviceToken(fcmToken: token)
     }
+
+    public func didReceiveRegistration(_ installationId: String?) {
+        wrappedFirebaseDelegate?.didReceiveRegistration(installationId)
+
+        messagingPushFCM?.messaging(self, didReceiveRegistration: installationId)
+    }
 }
 
 @available(iOSApplicationExtension, unavailable)

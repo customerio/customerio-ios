@@ -36,4 +36,13 @@ public protocol FirebaseServiceDelegate: AnyObject {
     /// Called when a new FCM registration token is available
     /// - Parameter token: The new registration token as a string
     func didReceiveRegistrationToken(_ token: String?)
+
+    /// Called when the app is registered with FCM through its Firebase Installation ID (FID mode)
+    /// - Parameter installationId: The registered Firebase Installation ID
+    func didReceiveRegistration(_ installationId: String?)
+}
+
+// Defaults keep delegates written before FID support compiling.
+public extension FirebaseServiceDelegate {
+    func didReceiveRegistration(_ installationId: String?) {}
 }
