@@ -69,6 +69,7 @@ struct InAppMessageState: Equatable, CustomStringConvertible {
     /// Copies the current state and replaces the given properties with the new values.
     /// It is useful when updating state with only a few properties and keeping the rest as is.
     func copy(
+        publicKey: String? = nil,
         colorScheme: ColorScheme? = nil,
         pollInterval: Double? = nil,
         userId: String? = nil,
@@ -84,7 +85,7 @@ struct InAppMessageState: Equatable, CustomStringConvertible {
     ) -> InAppMessageState {
         InAppMessageState(
             siteId: siteId,
-            publicKey: publicKey,
+            publicKey: publicKey ?? self.publicKey,
             dataCenter: dataCenter,
             environment: environment,
             colorScheme: colorScheme ?? self.colorScheme,
