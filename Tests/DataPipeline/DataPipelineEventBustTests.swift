@@ -221,6 +221,18 @@ class DataPipelineEventBustTests: IntegrationTest {
         XCTAssertEqual((outputReader.lastEvent as? TrackEvent)?.properties?["_cio_token_type"]?.stringValue, "fid")
     }
 
+    func testSubscribeToJourneyEvents_givenTypeAddedWhileAttributesLoad_expectLastEventHasStoredType() async {
+        var pendingAttributes: [([String: Any]) -> Void] = []
+        deviceAttributesMock.getDefaultDeviceAttributesClosure = { pendingAttributes.append($0) }
+
+        await eventBusHandler.postEventAndWait(RegisterDeviceTokenEvent(token: "token-a"))
+        await eventBusHandler.postEventAndWait(RegisterDeviceTokenEvent(token: "token-a", tokenType: .fid))
+        // Attributes can load out of order
+        pendingAttributes.reversed().forEach { $0([:]) }
+
+        XCTAssertEqual(typedDeviceEvents().last, "Device Created or Updated token-a fid", "\(typedDeviceEvents())")
+    }
+
     func testSubscribeToJourneyEvents_givenSameTokenPostedWithThenWithoutType_expectDeviceRegisteredOnce() async {
         deviceAttributesMock.getDefaultDeviceAttributesClosure = { $0([:]) }
 
