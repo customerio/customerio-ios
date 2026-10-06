@@ -5,6 +5,7 @@ import Foundation
 enum InAppMessageAction: Equatable {
     case initialize(siteId: String, dataCenter: String, environment: GistEnvironment, colorScheme: ColorScheme = .auto, publicKey: String? = nil)
     case setColorScheme(colorScheme: ColorScheme)
+    case setPublicKey(key: String)
     case setPollingInterval(interval: Double)
     case setSseEnabled(enabled: Bool)
     case setUserIdentifier(user: String)
@@ -57,6 +58,9 @@ enum InAppMessageAction: Equatable {
 
         case (.setColorScheme(let lhsColorScheme), .setColorScheme(let rhsColorScheme)):
             return lhsColorScheme == rhsColorScheme
+
+        case (.setPublicKey(let lhsKey), .setPublicKey(let rhsKey)):
+            return lhsKey == rhsKey
 
         case (.setPollingInterval(let lhsInterval), .setPollingInterval(let rhsInterval)):
             return lhsInterval == rhsInterval
