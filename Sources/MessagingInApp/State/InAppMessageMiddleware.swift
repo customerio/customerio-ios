@@ -29,6 +29,7 @@ func userAuthenticationMiddleware() -> InAppMessageMiddleware {
         switch action {
         case .initialize,
              .setColorScheme,
+             .setPublicKey,
              .setUserIdentifier,
              .setAnonymousIdentifier,
              .setPageRoute,
