@@ -264,6 +264,37 @@ class DataPipelineEventBustTests: IntegrationTest {
         }
     }
 
+    func testSetDeviceAttributes_givenFidRegisteredBetweenCheckAndTrack_expectEventsKeepTheirOwnTokenAndType() async {
+        deviceAttributesMock.getDefaultDeviceAttributesClosure = { $0([:]) }
+        await eventBusHandler.postEventAndWait(RegisterDeviceTokenEvent(token: "token-a", tokenType: .token))
+        let fidRegistered = expectation(description: "FID registered")
+        // Logged between the token check and tracking because a reserved key is passed, so the FID registers there
+        dataPipelinesLoggerMock.logReservedDeviceTokenTypeIgnoredClosure = {
+            self.dataPipelinesLoggerMock.logReservedDeviceTokenTypeIgnoredClosure = nil
+            let registered = DispatchSemaphore(value: 0)
+            Task.detached {
+                await self.eventBusHandler.postEventAndWait(RegisterDeviceTokenEvent(token: "fid-a", tokenType: .fid))
+                registered.signal()
+                fidRegistered.fulfill()
+            }
+            _ = registered.wait(timeout: .now() + 0.2)
+        }
+
+        customerIO.setDeviceAttributes(["_cio_token_type": "app-value"])
+        await fulfillment(of: [fidRegistered], timeout: 2)
+
+        let events = typedDeviceEvents()
+        XCTAssertFalse(events.contains("Device Created or Updated fid-a token"), "\(events)")
+        // The old token isn't added back after it's deleted
+        XCTAssertEqual(events.last, "Device Created or Updated fid-a fid", "\(events)")
+    }
+
+    private func typedDeviceEvents() -> [String] {
+        outputReader.events.compactMap { $0 as? TrackEvent }
+            .filter { $0.event.hasPrefix("Device") }
+            .map { "\($0.event) \($0.deviceToken ?? "nil") \($0.properties?["_cio_token_type"]?.stringValue ?? "none")" }
+    }
+
     private func deviceEvents() -> [String] {
         outputReader.events.compactMap { $0 as? TrackEvent }
             .filter { $0.event.hasPrefix("Device") }

@@ -313,6 +313,9 @@ class DataPipelineImplementation: DataPipelineInstance, DataPipelineTracking, Ba
         // Consolidate all Apple platforms under iOS
         deviceAttributesProvider.getDefaultDeviceAttributes { defaultDeviceAttributes in
             // A token registered since then sends its own event, and the plugin would stamp it on this one.
+            // Registration holds this lock, so the token can't change between this check and tracking.
+            self.deviceTokenLock.lock()
+            defer { self.deviceTokenLock.unlock() }
             guard self.contextPlugin.deviceToken == token else {
                 self.logger.debug("device token changed or removed, ignoring device attributes request")
                 return
@@ -387,13 +390,5 @@ extension DataPipelineImplementation {
 
         dataPipelinesLogger.logRegisteringPushToken(token: deviceToken, userId: registeredUserId)
         addDeviceAttributes(token: deviceToken)
-    }
-}
-
-// extension methods to simplify and reduce repetitive coding
-extension DataPipelineImplementation {
-    /// returns user id for currently identifier profile
-    var registeredUserId: String? {
-        analytics.userId
     }
 }

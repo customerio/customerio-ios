@@ -12,3 +12,11 @@ extension DataPipelineImplementation {
         analytics.track(name: name, properties: properties)
     }
 }
+
+// extension methods to simplify and reduce repetitive coding
+extension DataPipelineImplementation {
+    /// returns user id for currently identifier profile
+    var registeredUserId: String? {
+        analytics.userId
+    }
+}
