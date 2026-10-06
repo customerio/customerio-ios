@@ -112,7 +112,8 @@ final class PolygonMembershipResolver {
             return .nothingToRearm
         case .exit:
             await applyCoveringCircleExit(
-                geofence: geofence, eventCircle: eventCircle, occurredAt: occurredAt, crossingObserved: crossingObserved
+                geofence: geofence, eventCircle: eventCircle, occurredAt: occurredAt,
+                crossingObserved: crossingObserved, receivedForUserId: receivedForUserId
             )
             // Boundary now behind us; the next registration re-sizes from wherever the device is.
             return .nothingToRearm

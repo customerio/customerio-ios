@@ -240,6 +240,9 @@ extension GeofenceDwellCoordinator {
 
     func scheduleEvidenceRetry(for geofence: Geofence, visit: GeofenceDwellVisit) {
         var state = evidenceRetries[geofence.id]
+        // A storage or delivery await may finish after the next visit armed its own deadline.
+        // That deadline belongs to the next visit, even if this older attempt needs another retry.
+        guard state?.visitId == nil || state?.visitId == visit.visitId else { return }
         if state?.visitId != visit.visitId {
             state = EvidenceRetryState(visitId: visit.visitId, attempts: 0)
         }
