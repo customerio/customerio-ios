@@ -193,6 +193,7 @@ struct DwellReplayTests {
             harness.reenterProcess()
             #expect(oldScheduler.nextDeadline == nil, "the dead process still has a pending timer")
             await harness.wireMonitor()
+            await GeofenceBootstrap.awaitPendingWorkForTesting()
             try await harness.settleBoundaries()
             #expect(harness.dwellScheduler.nextDeadline == 90, "bootstrap must resume the visit before foreground")
             harness.enterForeground()
