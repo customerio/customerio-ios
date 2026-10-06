@@ -39,20 +39,9 @@ class MessagingInAppImplementation: MessagingInAppInstance {
         subscribeToInAppMessageState()
     }
 
-    /// Key set on `SDKConfigBuilder`. Only public `wk_` keys are sent to in-app APIs.
-    private var publicKey: String? {
-        backgroundDeliveryContextStore.currentCdpApiKey.flatMap { ApiKey.isPublic($0) ? $0 : nil }
-    }
-
-    /// In-app can start before the SDK sets its key, so pick it up once a profile is known,
-    /// before gist makes any request.
-    private func setPublicKeyIfNeeded() {
-        guard moduleConfig.siteId == nil, let publicKey else { return }
-        inAppMessageManager.dispatch(action: .setPublicKey(key: publicKey))
-    }
-
     private func subscribeToInAppMessageState() {
-        let publicKey = publicKey
+        // Key set on `SDKConfigBuilder`. Only public `wk_` keys are sent to in-app APIs.
+        let publicKey = backgroundDeliveryContextStore.currentCdpApiKey.flatMap { ApiKey.isPublic($0) ? $0 : nil }
         if moduleConfig.siteId == nil, publicKey == nil {
             logger.error("In-app messaging needs a siteId, or the SDK set up with a public (wk_) key")
         }
@@ -74,14 +63,12 @@ class MessagingInAppImplementation: MessagingInAppInstance {
         eventBusHandler.addObserver(ProfileIdentifiedEvent.self) { [weak self] event in
             guard let self else { return }
             self.logger.logWithModuleTag("registering profile \(event.identifier) for in-app", level: .debug)
-            self.setPublicKeyIfNeeded()
             self.gist.setUserToken(event.identifier)
         }
 
         eventBusHandler.addObserver(AnonymousProfileIdentifiedEvent.self) { [weak self] event in
             guard let self else { return }
             self.logger.logWithModuleTag("registering anonymous profile \(event.identifier) for in-app", level: .debug)
-            self.setPublicKeyIfNeeded()
             self.gist.setAnonymousId(event.identifier)
         }
 

@@ -69,7 +69,6 @@ struct InAppMessageState: Equatable, CustomStringConvertible {
     /// Copies the current state and replaces the given properties with the new values.
     /// It is useful when updating state with only a few properties and keeping the rest as is.
     func copy(
-        publicKey: String? = nil,
         colorScheme: ColorScheme? = nil,
         pollInterval: Double? = nil,
         userId: String? = nil,
@@ -85,7 +84,7 @@ struct InAppMessageState: Equatable, CustomStringConvertible {
     ) -> InAppMessageState {
         InAppMessageState(
             siteId: siteId,
-            publicKey: publicKey ?? self.publicKey,
+            publicKey: publicKey,
             dataCenter: dataCenter,
             environment: environment,
             colorScheme: colorScheme ?? self.colorScheme,
@@ -408,3 +407,17 @@ extension EmbeddedMessagesState {
 }
 
 // swiftlint:enable file_length
+
+extension InAppMessageState {
+    /// Public key to send to gist. In-app can start before the SDK sets its key, so without a
+    /// `siteId` this falls back to the SDK's current key at request time.
+    var requestPublicKey: String? {
+        if let publicKey {
+            return publicKey
+        }
+        guard siteId.isEmpty else {
+            return nil
+        }
+        return DIGraphShared.shared.backgroundDeliveryContextStore.currentCdpApiKey.flatMap { ApiKey.isPublic($0) ? $0 : nil }
+    }
+}

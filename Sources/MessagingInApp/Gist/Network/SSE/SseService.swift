@@ -156,7 +156,7 @@ actor SseService: SseServiceProtocol {
             queryItems.append(URLQueryItem(name: "siteId", value: state.siteId))
         }
         // EventSource can't set headers, so the public key goes in the query.
-        if let publicKey = state.publicKey {
+        if let publicKey = state.requestPublicKey {
             queryItems.append(URLQueryItem(name: "key", value: publicKey))
         }
         queryItems.append(URLQueryItem(name: "userToken", value: userToken))
