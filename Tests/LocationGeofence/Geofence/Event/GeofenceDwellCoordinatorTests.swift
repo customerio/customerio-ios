@@ -1562,6 +1562,35 @@ struct GeofenceDwellCoordinatorTests {
     }
 
     @Test
+    func cancelledEvidenceReadKeepsItsReplacementDeadline() async {
+        let files = BlockingDwellReadFileManager()
+        let setup = await makeSetup(isPolygon: false, freshFixProvider: { nil }, fileManager: files)
+        let visit = GeofenceDwellVisit(
+            visitId: "pending-visit", enteredAt: setup.clock.read().wall,
+            geometryRevision: setup.geofence.dwellRevision, userId: "user-1", emitted: false,
+            timing: .recorded(secondsAgo: 0, on: setup.clock)
+        )
+        #expect(await setup.storage.saveDwellVisit(visit, geofenceId: setup.geofence.id))
+        defer {
+            files.releaseRead()
+            setup.coordinator.cancelEvidence(for: setup.geofence.id)
+        }
+        files.blockNextRead()
+        let oldRequest = Task { await setup.coordinator.requestQualifyingEvidence(geofenceId: setup.geofence.id) }
+        #expect(await settleOnMain { files.isBlocked })
+
+        setup.coordinator.scheduleDeadline(for: setup.geofence, visit: visit)
+        let replacement = setup.coordinator.deadlineTasks[setup.geofence.id]
+        oldRequest.cancel()
+        files.releaseRead()
+        await oldRequest.value
+
+        #expect(!files.readTimedOut)
+        #expect(setup.coordinator.deadlineTasks[setup.geofence.id] == replacement)
+        #expect(setup.coordinator.evidenceRetries[setup.geofence.id]?.visitId == visit.visitId)
+    }
+
+    @Test
     func evidenceRetryForAnOlderVisitKeepsTheNewerVisitsDeadline() async {
         let setup = await makeSetup(isPolygon: false, freshFixProvider: { nil }, evidenceRetryDelay: 60)
         let older = GeofenceDwellVisit(
@@ -1630,10 +1659,11 @@ struct GeofenceDwellCoordinatorTests {
         // Shared by two setups to model a relaunch over the same persisted state.
         directory: URL? = nil,
         clock: GeofenceClock = SystemGeofenceClock(),
-        locationAccess: (@MainActor () -> GeofenceLocationAccess?)? = nil
+        locationAccess: (@MainActor () -> GeofenceLocationAccess?)? = nil,
+        fileManager: FileManager = .default
     ) async -> Setup {
         let directory = directory ?? FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
-        let storage = GeofenceStorage(fileManager: .default, directoryURL: directory)
+        let storage = GeofenceStorage(fileManager: fileManager, directoryURL: directory)
         let contextStore = BackgroundDeliveryContextStore(
             fileManager: .default,
             directoryURL: FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
@@ -1886,5 +1916,53 @@ private actor OutboxDwellEmitter: GeofenceTransitionEmitting {
 
     func dwells() -> [DwellEmitterSpy.Invocation] {
         invocations
+    }
+}
+
+/// Blocks one real storage read while the main actor replaces its deadline. The bound prevents a
+/// failed test from keeping the storage actor parked indefinitely.
+private final class BlockingDwellReadFileManager: FileManager, @unchecked Sendable {
+    private let lock = NSLock()
+    private let release = DispatchSemaphore(value: 0)
+    private var nextReadBlocked = false
+    private var blocked = false
+    private var timedOut = false
+
+    var isBlocked: Bool {
+        lock.lock()
+        defer { lock.unlock() }
+        return blocked
+    }
+
+    var readTimedOut: Bool {
+        lock.lock()
+        defer { lock.unlock() }
+        return timedOut
+    }
+
+    func blockNextRead() {
+        lock.lock()
+        nextReadBlocked = true
+        lock.unlock()
+    }
+
+    func releaseRead() {
+        release.signal()
+    }
+
+    override func fileExists(atPath path: String) -> Bool {
+        lock.lock()
+        let shouldBlock = nextReadBlocked
+        nextReadBlocked = false
+        if shouldBlock { blocked = true }
+        lock.unlock()
+        if shouldBlock {
+            let result = release.wait(timeout: .now() + 5)
+            lock.lock()
+            timedOut = result == .timedOut
+            blocked = false
+            lock.unlock()
+        }
+        return super.fileExists(atPath: path)
     }
 }

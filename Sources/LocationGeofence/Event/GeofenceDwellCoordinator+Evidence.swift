@@ -48,6 +48,8 @@ extension GeofenceDwellCoordinator {
               let visit = await activeVisit(geofence: geofence, userId: expectedUserId),
               !Task.isCancelled
         else {
+            // A re-arm can replace this task while its storage read is suspended.
+            guard !Task.isCancelled else { return }
             cancelEvidence(for: geofenceId)
             return
         }
@@ -191,11 +193,12 @@ extension GeofenceDwellCoordinator {
             geofence: geofence,
             userId: expectedUserId
         ) else {
-            cancelEvidence(for: geofence.id)
+            if !Task.isCancelled { cancelEvidence(for: geofence.id, ifVisit: visitId) }
             return
         }
+        guard !Task.isCancelled else { return }
         guard !remaining.emitted else {
-            cancelEvidence(for: geofence.id)
+            cancelEvidence(for: geofence.id, ifVisit: visitId)
             return
         }
         // Applying the evidence can restart the candidate (a long evidence gap, or an expired old
