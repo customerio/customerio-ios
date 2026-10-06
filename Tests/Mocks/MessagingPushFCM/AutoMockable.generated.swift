@@ -110,6 +110,11 @@ public class MessagingPushFCMInstanceMock: @unchecked Sendable, MessagingPushFCM
         _didReceiveRegistrationTokenReceivedInvocations.wrappedValue = []
 
         mockCalled = false // do last as resetting properties above can make this true
+        _didReceiveRegistrationCallsCount.wrappedValue = 0
+        _didReceiveRegistrationReceivedArguments.wrappedValue = nil
+        _didReceiveRegistrationReceivedInvocations.wrappedValue = []
+
+        mockCalled = false // do last as resetting properties above can make this true
         _didFailToRegisterForRemoteNotificationsCallsCount.wrappedValue = 0
         _didFailToRegisterForRemoteNotificationsReceivedArguments.wrappedValue = nil
         _didFailToRegisterForRemoteNotificationsReceivedInvocations.wrappedValue = []
@@ -213,6 +218,45 @@ public class MessagingPushFCMInstanceMock: @unchecked Sendable, MessagingPushFCM
         _didReceiveRegistrationTokenReceivedArguments.wrappedValue = (messaging: messaging, fcmToken: fcmToken)
         _didReceiveRegistrationTokenReceivedInvocations.append((messaging: messaging, fcmToken: fcmToken))
         didReceiveRegistrationTokenClosure?(messaging, fcmToken)
+    }
+
+    // MARK: - messaging
+
+    /// Number of times the function was called.
+    private let _didReceiveRegistrationCallsCount: CioInternalCommon.Synchronized<Int> = .init(0)
+    public var didReceiveRegistrationCallsCount: Int {
+        _didReceiveRegistrationCallsCount.wrappedValue
+    }
+
+    /// `true` if the function was ever called.
+    public var didReceiveRegistrationCalled: Bool {
+        didReceiveRegistrationCallsCount > 0
+    }
+
+    /// The arguments from the *last* time the function was called.
+    private let _didReceiveRegistrationReceivedArguments: CioInternalCommon.Synchronized<(messaging: Any, installationId: String?)?> = .init(nil)
+    public var didReceiveRegistrationReceivedArguments: (messaging: Any, installationId: String?)? {
+        _didReceiveRegistrationReceivedArguments.wrappedValue
+    }
+
+    /// Arguments from *all* of the times that the function was called.
+    private let _didReceiveRegistrationReceivedInvocations: CioInternalCommon.Synchronized<[(messaging: Any, installationId: String?)]> = .init([])
+    public var didReceiveRegistrationReceivedInvocations: [(messaging: Any, installationId: String?)] {
+        _didReceiveRegistrationReceivedInvocations.wrappedValue
+    }
+
+    /**
+     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
+     */
+    public var didReceiveRegistrationClosure: ((Any, String?) -> Void)?
+
+    /// Mocked function for `messaging(_ messaging: Any, didReceiveRegistration installationId: String?)`. Your opportunity to return a mocked value and check result of mock in test code.
+    public func messaging(_ messaging: Any, didReceiveRegistration installationId: String?) {
+        mockCalled = true
+        _didReceiveRegistrationCallsCount += 1
+        _didReceiveRegistrationReceivedArguments.wrappedValue = (messaging: messaging, installationId: installationId)
+        _didReceiveRegistrationReceivedInvocations.append((messaging: messaging, installationId: installationId))
+        didReceiveRegistrationClosure?(messaging, installationId)
     }
 
     // MARK: - application

@@ -39,6 +39,19 @@ open class CioAppDelegate: CioProviderAgnosticAppDelegate, FirebaseServiceDelega
         return result
     }
 
+    override open func application(
+        _ application: UIApplication,
+        didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data
+    ) {
+        super.application(application, didRegisterForRemoteNotificationsWithDeviceToken: deviceToken)
+
+        guard config?().autoFetchDeviceToken ?? false else { return }
+
+        MessagingPushFCM.shared.fetchFirebaseRegistration(apnsToken: deviceToken) { [messagingPushFCM] token in
+            messagingPushFCM?.registerDeviceToken(fcmToken: token)
+        }
+    }
+
     // MARK: - FirebaseServiceDelegate
 
     public func didReceiveRegistrationToken(_ token: String?) {
@@ -48,6 +61,12 @@ open class CioAppDelegate: CioProviderAgnosticAppDelegate, FirebaseServiceDelega
 
         // Forward the device token to the Customer.io SDK:
         messagingPushFCM?.registerDeviceToken(fcmToken: token)
+    }
+
+    public func didReceiveRegistration(_ installationId: String?) {
+        wrappedFirebaseDelegate?.didReceiveRegistration(installationId)
+
+        messagingPushFCM?.messaging(self, didReceiveRegistration: installationId)
     }
 }
 
