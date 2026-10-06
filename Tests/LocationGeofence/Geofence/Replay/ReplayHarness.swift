@@ -27,7 +27,9 @@ final class ReplayHarness {
     let logger: CapturingLogger
 
     let gate = ReplayBoundaryGate()
-    let dwellScheduler = ReplayDwellScheduler()
+    private(set) var dwellScheduler = ReplayDwellScheduler()
+    /// Lifecycle delivery belongs to one process, even when a test retains its old graph.
+    private(set) var notificationCenter = NotificationCenter()
 
     // MARK: - The SDK
 
@@ -149,6 +151,7 @@ final class ReplayHarness {
 
     /// Rerun by `reenterProcess()`: build here only what a dying process loses.
     private func composeSDK() {
+        resetProcessRuntime()
         deliveryTracker = Self.completingDeliveryTracker()
         tracker = GeofenceEventTracker(
             storage: storage,
@@ -160,8 +163,7 @@ final class ReplayHarness {
             logger: logger
         )
 
-        // Evidence comes from the drive's position, never CoreLocation. `.default` because
-        // `enterForeground()` posts there, as the OS does.
+        // Evidence and lifecycle input belong to this composition; OS conditions persist across it.
         dwellCoordinator = GeofenceDwellCoordinator(
             storage: storage,
             transitionEmitter: tracker,
@@ -169,6 +171,7 @@ final class ReplayHarness {
             logger: logger,
             // Dwell cannot use a fix from a later input window to qualify or close a visit early.
             fixResolver: makeReplayFixResolver(answerWindow: 0),
+            notificationCenter: notificationCenter,
             clock: DateUtilGeofenceClock(dateUtil: clock),
             waitForEvidence: { [dwellScheduler] in try await dwellScheduler.sleep(nanoseconds: $0) }
         )
@@ -212,6 +215,12 @@ final class ReplayHarness {
         overrideBootstrapDependencies()
     }
 
+    private func resetProcessRuntime() {
+        notificationCenter = NotificationCenter()
+        dwellScheduler = ReplayDwellScheduler()
+        dwellScheduler.advance(to: clock.givenNow.timeIntervalSince(epoch))
+    }
+
     /// Everything `GeofenceBootstrap` resolves, plus `DateUtil` so a later read cannot reach the
     /// wall clock.
     private func overrideBootstrapDependencies() {
@@ -239,16 +248,19 @@ final class ReplayHarness {
         // The old consume task stays parked; the new wrapper's subscription supersedes it.
         monitor.setOnTransition(nil)
         detachFromBootstrap()
-        dwellScheduler.cancelAll()
+        dwellScheduler.stop()
         composeSDK()
     }
 
     /// Call before replacing a composition: the bootstrap's handlers would re-run `wireMonitor` on it.
-    /// Doesn't free the monitor: its `consumeTask` holds `self`, so it still reacts to
-    /// `enterForeground()`.
+    /// Its consume task can retain it, so remove its process-local foreground observer too.
     func detachFromBootstrap() {
         monitor.setOnReconciled(nil)
         monitor.setOnAuthorizationChanged(nil)
+        if let token = monitor.foregroundObserverToken {
+            NotificationCenter.default.removeObserver(token)
+            monitor.foregroundObserverToken = nil
+        }
     }
 
     deinit {
@@ -330,6 +342,7 @@ final class ReplayHarness {
             contextStore: contextStore,
             dateUtil: clock,
             fixResolver: fixResolver,
+            notificationCenter: notificationCenter,
             dwellCoordinator: dwellCoordinator
         )
     }

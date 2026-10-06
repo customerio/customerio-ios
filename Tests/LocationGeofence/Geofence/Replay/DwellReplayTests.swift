@@ -192,6 +192,7 @@ struct DwellReplayTests {
             harness.reenterProcess()
             #expect(harness.dwellScheduler.nextDeadline == nil, "the dead process still has a pending timer")
             await harness.wireMonitor()
+            harness.enterForeground()
             try await harness.settleBoundaries()
             await harness.advance(to: 89)
             #expect(dwells(harness).isEmpty)

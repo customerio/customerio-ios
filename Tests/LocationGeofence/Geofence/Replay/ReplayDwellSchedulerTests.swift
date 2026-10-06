@@ -40,6 +40,29 @@ struct ReplayDwellSchedulerTests {
     }
 
     @Test
+    func stop_whenOldProcessSchedulesMoreWork_thenEveryWaitIsCancelled() async {
+        let scheduler = ReplayDwellScheduler()
+        let parked = Task { try await scheduler.sleep(nanoseconds: 60000000000) }
+        #expect(await settleOnMain { scheduler.pendingCount == 1 })
+        scheduler.stop()
+        do {
+            try await parked.value
+            Issue.record("the dead process's waiter resumed successfully")
+        } catch {
+            #expect(error is CancellationError)
+        }
+        for delay: UInt64 in [0, 60000000000] {
+            do {
+                try await scheduler.sleep(nanoseconds: delay)
+                Issue.record("the dead process scheduled another deadline")
+            } catch {
+                #expect(error is CancellationError)
+            }
+        }
+        #expect(scheduler.pendingCount == 0)
+    }
+
+    @Test
     @available(iOS 17.0, *)
     func advance_whenBoundaryCreatesDeadline_thenRunsDeadlineBeforeNextInput() async throws {
         let harness = ReplayHarness()

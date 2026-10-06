@@ -11,12 +11,14 @@ final class ReplayDwellScheduler {
 
     private var waiters: [UUID: Waiter] = [:]
     private var sequence = 0
+    private var stopped = false
     private(set) var now: TimeInterval = 0
     var nextDeadline: TimeInterval? { waiters.values.map(\.deadline).min() }
     var pendingCount: Int { waiters.count }
 
     func sleep(nanoseconds: UInt64) async throws {
         try Task.checkCancellation()
+        guard !stopped else { throw CancellationError() }
         guard nanoseconds > 0 else { return }
         let id = UUID()
         let deadline = now + TimeInterval(nanoseconds) / 1000000000
@@ -49,6 +51,12 @@ final class ReplayDwellScheduler {
         for id in Array(waiters.keys) {
             cancel(id)
         }
+    }
+
+    /// A dead process cannot park new work, including an immediate deadline from a late bootstrap.
+    func stop() {
+        stopped = true
+        cancelAll()
     }
 
     private func cancel(_ id: UUID) {

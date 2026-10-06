@@ -40,6 +40,7 @@ extension ReplayHarness {
 
     func enterForeground() {
         #if canImport(UIKit)
+        notificationCenter.post(name: UIApplication.willEnterForegroundNotification, object: nil)
         NotificationCenter.default.post(name: UIApplication.willEnterForegroundNotification, object: nil)
         #endif
     }
