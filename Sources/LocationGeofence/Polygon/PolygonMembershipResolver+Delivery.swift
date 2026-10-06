@@ -19,7 +19,8 @@ extension PolygonMembershipResolver {
         evaluatedRing: [LocationData]? = nil,
         evaluatedCircle: MonitoredCircle? = nil,
         crossingObserved: Bool = true,
-        isStillCurrent: (@Sendable () -> Bool)? = nil
+        isStillCurrent: (@Sendable () -> Bool)? = nil,
+        receivedForUserId: String? = nil
     ) async {
         let outcome = await storage.recordPolygonMembership(
             membership,
@@ -29,7 +30,9 @@ extension PolygonMembershipResolver {
             onlyIfCircleMatches: evaluatedCircle
         )
         var exitContext: GeofenceExitContext?
-        let expectedUserId = contextStore.currentUserId
+        // OS crossings retain their receiving identity through the storage await. Membership is
+        // geometry and still advances when that user has since changed.
+        let expectedUserId = receivedForUserId ?? contextStore.currentUserId
         if isStillCurrent?() ?? true {
             let visitContext = await forwardDwellEvidence(
                 PolygonDwellEvidence(membership: membership, outcome: outcome),
@@ -71,18 +74,21 @@ extension PolygonMembershipResolver {
         geofence: Geofence,
         eventCircle: GeofenceEventCircle,
         occurredAt: Date,
-        crossingObserved: Bool = true
+        crossingObserved: Bool = true,
+        receivedForUserId: String? = nil
     ) async {
         switch eventCircle {
         case .circle(let crossed):
             await apply(
                 .outside, to: geofence, evidence: occurredAt, confirmedByFix: false,
-                evaluatedCircle: crossed, crossingObserved: crossingObserved
+                evaluatedCircle: crossed, crossingObserved: crossingObserved,
+                receivedForUserId: receivedForUserId
             )
         case .unknown:
             await apply(
                 .outside, to: geofence, evidence: occurredAt, confirmedByFix: false,
-                evaluatedCircle: nil, crossingObserved: crossingObserved
+                evaluatedCircle: nil, crossingObserved: crossingObserved,
+                receivedForUserId: receivedForUserId
             )
         case .expired:
             logger.geofencePolygonUndecided(identifier: geofence.id, reason: .circleExpired, pass: nil)

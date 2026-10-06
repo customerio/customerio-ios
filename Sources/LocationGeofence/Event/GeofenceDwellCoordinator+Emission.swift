@@ -86,7 +86,7 @@ extension GeofenceDwellCoordinator {
         // Writing the captured copy back would resurrect the old visit over the new one.
         switch await storage.markDwellVisitEmitted(visit, geofenceId: geofence.id) {
         case .marked:
-            cancelEvidence(for: geofence.id)
+            cancelEvidence(for: geofence.id, ifVisit: visit.visitId)
         case .writeFailed:
             scheduleEvidenceRetry(for: geofence, visit: visit)
         case .superseded:

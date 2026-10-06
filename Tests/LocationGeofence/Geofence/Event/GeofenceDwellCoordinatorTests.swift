@@ -1561,6 +1561,30 @@ struct GeofenceDwellCoordinatorTests {
         #expect(setup.coordinator.deadlineTasks[setup.geofence.id] == nil)
     }
 
+    @Test
+    func evidenceRetryForAnOlderVisitKeepsTheNewerVisitsDeadline() async {
+        let setup = await makeSetup(isPolygon: false, freshFixProvider: { nil }, evidenceRetryDelay: 60)
+        let older = GeofenceDwellVisit(
+            visitId: "older-visit", enteredAt: setup.clock.read().wall,
+            geometryRevision: setup.geofence.dwellRevision, userId: "user-1", emitted: false,
+            timing: .recorded(secondsAgo: 0, on: setup.clock)
+        )
+        let newer = GeofenceDwellVisit(
+            visitId: "newer-visit", enteredAt: older.enteredAt,
+            geometryRevision: older.geometryRevision, userId: older.userId, emitted: false,
+            timing: older.timing
+        )
+        setup.coordinator.scheduleDeadline(for: setup.geofence, visit: newer)
+        let deadline = setup.coordinator.deadlineTasks[setup.geofence.id]
+        defer { setup.coordinator.cancelEvidence(for: setup.geofence.id) }
+
+        setup.coordinator.scheduleEvidenceRetry(for: setup.geofence, visit: older)
+
+        #expect(setup.coordinator.evidenceRetries[setup.geofence.id]?.visitId == newer.visitId)
+        #expect(setup.coordinator.evidenceRetries[setup.geofence.id]?.attempts == 0)
+        #expect(setup.coordinator.deadlineTasks[setup.geofence.id] == deadline)
+    }
+
     /// The event carries `enteredAt` truncated to whole epoch seconds and a timestamp read to whole
     /// seconds the same way; the reported duration is their difference, so the three agree.
     /// Qualifying still uses the elapsed time actually observed.
