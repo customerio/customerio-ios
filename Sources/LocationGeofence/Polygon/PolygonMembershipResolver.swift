@@ -111,7 +111,10 @@ final class PolygonMembershipResolver {
             // resolver supplies fresh, real-shape membership evidence to the dwell coordinator.
             return .nothingToRearm
         case .exit:
-            await applyCoveringCircleExit(geofence: geofence, eventCircle: eventCircle, occurredAt: occurredAt)
+            await applyCoveringCircleExit(
+                geofence: geofence, eventCircle: eventCircle, occurredAt: occurredAt,
+                receivedForUserId: receivedForUserId
+            )
             return .nothingToRearm
         case .enter:
             guard geofence.polygonRegion != nil else {

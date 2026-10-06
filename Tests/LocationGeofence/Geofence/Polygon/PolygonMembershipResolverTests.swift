@@ -203,6 +203,28 @@ struct PolygonMembershipResolverTests {
         #expect(exits.first?.expectedUserId == "user-1")
     }
 
+    @Test(arguments: ["user-1", ""])
+    func polygonExit_givenIdentityChangedAfterDelivery_expectReceivingIdentityRetained(receivedFor: String) async {
+        let setup = await makeSetup(fix: nil, withDwellCoordinator: true)
+        let polygon = polygonGeofence(dwellThresholdSeconds: 60)
+        await registerPolygons(setup, ids: [polygon.id])
+        await setup.storage.setCachedGeofences([polygon])
+        _ = await setup.storage.recordPolygonMembership(
+            .inside, forIdentifier: polygon.id, onlyIfBeliefPredates: clock.now.addingTimeInterval(-5)
+        )
+        setup.contextStore.setUserId("user-2")
+
+        await setup.resolver.handleTransition(
+            identifier: polygon.id, transition: .exit, occurredAt: clock.now,
+            eventCircle: .unknown, receivedForUserId: receivedFor
+        )
+
+        let exits = await setup.emitter.exitSnapshot()
+        #expect(exits.count == 1)
+        #expect(exits.first?.expectedUserId == receivedFor)
+        #expect(await setup.storage.getPolygonMembership()[polygon.id]?.membership == .outside)
+    }
+
     /// Holds the first ENTER inside the tracker — an HTTP send stalled offline or behind a backlog
     /// flush — until released, and counts every EXIT.
     private actor StalledEnterEmitter: GeofenceTransitionEmitting {
