@@ -50,4 +50,34 @@ class GlobalDataStoreTest: UnitTest {
 
         XCTAssertNil(dataStore.pushDeviceTokenType)
     }
+
+    func test_isPushDeviceTokenStored_givenSameTokenWithoutType_expectTrue() {
+        dataStore.savePushDeviceToken("value", type: .fid)
+
+        XCTAssertTrue(dataStore.isPushDeviceTokenStored("value", type: nil))
+    }
+
+    func test_isPushDeviceTokenStored_givenSameTokenAndType_expectTrue() {
+        dataStore.savePushDeviceToken("value", type: .fid)
+
+        XCTAssertTrue(dataStore.isPushDeviceTokenStored("value", type: .fid))
+    }
+
+    func test_isPushDeviceTokenStored_givenSameTokenWithNewType_expectFalse() {
+        dataStore.savePushDeviceToken("value", type: nil)
+
+        XCTAssertFalse(dataStore.isPushDeviceTokenStored("value", type: .fid))
+    }
+
+    func test_isPushDeviceTokenStored_givenSameTokenWithOtherType_expectFalse() {
+        dataStore.savePushDeviceToken("value", type: .token)
+
+        XCTAssertFalse(dataStore.isPushDeviceTokenStored("value", type: .fid))
+    }
+
+    func test_isPushDeviceTokenStored_givenOtherToken_expectFalse() {
+        dataStore.savePushDeviceToken("value", type: .fid)
+
+        XCTAssertFalse(dataStore.isPushDeviceTokenStored("other", type: nil))
+    }
 }

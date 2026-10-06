@@ -20,6 +20,11 @@ public extension GlobalDataStore {
         }
         pushDeviceToken = deviceToken
     }
+
+    /// Whether the token is already stored. A token whose type isn't stored yet counts as not stored, so it gets one.
+    func isPushDeviceTokenStored(_ deviceToken: String, type: DeviceTokenType?) -> Bool {
+        deviceToken == pushDeviceToken && (type == nil || type == pushDeviceTokenType)
+    }
 }
 
 // sourcery: InjectRegisterShared = "GlobalDataStore"

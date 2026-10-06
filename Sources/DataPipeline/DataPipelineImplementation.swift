@@ -9,6 +9,7 @@ class DataPipelineImplementation: DataPipelineInstance, DataPipelineTracking, Ba
     let eventBusHandler: EventBusHandler
 
     private var globalDataStore: GlobalDataStore
+    private let deviceTokenLock = Lock.unsafeInit()
     private let deviceAttributesProvider: DeviceAttributesProvider
     private let dateUtil: DateUtil
     private let deviceInfo: DeviceInfo
@@ -125,6 +126,10 @@ class DataPipelineImplementation: DataPipelineInstance, DataPipelineTracking, Ba
         }
 
         eventBusHandler.addObserver(RegisterDeviceTokenEvent.self) { event in
+            // Events are delivered concurrently, and the same token can be posted again before it's stored
+            self.deviceTokenLock.lock()
+            defer { self.deviceTokenLock.unlock() }
+            guard !self.globalDataStore.isPushDeviceTokenStored(event.token, type: event.tokenType) else { return }
             self.registerDeviceToken(event.token, tokenType: event.tokenType)
         }
     }
@@ -319,25 +324,6 @@ class DataPipelineImplementation: DataPipelineInstance, DataPipelineTracking, Ba
         }
     }
 
-    func registerDeviceToken(_ deviceToken: String) {
-        registerDeviceToken(deviceToken, tokenType: nil)
-    }
-
-    func registerDeviceToken(_ deviceToken: String, tokenType: DeviceTokenType?) {
-        if deviceToken.isBlankOrEmpty() {
-            dataPipelinesLogger.logStoringBlankPushToken()
-            return
-        }
-        dataPipelinesLogger.logStoringDevicePushToken(token: deviceToken, userId: registeredUserId)
-        // save the device token for later use.
-        // segment plugin doesn't store token anywhere so we need to pass token to it every time
-        // storing it so we can reference the token and update device plugin app relaunch
-        globalDataStore.savePushDeviceToken(deviceToken, type: tokenType)
-
-        dataPipelinesLogger.logRegisteringPushToken(token: deviceToken, userId: registeredUserId)
-        addDeviceAttributes(token: deviceToken)
-    }
-
     func trackDeliveryEvent(token: String?, event: String, deliveryId: String, timestamp: String) {
         processMetricsFromBGQ(token: token, event: event, deliveryId: deliveryId, timestamp: timestamp, metaData: [:])
     }
@@ -378,23 +364,33 @@ class DataPipelineImplementation: DataPipelineInstance, DataPipelineTracking, Ba
     }
 }
 
+// MARK: - Device token
+
+extension DataPipelineImplementation {
+    func registerDeviceToken(_ deviceToken: String) {
+        registerDeviceToken(deviceToken, tokenType: nil)
+    }
+
+    func registerDeviceToken(_ deviceToken: String, tokenType: DeviceTokenType?) {
+        if deviceToken.isBlankOrEmpty() {
+            dataPipelinesLogger.logStoringBlankPushToken()
+            return
+        }
+        dataPipelinesLogger.logStoringDevicePushToken(token: deviceToken, userId: registeredUserId)
+        // save the device token for later use.
+        // segment plugin doesn't store token anywhere so we need to pass token to it every time
+        // storing it so we can reference the token and update device plugin app relaunch
+        globalDataStore.savePushDeviceToken(deviceToken, type: tokenType)
+
+        dataPipelinesLogger.logRegisteringPushToken(token: deviceToken, userId: registeredUserId)
+        addDeviceAttributes(token: deviceToken)
+    }
+}
+
 // extension methods to simplify and reduce repetitive coding
 extension DataPipelineImplementation {
     /// returns user id for currently identifier profile
     var registeredUserId: String? {
         analytics.userId
-    }
-}
-
-// MARK: - DataPipelineTracking
-
-extension DataPipelineImplementation {
-    var isUserIdentified: Bool {
-        guard let userId = analytics.userId, !userId.isEmpty else { return false }
-        return true
-    }
-
-    func track(name: String, properties: [String: Any]) {
-        analytics.track(name: name, properties: properties)
     }
 }
