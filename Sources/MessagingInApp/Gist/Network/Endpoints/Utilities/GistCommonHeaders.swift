@@ -23,7 +23,7 @@ struct GistCommonHeaders {
         if !state.siteId.isEmpty {
             headers[HTTPHeader.siteId.rawValue] = state.siteId
         }
-        if let publicKey = state.publicKey {
+        if let publicKey = state.requestPublicKey {
             headers[HTTPHeader.authorization.rawValue] = "Bearer \(publicKey)"
         }
         return headers

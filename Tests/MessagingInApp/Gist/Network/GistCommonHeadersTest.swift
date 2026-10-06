@@ -76,6 +76,16 @@ class GistCommonHeadersTest: UnitTest {
         XCTAssertNil(headers["X-CIO-Site-Id"])
     }
 
+    func test_headers_givenNoSiteIdAndKeySetAfterInit_expectCurrentKeyUsed() {
+        let store = DIGraphShared.shared.backgroundDeliveryContextStore
+        store.setCdpApiKey("wk_us_abc")
+        defer { store.setCdpApiKey(nil) }
+
+        let headers = builder().headers(state: InAppMessageState(dataCenter: "US"))
+
+        XCTAssertEqual(headers["Authorization"], "Bearer wk_us_abc")
+    }
+
     func test_headers_givenNoPublicKey_expectNoAuthorization() {
         let headers = builder().headers(state: state)
 

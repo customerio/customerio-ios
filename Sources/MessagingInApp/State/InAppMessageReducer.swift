@@ -32,9 +32,6 @@ private func reducer(action: InAppMessageAction, state: InAppMessageState) -> In
     case .setColorScheme(let colorScheme):
         return state.copy(colorScheme: colorScheme)
 
-    case .setPublicKey(let key):
-        return state.copy(publicKey: key)
-
     case .setPollingInterval(let interval):
         return state.copy(pollInterval: interval)
 
