@@ -4,8 +4,8 @@ import CioInternalCommon
 ///
 /// Use `MessagingInAppConfigBuilder` for constructing its instances. For detailed usage, see builder class documentation.
 public struct MessagingInAppConfigOptions {
-    /// Workspace Site ID. Optional when the SDK is set up with a public `wk_` key.
-    public let siteId: String?
+    /// Workspace Site ID. Empty when not set, which is allowed when the SDK is set up with a public `wk_` key.
+    public let siteId: String
     public let region: Region
     public let colorScheme: ColorScheme
     /// Host-provided VoiceOver labels for the Visual Notification Inbox UI. All nil by default (the SDK
