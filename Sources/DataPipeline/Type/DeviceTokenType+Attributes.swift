@@ -2,7 +2,7 @@ import CioInternalCommon
 
 extension DeviceTokenType {
     /// Reserved device attribute the backend lifts out to store the token type.
-    static let attributeKey = "_cio_token_type"
+    static let attributeKey = "cio_token_type"
 }
 
 extension Dictionary where Key == String, Value == Any {

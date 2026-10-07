@@ -246,7 +246,7 @@ class CDPInteractionDefaultConfigTests: DataPipelineInteractionTests {
         dataPipelineImplementation.registerDeviceToken(String.random, tokenType: .token)
 
         let properties = outputReader.deviceUpdateEvents.last?.properties
-        XCTAssertEqual(properties?["_cio_token_type"]?.stringValue, "token")
+        XCTAssertEqual(properties?["cio_token_type"]?.stringValue, "token")
         XCTAssertEqual(properties?["push_enabled"]?.stringValue, "true")
     }
 
@@ -258,7 +258,7 @@ class CDPInteractionDefaultConfigTests: DataPipelineInteractionTests {
         customerIO.registerDeviceToken(String.random)
 
         XCTAssertEqual(outputReader.deviceUpdateEvents.count, 1)
-        XCTAssertNil(outputReader.deviceUpdateEvents.last?.properties?["_cio_token_type"])
+        XCTAssertNil(outputReader.deviceUpdateEvents.last?.properties?["cio_token_type"])
     }
 
     func test_registerToken_givenCustomAttributeWithReservedKey_expectSdkTypeWins() {
@@ -268,9 +268,9 @@ class CDPInteractionDefaultConfigTests: DataPipelineInteractionTests {
         dataPipelineImplementation.registerDeviceToken(givenDeviceToken, tokenType: .fid)
         outputReader.resetPlugin()
 
-        customerIO.setDeviceAttributes(["_cio_token_type": "token"])
+        customerIO.setDeviceAttributes(["cio_token_type": "token"])
 
-        XCTAssertEqual(outputReader.deviceUpdateEvents.last?.properties?["_cio_token_type"]?.stringValue, "fid")
+        XCTAssertEqual(outputReader.deviceUpdateEvents.last?.properties?["cio_token_type"]?.stringValue, "fid")
         XCTAssertEqual(dataPipelinesLoggerMock.logReservedDeviceTokenTypeIgnoredCallsCount, 1)
     }
 
@@ -280,10 +280,10 @@ class CDPInteractionDefaultConfigTests: DataPipelineInteractionTests {
         customerIO.registerDeviceToken(String.random)
         outputReader.resetPlugin()
 
-        customerIO.setDeviceAttributes(["_cio_token_type": "fid", "foo": "bar"])
+        customerIO.setDeviceAttributes(["cio_token_type": "fid", "foo": "bar"])
 
         let properties = outputReader.deviceUpdateEvents.last?.properties
-        XCTAssertNil(properties?["_cio_token_type"])
+        XCTAssertNil(properties?["cio_token_type"])
         XCTAssertEqual(properties?["foo"]?.stringValue, "bar")
         XCTAssertEqual(dataPipelinesLoggerMock.logReservedDeviceTokenTypeIgnoredCallsCount, 1)
     }
@@ -301,7 +301,7 @@ class CDPInteractionDefaultConfigTests: DataPipelineInteractionTests {
         customerIO.setDeviceAttributes(["foo": "bar"])
 
         XCTAssertEqual(outputReader.deviceUpdateEvents.last?.deviceToken, givenDeviceToken)
-        XCTAssertNil(outputReader.deviceUpdateEvents.last?.properties?["_cio_token_type"])
+        XCTAssertNil(outputReader.deviceUpdateEvents.last?.properties?["cio_token_type"])
     }
 
     func test_registerToken_givenNewerTokenBeforeAttributesLoad_expectOnlyNewerTokenSent() {
@@ -319,7 +319,7 @@ class CDPInteractionDefaultConfigTests: DataPipelineInteractionTests {
 
         XCTAssertEqual(outputReader.deviceUpdateEvents.count, 1)
         XCTAssertEqual(outputReader.deviceUpdateEvents.first?.deviceToken, givenFid)
-        XCTAssertEqual(outputReader.deviceUpdateEvents.first?.properties?["_cio_token_type"]?.stringValue, "fid")
+        XCTAssertEqual(outputReader.deviceUpdateEvents.first?.properties?["cio_token_type"]?.stringValue, "fid")
     }
 
     func test_registerToken_givenSameTokenWithoutType_expectStoredTypeResent() {
@@ -333,7 +333,7 @@ class CDPInteractionDefaultConfigTests: DataPipelineInteractionTests {
         customerIO.registerDeviceToken(givenDeviceToken)
 
         XCTAssertEqual(outputReader.deviceUpdateEvents.last?.deviceToken, givenDeviceToken)
-        XCTAssertEqual(outputReader.deviceUpdateEvents.last?.properties?["_cio_token_type"]?.stringValue, "fid")
+        XCTAssertEqual(outputReader.deviceUpdateEvents.last?.properties?["cio_token_type"]?.stringValue, "fid")
     }
 
     func test_registerToken_givenNewTokenWithoutType_expectTypeDropped() {
@@ -345,7 +345,7 @@ class CDPInteractionDefaultConfigTests: DataPipelineInteractionTests {
         customerIO.registerDeviceToken(String.random)
 
         XCTAssertEqual(outputReader.deviceUpdateEvents.count, 1)
-        XCTAssertNil(outputReader.deviceUpdateEvents.last?.properties?["_cio_token_type"])
+        XCTAssertNil(outputReader.deviceUpdateEvents.last?.properties?["cio_token_type"])
     }
 
     func test_identify_givenTypedTokenRegistered_expectTypeSentToNewProfile() {
@@ -358,7 +358,7 @@ class CDPInteractionDefaultConfigTests: DataPipelineInteractionTests {
         customerIO.identify(userId: String.random)
 
         XCTAssertEqual(outputReader.deviceUpdateEvents.last?.deviceToken, givenDeviceToken)
-        XCTAssertEqual(outputReader.deviceUpdateEvents.last?.properties?["_cio_token_type"]?.stringValue, "fid")
+        XCTAssertEqual(outputReader.deviceUpdateEvents.last?.properties?["cio_token_type"]?.stringValue, "fid")
     }
 
     func test_setDeviceAttributes_givenTypedTokenRegistered_expectTypeInProperties() {
@@ -370,7 +370,7 @@ class CDPInteractionDefaultConfigTests: DataPipelineInteractionTests {
         customerIO.setDeviceAttributes(["foo": "bar"])
 
         let properties = outputReader.deviceUpdateEvents.last?.properties
-        XCTAssertEqual(properties?["_cio_token_type"]?.stringValue, "token")
+        XCTAssertEqual(properties?["cio_token_type"]?.stringValue, "token")
         XCTAssertEqual(properties?["foo"]?.stringValue, "bar")
     }
 
@@ -389,7 +389,7 @@ class CDPInteractionDefaultConfigTests: DataPipelineInteractionTests {
         XCTAssertEqual(outputReader.deviceDeleteEvents.first?.deviceToken, givenToken)
         XCTAssertEqual(outputReader.deviceUpdateEvents.count, 1)
         XCTAssertEqual(outputReader.deviceUpdateEvents.first?.deviceToken, givenFid)
-        XCTAssertEqual(outputReader.deviceUpdateEvents.first?.properties?["_cio_token_type"]?.stringValue, "fid")
+        XCTAssertEqual(outputReader.deviceUpdateEvents.first?.properties?["cio_token_type"]?.stringValue, "fid")
     }
 
     func test_tokenChanged_givenFidToToken_expectFidDeviceDeletedAndTokenDeviceCreated() {
@@ -407,7 +407,7 @@ class CDPInteractionDefaultConfigTests: DataPipelineInteractionTests {
         XCTAssertEqual(outputReader.deviceDeleteEvents.first?.deviceToken, givenFid)
         XCTAssertEqual(outputReader.deviceUpdateEvents.count, 1)
         XCTAssertEqual(outputReader.deviceUpdateEvents.first?.deviceToken, givenToken)
-        XCTAssertEqual(outputReader.deviceUpdateEvents.first?.properties?["_cio_token_type"]?.stringValue, "token")
+        XCTAssertEqual(outputReader.deviceUpdateEvents.first?.properties?["cio_token_type"]?.stringValue, "token")
     }
 
     func test_registerToken_givenProfileIdentifiedBefore_expectRegisterDeviceToken() {
@@ -882,7 +882,7 @@ extension CDPInteractionCustomConfigTests {
 
         dataPipelineImplementation.registerDeviceToken(String.random, tokenType: .fid)
 
-        XCTAssertEqual(outputReader.deviceUpdateEvents.last?.properties?["_cio_token_type"]?.stringValue, "fid")
+        XCTAssertEqual(outputReader.deviceUpdateEvents.last?.properties?["cio_token_type"]?.stringValue, "fid")
     }
 }
 

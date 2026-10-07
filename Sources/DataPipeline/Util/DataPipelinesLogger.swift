@@ -50,6 +50,6 @@ class DataPipelinesLoggerImpl: DataPipelinesLogger {
     }
 
     public func logReservedDeviceTokenTypeIgnored() {
-        logger.error("Device attribute _cio_token_type is reserved for the SDK, ignoring the provided value", Self.PUSH_TAG, nil)
+        logger.error("Device attribute \(DeviceTokenType.attributeKey) is reserved for the SDK, ignoring the provided value", Self.PUSH_TAG, nil)
     }
 }
