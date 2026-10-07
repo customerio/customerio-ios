@@ -42,12 +42,12 @@ class MessagingInAppImplementation: MessagingInAppInstance {
     private func subscribeToInAppMessageState() {
         // Key set on `SDKConfigBuilder`. Only public `wk_` keys are sent to in-app APIs.
         let publicKey = backgroundDeliveryContextStore.currentCdpApiKey.flatMap { ApiKey.isPublic($0) ? $0 : nil }
-        if moduleConfig.siteId == nil, publicKey == nil {
+        if moduleConfig.siteId.isEmpty, publicKey == nil {
             logger.error("In-app messaging needs a siteId, or the SDK set up with a public (wk_) key")
         }
 
         inAppMessageManager.dispatch(action: .initialize(
-            siteId: moduleConfig.siteId ?? "",
+            siteId: moduleConfig.siteId,
             dataCenter: moduleConfig.region.rawValue,
             environment: GistEnvironment.production,
             colorScheme: moduleConfig.colorScheme,

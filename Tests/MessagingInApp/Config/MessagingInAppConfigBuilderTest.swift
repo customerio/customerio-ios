@@ -14,10 +14,10 @@ class MessagingInAppConfigBuilderTest: UnitTest {
         XCTAssertEqual(config.region, givenRegion)
     }
 
-    func test_initializeWithoutSiteId_expectNilSiteId() {
+    func test_initializeWithoutSiteId_expectEmptySiteId() {
         let config = MessagingInAppConfigBuilder(region: .EU).build()
 
-        XCTAssertNil(config.siteId)
+        XCTAssertEqual(config.siteId, "")
         XCTAssertEqual(config.region, .EU)
     }
 
@@ -138,7 +138,39 @@ class MessagingInAppConfigBuilderTest: UnitTest {
 
         let config = try XCTUnwrap(MessagingInAppConfigBuilder.build(from: givenDict))
 
-        XCTAssertNil(config.siteId)
+        XCTAssertEqual(config.siteId, "")
+    }
+
+    func test_initializeFromDictionaryWithoutRegion_givenEuPublicKey_expectEuRegion() throws {
+        let givenDict: [String: Any] = [
+            "cdpApiKey": "wk_eu_\(String.random)",
+            "inApp": [:]
+        ]
+
+        let config = try XCTUnwrap(MessagingInAppConfigBuilder.build(from: givenDict))
+
+        XCTAssertEqual(config.region, .EU)
+    }
+
+    func test_initializeFromDictionary_givenEuPublicKeyAndUsRegion_expectExplicitRegionWins() throws {
+        let givenDict: [String: Any] = [
+            "cdpApiKey": "wk_eu_\(String.random)",
+            "region": "US",
+            "inApp": [:]
+        ]
+
+        let config = try XCTUnwrap(MessagingInAppConfigBuilder.build(from: givenDict))
+
+        XCTAssertEqual(config.region, .US)
+    }
+
+    // Apps written against the old API read `siteId` as a non-optional `String`.
+    func test_siteId_givenLegacyCaller_expectNonOptionalString() {
+        let config = MessagingInAppConfigBuilder(siteId: "site-1", region: .US).build()
+
+        let siteId: String = config.siteId
+
+        XCTAssertEqual(siteId, "site-1")
     }
 
     func test_initializeFromDictionaryWithoutSiteId_givenLegacyKey_expectThrowError() {

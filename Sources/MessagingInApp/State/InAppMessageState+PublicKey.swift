@@ -2,15 +2,14 @@ import CioInternalCommon
 import Foundation
 
 extension InAppMessageState {
-    /// Public key to send to gist. In-app can start before the SDK sets its key, so without a
-    /// `siteId` this falls back to the SDK's current key at request time.
+    /// Public key to send to gist. Prefers the SDK's current key, so a replaced `wk_` key takes over
+    /// even when in-app captured an older one at startup. Falls back to the captured key. Without a
+    /// captured key, only used when there's no `siteId`.
     var requestPublicKey: String? {
-        if let publicKey {
-            return publicKey
-        }
-        guard siteId.isEmpty else {
+        guard publicKey != nil || siteId.isEmpty else {
             return nil
         }
-        return DIGraphShared.shared.backgroundDeliveryContextStore.currentCdpApiKey.flatMap { ApiKey.isPublic($0) ? $0 : nil }
+        let currentKey = DIGraphShared.shared.backgroundDeliveryContextStore.currentCdpApiKey.flatMap { ApiKey.isPublic($0) ? $0 : nil }
+        return currentKey ?? publicKey
     }
 }

@@ -49,7 +49,7 @@ public class MessagingInAppConfigBuilder {
     /// Builds and returns `MessagingInAppConfigOptions` instance from the configured properties.
     public func build() -> MessagingInAppConfigOptions {
         MessagingInAppConfigOptions(
-            siteId: siteId,
+            siteId: siteId ?? "",
             region: region,
             colorScheme: colorScheme,
             notificationInboxAccessibilityLabels: notificationInboxAccessibilityLabels
@@ -105,9 +105,9 @@ public extension MessagingInAppConfigBuilder {
         // By default, region is provided only in top-level configuration in wrapper SDKs.
         // This prevents users from having to specify region more than once in the configuration.
         // Therefore, we retrieve the region from top-level configuration here.
-        // If the region is not present, the default region is used.
+        // If the region is not present, it comes from the key prefix, then the default region.
         let regionStr = sdkConfig[Keys.region.rawValue] as? String ?? ""
-        let region = Region.getRegion(from: regionStr)
+        let region = regionStr.isEmpty ? ApiKey.region(of: cdpApiKey) ?? Region.getRegion(from: regionStr) : Region.getRegion(from: regionStr)
 
         let builder = MessagingInAppConfigBuilder(siteId: siteId, region: region)
 
