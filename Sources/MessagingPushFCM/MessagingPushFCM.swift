@@ -26,6 +26,7 @@ public protocol MessagingPushFCMInstance: AutoMockable {
     )
 
     // sourcery:Name=didFailToRegisterForRemoteNotifications
+    /// Logs the failure. The device stays registered with Customer.io.
     func application(
         _ application: Any,
         didFailToRegisterForRemoteNotificationsWithError error: Error
@@ -135,7 +136,7 @@ public class MessagingPushFCM: MessagingPushFCMInstance {
     }
 
     public func application(_ application: Any, didFailToRegisterForRemoteNotificationsWithError error: Error) {
-        messagingPush.deleteDeviceToken()
+        MessagingPush.shared.didFailToRegisterForRemoteNotifications(error: error)
     }
 
     public func deleteDeviceToken() {

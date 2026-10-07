@@ -208,6 +208,13 @@ public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, Messagi
         implementation?.deleteDeviceToken()
     }
 
+    /// Handles a failed registration for remote notifications, from every integration path.
+    /// Only logs, so the device stays on the profile.
+    @_spi(Internal)
+    public func didFailToRegisterForRemoteNotifications(error: Error) {
+        logger.error("CIO: Failed to register for remote notifications: \(error.localizedDescription)")
+    }
+
     /**
      Track a push metric
      */

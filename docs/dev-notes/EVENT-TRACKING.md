@@ -51,7 +51,7 @@ Emitted by `iOSLifecycleEvents` (Segment platform plugin):
 | Event name | Trigger | Properties |
 |---|---|---|
 | `Device Created or Updated` | `registerDeviceToken()` | device attributes (OS, push tokens, etc.) |
-| `Device Deleted` | `clearIdentify()` or profile switch with existing token | _(none)_ |
+| `Device Deleted` | `clearIdentify()`, profile switch, or `deleteDeviceToken()` (`CustomerIO` or `MessagingPush`), with an existing token | _(none)_ |
 | `Report Delivery Event` | Push or in-app metric received | `metric`, `deliveryId`, `recipient` (push only), plus any in-app `metaData` |
 
 ---

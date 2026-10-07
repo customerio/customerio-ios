@@ -89,10 +89,7 @@ open class CioProviderAgnosticAppDelegate: CioAppDelegateType {
     ) {
         wrappedAppDelegate?.application?(application, didFailToRegisterForRemoteNotificationsWithError: error)
 
-        logger.error("CIO: Device token is deleted for current user. Failed to register for remote notifications: \(error.localizedDescription)")
-        if config?().autoFetchDeviceToken ?? false {
-            messagingPush.deleteDeviceToken()
-        }
+        MessagingPush.shared.didFailToRegisterForRemoteNotifications(error: error)
     }
 
     // MARK: - method forwarding
