@@ -185,7 +185,7 @@ class DataPipelineEventBustTests: IntegrationTest {
         }
 
         XCTAssertEqual(trackEvent.deviceToken, givenToken)
-        XCTAssertEqual(trackEvent.properties?["_cio_token_type"]?.stringValue, "fid")
+        XCTAssertEqual(trackEvent.properties?["cio_token_type"]?.stringValue, "fid")
     }
 
     func testSubscribeToJourneyEvents_givenSameTokenPostedConcurrently_expectDeviceRegisteredOnce() async {
@@ -218,7 +218,7 @@ class DataPipelineEventBustTests: IntegrationTest {
         await eventBusHandler.postEventAndWait(RegisterDeviceTokenEvent(token: "token-a", tokenType: .fid))
 
         XCTAssertEqual(deviceEvents(), ["Device Created or Updated token-a", "Device Created or Updated token-a"])
-        XCTAssertEqual((outputReader.lastEvent as? TrackEvent)?.properties?["_cio_token_type"]?.stringValue, "fid")
+        XCTAssertEqual((outputReader.lastEvent as? TrackEvent)?.properties?["cio_token_type"]?.stringValue, "fid")
     }
 
     func testSubscribeToJourneyEvents_givenTypeAddedWhileAttributesLoad_expectLastEventHasStoredType() async {
@@ -292,7 +292,7 @@ class DataPipelineEventBustTests: IntegrationTest {
             _ = registered.wait(timeout: .now() + 0.2)
         }
 
-        customerIO.setDeviceAttributes(["_cio_token_type": "app-value"])
+        customerIO.setDeviceAttributes(["cio_token_type": "app-value"])
         await fulfillment(of: [fidRegistered], timeout: 2)
 
         let events = typedDeviceEvents()
@@ -304,7 +304,7 @@ class DataPipelineEventBustTests: IntegrationTest {
     private func typedDeviceEvents() -> [String] {
         outputReader.events.compactMap { $0 as? TrackEvent }
             .filter { $0.event.hasPrefix("Device") }
-            .map { "\($0.event) \($0.deviceToken ?? "nil") \($0.properties?["_cio_token_type"]?.stringValue ?? "none")" }
+            .map { "\($0.event) \($0.deviceToken ?? "nil") \($0.properties?["cio_token_type"]?.stringValue ?? "none")" }
     }
 
     private func deviceEvents() -> [String] {
