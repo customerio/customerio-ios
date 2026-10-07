@@ -175,7 +175,7 @@ public final class CioMessagingInApp.MessagingInAppConfigBuilder {
 public enum CioMessagingInApp.MessagingInAppConfigBuilderError {
 }
 public final class CioMessagingInApp.MessagingInAppConfigOptions {
-	public final val siteId: String?;
+	public final val siteId: String;
 	public final val region: Region;
 	public final val colorScheme: ColorScheme;
 	public final val notificationInboxAccessibilityLabels: NotificationInboxAccessibilityLabels;
