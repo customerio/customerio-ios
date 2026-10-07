@@ -4,6 +4,8 @@ import Foundation
 /// Analytics keys its storage by API key (`com.segment.storage.<key>` and `segment/<key>/`), so switching
 /// keys would reset identity and drop queued events. When an app switches to a public `wk_` key, this moves
 /// that storage over from the previously used key so the anonymous ID, user ID and queued events carry over.
+/// Finished batches are rewritten to the new key, since the new key's source is where they now belong and the
+/// old key may be disabled before they upload. Switching back to a legacy key does not reverse the move.
 struct AnalyticsStorageMigration {
     private static let suitePrefix = "com.segment.storage."
     private static let anonymousIdKey = "segment.anonymousId"
@@ -105,6 +107,7 @@ struct AnalyticsStorageMigration {
         do {
             try fileManager.createDirectory(at: newDirectory, withIntermediateDirectories: true)
             for file in try fileManager.contentsOfDirectory(at: oldDirectory, includingPropertiesForKeys: nil) {
+                try rewriteBatchKey(in: file, from: oldKey, to: newKey)
                 try fileManager.moveItem(at: file, to: newDirectory.appendingPathComponent(file.lastPathComponent))
             }
             try fileManager.removeItem(at: oldDirectory)
@@ -113,5 +116,16 @@ struct AnalyticsStorageMigration {
             logger.error("Failed to move queued analytics events to the new API key, will retry on next launch", nil, error)
             return false
         }
+    }
+
+    /// Finished batches end with `"writeKey":"<key>"`, which the upload uses. Unfinished ones get the
+    /// new key when analytics finishes them.
+    private func rewriteBatchKey(in file: URL, from oldKey: String, to newKey: String) throws {
+        let oldField = #""writeKey":"\#(oldKey)""#
+        guard let contents = try? String(contentsOf: file, encoding: .utf8), contents.contains(oldField) else {
+            return
+        }
+        try contents.replacingOccurrences(of: oldField, with: #""writeKey":"\#(newKey)""#)
+            .write(to: file, atomically: true, encoding: .utf8)
     }
 }
