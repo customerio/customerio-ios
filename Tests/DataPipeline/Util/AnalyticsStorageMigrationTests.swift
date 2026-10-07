@@ -50,6 +50,26 @@ class AnalyticsStorageMigrationTests: UnitTest {
         XCTAssertEqual(newAnalytics.pendingUploads?.map(\.lastPathComponent), [queuedFile.lastPathComponent])
     }
 
+    func test_migrate_givenFinishedBatch_expectNewKeyAndSamePayloadAfterOldKeyRetired() throws {
+        let oldKey = givenKey(String.random)
+        let newKey = givenKey("wk_us_\(String.random)")
+        givenIdentity(writeKey: oldKey, anonymousId: "anon-1")
+        // Same name and shape analytics uses for a finished batch waiting to upload.
+        let batch = #"{"batch":[{"type":"track","event":"queued","messageId":"msg-1"}],"sentAt":"2026-10-07T00:00:00.000Z","writeKey":"\#(oldKey)"}"#
+        let file = eventsDirectory.appendingPathComponent(oldKey).appendingPathComponent("0-segment-events.temp")
+        try batch.write(to: file, atomically: true, encoding: .utf8)
+
+        migration().migrate(to: newKey)
+        // Retire the old key: nothing left should still need it.
+        Analytics.removeActiveWriteKey(oldKey)
+
+        let newAnalytics = givenAnalytics(writeKey: newKey)
+        let pending = try XCTUnwrap(newAnalytics.pendingUploads?.first { $0.lastPathComponent == file.lastPathComponent })
+        let uploaded = try String(contentsOf: pending)
+        XCTAssertEqual(uploaded, batch.replacingOccurrences(of: oldKey, with: newKey))
+        XCTAssertFalse(uploaded.contains(oldKey))
+    }
+
     func test_migrate_givenPublicKey_expectOldStorageRemoved() {
         let oldKey = givenKey(String.random)
         let newKey = givenKey("wk_us_\(String.random)")
