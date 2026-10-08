@@ -53,6 +53,8 @@ public class SDKConfigBuilder {
     /// Initializes new `SDKConfigBuilder` with required configuration options.
     /// - Parameters:
     ///   - cdpApiKey: Customer.io Data Pipeline API Key. Secret `ak_` keys are rejected and the SDK will not initialize.
+    ///     Switching to a public `wk_` key keeps the user's identity and sends events queued under the old key
+    ///     with the new key. Switching back to a legacy key does not undo this.
     public init(cdpApiKey: String) {
         self.cdpApiKey = cdpApiKey
         if ApiKey.isSecret(cdpApiKey) {
