@@ -376,6 +376,9 @@ extension DataPipelineImplementation {
     }
 
     func registerDeviceToken(_ deviceToken: String, tokenType: DeviceTokenType?) {
+        // Apps can call this directly while the event handler registers a token
+        deviceTokenLock.lock()
+        defer { deviceTokenLock.unlock() }
         if deviceToken.isBlankOrEmpty() {
             dataPipelinesLogger.logStoringBlankPushToken()
             return
@@ -388,13 +391,5 @@ extension DataPipelineImplementation {
 
         dataPipelinesLogger.logRegisteringPushToken(token: deviceToken, userId: registeredUserId)
         addDeviceAttributes(token: deviceToken)
-    }
-}
-
-// extension methods to simplify and reduce repetitive coding
-extension DataPipelineImplementation {
-    /// returns user id for currently identifier profile
-    var registeredUserId: String? {
-        analytics.userId
     }
 }
