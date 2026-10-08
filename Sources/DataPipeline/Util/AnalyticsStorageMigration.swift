@@ -118,14 +118,18 @@ struct AnalyticsStorageMigration {
         }
     }
 
-    /// Finished batches end with `"writeKey":"<key>"`, which the upload uses. Unfinished ones get the
-    /// new key when analytics finishes them.
+    /// Finished batches end with `"writeKey":"<key>"}`, which the upload uses. Only that trailing field
+    /// changes, so event properties are left as queued. Unfinished ones get the new key when analytics
+    /// finishes them.
     private func rewriteBatchKey(in file: URL, from oldKey: String, to newKey: String) throws {
-        let oldField = #""writeKey":"\#(oldKey)""#
-        guard let contents = try? String(contentsOf: file, encoding: .utf8), contents.contains(oldField) else {
+        let oldField = #""writeKey":"\#(oldKey)"}"#
+        guard let contents = try? String(contentsOf: file, encoding: .utf8),
+              let range = contents.range(of: oldField, options: .backwards),
+              contents[range.upperBound...].allSatisfy(\.isWhitespace)
+        else {
             return
         }
-        try contents.replacingOccurrences(of: oldField, with: #""writeKey":"\#(newKey)""#)
+        try contents.replacingCharacters(in: range, with: #""writeKey":"\#(newKey)"}"#)
             .write(to: file, atomically: true, encoding: .utf8)
     }
 }
