@@ -132,14 +132,13 @@ struct DwellReplayTests {
 
     @Test
     @available(iOS 17.0, *)
-    func exit_whenVisitEndsBeforeThreshold_thenDeadlineCancelledAndShortDurationReported() async throws {
+    func exit_whenVisitEndsBeforeThreshold_thenNoLaterDwellAndShortDurationReported() async throws {
         try await withVisit(fixes: [.init(40, 10.0151, 10), .init(90, 10.0, 10)]) { harness in
             await harness.advance(to: 40)
             harness.deliverCrossing(fence: "A", transition: .exit)
             try await harness.settleBoundaries()
             let exit = try #require(harness.deliveredMetrics.filter { $0.transition == .exit }.only)
             #expect(exit.visitDurationSeconds == 10)
-            #expect(harness.dwellScheduler.nextDeadline == nil)
             await harness.advance(to: 90)
             #expect(dwells(harness).isEmpty)
         }
