@@ -159,13 +159,24 @@ extension GeofenceDwellCoordinator {
     /// when outside evidence overtook it too, which no EXIT may time across, nor when only outside
     /// evidence did, which no EXIT event will come to claim. With `reenteredAfter`, only EXITs that
     /// every one of those ENTERs followed count.
+    ///
+    /// With `includingNotedCallbacks`, a circle EXIT whose callback the binder noted but whose
+    /// routing has not recorded it yet counts too: routing tasks are not ordered, so a re-entry's
+    /// can reach the store first. The note only names a date to keep the visit under; it ends
+    /// nothing, and only that EXIT, once recorded, can report the visit, through every check of
+    /// `takeVisitEndedByPendingExit` and `exitContext(for:)`. `exitCallbackRouted` drops the date
+    /// if its routing records no such EXIT.
     func rememberVisitEndedByPendingExit(
         _ visit: GeofenceDwellVisit,
         geofenceId: String,
-        reenteredAfter reentries: [GeofenceExitMark] = []
+        reenteredAfter reentries: [GeofenceExitMark] = [],
+        includingNotedCallbacks: Bool = false
     ) {
         let overtaking = (exitMarks[geofenceId] ?? []).filter { $0.overtakes(visit) }
-        let exitDates = Set(overtaking.filter { exit in
+        let noted: [GeofenceExitMark] = includingNotedCallbacks && !reentries.isEmpty
+            ? (pendingExitCallbacks[geofenceId] ?? [:]).values.flatMap(\.marks).filter { $0.overtakes(visit) }
+            : []
+        let exitDates = Set((overtaking + noted).filter { exit in
             exit.source == .exitEvent && reentries.allSatisfy { Self.enter($0, follows: exit) }
         }.map(\.date))
         guard !exitDates.isEmpty, !overtaking.contains(where: { $0.source == .outsideEvidence }) else { return }
@@ -178,11 +189,15 @@ extension GeofenceDwellCoordinator {
     /// the visit is remembered for that EXIT, which may still be in flight. One ENTER before the
     /// EXIT, of either kind, means the stay ended earlier unseen. Any other break in its continuity
     /// leaves nothing to report.
-    func rememberIfReenteredAfterItsExit(_ visit: GeofenceDwellVisit, geofenceId: String) {
+    /// With `isCircle`, an EXIT callback noted but not yet recorded counts too. Not for a polygon:
+    /// its callback is the covering circle's EXIT, which reports no duration.
+    func rememberIfReenteredAfterItsExit(_ visit: GeofenceDwellVisit, geofenceId: String, isCircle: Bool = false) {
         guard let reentries = enterMarks[geofenceId]?.superseding(visit), !reentries.isEmpty,
               continuityHolds(for: visit, geofenceId: geofenceId, ignoringLaterEnter: true)
         else { return }
-        rememberVisitEndedByPendingExit(visit, geofenceId: geofenceId, reenteredAfter: reentries)
+        rememberVisitEndedByPendingExit(
+            visit, geofenceId: geofenceId, reenteredAfter: reentries, includingNotedCallbacks: isCircle
+        )
     }
 
     /// Whether `enter` came after `exit`, on one wall-clock timeline. Across a step neither date
@@ -211,6 +226,24 @@ extension GeofenceDwellCoordinator {
               continuityHolds(for: ended.visit, geofenceId: geofence.id, ignoringLaterEnter: true)
         else { return nil }
         return ended.visit
+    }
+
+    /// A noted EXIT callback has been routed, and no delivery of it is left. If its routing
+    /// recorded no EXIT event of that date — the circle was since replaced, or the fence is no
+    /// longer cached — nothing will claim a visit remembered for it: the date is dropped, and with
+    /// the last date the visit. Runs before the routing count is pruned, so the ENTERs that EXIT
+    /// knew are pruned with it.
+    func forgetUnrecordedExitCallback(at date: Date, geofenceId: String) {
+        guard !(exitMarks[geofenceId] ?? []).contains(where: { $0.source == .exitEvent && $0.date == date }),
+              var ended = exitDuration.visitsEndedByPendingExit[geofenceId],
+              ended.exitDates.contains(date)
+        else { return }
+        ended.exitDates.remove(date)
+        if ended.exitDates.isEmpty {
+            exitDuration.visitsEndedByPendingExit.removeValue(forKey: geofenceId)
+        } else {
+            exitDuration.visitsEndedByPendingExit[geofenceId] = ended
+        }
     }
 }
 

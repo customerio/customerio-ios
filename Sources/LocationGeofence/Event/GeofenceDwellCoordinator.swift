@@ -314,7 +314,7 @@ final class GeofenceDwellCoordinator {
             return nil
         }
         guard continuityHolds(for: visit, geofenceId: geofence.id) else {
-            rememberIfReenteredAfterItsExit(visit, geofenceId: geofence.id)
+            rememberIfReenteredAfterItsExit(visit, geofenceId: geofence.id, isCircle: geofence.vertices == nil)
             cancelEvidence(for: geofence.id, ifVisit: visit.visitId)
             await storage.removeDwellVisit(geofenceId: geofence.id, ifStill: visit.visitId)
             return nil
