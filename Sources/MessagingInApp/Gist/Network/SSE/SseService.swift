@@ -151,10 +151,10 @@ actor SseService: SseServiceProtocol {
         // Add query parameters (matching Android's createSseRequest)
         let userToken = Data(identifier.utf8).base64EncodedString()
         let sessionId = SessionManager.shared.sessionId
-        var queryItems = [URLQueryItem(name: "sessionId", value: sessionId)]
-        if !state.siteId.isEmpty {
-            queryItems.append(URLQueryItem(name: "siteId", value: state.siteId))
-        }
+        var queryItems = [
+            URLQueryItem(name: "sessionId", value: sessionId),
+            URLQueryItem(name: "siteId", value: state.siteId)
+        ]
         // EventSource can't set headers, so the public key goes in the query.
         if let publicKey = state.requestPublicKey {
             queryItems.append(URLQueryItem(name: "key", value: publicKey))

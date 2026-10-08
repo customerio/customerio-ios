@@ -7,7 +7,7 @@ import Foundation
 /// It is managed by reducer and should only be updated by dispatching appropriate actions to the store.
 struct InAppMessageState: Equatable, CustomStringConvertible {
     let siteId: String
-    /// Public `wk_` key, when the SDK is set up with one. Sent instead of relying on `siteId`.
+    /// Public `wk_` key, when the SDK is set up with one. Sent alongside `siteId`.
     let publicKey: String?
     let dataCenter: String
     let environment: GistEnvironment
