@@ -73,6 +73,11 @@ enum ReplayRunner {
             await settle(harness)
         }
 
+        try await settleFinalAnswers(on: harness)
+        return Result(emitted: harness.emitted, unsupported: unsupported, stimuli: stimuli)
+    }
+
+    private static func settleFinalAnswers(on harness: ReplayHarness) async throws {
         // A capture can end mid-sync; answer it so those decisions are graded.
         try await harness.settleBoundaries()
         // A recorded OS reply can follow the last external stimulus. Drive only as far as that
@@ -81,7 +86,6 @@ enum ReplayRunner {
             await harness.advance(to: horizon) { await settle(harness) }
             try await harness.settleBoundaries()
         }
-        return Result(emitted: harness.emitted, unsupported: unsupported, stimuli: stimuli)
     }
 
     /// A `note`, not a stimulus: the OS's reply to work the SDK started.
