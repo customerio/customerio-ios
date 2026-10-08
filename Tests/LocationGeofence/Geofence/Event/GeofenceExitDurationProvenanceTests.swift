@@ -490,6 +490,110 @@ struct GeofenceExitDurationProvenanceTests {
         #expect(rows[1].visitDurationSeconds == 120)
     }
 
+    /// The binder notes the EXIT's callback, then the re-entry's, before either routing task runs.
+    /// Its handler is not actor-isolated, so the two tasks reach the main actor in no fixed order:
+    /// here the re-entry is routed first and replaces the visit before the EXIT has recorded
+    /// itself. That ENTER came after the EXIT, so the EXIT still reports the visit it ended, and
+    /// the re-entry's stay is left stored.
+    @Test
+    func reentryRoutedBeforeItsNotedExitStillLetsTheExitTimeTheVisit() async throws {
+        let files = Files()
+        let process = await Process(files: files)
+        let id = Self.exitOnly.id
+        await process.crossing(.enter, Self.exitOnly)
+        let first = try #require(await process.storage.getDwellVisit(geofenceId: id))
+        files.advance(60)
+        let exitedAt = files.clock.wall
+        files.advance(1)
+        let reentry = files.clock.wall
+        process.dwell.noteExitCallback(geofenceId: id, occurredAt: exitedAt)
+        process.dwell.noteEnter(geofenceId: id, occurredAt: reentry, crossing: true)
+
+        await process.crossing(.enter, Self.exitOnly, at: reentry)
+        let reentered = try #require(await process.storage.getDwellVisit(geofenceId: id))
+        await process.crossing(.exit, Self.exitOnly, at: exitedAt)
+        process.dwell.exitCallbackRouted(geofenceId: id, occurredAt: exitedAt)
+
+        let row = try #require(await process.exitRows().last)
+        #expect(row.visitId == first.visitId)
+        #expect(row.visitDurationSeconds == 60)
+        #expect(row.enteredAt.map { Int($0.timeIntervalSince1970) } == Int(first.enteredAt.timeIntervalSince1970))
+        #expect(reentered.visitId != first.visitId)
+        #expect(await process.storage.getDwellVisit(geofenceId: id)?.visitId == reentered.visitId)
+        #expect(process.dwell.exitDuration.visitsEndedByPendingExit[id] == nil)
+    }
+
+    /// Control for that order after a burst: an ENTER at 10 is noted before the EXIT at 20 (the
+    /// stay's own EXIT was lost), then an ENTER at 30, which is routed before the EXIT. Keeping the
+    /// old visit for the noted EXIT must not let it time the visit across the EXIT the SDK never
+    /// saw: what the EXIT knew when it was noted still leaves it untimed. Crossings and corrections.
+    @Test(arguments: [true, false])
+    func burstReentryRoutedBeforeTheNotedExitStillLeavesItUntimed(crossing: Bool) async throws {
+        let files = Files()
+        let process = await Process(files: files)
+        let id = Self.exitOnly.id
+        await process.crossing(.enter, Self.exitOnly)
+        let first = try #require(await process.storage.getDwellVisit(geofenceId: id))
+        files.advance(10)
+        let enteredAt10 = files.clock.wall
+        files.advance(10)
+        let exitedAt20 = files.clock.wall
+        files.advance(10)
+        let enteredAt30 = files.clock.wall
+        process.dwell.noteEnter(geofenceId: id, occurredAt: enteredAt10, crossing: crossing)
+        process.dwell.noteExitCallback(geofenceId: id, occurredAt: exitedAt20)
+        process.dwell.noteEnter(geofenceId: id, occurredAt: enteredAt30, crossing: crossing)
+
+        await process.crossing(.enter, Self.exitOnly, at: enteredAt30, crossingObserved: crossing)
+        let reentered = try #require(await process.storage.getDwellVisit(geofenceId: id))
+        await process.crossing(.exit, Self.exitOnly, at: exitedAt20)
+        process.dwell.exitCallbackRouted(geofenceId: id, occurredAt: exitedAt20)
+
+        let row = try #require(await process.exitRows().last)
+        #expect(row.visitId == nil)
+        #expect(row.enteredAt == nil)
+        #expect(row.visitDurationSeconds == nil)
+        #expect(reentered.visitId != first.visitId)
+        #expect(await process.storage.getDwellVisit(geofenceId: id)?.visitId == reentered.visitId)
+    }
+
+    /// The visit is remembered for a noted EXIT whose routing then records none: it was raised by a
+    /// circle since replaced. Once its callback ends, nothing it left provisionally outlives it —
+    /// the remembered visit, the ENTERs it knew, its routing count — so a later copy of the same
+    /// date cannot time the visit either.
+    @Test
+    func noteExitRoutedWithoutRecordingItForgetsTheVisitRememberedForIt() async throws {
+        let files = Files()
+        let process = await Process(files: files)
+        let id = Self.exitOnly.id
+        await process.crossing(.enter, Self.exitOnly)
+        files.advance(60)
+        let exitedAt = files.clock.wall
+        files.advance(1)
+        let reentry = files.clock.wall
+        process.dwell.noteExitCallback(geofenceId: id, occurredAt: exitedAt)
+        process.dwell.noteEnter(geofenceId: id, occurredAt: reentry, crossing: true)
+        await process.crossing(.enter, Self.exitOnly, at: reentry)
+        let reentered = try #require(await process.storage.getDwellVisit(geofenceId: id))
+        try #require(process.dwell.exitDuration.visitsEndedByPendingExit[id]?.exitDates == [exitedAt])
+
+        await process.resolver.handleTransition(
+            identifier: id, transition: .exit, occurredAt: exitedAt, eventCircle: .expired, receivedForUserId: "user-a"
+        )
+        process.dwell.exitCallbackRouted(geofenceId: id, occurredAt: exitedAt)
+
+        #expect(process.dwell.exitDuration.visitsEndedByPendingExit[id] == nil)
+        #expect(process.dwell.exitDuration.entersKnownAtExit[id] == nil)
+        #expect(process.dwell.exitDuration.routingsInFlight[id] == nil)
+        #expect(process.dwell.pendingExitCallbacks[id] == nil)
+        #expect(process.dwell.exitMarks[id]?.isEmpty ?? true)
+        await process.crossing(.exit, Self.exitOnly, at: exitedAt)
+        let rows = await process.exitRows()
+        #expect(!rows.isEmpty)
+        #expect(rows.allSatisfy { $0.visitId == nil && $0.visitDurationSeconds == nil })
+        #expect(await process.storage.getDwellVisit(geofenceId: id)?.visitId == reentered.visitId)
+    }
+
     /// A delayed copy of the EXIT — the same OS date — is read after a later ENTER replaced the
     /// earlier one it was first recorded with. The copy keeps the EXIT's first provenance, so it
     /// cannot time the old visit either. The first delivery is received for another user: an

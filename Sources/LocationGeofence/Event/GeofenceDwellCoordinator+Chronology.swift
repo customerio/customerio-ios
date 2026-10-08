@@ -190,13 +190,17 @@ extension GeofenceDwellCoordinator {
         pendingExitCallbacks[geofenceId, default: [:]][occurredAt] = pending
     }
 
-    /// The routing task of an EXIT callback `noteExitCallback` noted has finished.
+    /// The routing task of an EXIT callback `noteExitCallback` noted has finished. Once no delivery
+    /// of it is left, a visit remembered for an EXIT it never recorded is forgotten
+    /// (`forgetUnrecordedExitCallback`), before its routing count is pruned.
     func exitCallbackRouted(geofenceId: String, occurredAt: Date) {
+        if var pending = pendingExitCallbacks[geofenceId]?[occurredAt] {
+            pending.count -= 1
+            pendingExitCallbacks[geofenceId]?[occurredAt] = pending.count > 0 ? pending : nil
+            if pendingExitCallbacks[geofenceId]?.isEmpty == true { pendingExitCallbacks[geofenceId] = nil }
+            if pending.count <= 0 { forgetUnrecordedExitCallback(at: occurredAt, geofenceId: geofenceId) }
+        }
         exitRoutingEnded(at: occurredAt, geofenceId: geofenceId)
-        guard var pending = pendingExitCallbacks[geofenceId]?[occurredAt] else { return }
-        pending.count -= 1
-        pendingExitCallbacks[geofenceId]?[occurredAt] = pending.count > 0 ? pending : nil
-        if pendingExitCallbacks[geofenceId]?.isEmpty == true { pendingExitCallbacks[geofenceId] = nil }
     }
 
     /// Whether a native EXIT callback still being routed would end `visit`, by the same order as a
