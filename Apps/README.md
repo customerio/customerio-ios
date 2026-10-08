@@ -9,6 +9,8 @@ make setup_sample_app app=CocoaPods-FCM
 
 2. Open project in Xcode and compile. 
 
+`CocoaPods-FCM` has two schemes: `test cocoapods` (default) registers the FCM token, and `test cocoapods FID` registers the Firebase Installation ID.
+
 
 All of the sample apps should be able to open in Xcode to compile. 
 
