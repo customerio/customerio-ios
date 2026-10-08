@@ -97,12 +97,47 @@ struct PolygonMembershipResolverTests {
         )
     }
 
-    private func circleGeofence(id: String = "2", dwellThresholdSeconds: Int = 0) -> Geofence {
+    private func circleGeofence(
+        id: String = "2",
+        transitionTypes: Set<GeofenceTransition> = [.enter, .exit],
+        dwellThresholdSeconds: Int = 0
+    ) -> Geofence {
         Geofence(
             id: id, latitude: 0, longitude: 0, radius: 300, name: "circle",
-            transitionTypes: [.enter, .exit], lastUpdated: clock.now,
+            transitionTypes: transitionTypes, lastUpdated: clock.now,
             dwellThresholdSeconds: dwellThresholdSeconds
         )
+    }
+
+    // MARK: - Cached circles: bookkeeping edges
+
+    /// A cached dwell circle is registered at the OS for both edges whatever the customer
+    /// configured, so its visit has a start and an end (`Geofence.osTransitionTypes`). An edge the
+    /// customer did not configure still opens or closes that visit, but must never reach them.
+    @Test(arguments: [Set<GeofenceTransition>([.exit]), [.enter], []])
+    func handleTransition_givenCachedDwellCircle_expectUnconfiguredEdgeDroppedAndVisitStillTracked(
+        transitionTypes: Set<GeofenceTransition>
+    ) async {
+        let setup = await makeSetup(fix: nil, withDwellCoordinator: true)
+        let circle = circleGeofence(transitionTypes: transitionTypes, dwellThresholdSeconds: 60)
+        await setup.storage.setCachedGeofences([circle])
+        // The ENTER arms a 60 s deadline; nothing here should outlive the test.
+        defer { setup.resolver.dwellCoordinator?.cancelEvidence(for: circle.id) }
+
+        await setup.resolver.handleTransition(
+            identifier: circle.id, transition: .enter, occurredAt: clock.now, receivedForUserId: "user-1"
+        )
+        // Awaited with its delivery, so the bookkeeping-only ENTER has written the visit by now.
+        #expect(await setup.storage.getDwellVisit(geofenceId: circle.id) != nil)
+
+        await setup.resolver.handleTransition(
+            identifier: circle.id, transition: .exit, occurredAt: clock.now.addingTimeInterval(1),
+            receivedForUserId: "user-1"
+        )
+
+        #expect(await setup.storage.getDwellVisit(geofenceId: circle.id) == nil)
+        let configured = [GeofenceTransition.enter, .exit].filter { transitionTypes.contains($0) }
+        #expect(await setup.emitter.snapshot().map(\.transition) == configured)
     }
 
     // MARK: - Held-fix selection
