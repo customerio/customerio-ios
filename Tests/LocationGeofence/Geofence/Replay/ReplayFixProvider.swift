@@ -17,12 +17,20 @@ final class ReplayFixProvider {
         let age: TimeInterval
     }
 
+    struct RequestedAnswer {
+        let at: TimeInterval
+        let fix: CLLocation
+    }
+
     private var stimulusTimes: [TimeInterval] = []
     private var samplesByWindow: [Int: [CachedRead]] = [:]
     private var cursorByWindow: [Int: Int] = [:]
     private var carriedByWindow: [Int: CachedRead] = [:]
     private var requestedAnswers: [CachedRead] = []
+    private var requestedProcesses: [Int: Int] = [:]
+    private var currentProcess = 0
     private var answerCursor = 0
+    private(set) var allowsSyntheticRequestedAnswers = true
 
     private let epoch: Date
     var now: TimeInterval = 0
@@ -66,30 +74,56 @@ final class ReplayFixProvider {
         )
     }
 
-    func loadRequestedAnswers(_ answers: [CachedRead]) {
+    /// Imported notes inherit their producer from `process.start` boundaries. Direct synthetic
+    /// answers without boundaries belong to the process that reserves them.
+    func loadRequestedAnswers(
+        _ answers: [CachedRead],
+        allowSyntheticFallback: Bool = false,
+        processStarts: [TimeInterval]? = nil
+    ) {
         requestedAnswers = answers.sorted { $0.at < $1.at }
         answerCursor = 0
+        allowsSyntheticRequestedAnswers = allowSyntheticFallback && answers.isEmpty
+        requestedProcesses = [:]
+        if let processStarts {
+            let starts = processStarts.sorted()
+            for (index, answer) in requestedAnswers.enumerated() {
+                requestedProcesses[index] = starts.lastIndex { $0 <= answer.at } ?? 0
+            }
+        }
     }
 
-    /// Looked up ahead, not delivered at its recorded time: the replay's timeout fires immediately,
-    /// while on the device the answer arrived later and was what the pass decided from.
-    func requestedAnswer(within timeout: TimeInterval) -> CLLocation? {
-        while answerCursor < requestedAnswers.count, requestedAnswers[answerCursor].at < now {
-            answerCursor += 1
+    var requestedAnswerHorizon: TimeInterval? { requestedAnswers.last?.at }
+
+    func beginNextProcess() {
+        currentProcess += 1
+    }
+
+    /// Reserves an OS reply without delivering it. Arrival and measurement time are separate:
+    /// CoreLocation's timestamp is the recorded arrival minus the age logged at that arrival.
+    func reserveRequestedAnswer() -> RequestedAnswer? {
+        while answerCursor < requestedAnswers.count {
+            let process = requestedProcesses[answerCursor]
+            if let process, process > currentProcess { return nil }
+            if requestedAnswers[answerCursor].at < now || process.map({ $0 < currentProcess }) == true {
+                answerCursor += 1
+            } else {
+                break
+            }
         }
         guard answerCursor < requestedAnswers.count,
-              requestedAnswers[answerCursor].at <= now + timeout,
               let location = requestedAnswers[answerCursor].location
         else { return nil }
         let answer = requestedAnswers[answerCursor]
         answerCursor += 1
-        return CLLocation(
+        let fix = CLLocation(
             coordinate: CLLocationCoordinate2D(latitude: location.latitude, longitude: location.longitude),
             altitude: 0,
             horizontalAccuracy: answer.accuracy,
             verticalAccuracy: -1,
-            timestamp: epoch.addingTimeInterval(now - answer.age)
+            timestamp: epoch.addingTimeInterval(answer.at - answer.age)
         )
+        return RequestedAnswer(at: answer.at, fix: fix)
     }
 
     /// Doesn't consume a cache read or count as a pull: it would eat the window's only sample.

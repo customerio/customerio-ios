@@ -27,12 +27,16 @@ struct DwellReplayTests {
                 harness.pulledFix(latitude: 10.0151, longitude: 20, accuracy: 10, age: 0, at: 99)
             ])
             await harness.advance(to: 90)
-            #expect(dwells(harness).count == 1)
+            #expect(dwells(harness).isEmpty, "the requested outside fix has not arrived")
+            #expect(await harness.storedVisit(fence: "A") != nil)
             await harness.advance(to: 95)
             harness.deliverCrossing(fence: "A", transition: .exit)
-            try await harness.settleBoundaries()
+            #expect(await settleOnMain { harness.deliveredMetrics.contains { $0.transition == .exit } })
+            #expect(harness.now == harness.epoch.addingTimeInterval(95))
             let exit = try #require(harness.deliveredMetrics.filter { $0.transition == .exit }.only)
             #expect(exit.visitDurationSeconds == 65)
+            await harness.advance(to: 99)
+            #expect(dwells(harness).isEmpty, "the cancelled evidence request must not emit after EXIT")
         }
     }
 
@@ -59,6 +63,144 @@ struct DwellReplayTests {
             ])
             await harness.advance(to: 90)
             #expect(dwells(harness).count == 1)
+        }
+    }
+
+    @Test
+    @available(iOS 17.0, *)
+    func deadline_whenRequestedFixArrivesLater_thenWaitsAndPreservesRecordedMeasurementTime() async throws {
+        try await withVisit(fixes: []) { harness in
+            harness.fixes.loadRequestedAnswers([
+                harness.pulledFix(latitude: 10, longitude: 20, accuracy: 10, age: 0.32, at: 90.6)
+            ])
+            await harness.advance(to: 90)
+            #expect(dwells(harness).isEmpty, "the recorded response has not arrived")
+            await harness.advance(to: 90.5)
+            #expect(dwells(harness).isEmpty, "lookahead must not deliver future evidence early")
+            await harness.advance(to: 90.6)
+            let dwell = try #require(dwells(harness).only)
+            #expect(abs(dwell.timestamp.timeIntervalSince(harness.epoch) - 90.28) < 0.001)
+            #expect(dwell.dwellDurationSeconds == 60)
+        }
+    }
+
+    @Test(arguments: [false, true])
+    @available(iOS 17.0, *)
+    func deadline_whenRequestedFixIsStaleOrPastTimeout_thenTimesOutAndWaitsForFreshRetry(pastTimeout: Bool) async throws {
+        try await withVisit(fixes: []) { harness in
+            harness.fixes.loadRequestedAnswers([
+                harness.pulledFix(
+                    latitude: 10,
+                    longitude: 20,
+                    accuracy: 10,
+                    age: pastTimeout ? 0 : 31,
+                    at: pastTimeout ? 100.1 : 90.6
+                ),
+                harness.pulledFix(latitude: 10, longitude: 20, accuracy: 10, age: 0, at: 160.6)
+            ])
+            await harness.advance(to: 99.9)
+            #expect(dwells(harness).isEmpty)
+            #expect(harness.fixRequestCount == 1)
+            await harness.advance(to: 100)
+            #expect(dwells(harness).isEmpty)
+            #expect(harness.dwellScheduler.nextDeadline == 160, "retry starts after the actual request timeout")
+            await harness.advance(to: 160.5)
+            #expect(dwells(harness).isEmpty)
+            await harness.advance(to: 160.6)
+            let dwell = try #require(dwells(harness).only)
+            #expect(abs(dwell.timestamp.timeIntervalSince(harness.epoch) - 160.6) < 0.001)
+        }
+    }
+
+    @Test
+    @available(iOS 17.0, *)
+    func deadline_whenReplyArrivesAfterTimeout_thenLaterForegroundUsesRetainedFix() async throws {
+        try await withVisit(fixes: []) { harness in
+            harness.fixes.loadRequestedAnswers([
+                harness.pulledFix(latitude: 10, longitude: 20, accuracy: 10, age: 0.1, at: 100.1)
+            ])
+            await harness.advance(to: 100)
+            #expect(dwells(harness).isEmpty, "the request timeout must complete before the late reply")
+            #expect(harness.dwellScheduler.nextDeadline == 160)
+            await harness.advance(to: 100.1)
+            #expect(dwells(harness).isEmpty, "a late reply cannot complete the timed-out request")
+            let fix = try #require(harness.dwellCoordinator.fixResolver.latestFix)
+            #expect(abs(fix.timestamp.timeIntervalSince(harness.epoch) - 100) < 0.001)
+            await harness.advance(to: 101)
+            harness.enterForeground()
+            #expect(await settleOnMain { dwells(harness).count == 1 })
+            let dwell = try #require(dwells(harness).only)
+            #expect(abs(dwell.timestamp.timeIntervalSince(harness.epoch) - 100) < 0.001)
+            #expect(dwell.dwellDurationSeconds == 70)
+        }
+    }
+
+    @Test
+    @available(iOS 17.0, *)
+    func restart_whenRecordedResponseBelongsToNewProcess_thenOldRequestsStayInert() async throws {
+        try await withVisit(fixes: []) { harness in
+            harness.fixes.loadRequestedAnswers([
+                harness.pulledFix(latitude: 10, longitude: 20, accuracy: 10, age: 0, at: 91)
+            ], processStarts: [0, 90.2])
+            await harness.advance(to: 90.2)
+            let oldResolver = try #require(harness.dwellCoordinator?.fixResolver)
+            let oldDelivery = try #require(harness.deliveryTracker)
+            let visit = try #require(await harness.storedVisit(fence: "A"))
+            harness.reenterProcess()
+            await harness.wireMonitor()
+            await GeofenceBootstrap.awaitPendingWorkForTesting()
+            try await ReplayHarness.letAsyncWorkRun()
+            // A retained graph can start late work after its old pending request has unwound.
+            // Its request port must not issue another OS request in the replacement process.
+            let requestsBeforeOldWork = harness.fixRequestCount
+            oldResolver.resolve(cached: nil, purpose: .pendingEvents) { _, _ in }
+            #expect(harness.fixRequestCount == requestsBeforeOldWork)
+            await harness.advance(to: 90.6)
+            #expect(oldResolver.latestFix == nil, "a retained dead graph consumed its old OS reply")
+            #expect(dwells(harness).isEmpty, "the new process's recorded reply has not arrived")
+            await harness.advance(to: 91)
+            let dwell = try #require(dwells(harness).only)
+            #expect(oldResolver.latestFix == nil, "the dead process must not receive its parked callback")
+            #expect(dwell.visitId == visit.visitId)
+            #expect(dwell.timestamp == harness.epoch.addingTimeInterval(91))
+            #expect(oldDelivery.trackMetricReceivedInvocations.allSatisfy { $0.metric.transition != .dwell })
+        }
+    }
+
+    @Test
+    @available(iOS 17.0, *)
+    func restart_whenSyntheticReplyBelongsToOldRequest_thenItCannotQualifyNewProcessVisit() async throws {
+        try await withVisit(fixes: []) { harness in
+            harness.fixes.loadRequestedAnswers([
+                harness.pulledFix(latitude: 10, longitude: 20, accuracy: 10, age: 0, at: 91)
+            ])
+            await harness.advance(to: 90.2)
+            #expect(harness.fixRequestCount == 1)
+            let oldResolver = try #require(harness.dwellCoordinator?.fixResolver)
+            let oldDelivery = try #require(harness.deliveryTracker)
+            harness.reenterProcess()
+            await harness.wireMonitor()
+            await GeofenceBootstrap.awaitPendingWorkForTesting()
+            await harness.advance(to: 91)
+            #expect(harness.fixRequestCount == 2, "the new process must actually request evidence")
+            #expect(dwells(harness).isEmpty, "an old synthetic request's reply cannot move to the new process")
+            #expect(oldResolver.latestFix == nil)
+            #expect(oldDelivery.trackMetricReceivedInvocations.allSatisfy { $0.metric.transition != .dwell })
+            #expect(await harness.storedVisit(fence: "A") != nil)
+        }
+    }
+
+    @Test
+    @available(iOS 17.0, *)
+    func deadline_whenRecordedResponseStreamIsEmpty_thenDoesNotInventCachedAnswer() async throws {
+        try await withVisit(fixes: [.init(90, 10.0, 10)]) { harness in
+            harness.fixes.loadRequestedAnswers([])
+            await harness.advance(to: 90)
+            #expect(dwells(harness).isEmpty, "a cached position is not a recorded OS response")
+            #expect(harness.dwellScheduler.nextDeadline == 100)
+            await harness.advance(to: 100)
+            #expect(dwells(harness).isEmpty)
+            #expect(harness.dwellScheduler.nextDeadline == 160)
         }
     }
 

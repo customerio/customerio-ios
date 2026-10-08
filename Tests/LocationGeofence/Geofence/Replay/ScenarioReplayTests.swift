@@ -38,6 +38,39 @@ struct ScenarioReplayTests {
         #expect(scenario.isRecorded)
     }
 
+    @Test(.enabled(if: ReplayRuntime.isMonitorAvailable))
+    @available(iOS 17.0, *)
+    func run_whenRequestedResponseFollowsLastStimulus_thenDeadlineUsesResponseWithoutExpectedOutputs() async throws {
+        let body = """
+        [{"id":"A","name":"F","latitude":10,"longitude":20,"radius":250,"transitionTypes":["enter","exit"],"geosetIds":["7"],"dwellThresholdSeconds":60}]
+        """
+        let encodedBody = try #require(String(data: JSONSerialization.data(withJSONObject: body, options: .fragmentsAllowed), encoding: .utf8))
+        let scenario = try ScenarioLoader.parse("""
+        {"k":"scenario","v":1,"name":"tail-response","platform":"ios","t0":"t","source":{"kind":"authored"}}
+        {"k":"given","at":2.1,"ev":"fixture.api.fetch","ok":true,"body":\(encodedBody)}
+        {"k":"when","at":0,"ev":"process.start","session":1}
+        {"k":"when","at":0.1,"ev":"module.init"}
+        {"k":"when","at":1,"ev":"identity.changed","ok":true}
+        {"k":"when","at":2,"ev":"location.fix","prov":"bus","lat":10.0151,"lon":20}
+        {"k":"when","at":2.01,"ev":"location.fix","prov":"manager_cache","lat":10.0151,"lon":20,"acc":10,"age":0}
+        {"k":"when","at":30,"ev":"os.callback","id":"A","t":"enter","fixsrc":"manager_cache","lat":10,"lon":20,"acc":10,"age":0}
+        {"k":"note","at":90.6,"ev":"fix.received","prov":"movement_resolver","lat":10,"lon":20,"acc":10,"age":0.32}
+        """)
+        let (harness, result) = try await ReplayHarness.withTail { () -> (ReplayHarness, ReplayRunner.Result) in
+            let harness = ReplayHarness()
+            return try (harness, await ReplayRunner.run(scenario, on: harness))
+        }
+        defer { harness.detachFromBootstrap()
+            harness.dwellScheduler.cancelAll()
+        }
+        #expect(result.unsupported.isEmpty)
+        #expect(scenario.then.isEmpty, "expected decisions must not be needed to pace responses")
+        let dwells = harness.deliveredMetrics.filter { $0.transition == .dwell }
+        #expect(dwells.count == 1)
+        #expect(try abs(#require(dwells.first).timestamp.timeIntervalSince(harness.epoch) - 90.28) < 0.001)
+        #expect(harness.now == harness.epoch.addingTimeInterval(90.6))
+    }
+
     /// The out-of-order pair is `identity.changed` and `app.foreground`; `app.background` bounds no
     /// window.
     @Test(.enabled(if: ReplayRuntime.isMonitorAvailable))

@@ -28,6 +28,7 @@ final class ReplayHarness {
 
     let gate = ReplayBoundaryGate()
     private(set) var dwellScheduler = ReplayDwellScheduler()
+    private var processGeneration = UUID()
     /// Lifecycle delivery belongs to one process, even when a test retains its old graph.
     private(set) var notificationCenter = NotificationCenter()
 
@@ -169,8 +170,7 @@ final class ReplayHarness {
             transitionEmitter: tracker,
             contextStore: contextStore,
             logger: logger,
-            // Dwell cannot use a fix from a later input window to qualify or close a visit early.
-            fixResolver: makeReplayFixResolver(answerWindow: 0),
+            fixResolver: makeReplayFixResolver(),
             notificationCenter: notificationCenter,
             clock: DateUtilGeofenceClock(dateUtil: clock),
             waitForEvidence: { [dwellScheduler] in try await dwellScheduler.sleep(nanoseconds: $0) }
@@ -216,6 +216,7 @@ final class ReplayHarness {
     }
 
     private func resetProcessRuntime() {
+        processGeneration = UUID()
         notificationCenter = NotificationCenter()
         dwellScheduler = ReplayDwellScheduler()
         dwellScheduler.advance(to: clock.givenNow.timeIntervalSince(epoch))
@@ -249,6 +250,7 @@ final class ReplayHarness {
         monitor.setOnTransition(nil)
         detachFromBootstrap()
         dwellScheduler.stop()
+        fixes.beginNextProcess()
         composeSDK()
     }
 
@@ -313,20 +315,38 @@ final class ReplayHarness {
     }
 
     /// OS answers pass through the shipping resolver's freshness filter.
-    private func makeReplayFixResolver(answerWindow: TimeInterval) -> MovementFixResolver {
+    private func makeReplayFixResolver() -> MovementFixResolver {
+        let generation = processGeneration
         let fixResolver = MovementFixResolver(
             logger: logger,
             dateUtil: clock,
             desiredAccuracy: kCLLocationAccuracyNearestTenMeters,
-            waitForTimeout: { _ in await Task.yield() }
+            waitForTimeout: { [dwellScheduler] seconds in
+                try? await dwellScheduler.sleep(nanoseconds: UInt64(seconds * 1000000000))
+            }
         )
         fixResolver.requestFreshFix = { [weak self, weak fixResolver] in
-            guard let self, let fixResolver else { return }
+            guard let self, self.processGeneration == generation, let fixResolver else { return }
             self.fixRequestCount += 1
-            // Through `handleDeliveredFix`, so a fix older than `maxAge` is refused as on a device.
-            let answer = self.fixes.requestedAnswer(within: answerWindow)
-            if let fix = answer ?? self.fixes.currentPosition() {
-                fixResolver.handleDeliveredFix(fix)
+            if let answer = self.fixes.reserveRequestedAnswer() {
+                if answer.at <= self.fixes.now {
+                    fixResolver.handleDeliveredFix(answer.fix)
+                } else {
+                    Task { @MainActor [weak self, weak fixResolver] in
+                        guard let self else { return }
+                        await self.gate.park(at: answer.at, what: "requested fix") { [weak self, weak fixResolver] in
+                            guard let self, self.processGeneration == generation else { return }
+                            fixResolver?.handleDeliveredFix(answer.fix)
+                        }
+                    }
+                }
+            } else if self.fixes.allowsSyntheticRequestedAnswers {
+                // Authored fixtures without a recorded response stream supply synthetic OS answers.
+                // A refused or absent answer fails immediately; recorded runs use the real timeout.
+                if let fix = self.fixes.currentPosition() {
+                    fixResolver.handleDeliveredFix(fix)
+                }
+                fixResolver.handleRequestFailure()
             }
         }
         return fixResolver
@@ -334,7 +354,7 @@ final class ReplayHarness {
 
     /// The default resolver would issue a live `CLLocationManager` request from a unit test.
     private func makePolygonResolver() -> PolygonMembershipResolver {
-        let fixResolver = makeReplayFixResolver(answerWindow: GeofenceConstants.movementFixRequestTimeout)
+        let fixResolver = makeReplayFixResolver()
         return PolygonMembershipResolver(
             storage: storage,
             transitionEmitter: tracker,
