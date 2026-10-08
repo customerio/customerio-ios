@@ -1,3 +1,9 @@
+## [4.10.0](https://github.com/customerio/customerio-ios/compare/4.9.0...4.10.0) (2026-10-08)
+
+### Features
+
+* **MBL-2542:** reject ak_ keys and pick region from key ([#1326](https://github.com/customerio/customerio-ios/issues/1326)) ([3483fd8](https://github.com/customerio/customerio-ios/commit/3483fd860e5507a7d1f1ede2b116e1c7df9102ee))
+
 ## [4.9.0](https://github.com/customerio/customerio-ios/compare/4.8.1...4.9.0) (2026-09-25)
 
 ### Features
