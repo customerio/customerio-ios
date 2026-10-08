@@ -106,21 +106,49 @@ struct ReplayDwellSchedulerTests {
     }
 
     @Test
-    func advance_whenSeveralWaitersAreDue_thenResumesInDeadlineAndRegistrationOrder() async throws {
+    func advance_whenSeveralWaitersAreParked_thenResumesOnlyThoseWhoseDeadlineHasPassed() async throws {
         let scheduler = ReplayDwellScheduler()
-        var resumed: [Int] = []
-        var tasks: [Task<Void, Error>] = []
+        // A failed step leaves waiters parked; release them rather than leak their tasks.
+        defer { scheduler.cancelAll() }
+        var resumed: Set<Int> = []
+        var tasks: [Int: Task<Void, Error>] = [:]
         for (deadline, id) in [(90, 90), (60, 60), (60, 61), (120, 120), (45, 45), (90, 91)] {
-            tasks.append(Task {
+            tasks[id] = Task {
                 try await scheduler.sleep(nanoseconds: UInt64(deadline) * 1000000000)
-                resumed.append(id)
-            })
+                resumed.insert(id)
+            }
             #expect(await settleOnMain { scheduler.pendingCount == tasks.count })
         }
-        scheduler.advance(to: 130)
-        for task in tasks {
-            try await task.value
+        // Tasks one advance resumes run in whatever order the executor picks, so each step asserts
+        // a set. A waiter not yet due is still held by the scheduler, so every set is exact.
+        let steps = [
+            DueStep(moment: 44, due: [], nextDeadline: 45, pendingCount: 6),
+            DueStep(moment: 45, due: [45], nextDeadline: 60, pendingCount: 5),
+            DueStep(moment: 60, due: [60, 61], nextDeadline: 90, pendingCount: 3),
+            DueStep(moment: 90, due: [90, 91], nextDeadline: 120, pendingCount: 1),
+            DueStep(moment: 130, due: [120], nextDeadline: nil, pendingCount: 0)
+        ]
+        var expected: Set<Int> = []
+        for step in steps {
+            scheduler.advance(to: step.moment)
+            // Required: awaiting a due waiter the scheduler still holds would hang instead of fail.
+            try #require(scheduler.pendingCount == step.pendingCount)
+            #expect(scheduler.nextDeadline == step.nextDeadline)
+            // Required too: a due waiter removed but never resumed would hang the same way.
+            expected.formUnion(step.due)
+            try #require(await settleOnMain { resumed == expected })
+            for id in step.due {
+                let task = try #require(tasks[id])
+                try await task.value
+            }
         }
-        #expect(resumed == [45, 60, 61, 90, 91, 120])
+    }
+
+    /// One `advance(to:)` and what it must leave: the waiters it resumed and the deadlines still held.
+    private struct DueStep {
+        let moment: TimeInterval
+        let due: Set<Int>
+        let nextDeadline: TimeInterval?
+        let pendingCount: Int
     }
 }
