@@ -13,12 +13,16 @@ struct GistCommonHeaders {
     }
 
     func headers(state: InAppMessageState) -> [String: String] {
-        [
+        var headers = [
             HTTPHeader.siteId.rawValue: state.siteId,
             HTTPHeader.cioDataCenter.rawValue: state.dataCenter,
             HTTPHeader.cioClientPlatform.rawValue: sdkClient.source.lowercased() + "-apple",
             HTTPHeader.cioClientVersion.rawValue: sdkClient.sdkVersion,
             HTTPHeader.cioClientAppIdentifier.rawValue: deviceInfo.customerBundleId
         ]
+        if let publicKey = state.requestPublicKey {
+            headers[HTTPHeader.authorization.rawValue] = "Bearer \(publicKey)"
+        }
+        return headers
     }
 }

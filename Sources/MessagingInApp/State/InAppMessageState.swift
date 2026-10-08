@@ -1,3 +1,4 @@
+// swiftlint:disable file_length
 import CioInternalCommon
 import Foundation
 
@@ -6,6 +7,8 @@ import Foundation
 /// It is managed by reducer and should only be updated by dispatching appropriate actions to the store.
 struct InAppMessageState: Equatable, CustomStringConvertible {
     let siteId: String
+    /// Public `wk_` key, when the SDK is set up with one. Sent alongside `siteId`.
+    let publicKey: String?
     let dataCenter: String
     let environment: GistEnvironment
     let colorScheme: ColorScheme
@@ -29,6 +32,7 @@ struct InAppMessageState: Equatable, CustomStringConvertible {
 
     init(
         siteId: String = "",
+        publicKey: String? = nil,
         dataCenter: String = "",
         environment: GistEnvironment = .production,
         colorScheme: ColorScheme = .auto,
@@ -45,6 +49,7 @@ struct InAppMessageState: Equatable, CustomStringConvertible {
         deletedInboxMessageIds: Set<String> = []
     ) {
         self.siteId = siteId
+        self.publicKey = publicKey
         self.dataCenter = dataCenter
         self.environment = environment
         self.colorScheme = colorScheme
@@ -79,6 +84,7 @@ struct InAppMessageState: Equatable, CustomStringConvertible {
     ) -> InAppMessageState {
         InAppMessageState(
             siteId: siteId,
+            publicKey: publicKey,
             dataCenter: dataCenter,
             environment: environment,
             colorScheme: colorScheme ?? self.colorScheme,
@@ -98,6 +104,7 @@ struct InAppMessageState: Equatable, CustomStringConvertible {
 
     static func == (lhs: InAppMessageState, rhs: InAppMessageState) -> Bool {
         lhs.siteId == rhs.siteId &&
+            lhs.publicKey == rhs.publicKey &&
             lhs.dataCenter == rhs.dataCenter &&
             lhs.environment == rhs.environment &&
             lhs.colorScheme == rhs.colorScheme &&
@@ -398,3 +405,5 @@ extension EmbeddedMessagesState {
         messagesByElementId[elementId] = newState
     }
 }
+
+// swiftlint:enable file_length

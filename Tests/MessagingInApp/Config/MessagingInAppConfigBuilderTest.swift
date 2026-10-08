@@ -123,6 +123,50 @@ class MessagingInAppConfigBuilderTest: UnitTest {
         }
     }
 
+    func test_initializeFromDictionaryWithoutRegion_givenEuPublicKey_expectEuRegion() throws {
+        let givenDict: [String: Any] = [
+            "cdpApiKey": "wk_eu_\(String.random)",
+            "inApp": ["siteId": String.random]
+        ]
+
+        let config = try XCTUnwrap(MessagingInAppConfigBuilder.build(from: givenDict))
+
+        XCTAssertEqual(config.region, .EU)
+    }
+
+    func test_initializeFromDictionary_givenEuPublicKeyAndUsRegion_expectExplicitRegionWins() throws {
+        let givenDict: [String: Any] = [
+            "cdpApiKey": "wk_eu_\(String.random)",
+            "region": "US",
+            "inApp": ["siteId": String.random]
+        ]
+
+        let config = try XCTUnwrap(MessagingInAppConfigBuilder.build(from: givenDict))
+
+        XCTAssertEqual(config.region, .US)
+    }
+
+    // Apps written against the old API read `siteId` as a non-optional `String`.
+    func test_siteId_givenLegacyCaller_expectNonOptionalString() {
+        let config = MessagingInAppConfigBuilder(siteId: "site-1", region: .US).build()
+
+        let siteId: String = config.siteId
+
+        XCTAssertEqual(siteId, "site-1")
+    }
+
+    // The gist renderer can't load messages with only the public key yet, so siteId stays required.
+    func test_initializeFromDictionaryWithoutSiteId_givenPublicKey_expectThrowError() {
+        let givenDict: [String: Any] = [
+            "cdpApiKey": "wk_us_\(String.random)",
+            "inApp": [:]
+        ]
+
+        XCTAssertThrowsError(try MessagingInAppConfigBuilder.build(from: givenDict)) { error in
+            XCTAssertEqual(error as? MessagingInAppConfigBuilderError, MessagingInAppConfigBuilderError.missingSiteId)
+        }
+    }
+
     func test_initializeFromMalformedDictionary_expectThrowError() {
         let givenDict: [String: Any] = [
             "inApp": String.random

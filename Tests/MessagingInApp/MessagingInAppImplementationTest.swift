@@ -110,17 +110,44 @@ class MessagingInAppImplementationTest: IntegrationTest {
         inAppMessageManagerMock.subscribeReturnValue = Task {}
 
         if let dispatchArgs = inAppMessageManagerMock.dispatchReceivedArguments?.action {
-            if case .initialize(let siteId, let dataCenter, let environment, let colorScheme) = dispatchArgs {
+            if case .initialize(let siteId, let dataCenter, let environment, let colorScheme, let publicKey) = dispatchArgs {
                 XCTAssertEqual(siteId, messagingInAppConfigOptions.siteId)
                 XCTAssertEqual(dataCenter, messagingInAppConfigOptions.region.rawValue)
                 XCTAssertEqual(environment, GistEnvironment.production)
                 XCTAssertEqual(colorScheme, messagingInAppConfigOptions.colorScheme)
+                XCTAssertNil(publicKey)
             } else {
                 XCTFail("Expected dispatch action to be .initialize")
             }
         } else {
             XCTFail("dispatchReceivedArguments is nil")
         }
+    }
+
+    func test_initialize_givenPublicKey_expectInitializeWithSiteIdAndPublicKey() async {
+        let givenKey = "wk_us_\(String.random)"
+        diGraphShared.backgroundDeliveryContextStore.setCdpApiKey(givenKey)
+        defer { diGraphShared.backgroundDeliveryContextStore.setCdpApiKey(nil) }
+        await waitForExpectations(initializeModule())
+
+        _ = MessagingInAppImplementation(diGraph: diGraphShared, moduleConfig: MessagingInAppConfigBuilder(siteId: "test-site", region: .US).build())
+
+        guard case .initialize(let siteId, _, _, _, let publicKey) = inAppMessageManagerMock.dispatchReceivedArguments?.action else {
+            return XCTFail("Expected dispatch action to be .initialize")
+        }
+        XCTAssertEqual(siteId, "test-site")
+        XCTAssertEqual(publicKey, givenKey)
+    }
+
+    func test_initialize_givenLegacyKey_expectNoPublicKey() async {
+        diGraphShared.backgroundDeliveryContextStore.setCdpApiKey(String.random)
+        defer { diGraphShared.backgroundDeliveryContextStore.setCdpApiKey(nil) }
+        await waitForExpectations(initializeModule())
+
+        guard case .initialize(_, _, _, _, let publicKey) = inAppMessageManagerMock.dispatchReceivedArguments?.action else {
+            return XCTFail("Expected dispatch action to be .initialize")
+        }
+        XCTAssertNil(publicKey)
     }
 
     // MARK: initialize given an existing identifier

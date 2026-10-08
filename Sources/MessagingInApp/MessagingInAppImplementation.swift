@@ -22,6 +22,7 @@ class MessagingInAppImplementation: MessagingInAppInstance {
     private let threadUtil: ThreadUtil
     private let eventBusHandler: EventBusHandler
     private let notificationInbox: NotificationInbox
+    private let backgroundDeliveryContextStore: BackgroundDeliveryContextStore
 
     init(diGraph: DIGraphShared, moduleConfig: MessagingInAppConfigOptions) {
         self.moduleConfig = moduleConfig
@@ -31,6 +32,7 @@ class MessagingInAppImplementation: MessagingInAppInstance {
         self.threadUtil = diGraph.threadUtil
         self.eventBusHandler = diGraph.eventBusHandler
         self.notificationInbox = diGraph.notificationInbox
+        self.backgroundDeliveryContextStore = diGraph.backgroundDeliveryContextStore
 
         Self.currentColorScheme = moduleConfig.colorScheme
         Self.currentNotificationInboxAccessibilityLabels = moduleConfig.notificationInboxAccessibilityLabels
@@ -38,11 +40,15 @@ class MessagingInAppImplementation: MessagingInAppInstance {
     }
 
     private func subscribeToInAppMessageState() {
+        // Key set on `SDKConfigBuilder`. Only public `wk_` keys are sent to in-app APIs.
+        let publicKey = backgroundDeliveryContextStore.currentCdpApiKey.flatMap { ApiKey.isPublic($0) ? $0 : nil }
+
         inAppMessageManager.dispatch(action: .initialize(
             siteId: moduleConfig.siteId,
             dataCenter: moduleConfig.region.rawValue,
             environment: GistEnvironment.production,
-            colorScheme: moduleConfig.colorScheme
+            colorScheme: moduleConfig.colorScheme,
+            publicKey: publicKey
         )) {
             self.subscribeToEventBus()
         }

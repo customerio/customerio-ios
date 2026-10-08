@@ -52,6 +52,7 @@ open class BaseMessageManager {
         let resolvedColorScheme = MessagingInAppImplementation.currentColorScheme.resolve(with: UITraitCollection.current)
         let engineWebConfiguration = EngineWebConfiguration(
             siteId: state.siteId,
+            key: state.requestPublicKey,
             dataCenter: state.dataCenter,
             instanceId: message.instanceId,
             endpoint: state.environment.networkSettings.engineAPI,

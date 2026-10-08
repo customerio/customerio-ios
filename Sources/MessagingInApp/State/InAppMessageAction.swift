@@ -3,7 +3,7 @@ import Foundation
 /// Represents an action that can be dispatched to InAppMessage store.
 /// It acts like a sealed class, so that only the cases defined here can be used with InAppMessage store.
 enum InAppMessageAction: Equatable {
-    case initialize(siteId: String, dataCenter: String, environment: GistEnvironment, colorScheme: ColorScheme = .auto)
+    case initialize(siteId: String, dataCenter: String, environment: GistEnvironment, colorScheme: ColorScheme = .auto, publicKey: String? = nil)
     case setColorScheme(colorScheme: ColorScheme)
     case setPollingInterval(interval: Double)
     case setSseEnabled(enabled: Bool)
@@ -52,8 +52,8 @@ enum InAppMessageAction: Equatable {
     // swiftlint:disable cyclomatic_complexity
     static func == (lhs: InAppMessageAction, rhs: InAppMessageAction) -> Bool {
         switch (lhs, rhs) {
-        case (.initialize(let lhsSiteId, let lhsDataCenter, let lhsEnvironment, let lhsColorScheme), .initialize(let rhsSiteId, let rhsDataCenter, let rhsEnvironment, let rhsColorScheme)):
-            return lhsSiteId == rhsSiteId && lhsDataCenter == rhsDataCenter && lhsEnvironment == rhsEnvironment && lhsColorScheme == rhsColorScheme
+        case (.initialize(let lhsSiteId, let lhsDataCenter, let lhsEnvironment, let lhsColorScheme, let lhsPublicKey), .initialize(let rhsSiteId, let rhsDataCenter, let rhsEnvironment, let rhsColorScheme, let rhsPublicKey)):
+            return lhsSiteId == rhsSiteId && lhsDataCenter == rhsDataCenter && lhsEnvironment == rhsEnvironment && lhsColorScheme == rhsColorScheme && lhsPublicKey == rhsPublicKey
 
         case (.setColorScheme(let lhsColorScheme), .setColorScheme(let rhsColorScheme)):
             return lhsColorScheme == rhsColorScheme
