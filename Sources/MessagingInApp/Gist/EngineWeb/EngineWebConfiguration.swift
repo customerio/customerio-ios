@@ -2,7 +2,7 @@ import Foundation
 
 struct EngineWebConfiguration: Encodable {
     let siteId: String
-    /// Public `wk_` key, so the renderer loads messages with `?key=` instead of the site ID.
+    /// Public `wk_` key, sent alongside the site ID.
     let key: String?
     let dataCenter: String
     let instanceId: String

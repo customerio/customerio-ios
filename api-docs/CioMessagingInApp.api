@@ -167,7 +167,7 @@ public final class CioMessagingInApp.MessagingInApp {
 	public fun func setColorScheme(_ colorScheme: ColorScheme);
 }
 public final class CioMessagingInApp.MessagingInAppConfigBuilder {
-	public fun init(siteId: String? = nil, region: Region);
+	public fun init(siteId: String, region: Region);
 	public fun func setColorScheme(_ colorScheme: ColorScheme) -> MessagingInAppConfigBuilder;
 	public fun func setNotificationInboxAccessibilityLabels(_ labels: NotificationInboxAccessibilityLabels) -> MessagingInAppConfigBuilder;
 	public fun func build() -> MessagingInAppConfigOptions;

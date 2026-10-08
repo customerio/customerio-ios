@@ -14,13 +14,6 @@ class MessagingInAppConfigBuilderTest: UnitTest {
         XCTAssertEqual(config.region, givenRegion)
     }
 
-    func test_initializeWithoutSiteId_expectEmptySiteId() {
-        let config = MessagingInAppConfigBuilder(region: .EU).build()
-
-        XCTAssertEqual(config.siteId, "")
-        XCTAssertEqual(config.region, .EU)
-    }
-
     func test_build_givenNoNotificationInboxAccessibilityLabels_expectAllNil() {
         let config = MessagingInAppConfigBuilder(siteId: String.random, region: .US).build()
 
@@ -130,21 +123,10 @@ class MessagingInAppConfigBuilderTest: UnitTest {
         }
     }
 
-    func test_initializeFromDictionaryWithoutSiteId_givenPublicKey_expectConfig() throws {
-        let givenDict: [String: Any] = [
-            "cdpApiKey": "wk_us_\(String.random)",
-            "inApp": [:]
-        ]
-
-        let config = try XCTUnwrap(MessagingInAppConfigBuilder.build(from: givenDict))
-
-        XCTAssertEqual(config.siteId, "")
-    }
-
     func test_initializeFromDictionaryWithoutRegion_givenEuPublicKey_expectEuRegion() throws {
         let givenDict: [String: Any] = [
             "cdpApiKey": "wk_eu_\(String.random)",
-            "inApp": [:]
+            "inApp": ["siteId": String.random]
         ]
 
         let config = try XCTUnwrap(MessagingInAppConfigBuilder.build(from: givenDict))
@@ -156,7 +138,7 @@ class MessagingInAppConfigBuilderTest: UnitTest {
         let givenDict: [String: Any] = [
             "cdpApiKey": "wk_eu_\(String.random)",
             "region": "US",
-            "inApp": [:]
+            "inApp": ["siteId": String.random]
         ]
 
         let config = try XCTUnwrap(MessagingInAppConfigBuilder.build(from: givenDict))
@@ -173,9 +155,10 @@ class MessagingInAppConfigBuilderTest: UnitTest {
         XCTAssertEqual(siteId, "site-1")
     }
 
-    func test_initializeFromDictionaryWithoutSiteId_givenLegacyKey_expectThrowError() {
+    // The gist renderer can't load messages with only the public key yet, so siteId stays required.
+    func test_initializeFromDictionaryWithoutSiteId_givenPublicKey_expectThrowError() {
         let givenDict: [String: Any] = [
-            "cdpApiKey": String.random,
+            "cdpApiKey": "wk_us_\(String.random)",
             "inApp": [:]
         ]
 
