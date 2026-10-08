@@ -23,6 +23,8 @@ class MessagingPushImplementation: MessagingPushInstance {
     }
 
     func deleteDeviceToken() {
+        CustomerIO.shared.deleteDeviceToken()
+        // Live Activities clears its device token on this event
         eventBusHandler.postEvent(DeleteDeviceTokenEvent())
     }
 

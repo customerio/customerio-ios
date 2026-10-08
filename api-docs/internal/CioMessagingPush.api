@@ -6,6 +6,7 @@ public final class CioMessagingPush.MessagingPush {
 	public fun func registerDeviceToken(_ deviceToken: String);
 	public fun func registerDeviceToken(_ deviceToken: String, tokenType: DeviceTokenType?);
 	public fun func deleteDeviceToken();
+	public fun func didFailToRegisterForRemoteNotifications(error: Error);
 	public fun func trackMetric(deliveryID: String, event: Metric, deviceToken: String);
 	public fun func didReceive(_ request: UNNotificationRequest, withContentHandler contentHandler: @escaping (UNNotificationContent) -> Unit) -> Boolean;
 	public fun func serviceExtensionTimeWillExpire();

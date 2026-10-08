@@ -231,7 +231,7 @@ class CioAppDelegateFCMTests: XCTestCase {
         // Verify behavior
         XCTAssertTrue(mockAppDelegate.didFailToRegisterForRemoteNotificationsCalled)
         XCTAssertEqual((mockAppDelegate.errorReceived as NSError?)?.domain, "test")
-        XCTAssertTrue(mockMessagingPush.deleteDeviceTokenCalled == true)
+        XCTAssertFalse(mockMessagingPush.deleteDeviceTokenCalled)
     }
 
     // MARK: - Tests for UNUserNotificationCenterDelegate methods
