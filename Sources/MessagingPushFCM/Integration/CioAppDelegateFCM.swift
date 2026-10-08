@@ -47,8 +47,12 @@ open class CioAppDelegate: CioProviderAgnosticAppDelegate, FirebaseServiceDelega
 
         guard config?().autoFetchDeviceToken ?? false else { return }
 
-        MessagingPushFCM.shared.fetchFirebaseRegistration(apnsToken: deviceToken) { [messagingPushFCM] token in
-            messagingPushFCM?.registerDeviceToken(fcmToken: token)
+        MessagingPushFCM.shared.fetchFirebaseRegistration(apnsToken: deviceToken) { [weak self, messagingPushFCM] registration, tokenType in
+            guard let self = self else { return }
+            switch tokenType {
+            case .token: messagingPushFCM?.messaging(self, didReceiveRegistrationToken: registration)
+            case .fid: messagingPushFCM?.messaging(self, didReceiveRegistration: registration)
+            }
         }
     }
 
@@ -60,7 +64,7 @@ open class CioAppDelegate: CioProviderAgnosticAppDelegate, FirebaseServiceDelega
         }
 
         // Forward the device token to the Customer.io SDK:
-        messagingPushFCM?.registerDeviceToken(fcmToken: token)
+        messagingPushFCM?.messaging(self, didReceiveRegistrationToken: token)
     }
 
     public func didReceiveRegistration(_ installationId: String?) {

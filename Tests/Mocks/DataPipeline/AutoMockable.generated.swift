@@ -126,6 +126,9 @@ class DataPipelinesLoggerMock: @unchecked Sendable, DataPipelinesLogger, Mock {
         _logTrackingDevicesAttributesWithoutValidTokenCallsCount.wrappedValue = 0
 
         mockCalled = false // do last as resetting properties above can make this true
+        _logReservedDeviceTokenTypeIgnoredCallsCount.wrappedValue = 0
+
+        mockCalled = false // do last as resetting properties above can make this true
     }
 
     // MARK: - logStoringDevicePushToken
@@ -343,6 +346,31 @@ class DataPipelinesLoggerMock: @unchecked Sendable, DataPipelinesLogger, Mock {
         mockCalled = true
         _logTrackingDevicesAttributesWithoutValidTokenCallsCount += 1
         logTrackingDevicesAttributesWithoutValidTokenClosure?()
+    }
+
+    // MARK: - logReservedDeviceTokenTypeIgnored
+
+    /// Number of times the function was called.
+    private let _logReservedDeviceTokenTypeIgnoredCallsCount: CioInternalCommon.Synchronized<Int> = .init(0)
+    var logReservedDeviceTokenTypeIgnoredCallsCount: Int {
+        _logReservedDeviceTokenTypeIgnoredCallsCount.wrappedValue
+    }
+
+    /// `true` if the function was ever called.
+    var logReservedDeviceTokenTypeIgnoredCalled: Bool {
+        logReservedDeviceTokenTypeIgnoredCallsCount > 0
+    }
+
+    /**
+     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
+     */
+    var logReservedDeviceTokenTypeIgnoredClosure: (() -> Void)?
+
+    /// Mocked function for `logReservedDeviceTokenTypeIgnored()`. Your opportunity to return a mocked value and check result of mock in test code.
+    func logReservedDeviceTokenTypeIgnored() {
+        mockCalled = true
+        _logReservedDeviceTokenTypeIgnoredCallsCount += 1
+        logReservedDeviceTokenTypeIgnoredClosure?()
     }
 }
 

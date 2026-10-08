@@ -2164,10 +2164,62 @@ public class GlobalDataStoreMock: @unchecked Sendable, GlobalDataStore, Mock {
         }
     }
 
+    /**
+     When setter of the property called, the value given to setter is set here.
+     When the getter of the property called, the value set here will be returned. Your chance to mock the property.
+     */
+    private let _underlyingPushDeviceTokenType: CioInternalCommon.Synchronized<DeviceTokenType?> = .init(nil)
+    public var underlyingPushDeviceTokenType: DeviceTokenType? {
+        get { _underlyingPushDeviceTokenType.wrappedValue }
+        set { _underlyingPushDeviceTokenType.wrappedValue = newValue }
+    }
+
+    /// `true` if the getter or setter of property is called at least once.
+    public var pushDeviceTokenTypeCalled: Bool {
+        pushDeviceTokenTypeGetCalled || pushDeviceTokenTypeSetCalled
+    }
+
+    /// `true` if the getter called on the property at least once.
+    public var pushDeviceTokenTypeGetCalled: Bool {
+        pushDeviceTokenTypeGetCallsCount > 0
+    }
+
+    private let _pushDeviceTokenTypeGetCallsCount: CioInternalCommon.Synchronized<Int> = .init(0)
+    public var pushDeviceTokenTypeGetCallsCount: Int {
+        _pushDeviceTokenTypeGetCallsCount.wrappedValue
+    }
+
+    /// `true` if the setter called on the property at least once.
+    public var pushDeviceTokenTypeSetCalled: Bool {
+        pushDeviceTokenTypeSetCallsCount > 0
+    }
+
+    private let _pushDeviceTokenTypeSetCallsCount: CioInternalCommon.Synchronized<Int> = .init(0)
+    public var pushDeviceTokenTypeSetCallsCount: Int {
+        _pushDeviceTokenTypeSetCallsCount.wrappedValue
+    }
+
+    /// The mocked property with a getter and setter.
+    public var pushDeviceTokenType: DeviceTokenType? {
+        get {
+            mockCalled = true
+            _pushDeviceTokenTypeGetCallsCount += 1
+            return underlyingPushDeviceTokenType
+        }
+        set(value) {
+            mockCalled = true
+            _pushDeviceTokenTypeSetCallsCount += 1
+            underlyingPushDeviceTokenType = value
+        }
+    }
+
     public func resetMock() {
         pushDeviceToken = nil
         _pushDeviceTokenGetCallsCount.wrappedValue = 0
         _pushDeviceTokenSetCallsCount.wrappedValue = 0
+        pushDeviceTokenType = nil
+        _pushDeviceTokenTypeGetCallsCount.wrappedValue = 0
+        _pushDeviceTokenTypeSetCallsCount.wrappedValue = 0
         _deleteAllCallsCount.wrappedValue = 0
 
         mockCalled = false // do last as resetting properties above can make this true

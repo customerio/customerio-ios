@@ -27,7 +27,11 @@ class MessagingPushImplementation: MessagingPushInstance {
     }
 
     func registerDeviceToken(_ deviceToken: String) {
-        eventBusHandler.postEvent(RegisterDeviceTokenEvent(token: deviceToken))
+        registerDeviceToken(deviceToken, tokenType: nil)
+    }
+
+    func registerDeviceToken(_ deviceToken: String, tokenType: DeviceTokenType?) {
+        eventBusHandler.postEvent(RegisterDeviceTokenEvent(token: deviceToken, tokenType: tokenType))
     }
 
     func trackMetric(deliveryID: String, event: Metric, deviceToken: String) {

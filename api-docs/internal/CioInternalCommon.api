@@ -108,6 +108,7 @@ public final class CioInternalCommon.CioQueue {
 }
 public final class CioInternalCommon.CioSharedDataStore {
 	public var pushDeviceToken: String?;
+	public var pushDeviceTokenType: DeviceTokenType?;
 	public fun init(keyValueStorage: SharedKeyValueStorage);
 	public fun func deleteAll();
 }
@@ -237,6 +238,8 @@ public interface CioInternalCommon.DeviceInfo {
 	public var deviceLocale: String;
 	public fun func isPushSubscribed(completion: @escaping (Boolean) -> Unit);
 }
+public enum CioInternalCommon.DeviceTokenType {
+}
 public interface CioInternalCommon.DictionaryProtocol {
 	public fun subscript(key: Key) -> Value?;
 	public fun mutating func removeValue(forKey key: Key) -> Value?;
@@ -320,6 +323,7 @@ public enum CioInternalCommon.GeofenceTransition {
 }
 public interface CioInternalCommon.GlobalDataStore {
 	public var pushDeviceToken: String?;
+	public var pushDeviceTokenType: DeviceTokenType?;
 	public fun func deleteAll();
 }
 public interface CioInternalCommon.HttpClient {
@@ -506,8 +510,9 @@ public final class CioInternalCommon.RegisterDeviceTokenEvent {
 	public final val storageId: String;
 	public final val params: List<String : String>;
 	public final val token: String;
+	public final val tokenType: DeviceTokenType?;
 	public final val timestamp: Date;
-	public fun init(storageId: String = UUID().uuidString, token: String, timestamp: Date = Date(), params: List<String: String> = List<:>);
+	public fun init(storageId: String = UUID().uuidString, token: String, tokenType: DeviceTokenType? = nil, timestamp: Date = Date(), params: List<String: String> = List<:>);
 }
 public final class CioInternalCommon.RegisterPushNotificationQueueTaskData {
 	public final val profileIdentifier: String;

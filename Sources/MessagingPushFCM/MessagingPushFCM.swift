@@ -73,7 +73,7 @@ public class MessagingPushFCM: MessagingPushFCMInstance {
 
     /// Gives Firebase the APNs token, then fetches the app's FCM registration: its FID in FID mode, otherwise its token.
     /// Fetching doesn't rely on the Firebase delegate, which the app may have replaced with its own.
-    func fetchFirebaseRegistration(apnsToken: Data, onFetched: @escaping (String) -> Void) {
+    func fetchFirebaseRegistration(apnsToken: Data, onFetched: @escaping (String, DeviceTokenType) -> Void) {
         let logger = DIGraphShared.shared.logger
         guard let firebaseService = firebaseMessaging() else {
             logger.error("CIO: firebaseService is nil. Make sure to initialize the MessagingPushFCM SDK before use.")
@@ -91,7 +91,7 @@ public class MessagingPushFCM: MessagingPushFCMInstance {
                     logger.error("CIO: Failed to fetch FCM token: \(error?.localizedDescription ?? "unknown error")")
                     return
                 }
-                onFetched(token)
+                onFetched(token, .token)
             }
             return
         }
@@ -101,7 +101,7 @@ public class MessagingPushFCM: MessagingPushFCMInstance {
                 logger.error("CIO: Failed to register Firebase Installation ID: \(error?.localizedDescription ?? "unknown error")")
                 return
             }
-            onFetched(fid)
+            onFetched(fid, .fid)
         }
     }
 
@@ -119,17 +119,19 @@ public class MessagingPushFCM: MessagingPushFCMInstance {
     }
 
     public func messaging(_ messaging: Any, didReceiveRegistrationToken fcmToken: String?) {
-        guard let deviceToken = fcmToken else {
+        registerFirebaseDeviceToken(fcmToken, tokenType: .token)
+    }
+
+    /// Registers a value received from Firebase, along with its type.
+    func registerFirebaseDeviceToken(_ deviceToken: String?, tokenType: DeviceTokenType) {
+        guard let deviceToken = deviceToken else {
             return
         }
-        registerDeviceToken(fcmToken: deviceToken)
+        MessagingPush.shared.registerDeviceToken(deviceToken, tokenType: tokenType)
     }
 
     public func messaging(_ messaging: Any, didReceiveRegistration installationId: String?) {
-        guard let installationId = installationId else {
-            return
-        }
-        registerDeviceToken(fcmToken: installationId)
+        registerFirebaseDeviceToken(installationId, tokenType: .fid)
     }
 
     public func application(_ application: Any, didFailToRegisterForRemoteNotificationsWithError error: Error) {
