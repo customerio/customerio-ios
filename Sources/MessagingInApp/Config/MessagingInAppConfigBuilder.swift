@@ -16,16 +16,16 @@ import Foundation
 /// ```
 public class MessagingInAppConfigBuilder {
     // configuration options for MessagingInAppConfigOptions
-    private let siteId: String?
+    private let siteId: String
     private let region: Region
     private var colorScheme: ColorScheme = .auto
     private var notificationInboxAccessibilityLabels = NotificationInboxAccessibilityLabels()
 
     /// Initializes new `MessagingInAppConfigBuilder` with required configuration options.
     /// - Parameters:
-    ///   - siteId: Workspace Site ID. Optional when the SDK is set up with a public `wk_` key.
+    ///   - siteId: Workspace Site ID
     ///   - region: Workspace Region
-    public init(siteId: String? = nil, region: Region) {
+    public init(siteId: String, region: Region) {
         self.siteId = siteId
         self.region = region
     }
@@ -49,7 +49,7 @@ public class MessagingInAppConfigBuilder {
     /// Builds and returns `MessagingInAppConfigOptions` instance from the configured properties.
     public func build() -> MessagingInAppConfigOptions {
         MessagingInAppConfigOptions(
-            siteId: siteId ?? "",
+            siteId: siteId,
             region: region,
             colorScheme: colorScheme,
             notificationInboxAccessibilityLabels: notificationInboxAccessibilityLabels
@@ -95,12 +95,10 @@ public extension MessagingInAppConfigBuilder {
             throw MessagingInAppConfigBuilderError.malformedConfig
         }
 
-        // Site ID is only required when the SDK isn't set up with a public `wk_` key.
-        let siteId = config[Keys.siteId.rawValue] as? String
-        let cdpApiKey = sdkConfig[Keys.cdpApiKey.rawValue] as? String ?? ""
-        if siteId == nil, !ApiKey.isPublic(cdpApiKey) {
+        guard let siteId = config[Keys.siteId.rawValue] as? String else {
             throw MessagingInAppConfigBuilderError.missingSiteId
         }
+        let cdpApiKey = sdkConfig[Keys.cdpApiKey.rawValue] as? String ?? ""
 
         // By default, region is provided only in top-level configuration in wrapper SDKs.
         // This prevents users from having to specify region more than once in the configuration.

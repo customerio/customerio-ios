@@ -124,18 +124,18 @@ class MessagingInAppImplementationTest: IntegrationTest {
         }
     }
 
-    func test_initialize_givenPublicKeyAndNoSiteId_expectInitializeWithPublicKey() async {
+    func test_initialize_givenPublicKey_expectInitializeWithSiteIdAndPublicKey() async {
         let givenKey = "wk_us_\(String.random)"
         diGraphShared.backgroundDeliveryContextStore.setCdpApiKey(givenKey)
         defer { diGraphShared.backgroundDeliveryContextStore.setCdpApiKey(nil) }
         await waitForExpectations(initializeModule())
 
-        _ = MessagingInAppImplementation(diGraph: diGraphShared, moduleConfig: MessagingInAppConfigBuilder(region: .US).build())
+        _ = MessagingInAppImplementation(diGraph: diGraphShared, moduleConfig: MessagingInAppConfigBuilder(siteId: "test-site", region: .US).build())
 
         guard case .initialize(let siteId, _, _, _, let publicKey) = inAppMessageManagerMock.dispatchReceivedArguments?.action else {
             return XCTFail("Expected dispatch action to be .initialize")
         }
-        XCTAssertEqual(siteId, "")
+        XCTAssertEqual(siteId, "test-site")
         XCTAssertEqual(publicKey, givenKey)
     }
 

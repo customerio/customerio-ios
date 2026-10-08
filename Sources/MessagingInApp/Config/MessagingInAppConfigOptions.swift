@@ -4,7 +4,6 @@ import CioInternalCommon
 ///
 /// Use `MessagingInAppConfigBuilder` for constructing its instances. For detailed usage, see builder class documentation.
 public struct MessagingInAppConfigOptions {
-    /// Workspace Site ID. Empty when not set, which is allowed when the SDK is set up with a public `wk_` key.
     public let siteId: String
     public let region: Region
     public let colorScheme: ColorScheme
