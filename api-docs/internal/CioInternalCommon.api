@@ -44,6 +44,7 @@ public final class CioInternalCommon.BackgroundDeliveryContextStore {
 	public var currentCdpApiKey: String?;
 	public var hasLiveCdpApiKeyProvider: Boolean;
 	public fun convenience init();
+	public fun deinit;
 	public fun func setCdpApiKeyProvider(_ provider: BackgroundDeliveryCdpApiKeyProvider?);
 	public fun func setUserId(_ userId: String?);
 	public fun func setApiHost(_ apiHost: String?);
@@ -315,6 +316,11 @@ public interface CioInternalCommon.GeofenceMetric {
 	public var transitionId: String;
 	public var geosetId: String?;
 	public var metadata: List<String : GeofenceMetadataValue>?;
+	public var visitId: String?;
+	public var enteredAt: Date?;
+	public var dwellThresholdSeconds: Int?;
+	public var dwellDurationSeconds: Int?;
+	public var detectionSource: String?;
 }
 public enum CioInternalCommon.GeofenceTransition {
 }
@@ -631,7 +637,12 @@ public final class CioInternalCommon.TrackGeofenceMetricEvent {
 	public final val userId: String;
 	public final val geosetId: String?;
 	public final val metadata: List<String : GeofenceMetadataValue>?;
-	public fun init(storageId: String = UUID().uuidString, geofenceId: String, transition: GeofenceTransition, timestamp: Date = Date(), name: String?, transitionId: String, userId: String, geosetId: String? = nil, metadata: List<String: GeofenceMetadataValue>? = nil, params: List<String: String> = List<:>);
+	public final val visitId: String?;
+	public final val enteredAt: Date?;
+	public final val dwellThresholdSeconds: Int?;
+	public final val dwellDurationSeconds: Int?;
+	public final val detectionSource: String?;
+	public fun init(storageId: String = UUID().uuidString, geofenceId: String, transition: GeofenceTransition, timestamp: Date = Date(), name: String?, transitionId: String, userId: String, geosetId: String? = nil, metadata: List<String: GeofenceMetadataValue>? = nil, params: List<String: String> = List<:>, visitId: String? = nil, enteredAt: Date? = nil, dwellThresholdSeconds: Int? = nil, dwellDurationSeconds: Int? = nil, detectionSource: String? = nil);
 }
 public final class CioInternalCommon.TrackInAppMetricEvent {
 	public final val storageId: String;

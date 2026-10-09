@@ -64,7 +64,8 @@ extension CLMonitorGeofenceMonitor {
         )
 
         let isMovementTrigger = identifier == GeofenceConstants.movementTriggerIdentifier
-        let isInside = isDeviceInside(center: coordinate, radius: clampedRadius) ?? isMovementTrigger
+        let side = deviceSide(center: coordinate, radius: clampedRadius)
+        let isInside = side?.isInside ?? isMovementTrigger
         let initialTransition: GeofenceTransition = isInside ? .enter : .exit
         let assumedState: GeofenceConditionState = isInside ? .satisfied : .unsatisfied
 
@@ -78,6 +79,9 @@ extension CLMonitorGeofenceMonitor {
                     transitionTypes: transitionTypes,
                     initialTransition: initialTransition,
                     assumedState: assumedState,
+                    // No fix, or one too old or too close to call, is an assumption: the ENTER the OS
+                    // may answer it with is no crossing (see `MonitorRegionRecord.lastStateObserved`).
+                    initialStateObserved: side?.isSettled ?? false,
                     stagedAt: stagedAt
                 ),
                 on: monitor
@@ -92,6 +96,7 @@ extension CLMonitorGeofenceMonitor {
         let transitionTypes: Set<GeofenceTransition>
         let initialTransition: GeofenceTransition
         let assumedState: GeofenceConditionState
+        let initialStateObserved: Bool
         let stagedAt: Date
     }
 
@@ -109,7 +114,8 @@ extension CLMonitorGeofenceMonitor {
             initialState: staged.initialTransition,
             center: center,
             radius: radius,
-            forceReseed: forceReseed
+            forceReseed: forceReseed,
+            initialStateObserved: staged.initialStateObserved
         )
         // CLMonitor SILENTLY IGNORES an add over a live identifier, so always remove first.
         let readdStart = dateUtil.now
@@ -239,10 +245,24 @@ extension CLMonitorGeofenceMonitor {
         )
     }
 
+    /// An event raised by a generation a newer staged circle has replaced is `.expired`, though the
+    /// replaced one is still the live one: until the new add confirms, the OS keeps raising events
+    /// from it, and they prove nothing about the geometry now wanted.
     func eventCircle(for identifier: String, raisedAt: Date) -> GeofenceEventCircle {
-        GeofenceEventCircle(
-            conditionLedger.attribution(for: identifier, raisedAt: raisedAt),
-            maximumRadius: authManager.maximumRegionMonitoringDistance
-        )
+        let attribution = conditionLedger.attribution(for: identifier, raisedAt: raisedAt)
+        if case .generation(let raised) = attribution, let staged = conditionLedger.condition(for: identifier),
+           staged.center != raised.center || staged.radius != raised.radius {
+            return .expired
+        }
+        return GeofenceEventCircle(attribution, maximumRadius: authManager.maximumRegionMonitoringDistance)
+    }
+
+    /// The circle an event is handed on with: `captured`, attributed before its record write, unless
+    /// that or a fresh attribution now is `.expired`. A newer circle can be staged while the write
+    /// awaits; that makes the event stale, never the other way round, and the generation it was
+    /// raised by is not re-attributed.
+    func dispatchedEventCircle(captured: GeofenceEventCircle, for identifier: String, raisedAt: Date) -> GeofenceEventCircle {
+        guard captured != .expired, eventCircle(for: identifier, raisedAt: raisedAt) != .expired else { return .expired }
+        return captured
     }
 }

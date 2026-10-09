@@ -99,12 +99,25 @@ extension CoreLocationGeofenceMonitor {
                 // The captured fallback is never current.
                 self?.onTransition?(
                     identifier, transition, location ?? capturedLocation, occurredAt,
-                    isFresh && location != nil, .circle(circle)
+                    isFresh && location != nil, .circle(circle), true
                 )
             }
             return
         }
         logger.geofenceCallbackDispatched(identifier: identifier, transition: transition)
-        onTransition?(identifier, transition, capturedLocation, occurredAt, false, .circle(circle))
+        // Classic monitoring is silent at registration, so every region event is a crossing.
+        onTransition?(identifier, transition, capturedLocation, occurredAt, false, eventCircle(circle, of: identifier), true)
+    }
+
+    /// The callback's own circle, or `.expired` when the OS now monitors a different circle under
+    /// the id: a replaced region's event, which proves nothing about the current geometry. With no
+    /// region monitored under the id, the callback's circle stands, as before.
+    private func eventCircle(_ circle: MonitoredCircle, of identifier: String) -> GeofenceEventCircle {
+        guard let current = monitoredRegion(manager, identifier) else { return .circle(circle) }
+        let registered = MonitoredCircle(
+            center: LocationData(latitude: current.center.latitude, longitude: current.center.longitude),
+            radius: current.radius, maximumRadius: circle.maximumRadius
+        )
+        return registered.isSameCircle(as: circle) ? .circle(circle) : .expired
     }
 }

@@ -63,7 +63,7 @@ struct GeofenceMonitorOwnershipTests {
         withDiagnostics(true) {
             let logger = CapturingLogger()
             let monitor = CoreLocationGeofenceMonitor(logger: logger)
-            monitor.setOnTransition { _, _, _, _, _, _ in }
+            monitor.setOnTransition { _, _, _, _, _, _, _ in }
 
             monitor.locationManager(CLLocationManager(), didEnterRegion: hostRegion())
 
@@ -83,7 +83,7 @@ struct GeofenceMonitorOwnershipTests {
     func regionEvent_givenRegionNotOurs_expectIdentifierNeverLogged() {
         let logger = CapturingLogger()
         let monitor = CoreLocationGeofenceMonitor(logger: logger)
-        monitor.setOnTransition { _, _, _, _, _, _ in }
+        monitor.setOnTransition { _, _, _, _, _, _, _ in }
 
         monitor.locationManager(CLLocationManager(), didExitRegion: hostRegion())
 
@@ -93,13 +93,51 @@ struct GeofenceMonitorOwnershipTests {
         )
     }
 
+    private final class InterruptionRecorder {
+        var identifiers: [String?] = []
+    }
+
+    /// Core Location may report a failure without saying which region stopped. No active visit can
+    /// then prove it was watched throughout, so continuity is invalidated for all of them.
+    @Test
+    func monitoringFailure_givenNoRegion_expectGlobalContinuityInvalidation() {
+        let monitor = CoreLocationGeofenceMonitor(logger: CapturingLogger())
+        let recorder = InterruptionRecorder()
+        monitor.setOnMonitoringInterrupted { recorder.identifiers.append($0) }
+
+        monitor.locationManager(
+            CLLocationManager(),
+            monitoringDidFailFor: nil,
+            withError: CLError(.regionMonitoringFailure)
+        )
+
+        #expect(recorder.identifiers.count == 1)
+        #expect(recorder.identifiers.first == .some(nil))
+    }
+
+    /// A host app's region failing says nothing about ours.
+    @Test
+    func monitoringFailure_givenRegionNotOurs_expectNoInvalidation() {
+        let monitor = CoreLocationGeofenceMonitor(logger: CapturingLogger())
+        let recorder = InterruptionRecorder()
+        monitor.setOnMonitoringInterrupted { recorder.identifiers.append($0) }
+
+        monitor.locationManager(
+            CLLocationManager(),
+            monitoringDidFailFor: hostRegion(),
+            withError: CLError(.regionMonitoringFailure)
+        )
+
+        #expect(recorder.identifiers.isEmpty)
+    }
+
     @Test
     func regionEvent_givenBufferedAndNotOurs_expectNothingRecorded() async {
         let logger = CapturingLogger()
         let monitor = CoreLocationGeofenceMonitor(logger: logger)
 
         monitor.locationManager(CLLocationManager(), didEnterRegion: hostRegion())
-        monitor.setOnTransition { _, _, _, _, _, _ in }
+        monitor.setOnTransition { _, _, _, _, _, _, _ in }
         await Task.yield()
 
         // Asserts on the identifier, not `ev=`, so it can't pass vacuously with diagnostics off.

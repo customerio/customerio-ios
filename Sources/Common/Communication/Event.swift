@@ -179,6 +179,11 @@ public struct TrackGeofenceMetricEvent: EventRepresentable, GeofenceMetric {
     public let geosetId: String?
     /// Workspace-defined geofence metadata; `nil` when none.
     public let metadata: [String: GeofenceMetadataValue]?
+    public let visitId: String?
+    public let enteredAt: Date?
+    public let dwellThresholdSeconds: Int?
+    public let dwellDurationSeconds: Int?
+    public let detectionSource: String?
 
     public init(
         storageId: String = UUID().uuidString,
@@ -190,7 +195,12 @@ public struct TrackGeofenceMetricEvent: EventRepresentable, GeofenceMetric {
         userId: String,
         geosetId: String? = nil,
         metadata: [String: GeofenceMetadataValue]? = nil,
-        params: [String: String] = [:]
+        params: [String: String] = [:],
+        visitId: String? = nil,
+        enteredAt: Date? = nil,
+        dwellThresholdSeconds: Int? = nil,
+        dwellDurationSeconds: Int? = nil,
+        detectionSource: String? = nil
     ) {
         self.storageId = storageId
         self.params = params
@@ -202,6 +212,11 @@ public struct TrackGeofenceMetricEvent: EventRepresentable, GeofenceMetric {
         self.userId = userId
         self.geosetId = geosetId
         self.metadata = metadata
+        self.visitId = visitId
+        self.enteredAt = enteredAt
+        self.dwellThresholdSeconds = dwellThresholdSeconds
+        self.dwellDurationSeconds = dwellDurationSeconds
+        self.detectionSource = detectionSource
     }
 }
 

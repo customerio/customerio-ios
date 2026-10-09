@@ -71,6 +71,17 @@
 				<string>CA92.1</string>
 			</array>
 		</dict>
+		<!-- Dwell visits are timed on mach_continuous_time and tied to kern.boottime, so a wall-clock
+		     change cannot lengthen a visit and a reboot ends it. Both stay on device; only the
+		     elapsed time between the SDK's own events is derived from them. -->
+		<dict>
+			<key>NSPrivacyAccessedAPIType</key>
+			<string>NSPrivacyAccessedAPICategorySystemBootTime</string>
+			<key>NSPrivacyAccessedAPITypeReasons</key>
+			<array>
+				<string>35F9.1</string>
+			</array>
+		</dict>
 	</array>
 
 	<key>NSPrivacyTracking</key>

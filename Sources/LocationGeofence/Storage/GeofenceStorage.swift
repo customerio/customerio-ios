@@ -24,65 +24,12 @@ actor GeofenceStorage {
         self.dateUtil = dateUtil
     }
 
-    // MARK: - Event Cooldowns
-
-    func getEventCooldowns() -> [String: Date] {
-        loadFromDisk()?.eventCooldowns ?? [:]
-    }
-
-    func recordEventCooldown(key: String, timestamp: Date) {
-        var state = loadFromDisk() ?? GeofenceState()
-        var cooldowns = state.eventCooldowns ?? [:]
-        cooldowns[key] = timestamp
-        state.eventCooldowns = cooldowns
-        saveToDisk(state)
-    }
-
-    /// Checks and records in one step, so concurrent callers can't both fire.
-    /// - Returns: `nil` when acquired, otherwise the seconds still left on the cooldown.
-    func tryAcquireCooldown(key: String, now: Date, interval: TimeInterval) -> TimeInterval? {
-        var state = loadFromDisk() ?? GeofenceState()
-        var cooldowns = state.eventCooldowns ?? [:]
-        if let last = cooldowns[key] {
-            let elapsed = now.timeIntervalSince(last)
-            if elapsed < interval { return interval - elapsed }
-        }
-        cooldowns[key] = now
-        state.eventCooldowns = cooldowns
-        saveToDisk(state)
-        return nil
-    }
-
-    /// Filtered inside the actor so a concurrent `tryAcquireCooldown` write can't be lost.
-    func purgeExpiredCooldowns(now: Date, interval: TimeInterval) {
-        var state = loadFromDisk() ?? GeofenceState()
-        guard var cooldowns = state.eventCooldowns, !cooldowns.isEmpty else { return }
-        let beforeCount = cooldowns.count
-        cooldowns = cooldowns.filter { now.timeIntervalSince($0.value) < interval }
-        if cooldowns.count == beforeCount { return }
-        state.eventCooldowns = cooldowns
-        saveToDisk(state)
-    }
-
-    /// For when persisting fails after the claim, so the next transition isn't suppressed.
-    func releaseCooldown(key: String) {
-        var state = loadFromDisk() ?? GeofenceState()
-        guard var cooldowns = state.eventCooldowns, cooldowns.removeValue(forKey: key) != nil else { return }
-        state.eventCooldowns = cooldowns
-        saveToDisk(state)
-    }
-
-    func clearEventCooldowns() {
-        var state = loadFromDisk() ?? GeofenceState()
-        state.eventCooldowns = nil
-        saveToDisk(state)
-    }
-
     // MARK: - Monitor Region Records (CLMonitor path)
 
     /// The baseline is preserved on a re-register with unchanged geometry, so a CLMonitor
     /// re-evaluation isn't a duplicate. `forceReseed` after the OS stopped monitoring: the device may
-    /// have crossed meanwhile.
+    /// have crossed meanwhile. `initialStateObserved`: a fix settled `initialState` rather than it
+    /// being assumed; see `MonitorRegionRecord.lastStateObserved`. Preserved with the baseline.
     func recordMonitorRegistration(
         identifier: String,
         transitionTypes: Set<GeofenceTransition>,
@@ -90,6 +37,7 @@ actor GeofenceStorage {
         center: LocationData,
         radius: Double,
         forceReseed: Bool = false,
+        initialStateObserved: Bool = false,
         now: Date? = nil // nil rather than `Date()`: a default expression cannot reach `dateUtil`.
     ) {
         var state = loadFromDisk() ?? GeofenceState()
@@ -107,7 +55,8 @@ actor GeofenceStorage {
             // An OS event dated before this was computed against the old circle (see `recordMonitorEvent`).
             registeredAt: preserved ? existing?.registeredAt : stamp,
             // The trigger keeps its identity across radius changes, so its OS event dedup survives.
-            lastEventDate: (preserved || identifier == GeofenceConstants.movementTriggerIdentifier) ? existing?.lastEventDate : nil
+            lastEventDate: (preserved || identifier == GeofenceConstants.movementTriggerIdentifier) ? existing?.lastEventDate : nil,
+            lastStateObserved: preserved ? existing?.lastStateObserved : initialStateObserved
         )
         state.monitorRegionRecords = records
         saveToDisk(state)
@@ -120,45 +69,63 @@ actor GeofenceStorage {
         forIdentifier identifier: String,
         onlyIfBaselinePredates evidenceTimestamp: Date? = nil,
         osEventDate: Date? = nil,
-        now: Date? = nil
+        now: Date? = nil,
+        processedAt reading: GeofenceClockReading? = nil,
+        maximumRadius: Double = .infinity
     ) -> GeofenceMonitorEventOutcome {
+        recordMonitorTransition(
+            transition, forIdentifier: identifier,
+            onlyIfBaselinePredates: evidenceTimestamp, osEventDate: osEventDate, now: now,
+            processedAt: reading, maximumRadius: maximumRadius
+        ).outcome
+    }
+
+    /// `recordMonitorEvent`, also answering whether a delivered ENTER left an OBSERVED `.exit`.
+    /// Only then is it a crossing since registration; out of an assumed one it may be `CLMonitor`
+    /// correcting its `assuming:` for a device that never left. False for every other outcome.
+    /// - Parameter reading: when the producer read the dwell clock before this call; with it, a
+    ///   delivered change also closes the circle visit it ends, in the same write (`closeVisit`).
+    /// - Parameter maximumRadius: the radius cap the monitor registered the circle under.
+    /// - Parameter raisedUnder: the generation the producer attributed the event to, if any; see
+    ///   `outcome(ofEventRaisedUnder:)`.
+    func recordMonitorTransition(
+        _ transition: GeofenceTransition,
+        forIdentifier identifier: String,
+        onlyIfBaselinePredates evidenceTimestamp: Date? = nil,
+        osEventDate: Date? = nil,
+        now: Date? = nil,
+        processedAt reading: GeofenceClockReading? = nil,
+        maximumRadius: Double = .infinity,
+        raisedUnder: GeofenceEventCircle? = nil
+    ) -> (outcome: GeofenceMonitorEventOutcome, entryObserved: Bool) {
         var state = loadFromDisk() ?? GeofenceState()
         var records = state.monitorRegionRecords ?? [:]
         guard var record = records[identifier] else {
             // Condition predates this bookkeeping. Silent, like classic registration's initial state.
             records[identifier] = MonitorRegionRecord(
-                lastState: transition, transitionTypes: [.enter, .exit], lastStateChangedAt: now ?? dateUtil.now, lastEventDate: osEventDate
+                lastState: transition, transitionTypes: [.enter, .exit], lastStateChangedAt: now ?? dateUtil.now,
+                lastEventDate: osEventDate, lastStateObserved: true
             )
             state.monitorRegionRecords = records
             saveToDisk(state)
-            return .suppressedNoBaseline
+            return (.suppressedNoBaseline, false)
         }
-        // A trigger exit can arrive just after a re-plant, carrying the old circle's date. Only the
-        // untouched re-plant baseline is exempt; later evidence keeps the ordering guard.
-        let delayedMovementExit: Bool
-        if identifier == GeofenceConstants.movementTriggerIdentifier, transition == .exit,
-           let osEventDate, let registeredAt = record.registeredAt,
-           let changedAt = record.lastStateChangedAt {
-            delayedMovementExit = osEventDate < registeredAt && changedAt == registeredAt
-        } else {
-            delayedMovementExit = false
-        }
-        if let osEventDate {
-            if !delayedMovementExit,
-               let registeredAt = record.registeredAt, osEventDate < registeredAt { return .suppressedPredatesRegistration }
-            if let lastEventDate = record.lastEventDate, osEventDate <= lastEventDate { return .suppressedRedelivery }
-            record.lastEventDate = osEventDate
-        }
-        if !delayedMovementExit,
-           let evidenceTimestamp, let changedAt = record.lastStateChangedAt, changedAt > evidenceTimestamp {
-            return .suppressedNewerBaseline
+        if let outcome = outcome(ofEventRaisedUnder: raisedUnder, transition, record: record, osEventDate: osEventDate, evidenceTimestamp: evidenceTimestamp) { return (outcome, false) }
+        let delayedMovementExit = Self.isDelayedMovementExit(
+            transition, identifier: identifier, osEventDate: osEventDate, record: record
+        )
+        if let refused = Self.refusedByDate(
+            &record, osEventDate: osEventDate, evidenceTimestamp: evidenceTimestamp,
+            delayedMovementExit: delayedMovementExit, now: dateUtil.now
+        ) {
+            return (refused, false)
         }
         if delayedMovementExit {
             // Keep the new circle's seeded state, or its next real exit would look unchanged.
             records[identifier] = record
             state.monitorRegionRecords = records
             saveToDisk(state)
-            return record.transitionTypes.contains(transition) ? .deliver : .suppressedFilteredType
+            return (record.transitionTypes.contains(transition) ? .deliver : .suppressedFilteredType, false)
         }
         guard record.lastState != transition else {
             // Persist the date so a later copy is refused.
@@ -167,14 +134,37 @@ actor GeofenceStorage {
                 state.monitorRegionRecords = records
                 saveToDisk(state)
             }
-            return .suppressedNoChange
+            // Not an observation of an assumed state: `CLMonitor` may just be echoing `assuming:`.
+            return (.suppressedNoChange, false)
         }
+        let leftObservedState = record.lastStateObserved ?? false
         record.lastState = transition
         record.lastStateChangedAt = now ?? dateUtil.now
+        record.lastStateObserved = true
         records[identifier] = record
         state.monitorRegionRecords = records
+        let delivered = record.transitionTypes.contains(transition)
+        let crossing = transition == .enter && leftObservedState
+        if delivered, let reading, transition == .exit || crossing, let center = record.center, let radius = record.radius {
+            Self.closeVisit(in: &state, identifier: identifier, registered: MonitoredCircle(center: center, radius: radius, maximumRadius: maximumRadius), endedBy: transition, mark: GeofenceExitMark(date: osEventDate ?? now ?? dateUtil.now, processedAt: reading))
+        }
         saveToDisk(state)
-        return record.transitionTypes.contains(transition) ? .deliver : .suppressedFilteredType
+        return (delivered ? .deliver : .suppressedFilteredType, crossing)
+    }
+
+    /// A trigger exit can arrive just after a re-plant, carrying the old circle's date. Only the
+    /// untouched re-plant baseline is exempt; later evidence keeps the ordering guard.
+    private static func isDelayedMovementExit(
+        _ transition: GeofenceTransition,
+        identifier: String,
+        osEventDate: Date?,
+        record: MonitorRegionRecord
+    ) -> Bool {
+        guard identifier == GeofenceConstants.movementTriggerIdentifier, transition == .exit,
+              let osEventDate, let registeredAt = record.registeredAt,
+              let changedAt = record.lastStateChangedAt
+        else { return false }
+        return osEventDate < registeredAt && changedAt == registeredAt
     }
 
     func getMonitorRegionRecords() -> [String: MonitorRegionRecord] {
@@ -200,6 +190,8 @@ actor GeofenceStorage {
         state.monitoredGeofenceIds = nil
         state.monitorRegionRecords = nil
         state.polygonMembership = nil
+        state.dwellVisits = nil
+        state.unconfiguredOsTransitions = nil
         saveToDisk(state)
     }
 
@@ -209,9 +201,13 @@ actor GeofenceStorage {
         loadFromDisk()?.cachedGeofences ?? []
     }
 
+    /// Takes only regions decoded by the current model from a server response: it marks the
+    /// catalog current, which ends the one-time refetch of a catalog cached before dwell support.
     func setCachedGeofences(_ geofences: [Geofence]) {
         var state = loadFromDisk() ?? GeofenceState()
         state.cachedGeofences = geofences
+        state.catalogVersion = GeofenceState.currentCatalogVersion
+        state.dwellVisits = Self.dwellVisits(state.dwellVisits, retainedFor: geofences)
         saveToDisk(state)
     }
 
@@ -258,11 +254,12 @@ actor GeofenceStorage {
         return try? Self.makeDecoder().decode(GeofenceState.self, from: data)
     }
 
-    func saveToDisk(_ state: GeofenceState) {
+    @discardableResult
+    func saveToDisk(_ state: GeofenceState) -> Bool {
         guard let data = try? Self.makeEncoder().encode(state),
               let url = stateFileURL()
         else {
-            return
+            return false
         }
         let directory = url.deletingLastPathComponent()
         try? fileManager.createDirectory(
@@ -278,8 +275,9 @@ actor GeofenceStorage {
                 ofItemAtPath: url.path
             )
             setExcludedFromBackup(on: url)
+            return true
         } catch {
-            // Persistence is best-effort.
+            return false
         }
     }
 
@@ -312,5 +310,76 @@ actor GeofenceStorage {
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .secondsSince1970
         return decoder
+    }
+}
+
+/// The OS-date guards of `recordMonitorTransition`, outside the actor body to keep it under the
+/// type-length cap; same file, so they stay private.
+extension GeofenceStorage {
+    /// The outcome an event's dates alone decide, nil when they pass; a passing OS date is recorded
+    /// on `record` as seen. Judged against OS-dated history only, never SDK write times.
+    private static func refusedByDate(
+        _ record: inout MonitorRegionRecord,
+        osEventDate: Date?,
+        evidenceTimestamp: Date?,
+        delayedMovementExit: Bool,
+        now: Date
+    ) -> GeofenceMonitorEventOutcome? {
+        if let osEventDate {
+            if !delayedMovementExit,
+               let registeredAt = stamp(record.registeredAt, ordering: osEventDate, now: now),
+               osEventDate < registeredAt { return .suppressedPredatesRegistration }
+            if let lastEventDate = stamp(record.lastEventDate, ordering: osEventDate, now: now),
+               osEventDate <= lastEventDate { return .suppressedRedelivery }
+            record.lastEventDate = osEventDate
+        }
+        if !delayedMovementExit, let evidenceTimestamp,
+           let changedAt = stamp(record.lastStateChangedAt, ordering: evidenceTimestamp, now: now),
+           changedAt > evidenceTimestamp {
+            return .suppressedNewerBaseline
+        }
+        return nil
+    }
+
+    /// `stamp`, unless it cannot order `eventDate`: a stamp after `now` was written before the wall
+    /// clock was set back, and an event dated on the clock as it reads now is not older than it,
+    /// only on a different timeline. Kept against an event dated in that same future, which a copy
+    /// from before the change is.
+    private static func stamp(_ stamp: Date?, ordering eventDate: Date, now: Date) -> Date? {
+        guard let stamp, stamp > now, eventDate <= now else { return stamp }
+        return nil
+    }
+}
+
+/// Outside the type body, which is at its cap; same file, so it shares `refusedByDate`.
+extension GeofenceStorage {
+    /// For an event raised under another circle than `record` now holds — the replaced generation,
+    /// still live while the replacing one's record is already written — or under a generation known
+    /// gone: what it would have been delivered as, judged on a copy. It never advances the record,
+    /// whose baseline belongs to the replacing circle and dedups that circle's own events, and
+    /// closes no visit. Nil for an event of the record's own circle, or of no recorded generation.
+    private func outcome(
+        ofEventRaisedUnder raisedUnder: GeofenceEventCircle?,
+        _ transition: GeofenceTransition,
+        record: MonitorRegionRecord,
+        osEventDate: Date?,
+        evidenceTimestamp: Date?
+    ) -> GeofenceMonitorEventOutcome? {
+        switch raisedUnder {
+        case .circle(let raised):
+            guard let center = record.center, let radius = record.radius,
+                  !MonitoredCircle(center: center, radius: radius, maximumRadius: raised.maximumRadius).isSameCircle(as: raised)
+            else { return nil }
+        case .expired:
+            break
+        case .unknown, nil:
+            return nil
+        }
+        var probe = record
+        if let refused = Self.refusedByDate(&probe, osEventDate: osEventDate, evidenceTimestamp: evidenceTimestamp, delayedMovementExit: false, now: dateUtil.now) {
+            return refused
+        }
+        guard probe.lastState != transition else { return .suppressedNoChange }
+        return probe.transitionTypes.contains(transition) ? .deliver : .suppressedFilteredType
     }
 }

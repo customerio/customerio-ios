@@ -22,9 +22,15 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring {
     let authManager: GeofenceLocationAuthority
     let movementFixResolver: MovementFixResolver
     var onTransition: GeofenceTransitionHandler?
-    private var onAuthorizationChanged: GeofenceAuthorizationChangedHandler?
+    /// Internal (not private) for the `+Authorization` extension, which fires it.
+    var onAuthorizationChanged: GeofenceAuthorizationChangedHandler?
     private var onReconciled: GeofenceReconciledHandler?
-    private var lastLoggedPermissionTier: CoreLocationGeofenceMonitor.PermissionTier?
+    /// Internal (not private) for the `+Authorization` extension, which fires it on access loss.
+    var onMonitoringInterrupted: GeofenceMonitoringInterruptedHandler?
+    /// Internal (not private) for the `+Authorization` extension's tier dedup.
+    var lastLoggedPermissionTier: CoreLocationGeofenceMonitor.PermissionTier?
+    /// Internal (not private) for the `+Authorization` extension: only a drop from it interrupts.
+    var lastObservedAccess: GeofenceLocationAccess?
 
     var ownedRegionIdentifiers: Set<String> = []
     var knownConditionIdentifiers: Set<String> = []
@@ -54,6 +60,9 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring {
 
     /// Every timing decision reads this clock, never `Date()`.
     let dateUtil: DateUtil
+    /// The dwell coordinator's clock, read as an event is recorded, so the visit it ends is ordered
+    /// against it as the coordinator orders its own EXITs. Internal for the `+BaselineHeal` extension.
+    let clock: GeofenceClock
 
     private let makeConditionMonitor: @Sendable (String) async -> GeofenceConditionMonitoring
 
@@ -65,9 +74,11 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring {
         authority: GeofenceLocationAuthority = CoreLocationAuthority(),
         makeConditionMonitor: @escaping @Sendable (String) async -> GeofenceConditionMonitoring = { name in
             await CoreLocationConditionMonitor(monitor: CLMonitor(name))
-        }
+        },
+        clock: GeofenceClock = SystemGeofenceClock()
     ) {
         self.logger = logger
+        self.clock = clock
         self.storage = storage
         self.userDefaults = userDefaults
         self.dateUtil = dateUtil
@@ -80,6 +91,7 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring {
             dateUtil: dateUtil
         )
         super.init()
+        self.lastObservedAccess = locationAccess
         let mirrored = Set(userDefaults.stringArray(forKey: Self.conditionMirrorKey) ?? [])
         self.knownConditionIdentifiers = mirrored
         // Owned from process start: a cold-wake event must pass the filter before any async work.
@@ -153,6 +165,7 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring {
                 } catch {
                     self.logger.geofenceMonitorEventStreamFailed(error: error)
                 }
+                self.onMonitoringInterrupted?(nil)
                 self.logger.geofenceInfo("event_stream_resubscribing", fields: [("s", String(backoffNanos / 1000000000))])
                 try? await Task.sleep(nanoseconds: backoffNanos)
                 backoffNanos = min(backoffNanos * 2, maxBackoffNanos)
@@ -197,20 +210,7 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring {
         case .unknown:
             return logger.geofenceInfo("os_state_unusable", fields: [("id", identifier), ("state", "unknown")])
         case .unmonitored:
-            // Ownership is KEPT: the condition revives once budget frees, and refusing the movement
-            // trigger's events would remove the only thing that restores it.
-            logger.geofenceMonitorStoppedMonitoringRegion(identifier)
-            knownConditionIdentifiers.remove(identifier)
-            conditionLedger.forget(identifier)
-            conditionReadds.removeValue(forKey: identifier)
-            conditionsNeedingBaselineReseed.insert(identifier)
-            persistConditionMirror()
-            // Skipped if a registration re-added it since, or this would delete that add's baseline.
-            // Keyed on our own completed adds: `CLMonitor.identifiers` still lists a dropped condition.
-            enqueueMonitorOperation { [weak self] _ in
-                guard let self, !self.knownConditionIdentifiers.contains(identifier) else { return }
-                await self.storage.clearMonitorRegionRecord(identifier: identifier)
-            }
+            handleUnmonitored(identifier: identifier)
             return
         @unknown default:
             return logger.geofenceInfo("os_state_unusable", fields: [("id", identifier), ("state", "unhandled")])
@@ -224,10 +224,21 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring {
            await isEventContradictedByFreshFix(identifier: identifier, transition: transition, eventDate: event.date) {
             return
         }
-        // Dated by the OS, not by receipt, so no guard depends on drain speed.
-        let outcome = await storage.recordMonitorEvent(
+        // Dated by the OS, not by receipt, so no guard depends on drain speed. Read before the
+        // write: it is when this event was processed, under the cap the circle was registered with.
+        // Attributed once, before the write too: the record may already be the replacing circle's
+        // while the event is still the replaced one's, which then closes no visit.
+        // The raw generation too, so an event of the replaced circle cannot advance the replacing
+        // circle's record. The movement trigger keeps its own delayed-exit rule.
+        let circle = eventCircle(for: identifier, raisedAt: event.date)
+        let reading = circle == .expired ? nil : clock.read()
+        let maximumRadius = authManager.maximumRegionMonitoringDistance
+        let raisedUnder = identifier == GeofenceConstants.movementTriggerIdentifier ? nil
+            : GeofenceEventCircle(conditionLedger.attribution(for: identifier, raisedAt: event.date), maximumRadius: maximumRadius)
+        let (outcome, entryObserved) = await storage.recordMonitorTransition(
             transition, forIdentifier: identifier,
-            onlyIfBaselinePredates: event.date, osEventDate: event.date, now: event.date
+            onlyIfBaselinePredates: event.date, osEventDate: event.date, now: event.date,
+            processedAt: reading, maximumRadius: maximumRadius, raisedUnder: raisedUnder
         )
         guard case .deliver = outcome else {
             logDiscardedCallback(identifier: identifier, transition: transition, outcome: outcome)
@@ -239,13 +250,40 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring {
             // The pass re-centres on these coords, so resolve a fresh fix; fire-and-forget so a slow
             // fix can't stall the pending-event drain.
             movementFixResolver.resolve(cached: bestKnownFix(), purpose: .movement) { [weak self] location, isFresh in
-                self?.logger.geofenceCallbackDispatched(identifier: identifier, transition: transition)
-                self?.onTransition?(identifier, transition, location, event.date, isFresh, self?.eventCircle(for: identifier, raisedAt: event.date) ?? .unknown)
+                guard let self else { return }
+                self.logger.geofenceCallbackDispatched(identifier: identifier, transition: transition)
+                let dispatched = self.dispatchedEventCircle(captured: circle, for: identifier, raisedAt: event.date)
+                self.onTransition?(identifier, transition, location, event.date, isFresh, dispatched, entryObserved)
             }
             return
         }
         logger.geofenceCallbackDispatched(identifier: identifier, transition: transition)
-        onTransition?(identifier, transition, currentLocationData(), event.date, false, eventCircle(for: identifier, raisedAt: event.date))
+        onTransition?(
+            identifier, transition, currentLocationData(), event.date, false,
+            dispatchedEventCircle(captured: circle, for: identifier, raisedAt: event.date), entryObserved
+        )
+    }
+
+    private func handleUnmonitored(identifier: String) {
+        // Ownership is KEPT: the condition revives once budget frees, and refusing the movement
+        // trigger's events would remove the only thing that restores it.
+        logger.geofenceMonitorStoppedMonitoringRegion(identifier)
+        knownConditionIdentifiers.remove(identifier)
+        conditionLedger.forget(identifier)
+        conditionReadds.removeValue(forKey: identifier)
+        conditionsNeedingBaselineReseed.insert(identifier)
+        persistConditionMirror()
+        // Unwatched, so a stored entry time can no longer vouch for a continuous stay, as on the
+        // classic path. The movement trigger carries no visit.
+        if identifier != GeofenceConstants.movementTriggerIdentifier {
+            onMonitoringInterrupted?(identifier)
+        }
+        // Skipped if a registration re-added it since, or this would delete that add's baseline.
+        // Keyed on our own completed adds: `CLMonitor.identifiers` still lists a dropped condition.
+        enqueueMonitorOperation { [weak self] _ in
+            guard let self, !self.knownConditionIdentifiers.contains(identifier) else { return }
+            await self.storage.clearMonitorRegionRecord(identifier: identifier)
+        }
     }
 
     // MARK: - GeofenceRegionMonitoring
@@ -275,33 +313,7 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring {
         onReconciled = handler
     }
 
-    func reportPermissionTier() {
-        let status = authManager.authorizationStatus
-        let tier = CoreLocationGeofenceMonitor.permissionTier(for: status)
-        guard tier != lastLoggedPermissionTier else { return }
-        lastLoggedPermissionTier = tier
-        switch tier {
-        case .blocked:
-            logger.geofencePermissionUnavailable(currentStatus: status)
-        case .foregroundOnly:
-            logger.geofenceBackgroundDeliveryUnavailable(currentStatus: status)
-        case .backgroundDelivery:
-            logger.geofenceBackgroundDeliveryAvailable(currentStatus: status)
-        }
-    }
-
-    // MARK: - Authorization
-
-    // Unfiltered: an improvement re-attempts registration, and a downgrade disarms visits.
-    private func handleAuthorizationChange() {
-        updateServiceSession()
-        onAuthorizationChanged?()
-    }
-
-    // MARK: - Service session (iOS 18+)
-
-    /// Held only while Always is ALREADY granted: a session above the granted tier can prompt.
-    private func updateServiceSession() {
-        authManager.updateServiceSession(isAlwaysAuthorized: authManager.authorizationStatus == .authorizedAlways)
+    func setOnMonitoringInterrupted(_ handler: GeofenceMonitoringInterruptedHandler?) {
+        onMonitoringInterrupted = handler
     }
 }

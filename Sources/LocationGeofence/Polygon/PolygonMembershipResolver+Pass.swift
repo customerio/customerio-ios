@@ -11,6 +11,11 @@ extension PolygonMembershipResolver {
         pass: Int,
         isStillCurrent: (@Sendable () -> Bool)? = nil
     ) async {
+        // Polygons are judged here; a circle's visit only learns of a fix that proves the device
+        // away from it. Before the polygons, so the fix is no older than the pass chose it at. Not
+        // gated on `isStillCurrent`: like a belief, a position is true whoever is signed in, and
+        // only the identified user's own visit is read.
+        await dwellCoordinator?.recordOutsideEvidence(fix: fix.location, expectedUserId: nil)
         // Per pass, not per resolver; see `PassCorroboration`.
         let cache = PassCorroboration()
         var deferred: [DeferredCorroboration] = []

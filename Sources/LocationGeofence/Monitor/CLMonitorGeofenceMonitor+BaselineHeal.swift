@@ -32,12 +32,13 @@ extension CLMonitorGeofenceMonitor {
                     fixAge: self.dateUtil.now.timeIntervalSince(fix.timestamp),
                     lastState: record.lastState
                 ) else { continue }
-                // Fix time, not drain time: an OS crossing recorded after the fix must win.
+                // Fix time, not drain time: an OS crossing recorded after the fix must win. A healed
+                // EXIT is a departure the SDK observed, so it closes the visit in the same write, as
+                // an OS EXIT does; a healed ENTER is a correction, never a crossing, so it closes none.
+                let reading = transition == .exit ? self.clock.read() : nil
                 let outcome = await self.storage.recordMonitorEvent(
-                    transition,
-                    forIdentifier: identifier,
-                    onlyIfBaselinePredates: fix.timestamp,
-                    now: fix.timestamp
+                    transition, forIdentifier: identifier, onlyIfBaselinePredates: fix.timestamp, now: fix.timestamp,
+                    processedAt: reading, maximumRadius: self.authManager.maximumRegionMonitoringDistance
                 )
                 guard case .deliver = outcome else {
                     if let reason = outcome.diagnosticReason {
@@ -55,7 +56,9 @@ extension CLMonitorGeofenceMonitor {
                     .circle(MonitoredCircle(
                         center: condition.center, radius: condition.radius,
                         maximumRadius: self.authManager.maximumRegionMonitoringDistance
-                    ))
+                    )),
+                    // The OS missed this crossing, so the fix only dates when it was noticed.
+                    false
                 )
             }
         }

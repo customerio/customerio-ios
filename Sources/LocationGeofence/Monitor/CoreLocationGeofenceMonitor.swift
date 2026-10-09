@@ -19,7 +19,10 @@ final class CoreLocationGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @pr
     let movementFixResolver: MovementFixResolver
     var onTransition: GeofenceTransitionHandler?
     private var onAuthorizationChanged: GeofenceAuthorizationChangedHandler?
+    private var onMonitoringInterrupted: GeofenceMonitoringInterruptedHandler?
     private var lastLoggedPermissionTier: PermissionTier?
+    /// The access last seen, so only a drop from it interrupts continuity.
+    private var lastObservedAccess: GeofenceLocationAccess?
     var ownedRegionIdentifiers: Set<String> = []
 
     var pendingEvents: [PendingRegionEvent] = []
@@ -27,9 +30,21 @@ final class CoreLocationGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @pr
     static let maxPendingEvents = 64
 
     let dateUtil: DateUtil
+    private let readLocationAccess: @MainActor (CLLocationManager) -> GeofenceLocationAccess
+    /// The region the OS monitors now under an id; internal for the `+PendingEvents` extension.
+    let monitoredRegion: @MainActor (CLLocationManager, String) -> CLCircularRegion?
 
-    init(logger: Logger, dateUtil: DateUtil = DIGraphShared.shared.dateUtil) {
+    init(
+        logger: Logger,
+        dateUtil: DateUtil = DIGraphShared.shared.dateUtil,
+        readLocationAccess: @escaping @MainActor (CLLocationManager) -> GeofenceLocationAccess = GeofenceLocationAccess.current(of:),
+        monitoredRegion: @escaping @MainActor (CLLocationManager, String) -> CLCircularRegion? = { manager, identifier in
+            manager.monitoredRegions.first { $0.identifier == identifier } as? CLCircularRegion
+        }
+    ) {
         self.dateUtil = dateUtil
+        self.readLocationAccess = readLocationAccess
+        self.monitoredRegion = monitoredRegion
         self.manager = CLLocationManager()
         self.logger = logger
         self.movementFixResolver = MovementFixResolver(
@@ -38,6 +53,7 @@ final class CoreLocationGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @pr
             dateUtil: dateUtil
         )
         super.init()
+        self.lastObservedAccess = readLocationAccess(manager)
         manager.delegate = self
     }
 
@@ -67,6 +83,10 @@ final class CoreLocationGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @pr
 
     func setOnAuthorizationChanged(_ handler: GeofenceAuthorizationChangedHandler?) {
         onAuthorizationChanged = handler
+    }
+
+    func setOnMonitoringInterrupted(_ handler: GeofenceMonitoringInterruptedHandler?) {
+        onMonitoringInterrupted = handler
     }
 
     func startMonitoring(identifier: String, center: LocationData, radius: Double, transitionTypes: Set<GeofenceTransition>) {
@@ -158,16 +178,32 @@ final class CoreLocationGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @pr
     }
 
     func locationManager(_ manager: CLLocationManager, monitoringDidFailFor region: CLRegion?, withError error: Error) {
-        guard let identifier = region?.identifier,
-              ownedRegionIdentifiers.remove(identifier) != nil
-        else { return }
+        guard let identifier = region?.identifier else {
+            // Core Location did not say which region stopped, so no fence can vouch for having been
+            // watched throughout. Ownership is left alone: nothing identifies which entry to drop.
+            logger.geofenceMonitoringFailed(region: "unknown", error: error)
+            onMonitoringInterrupted?(nil)
+            return
+        }
+        guard ownedRegionIdentifiers.remove(identifier) != nil else { return }
         logger.geofenceMonitoringFailed(region: identifier, error: error)
+        onMonitoringInterrupted?(identifier)
     }
 
     // Unfiltered: an improvement re-attempts registration, and a downgrade disarms visits. The
     // iOS 14+ call on delegate set is harmless.
     func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
+        interruptContinuityIfAccessDropped()
         onAuthorizationChanged?()
+    }
+
+    /// Losing Always or precise location means region events that would end a visit may no longer
+    /// arrive. A repeated report, or an increase, changes nothing.
+    private func interruptContinuityIfAccessDropped() {
+        let access = locationAccess
+        defer { lastObservedAccess = access }
+        guard let previous = lastObservedAccess, access.isDowngrade(from: previous) else { return }
+        onMonitoringInterrupted?(nil)
     }
 
     // MARK: - Private
@@ -206,6 +242,10 @@ final class CoreLocationGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @pr
         } else {
             return CLLocationManager.authorizationStatus()
         }
+    }
+
+    var locationAccess: GeofenceLocationAccess {
+        readLocationAccess(manager)
     }
 
     var osCachedFix: CLLocation? { manager.location }

@@ -19,6 +19,7 @@ extension PolygonMembershipResolver {
         storage: DIGraphShared.shared.geofenceStorage,
         transitionEmitter: DIGraphShared.shared.geofenceEventTracker,
         logger: DIGraphShared.shared.logger,
-        contextStore: DIGraphShared.shared.backgroundDeliveryContextStore
+        contextStore: DIGraphShared.shared.backgroundDeliveryContextStore,
+        dwellCoordinator: DIGraphShared.shared.geofenceDwellCoordinator
     )
 }
