@@ -71,10 +71,12 @@ struct GeofenceStaleGenerationClassicTests {
         rig.callback(.enter, ClassicGenerationRig.region(radius: 150))
         await settleQuietly(0.4)
         rig.callback(.exit, ClassicGenerationRig.region(radius: 150))
-        await settleQuietly(0.4)
+        // The callback notes EXIT synchronously. Wait for routing and delivery to finish
+        // before checking the stay.
+        try #require(rig.dwell.pendingExitCallbacks[Self.circle.id]?.values.map(\.count) == [1])
+        try #require(await settleOnMain(timeout: 30) { rig.dwell.pendingExitCallbacks.isEmpty })
 
         try await Self.expectKept(stay, in: rig, geofenceId: Self.circle.id, reserved: reserved)
-        #expect(rig.dwell.pendingExitCallbacks.isEmpty)
         #expect(await rig.rows(.enter) == 1)
         #expect(await rig.rows(.exit) == 1)
         rig.advance(600)
@@ -97,10 +99,11 @@ struct GeofenceStaleGenerationClassicTests {
         rig.callback(.enter, ClassicGenerationRig.region(latitude: 5.002, longitude: 6, radius: 300, identifier: Self.polygon.id))
         await settleQuietly(0.4)
         rig.callback(.exit, ClassicGenerationRig.region(latitude: 5.002, longitude: 6, radius: 300, identifier: Self.polygon.id))
-        await settleQuietly(0.4)
+        // As for the circle: noted in the callback, judged once its routing is done.
+        try #require(rig.dwell.pendingExitCallbacks[Self.polygon.id]?.values.map(\.count) == [1])
+        try #require(await settleOnMain(timeout: 30) { rig.dwell.pendingExitCallbacks.isEmpty })
 
         try await Self.expectKept(stay, in: rig, geofenceId: Self.polygon.id, reserved: reserved)
-        #expect(rig.dwell.pendingExitCallbacks.isEmpty)
         rig.advance(600)
         await rig.pass()
         #expect(await rig.dwellRows().map(\.visitId) == [stay.visitId])
@@ -141,11 +144,12 @@ struct GeofenceStaleGenerationClassicTests {
         let rig = await ClassicGenerationRig()
         _ = try await rig.qualifiedCircleStay(reserved: false)
         rig.callback(.exit, ClassicGenerationRig.region(radius: 200))
-        await settleQuietly(0.4)
+        // As in the stale tests: noted in the callback, judged once its routing is done.
+        try #require(rig.dwell.pendingExitCallbacks[Self.circle.id]?.values.map(\.count) == [1])
+        try #require(await settleOnMain(timeout: 30) { rig.dwell.pendingExitCallbacks.isEmpty })
 
         #expect(await rig.storage.getDwellVisit(geofenceId: Self.circle.id) == nil)
         #expect(await rig.rows(.exit) == 1)
-        #expect(rig.dwell.pendingExitCallbacks.isEmpty)
     }
 }
 
