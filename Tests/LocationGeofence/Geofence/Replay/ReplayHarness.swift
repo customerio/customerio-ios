@@ -322,7 +322,14 @@ final class ReplayHarness {
             dateUtil: clock,
             desiredAccuracy: kCLLocationAccuracyNearestTenMeters,
             waitForTimeout: { [dwellScheduler] seconds in
-                try? await dwellScheduler.sleep(nanoseconds: UInt64(seconds * 1000000000))
+                do {
+                    try await dwellScheduler.sleep(nanoseconds: UInt64(seconds * 1000000000))
+                } catch {
+                    // The timeout never elapsed: the request completed, or this process stopped.
+                    // Cancel the resolver's timeout task so its own guard skips the failure. A dead
+                    // process's request stays pending, as a killed app's would.
+                    withUnsafeCurrentTask { $0?.cancel() }
+                }
             }
         )
         fixResolver.requestFreshFix = { [weak self, weak fixResolver] in

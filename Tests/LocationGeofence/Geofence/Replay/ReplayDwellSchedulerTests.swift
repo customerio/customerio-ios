@@ -134,9 +134,10 @@ struct ReplayDwellSchedulerTests {
             // Required: awaiting a due waiter the scheduler still holds would hang instead of fail.
             try #require(scheduler.pendingCount == step.pendingCount)
             #expect(scheduler.nextDeadline == step.nextDeadline)
-            // Required too: a due waiter removed but never resumed would hang the same way.
+            // Required too: a due waiter removed but never resumed would hang the same way. The
+            // long bound costs a passing run nothing: the poll returns once the resumed bodies run.
             expected.formUnion(step.due)
-            try #require(await settleOnMain { resumed == expected })
+            try #require(await settleOnMain(timeout: 30) { resumed == expected })
             for id in step.due {
                 let task = try #require(tasks[id])
                 try await task.value

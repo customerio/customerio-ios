@@ -144,16 +144,20 @@ struct DwellReplayTests {
             ], processStarts: [0, 90.2])
             await harness.advance(to: 90.2)
             let oldResolver = try #require(harness.dwellCoordinator?.fixResolver)
+            // Idle: the one request so far is the dwell resolver's, which stays pending in the dead
+            // process. A probe through that resolver would only join it and never reach the port.
+            try #require(harness.fixRequestCount == 1, "only the dwell deadline may have requested a fix")
+            let oldPolygonFixResolver = harness.resolver.fixResolver
             let oldDelivery = try #require(harness.deliveryTracker)
             let visit = try #require(await harness.storedVisit(fence: "A"))
             harness.reenterProcess()
             await harness.wireMonitor()
             await GeofenceBootstrap.awaitPendingWorkForTesting()
             try await ReplayHarness.letAsyncWorkRun()
-            // A retained graph can start late work after its old pending request has unwound.
-            // Its request port must not issue another OS request in the replacement process.
+            // A retained graph can start late work. Its request port must not issue another OS
+            // request in the replacement process.
             let requestsBeforeOldWork = harness.fixRequestCount
-            oldResolver.resolve(cached: nil, purpose: .pendingEvents) { _, _ in }
+            oldPolygonFixResolver.resolve(cached: nil, purpose: .polygon) { _, _ in }
             #expect(harness.fixRequestCount == requestsBeforeOldWork)
             await harness.advance(to: 90.6)
             #expect(oldResolver.latestFix == nil, "a retained dead graph consumed its old OS reply")
@@ -164,6 +168,29 @@ struct DwellReplayTests {
             #expect(dwell.visitId == visit.visitId)
             #expect(dwell.timestamp == harness.epoch.addingTimeInterval(91))
             #expect(oldDelivery.trackMetricReceivedInvocations.allSatisfy { $0.metric.transition != .dwell })
+        }
+    }
+
+    @Test
+    @available(iOS 17.0, *)
+    func restart_whenOldRequestIsPending_thenDeadProcessNeverTimesItOut() async throws {
+        try await withVisit(fixes: []) { harness in
+            harness.fixes.loadRequestedAnswers([
+                harness.pulledFix(latitude: 10, longitude: 20, accuracy: 10, age: 0, at: 91)
+            ], processStarts: [0, 90.2])
+            await harness.advance(to: 90.2)
+            // The old process's request has no reply of its own; its timeout is due at 100.
+            try #require(harness.fixRequestCount == 1, "the deadline's request must be pending before restart")
+            let oldResolver = try #require(harness.dwellCoordinator?.fixResolver)
+            var deadCompletions = 0
+            oldResolver.resolve(cached: nil, purpose: .pendingEvents) { _, _ in deadCompletions += 1 }
+            harness.reenterProcess()
+            try await ReplayHarness.letAsyncWorkRun()
+            #expect(deadCompletions == 0, "the stopped process timed out its request at restart")
+            await harness.wireMonitor()
+            await GeofenceBootstrap.awaitPendingWorkForTesting()
+            await harness.advance(to: 100)
+            #expect(deadCompletions == 0, "the stopped process timed out its request at its old deadline")
         }
     }
 
