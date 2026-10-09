@@ -15,6 +15,9 @@ jobs:
   test:
     uses: customerio/mobile-ci-tools/.github/workflows/ios-test.yml@main
     with:
+      runner-label: 'xcode-27'
+      # Empty so the shared workflow uses the xcode-27 image's only installed Xcode.
+      xcode-version: ''
       scheme: 'Customer.io-Package'
       xcresult-name: 'Customer.io-Package.xcresult'
       # Must track the Ruby this repo's Gemfile.lock is resolved against; the lock pulls
