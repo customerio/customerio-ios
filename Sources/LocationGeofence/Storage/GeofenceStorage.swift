@@ -202,9 +202,12 @@ actor GeofenceStorage {
         loadFromDisk()?.cachedGeofences ?? []
     }
 
+    /// Takes only regions decoded by the current model from a server response: it marks the
+    /// catalog current, which ends the one-time refetch of a catalog cached before dwell support.
     func setCachedGeofences(_ geofences: [Geofence]) {
         var state = loadFromDisk() ?? GeofenceState()
         state.cachedGeofences = geofences
+        state.catalogVersion = GeofenceState.currentCatalogVersion
         state.dwellVisits = Self.dwellVisits(state.dwellVisits, retainedFor: geofences)
         saveToDisk(state)
     }

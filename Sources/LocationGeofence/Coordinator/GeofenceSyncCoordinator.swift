@@ -130,28 +130,23 @@ final class GeofenceSyncCoordinatorImpl: GeofenceSyncCoordinator, @unchecked Sen
         // A non-live anchor can be hours old; ranking around it can drop the fence that just fired.
         // Use the registration centre the live set is already built around.
         let location = anchorIsLiveFix ? requested : (await storage.getLastRegistrationCenter() ?? requested)
-        switch await refreshAction(location: location, config: effectiveConfig) {
-        case .remote:
-            return await performRemoteRefresh(
+        let action = await refreshAction(location: location, config: effectiveConfig)
+        if action != .remote, await storage.cachedCatalogPredatesDwell() {
+            return await performCatalogUpgradeRefresh(
                 expectedUserId: userId,
                 anchor: location,
                 cachedConfig: cachedConfig,
-                anchorIsLiveFix: anchorIsLiveFix
+                anchorIsLiveFix: anchorIsLiveFix,
+                fallback: action
             )
-        case .local:
-            let cachedRegions = await storage.getCachedGeofences()
-            return await performLocalRefresh(
-                expectedUserId: userId,
-                anchor: location,
-                config: effectiveConfig,
-                cachedRegions: cachedRegions,
-                anchorIsLiveFix: anchorIsLiveFix
-            )
-        // Moved nothing, so it must not retire a queued movement.
-        case .skip:
-            logger.geofenceSyncSkippedFresh()
-            return MovementPassOutcome(result: .success(()), reCentred: false)
         }
+        return await performRefreshAction(
+            action,
+            expectedUserId: userId,
+            anchor: location,
+            cachedConfig: cachedConfig,
+            anchorIsLiveFix: anchorIsLiveFix
+        )
     }
 
     // Defaulted here because protocol requirements cannot carry default arguments.
@@ -206,20 +201,23 @@ final class GeofenceSyncCoordinatorImpl: GeofenceSyncCoordinator, @unchecked Sen
                 return MovementPassOutcome(result: remote.result, reCentred: rearm.reCentred)
             }
             return remote
-        } else if await !movedBeyondRerankRadius(to: movement, config: effectiveConfig) {
-            return await performPolygonWakePass(expectedUserId: userId, at: movement, config: effectiveConfig, anchorIsLiveFix: anchorIsLiveFix, heldFix: heldFix)
-        } else {
-            logger.geofenceMovementTrigger(tier: .localRerank)
-            let cachedRegions = await storage.getCachedGeofences()
-            return await performLocalRefresh(
+        }
+        if await storage.cachedCatalogPredatesDwell() {
+            return await performCatalogUpgradeMovement(
                 expectedUserId: userId,
-                anchor: movement,
-                config: effectiveConfig,
-                cachedRegions: cachedRegions,
+                movement: movement,
+                cachedConfig: cachedConfig,
                 anchorIsLiveFix: anchorIsLiveFix,
                 heldFix: heldFix
             )
         }
+        return await performCachedMovementTier(
+            expectedUserId: userId,
+            movement: movement,
+            config: effectiveConfig,
+            anchorIsLiveFix: anchorIsLiveFix,
+            heldFix: heldFix
+        )
     }
 
     func reset() async -> Result<Void, GeofenceSyncError> {
