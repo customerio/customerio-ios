@@ -166,6 +166,11 @@ extension GeofenceDwellCoordinator {
     /// nothing, and only that EXIT, once recorded, can report the visit, through every check of
     /// `takeVisitEndedByPendingExit` and `exitContext(for:)`. `exitCallbackRouted` drops the date
     /// if its routing records no such EXIT.
+    ///
+    /// A circle visit `CLMonitor` closed holds the exact date of the EXIT that closed it, so that
+    /// callback, once noted, counts whatever the caller passes: a re-ENTER that does not supersede
+    /// the visit (an ENTER nothing proved, a correction of a qualified stay, a crossing within the
+    /// copy tolerance) still replaces it once closed, possibly before that EXIT is recorded.
     func rememberVisitEndedByPendingExit(
         _ visit: GeofenceDwellVisit,
         geofenceId: String,
@@ -173,9 +178,10 @@ extension GeofenceDwellCoordinator {
         includingNotedCallbacks: Bool = false
     ) {
         let overtaking = (exitMarks[geofenceId] ?? []).filter { $0.overtakes(visit) }
-        let noted: [GeofenceExitMark] = includingNotedCallbacks && !reentries.isEmpty
-            ? (pendingExitCallbacks[geofenceId] ?? [:]).values.flatMap(\.marks).filter { $0.overtakes(visit) }
-            : []
+        let anyNoted = includingNotedCallbacks && !reentries.isEmpty
+        let noted = (pendingExitCallbacks[geofenceId] ?? [:]).values.flatMap(\.marks).filter { exit in
+            exit.overtakes(visit) && (anyNoted || exit.date == visit.closedByObservedBoundary)
+        }
         let exitDates = Set((overtaking + noted).filter { exit in
             exit.source == .exitEvent && reentries.allSatisfy { Self.enter($0, follows: exit) }
         }.map(\.date))
