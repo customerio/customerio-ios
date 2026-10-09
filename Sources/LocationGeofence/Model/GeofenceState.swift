@@ -24,6 +24,15 @@ struct GeofenceState: Codable, Equatable, Sendable {
     /// The dwell coordinator's clock as an earlier process last saw it change: lets a new process
     /// tell whether an event dated before its first clock reading is on the wall clock now in force.
     var clockReference: GeofenceClockReading?
+    /// The format `cachedGeofences` was written in; `nil` when an SDK older than dwell support
+    /// wrote it, so its regions read as dwell-disabled whatever the server configured.
+    /// Workspace-scoped like the catalog, so a user change keeps it.
+    var catalogVersion: Int?
+}
+
+extension GeofenceState {
+    /// 1: regions carry `dwellThresholdSeconds`.
+    static let currentCatalogVersion = 1
 }
 
 struct GeofenceDwellVisit: Codable, Equatable, Sendable {
