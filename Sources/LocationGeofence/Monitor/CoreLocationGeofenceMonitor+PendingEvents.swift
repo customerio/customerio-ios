@@ -105,7 +105,9 @@ extension CoreLocationGeofenceMonitor {
             return
         }
         logger.geofenceCallbackDispatched(identifier: identifier, transition: transition)
-        // Classic monitoring is silent at registration, so every region event is a crossing.
+        // A classic ENTER is dated at receipt, so a later one may be a repeat or a re-entry
+        // after a lost EXIT. Treat it as a crossing so its visit never counts time across a
+        // possible excursion.
         onTransition?(identifier, transition, capturedLocation, occurredAt, false, eventCircle(circle, of: identifier), true)
     }
 
