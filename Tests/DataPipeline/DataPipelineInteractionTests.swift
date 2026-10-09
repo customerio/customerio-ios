@@ -236,6 +236,180 @@ class CDPInteractionDefaultConfigTests: DataPipelineInteractionTests {
         XCTAssertEqual(updatedEvents.first?.deviceToken, givenDeviceToken)
     }
 
+    // MARK: token type
+
+    func test_registerToken_givenType_expectTypeInProperties() {
+        mockDeviceAttributes(defaultAttributes: ["push_enabled": "true"])
+        customerIO.identify(userId: String.random)
+        outputReader.resetPlugin()
+
+        dataPipelineImplementation.registerDeviceToken(String.random, tokenType: .token)
+
+        let properties = outputReader.deviceUpdateEvents.last?.properties
+        XCTAssertEqual(properties?["cio_token_type"]?.stringValue, "token")
+        XCTAssertEqual(properties?["push_enabled"]?.stringValue, "true")
+    }
+
+    func test_registerToken_givenNoType_expectNoTypeInProperties() {
+        mockDeviceAttributes()
+        customerIO.identify(userId: String.random)
+        outputReader.resetPlugin()
+
+        customerIO.registerDeviceToken(String.random)
+
+        XCTAssertEqual(outputReader.deviceUpdateEvents.count, 1)
+        XCTAssertNil(outputReader.deviceUpdateEvents.last?.properties?["cio_token_type"])
+    }
+
+    func test_registerToken_givenCustomAttributeWithReservedKey_expectSdkTypeWins() {
+        let givenDeviceToken = String.random
+        mockDeviceAttributes()
+        customerIO.identify(userId: String.random)
+        dataPipelineImplementation.registerDeviceToken(givenDeviceToken, tokenType: .fid)
+        outputReader.resetPlugin()
+
+        customerIO.setDeviceAttributes(["cio_token_type": "token"])
+
+        XCTAssertEqual(outputReader.deviceUpdateEvents.last?.properties?["cio_token_type"]?.stringValue, "fid")
+        XCTAssertEqual(dataPipelinesLoggerMock.logReservedDeviceTokenTypeIgnoredCallsCount, 1)
+    }
+
+    func test_setDeviceAttributes_givenReservedKeyAndNoType_expectKeyDropped() {
+        mockDeviceAttributes()
+        customerIO.identify(userId: String.random)
+        customerIO.registerDeviceToken(String.random)
+        outputReader.resetPlugin()
+
+        customerIO.setDeviceAttributes(["cio_token_type": "fid", "foo": "bar"])
+
+        let properties = outputReader.deviceUpdateEvents.last?.properties
+        XCTAssertNil(properties?["cio_token_type"])
+        XCTAssertEqual(properties?["foo"]?.stringValue, "bar")
+        XCTAssertEqual(dataPipelinesLoggerMock.logReservedDeviceTokenTypeIgnoredCallsCount, 1)
+    }
+
+    func test_setDeviceAttributes_givenStoredTokenChangedElsewhere_expectNoTypeForCurrentToken() {
+        let givenDeviceToken = String.random
+        mockDeviceAttributes()
+        customerIO.identify(userId: String.random)
+        dataPipelineImplementation.registerDeviceToken(givenDeviceToken, tokenType: .token)
+        // e.g. MessagingPush stored a new FID before DataPipeline handled it
+        globalDataStoreMock.pushDeviceToken = String.random
+        globalDataStoreMock.pushDeviceTokenType = .fid
+        outputReader.resetPlugin()
+
+        customerIO.setDeviceAttributes(["foo": "bar"])
+
+        XCTAssertEqual(outputReader.deviceUpdateEvents.last?.deviceToken, givenDeviceToken)
+        XCTAssertNil(outputReader.deviceUpdateEvents.last?.properties?["cio_token_type"])
+    }
+
+    func test_registerToken_givenNewerTokenBeforeAttributesLoad_expectOnlyNewerTokenSent() {
+        var pendingCompletions: [([String: Any]) -> Void] = []
+        deviceAttributesMock.getDefaultDeviceAttributesClosure = { pendingCompletions.append($0) }
+        customerIO.identify(userId: String.random)
+        pendingCompletions.forEach { $0([:]) }
+        pendingCompletions.removeAll()
+        outputReader.resetPlugin()
+        let givenFid = String.random
+
+        dataPipelineImplementation.registerDeviceToken(String.random, tokenType: .token)
+        dataPipelineImplementation.registerDeviceToken(givenFid, tokenType: .fid)
+        pendingCompletions.forEach { $0([:]) }
+
+        XCTAssertEqual(outputReader.deviceUpdateEvents.count, 1)
+        XCTAssertEqual(outputReader.deviceUpdateEvents.first?.deviceToken, givenFid)
+        XCTAssertEqual(outputReader.deviceUpdateEvents.first?.properties?["cio_token_type"]?.stringValue, "fid")
+    }
+
+    func test_registerToken_givenSameTokenWithoutType_expectStoredTypeResent() {
+        // e.g. the stored token re-registered on SDK initialization
+        let givenDeviceToken = String.random
+        mockDeviceAttributes()
+        customerIO.identify(userId: String.random)
+        dataPipelineImplementation.registerDeviceToken(givenDeviceToken, tokenType: .fid)
+        outputReader.resetPlugin()
+
+        customerIO.registerDeviceToken(givenDeviceToken)
+
+        XCTAssertEqual(outputReader.deviceUpdateEvents.last?.deviceToken, givenDeviceToken)
+        XCTAssertEqual(outputReader.deviceUpdateEvents.last?.properties?["cio_token_type"]?.stringValue, "fid")
+    }
+
+    func test_registerToken_givenNewTokenWithoutType_expectTypeDropped() {
+        mockDeviceAttributes()
+        customerIO.identify(userId: String.random)
+        dataPipelineImplementation.registerDeviceToken(String.random, tokenType: .token)
+        outputReader.resetPlugin()
+
+        customerIO.registerDeviceToken(String.random)
+
+        XCTAssertEqual(outputReader.deviceUpdateEvents.count, 1)
+        XCTAssertNil(outputReader.deviceUpdateEvents.last?.properties?["cio_token_type"])
+    }
+
+    func test_identify_givenTypedTokenRegistered_expectTypeSentToNewProfile() {
+        let givenDeviceToken = String.random
+        mockDeviceAttributes()
+        customerIO.identify(userId: String.random)
+        dataPipelineImplementation.registerDeviceToken(givenDeviceToken, tokenType: .fid)
+        outputReader.resetPlugin()
+
+        customerIO.identify(userId: String.random)
+
+        XCTAssertEqual(outputReader.deviceUpdateEvents.last?.deviceToken, givenDeviceToken)
+        XCTAssertEqual(outputReader.deviceUpdateEvents.last?.properties?["cio_token_type"]?.stringValue, "fid")
+    }
+
+    func test_setDeviceAttributes_givenTypedTokenRegistered_expectTypeInProperties() {
+        mockDeviceAttributes()
+        customerIO.identify(userId: String.random)
+        dataPipelineImplementation.registerDeviceToken(String.random, tokenType: .token)
+        outputReader.resetPlugin()
+
+        customerIO.setDeviceAttributes(["foo": "bar"])
+
+        let properties = outputReader.deviceUpdateEvents.last?.properties
+        XCTAssertEqual(properties?["cio_token_type"]?.stringValue, "token")
+        XCTAssertEqual(properties?["foo"]?.stringValue, "bar")
+    }
+
+    func test_tokenChanged_givenTokenToFid_expectTokenDeviceDeletedAndFidDeviceCreated() {
+        let givenToken = String.random
+        let givenFid = String.random
+        mockDeviceAttributes()
+        customerIO.identify(userId: String.random)
+        dataPipelineImplementation.registerDeviceToken(givenToken, tokenType: .token)
+        outputReader.resetPlugin()
+
+        dataPipelineImplementation.registerDeviceToken(givenFid, tokenType: .fid)
+
+        XCTAssertEqual(outputReader.events.count, 2)
+        XCTAssertEqual(outputReader.deviceDeleteEvents.count, 1)
+        XCTAssertEqual(outputReader.deviceDeleteEvents.first?.deviceToken, givenToken)
+        XCTAssertEqual(outputReader.deviceUpdateEvents.count, 1)
+        XCTAssertEqual(outputReader.deviceUpdateEvents.first?.deviceToken, givenFid)
+        XCTAssertEqual(outputReader.deviceUpdateEvents.first?.properties?["cio_token_type"]?.stringValue, "fid")
+    }
+
+    func test_tokenChanged_givenFidToToken_expectFidDeviceDeletedAndTokenDeviceCreated() {
+        let givenFid = String.random
+        let givenToken = String.random
+        mockDeviceAttributes()
+        customerIO.identify(userId: String.random)
+        dataPipelineImplementation.registerDeviceToken(givenFid, tokenType: .fid)
+        outputReader.resetPlugin()
+
+        dataPipelineImplementation.registerDeviceToken(givenToken, tokenType: .token)
+
+        XCTAssertEqual(outputReader.events.count, 2)
+        XCTAssertEqual(outputReader.deviceDeleteEvents.count, 1)
+        XCTAssertEqual(outputReader.deviceDeleteEvents.first?.deviceToken, givenFid)
+        XCTAssertEqual(outputReader.deviceUpdateEvents.count, 1)
+        XCTAssertEqual(outputReader.deviceUpdateEvents.first?.deviceToken, givenToken)
+        XCTAssertEqual(outputReader.deviceUpdateEvents.first?.properties?["cio_token_type"]?.stringValue, "token")
+    }
+
     func test_registerToken_givenProfileIdentifiedBefore_expectRegisterDeviceToken() {
         let givenIdentifier = String.random
         let givenDeviceToken = String.random
@@ -696,9 +870,29 @@ class CDPInteractionCustomConfigTests: DataPipelineInteractionTests {
     }
 }
 
+extension CDPInteractionCustomConfigTests {
+    func test_registerToken_givenAutoTrackDeviceAttributesDisabled_expectTypeInProperties() {
+        setUp(modifySdkConfig: { config in
+            config.autoTrackDeviceAttributes(false)
+        })
+
+        mockDeviceAttributes()
+        customerIO.identify(userId: String.random)
+        outputReader.resetPlugin()
+
+        dataPipelineImplementation.registerDeviceToken(String.random, tokenType: .fid)
+
+        XCTAssertEqual(outputReader.deviceUpdateEvents.last?.properties?["cio_token_type"]?.stringValue, "fid")
+    }
+}
+
 extension DataPipelineInteractionTests {
     func mockDeviceAttributes(defaultAttributes: [String: Any] = [:]) {
         deviceAttributesMock.getDefaultDeviceAttributesClosure = { $0(defaultAttributes) }
+    }
+
+    var dataPipelineImplementation: DataPipelineImplementation {
+        customerIO.implementation as! DataPipelineImplementation // swiftlint:disable:this force_cast
     }
 }
 

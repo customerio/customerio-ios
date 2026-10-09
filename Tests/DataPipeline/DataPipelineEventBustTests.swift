@@ -16,14 +16,16 @@ class DataPipelineEventBustTests: IntegrationTest {
 
     private let deviceAttributesMock = DeviceAttributesProviderMock()
     private let globalDataStoreMock = GlobalDataStoreMock()
+    private let dataPipelinesLoggerMock = DataPipelinesLoggerMock()
 
     override func setUpDependencies() {
         super.setUpDependencies()
 
-        mockCollection.add(mocks: [deviceAttributesMock, globalDataStoreMock])
+        mockCollection.add(mocks: [deviceAttributesMock, globalDataStoreMock, dataPipelinesLoggerMock])
 
         diGraphShared.override(value: deviceAttributesMock, forType: DeviceAttributesProvider.self)
         diGraphShared.override(value: globalDataStoreMock, forType: GlobalDataStore.self)
+        diGraphShared.override(value: dataPipelinesLoggerMock, forType: DataPipelinesLogger.self)
     }
 
     override func setUp() {
@@ -168,6 +170,147 @@ class DataPipelineEventBustTests: IntegrationTest {
         XCTAssertEqual(trackEvent.type, "track")
         XCTAssertEqual(trackEvent.event, "Device Created or Updated")
         XCTAssertEqual(trackEvent.deviceToken, givenToken)
+    }
+
+    func testSubscribeToJourneyEvents_givenRegisterDeviceEventWithType_expectTypeInProperties() async {
+        let givenToken = String.random
+
+        deviceAttributesMock.getDefaultDeviceAttributesClosure = { $0([:]) }
+
+        await eventBusHandler.postEventAndWait(RegisterDeviceTokenEvent(token: givenToken, tokenType: .fid))
+
+        guard let trackEvent = outputReader.lastEvent as? TrackEvent else {
+            XCTFail("recorded event is not an instance of TrackEvent")
+            return
+        }
+
+        XCTAssertEqual(trackEvent.deviceToken, givenToken)
+        XCTAssertEqual(trackEvent.properties?["cio_token_type"]?.stringValue, "fid")
+    }
+
+    func testSubscribeToJourneyEvents_givenSameTokenPostedConcurrently_expectDeviceRegisteredOnce() async {
+        deviceAttributesMock.getDefaultDeviceAttributesClosure = { $0([:]) }
+        // Logged between the stored-token check and the store, so concurrent handlers overlap there
+        dataPipelinesLoggerMock.logStoringDevicePushTokenClosure = { _, _ in Thread.sleep(forTimeInterval: 0.02) }
+
+        await withTaskGroup(of: Void.self) { group in
+            for _ in 0 ..< 10 {
+                group.addTask { await self.eventBusHandler.postEventAndWait(RegisterDeviceTokenEvent(token: "token-a")) }
+            }
+        }
+
+        XCTAssertEqual(deviceEvents(), ["Device Created or Updated token-a"])
+    }
+
+    func testSubscribeToJourneyEvents_givenTokenAlreadyStored_expectDeviceNotRegistered() async {
+        deviceAttributesMock.getDefaultDeviceAttributesClosure = { $0([:]) }
+        globalDataStoreMock.underlyingPushDeviceToken = "token-a"
+
+        await eventBusHandler.postEventAndWait(RegisterDeviceTokenEvent(token: "token-a"))
+
+        XCTAssertEqual(deviceEvents(), [])
+    }
+
+    func testSubscribeToJourneyEvents_givenSameTokenPostedWithoutThenWithType_expectTypedOneRegisteredToo() async {
+        deviceAttributesMock.getDefaultDeviceAttributesClosure = { $0([:]) }
+
+        await eventBusHandler.postEventAndWait(RegisterDeviceTokenEvent(token: "token-a"))
+        await eventBusHandler.postEventAndWait(RegisterDeviceTokenEvent(token: "token-a", tokenType: .fid))
+
+        XCTAssertEqual(deviceEvents(), ["Device Created or Updated token-a", "Device Created or Updated token-a"])
+        XCTAssertEqual((outputReader.lastEvent as? TrackEvent)?.properties?["cio_token_type"]?.stringValue, "fid")
+    }
+
+    func testSubscribeToJourneyEvents_givenTypeAddedWhileAttributesLoad_expectLastEventHasStoredType() async {
+        var pendingAttributes: [([String: Any]) -> Void] = []
+        deviceAttributesMock.getDefaultDeviceAttributesClosure = { pendingAttributes.append($0) }
+
+        await eventBusHandler.postEventAndWait(RegisterDeviceTokenEvent(token: "token-a"))
+        await eventBusHandler.postEventAndWait(RegisterDeviceTokenEvent(token: "token-a", tokenType: .fid))
+        // Attributes can load out of order
+        pendingAttributes.reversed().forEach { $0([:]) }
+
+        XCTAssertEqual(typedDeviceEvents().last, "Device Created or Updated token-a fid", "\(typedDeviceEvents())")
+    }
+
+    func testSubscribeToJourneyEvents_givenSameTokenPostedWithThenWithoutType_expectDeviceRegisteredOnce() async {
+        deviceAttributesMock.getDefaultDeviceAttributesClosure = { $0([:]) }
+
+        await eventBusHandler.postEventAndWait(RegisterDeviceTokenEvent(token: "token-a", tokenType: .fid))
+        await eventBusHandler.postEventAndWait(RegisterDeviceTokenEvent(token: "token-a"))
+
+        XCTAssertEqual(deviceEvents(), ["Device Created or Updated token-a"])
+    }
+
+    // e.g. the app restored the old token with CustomerIO.shared.registerDeviceToken
+    func testSubscribeToJourneyEvents_givenStoredTokenChangesAndChangesBack_expectSameTokenRegisteredAgain() async {
+        deviceAttributesMock.getDefaultDeviceAttributesClosure = { $0([:]) }
+        customerIO.registerDeviceToken("token-x")
+
+        await eventBusHandler.postEventAndWait(RegisterDeviceTokenEvent(token: "token-a"))
+        customerIO.registerDeviceToken("token-x")
+        await eventBusHandler.postEventAndWait(RegisterDeviceTokenEvent(token: "token-a"))
+
+        XCTAssertEqual(deviceEvents().filter { $0 == "Device Created or Updated token-a" }.count, 2)
+    }
+
+    // e.g. the app calls CustomerIO.shared.registerDeviceToken while the SDK registers a token from Firebase
+    func testSubscribeToJourneyEvents_givenDirectRegistrationsAlongsideEvents_expectNoCrash() async {
+        deviceAttributesMock.getDefaultDeviceAttributesClosure = { $0([:]) }
+        // Its event list isn't thread-safe
+        customerIO.remove(plugin: outputReader)
+
+        await withTaskGroup(of: Void.self) { group in
+            for index in 0 ..< 200 {
+                group.addTask {
+                    let token = "token-\(index % 3)"
+                    if index.isMultiple(of: 3) {
+                        _ = self.customerIO.registeredDeviceToken
+                    } else if index.isMultiple(of: 2) {
+                        self.customerIO.registerDeviceToken(token)
+                    } else {
+                        await self.eventBusHandler.postEventAndWait(RegisterDeviceTokenEvent(token: token))
+                    }
+                }
+            }
+        }
+    }
+
+    func testSetDeviceAttributes_givenFidRegisteredBetweenCheckAndTrack_expectEventsKeepTheirOwnTokenAndType() async {
+        deviceAttributesMock.getDefaultDeviceAttributesClosure = { $0([:]) }
+        await eventBusHandler.postEventAndWait(RegisterDeviceTokenEvent(token: "token-a", tokenType: .token))
+        let fidRegistered = expectation(description: "FID registered")
+        // Logged between the token check and tracking because a reserved key is passed, so the FID registers there
+        dataPipelinesLoggerMock.logReservedDeviceTokenTypeIgnoredClosure = {
+            self.dataPipelinesLoggerMock.logReservedDeviceTokenTypeIgnoredClosure = nil
+            let registered = DispatchSemaphore(value: 0)
+            Task.detached {
+                await self.eventBusHandler.postEventAndWait(RegisterDeviceTokenEvent(token: "fid-a", tokenType: .fid))
+                registered.signal()
+                fidRegistered.fulfill()
+            }
+            _ = registered.wait(timeout: .now() + 0.2)
+        }
+
+        customerIO.setDeviceAttributes(["cio_token_type": "app-value"])
+        await fulfillment(of: [fidRegistered], timeout: 2)
+
+        let events = typedDeviceEvents()
+        XCTAssertFalse(events.contains("Device Created or Updated fid-a token"), "\(events)")
+        // The old token isn't added back after it's deleted
+        XCTAssertEqual(events.last, "Device Created or Updated fid-a fid", "\(events)")
+    }
+
+    private func typedDeviceEvents() -> [String] {
+        outputReader.events.compactMap { $0 as? TrackEvent }
+            .filter { $0.event.hasPrefix("Device") }
+            .map { "\($0.event) \($0.deviceToken ?? "nil") \($0.properties?["cio_token_type"]?.stringValue ?? "none")" }
+    }
+
+    private func deviceEvents() -> [String] {
+        outputReader.events.compactMap { $0 as? TrackEvent }
+            .filter { $0.event.hasPrefix("Device") }
+            .map { "\($0.event) \($0.deviceToken ?? "nil")" }
     }
 
     func testGetOptionalDataPipelineTracking_returnsImplementationAndTrackSendsToAnalytics() {

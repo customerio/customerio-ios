@@ -9,6 +9,7 @@ class DataPipelineImplementation: DataPipelineInstance, DataPipelineTracking, Ba
     let eventBusHandler: EventBusHandler
 
     private var globalDataStore: GlobalDataStore
+    private let deviceTokenLock = Lock.unsafeInit()
     private let deviceAttributesProvider: DeviceAttributesProvider
     private let dateUtil: DateUtil
     private let deviceInfo: DeviceInfo
@@ -125,7 +126,11 @@ class DataPipelineImplementation: DataPipelineInstance, DataPipelineTracking, Ba
         }
 
         eventBusHandler.addObserver(RegisterDeviceTokenEvent.self) { event in
-            self.registerDeviceToken(event.token)
+            // Events are delivered concurrently, and the same token can be posted again before it's stored
+            self.deviceTokenLock.lock()
+            defer { self.deviceTokenLock.unlock() }
+            guard !self.globalDataStore.isPushDeviceTokenStored(event.token, type: event.tokenType) else { return }
+            self.registerDeviceToken(event.token, tokenType: event.tokenType)
         }
     }
 
@@ -305,31 +310,22 @@ class DataPipelineImplementation: DataPipelineInstance, DataPipelineTracking, Ba
 
         // Consolidate all Apple platforms under iOS
         deviceAttributesProvider.getDefaultDeviceAttributes { defaultDeviceAttributes in
-            let deviceAttributes: [String: Any] = defaultDeviceAttributes.mergeWith(customAttributes)
-            self.contextPlugin.attributes = deviceAttributes
-
-            guard self.contextPlugin.deviceToken != nil else {
-                self.logger.debug("no device token found, ignoring device attributes request")
+            // A token registered since then sends its own event, and the plugin would stamp it on this one.
+            // Registration holds this lock, so the token can't change between this check and tracking.
+            self.deviceTokenLock.lock()
+            defer { self.deviceTokenLock.unlock() }
+            guard self.contextPlugin.deviceToken == token else {
+                self.logger.debug("device token changed or removed, ignoring device attributes request")
                 return
             }
 
+            // Read here, as the same token can get a type while attributes load.
+            // Sent even when automatic device attributes are off, as the backend uses it to tell FIDs from tokens.
+            let tokenType = self.globalDataStore.pushDeviceToken == token ? self.globalDataStore.pushDeviceTokenType : nil
+            let deviceAttributes = defaultDeviceAttributes.mergeWith(customAttributes.withDeviceTokenType(tokenType, logger: self.dataPipelinesLogger))
+            self.contextPlugin.attributes = deviceAttributes
             self.analytics.track(name: "Device Created or Updated", properties: deviceAttributes)
         }
-    }
-
-    func registerDeviceToken(_ deviceToken: String) {
-        if deviceToken.isBlankOrEmpty() {
-            dataPipelinesLogger.logStoringBlankPushToken()
-            return
-        }
-        dataPipelinesLogger.logStoringDevicePushToken(token: deviceToken, userId: registeredUserId)
-        // save the device token for later use.
-        // segment plugin doesn't store token anywhere so we need to pass token to it every time
-        // storing it so we can reference the token and update device plugin app relaunch
-        globalDataStore.pushDeviceToken = deviceToken
-
-        dataPipelinesLogger.logRegisteringPushToken(token: deviceToken, userId: registeredUserId)
-        addDeviceAttributes(token: deviceToken)
     }
 
     func trackDeliveryEvent(token: String?, event: String, deliveryId: String, timestamp: String) {
@@ -372,23 +368,28 @@ class DataPipelineImplementation: DataPipelineInstance, DataPipelineTracking, Ba
     }
 }
 
-// extension methods to simplify and reduce repetitive coding
-extension DataPipelineImplementation {
-    /// returns user id for currently identifier profile
-    var registeredUserId: String? {
-        analytics.userId
-    }
-}
-
-// MARK: - DataPipelineTracking
+// MARK: - Device token
 
 extension DataPipelineImplementation {
-    var isUserIdentified: Bool {
-        guard let userId = analytics.userId, !userId.isEmpty else { return false }
-        return true
+    func registerDeviceToken(_ deviceToken: String) {
+        registerDeviceToken(deviceToken, tokenType: nil)
     }
 
-    func track(name: String, properties: [String: Any]) {
-        analytics.track(name: name, properties: properties)
+    func registerDeviceToken(_ deviceToken: String, tokenType: DeviceTokenType?) {
+        // Apps can call this directly while the event handler registers a token
+        deviceTokenLock.lock()
+        defer { deviceTokenLock.unlock() }
+        if deviceToken.isBlankOrEmpty() {
+            dataPipelinesLogger.logStoringBlankPushToken()
+            return
+        }
+        dataPipelinesLogger.logStoringDevicePushToken(token: deviceToken, userId: registeredUserId)
+        // save the device token for later use.
+        // segment plugin doesn't store token anywhere so we need to pass token to it every time
+        // storing it so we can reference the token and update device plugin app relaunch
+        globalDataStore.savePushDeviceToken(deviceToken, type: tokenType)
+
+        dataPipelinesLogger.logRegisteringPushToken(token: deviceToken, userId: registeredUserId)
+        addDeviceAttributes(token: deviceToken)
     }
 }
