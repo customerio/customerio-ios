@@ -19,6 +19,7 @@ concurrency: # cancel previous workflow run if one exists
 jobs:
   check-api-breaking-changes:
     runs-on: macos-26
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
       
