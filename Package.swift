@@ -64,7 +64,12 @@ let package = Package(
         // the SwiftPM release is the `vX.Y.Z` git tag).
         // Pinned exactly, matching the podspec and the Android Gradle pin, so one SDK version always
         // resolves one Jist across every package manager (Jist is 0.x — minor bumps may break).
-        .package(url: "https://github.com/customerio/jist.git", .exact("0.1.0"))
+        .package(url: "https://github.com/customerio/jist.git", .exact("0.1.0")),
+
+        // Test-only. Deterministic Swift Concurrency scheduling for unit tests
+        // (withMainSerialExecutor). Linked into test targets only; never shipped
+        // to customers, so it has no podspec counterpart.
+        .package(url: "https://github.com/pointfreeco/swift-concurrency-extras", from: "1.1.0")
     ],
     targets: [ 
         // Common - Code used by multiple modules in the SDK project.
@@ -173,7 +178,13 @@ let package = Package(
                     .process("Resources/PrivacyInfo.xcprivacy"),
                 ]),
         .testTarget(name: "MessagingInAppTests",
-                    dependencies: ["CioMessagingInApp", "SharedTests", "CioInternalCommonMocks", "CioMessagingInAppMocks"],
+                    dependencies: [
+                        "CioMessagingInApp",
+                        "SharedTests",
+                        "CioInternalCommonMocks",
+                        "CioMessagingInAppMocks",
+                        .product(name: "ConcurrencyExtras", package: "swift-concurrency-extras")
+                    ],
                     path: "Tests/MessagingInApp"),
 
         // Messaging Inbox (Visual Inbox overlay UI)
