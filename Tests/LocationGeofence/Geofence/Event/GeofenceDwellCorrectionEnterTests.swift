@@ -212,7 +212,7 @@ struct GeofenceDwellCorrectionEnterTests {
         monitor.simulateTransition(identifier: Self.polygon.id, transition: .enter, location: nil, occurredAt: rig.clock.wall)
         rig.advance(5)
         monitor.simulateTransition(
-            identifier: Self.polygon.id, transition: .enter, location: nil, occurredAt: rig.clock.wall, entryObserved: false
+            identifier: Self.polygon.id, transition: .enter, location: nil, occurredAt: rig.clock.wall, crossingObserved: false
         )
         await settleQuietly(0.5)
 

@@ -89,10 +89,10 @@ final class DurableExitProcess {
     private let device: DurableExitDevice
     private let sync = GeofenceSyncCoordinatorMock()
 
-    init(device: DurableExitDevice) async {
+    init(device: DurableExitDevice, fileManager: FileManager = .default) async {
         self.device = device
         self.contextStore = BackgroundDeliveryContextStore(fileManager: .default, directoryURL: device.contextDirectory)
-        self.storage = GeofenceStorage(directoryURL: device.geofenceDirectory, dateUtil: device.dateUtil)
+        self.storage = GeofenceStorage(fileManager: fileManager, directoryURL: device.geofenceDirectory, dateUtil: device.dateUtil)
         if !device.seeded {
             device.seeded = true
             contextStore.setUserId("user-a")

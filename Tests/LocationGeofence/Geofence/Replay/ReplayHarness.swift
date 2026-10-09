@@ -33,6 +33,8 @@ final class ReplayHarness {
     private(set) var monitor: CLMonitorGeofenceMonitor!
     private(set) var coordinator: GeofenceSyncCoordinatorImpl!
     private(set) var tracker: GeofenceEventTracker!
+    /// Where the tracker sends; read back through `deliveredMetrics`.
+    private(set) var deliveryTracker: GeofenceDeliveryTrackerMock!
     private(set) var resolver: PolygonMembershipResolver!
     /// This composition's visits. Without its own, `GeofenceBootstrap` resolves
     /// `GeofenceDwellCoordinator.shared` — a process-wide `static let` holding the storage, identity
@@ -146,10 +148,11 @@ final class ReplayHarness {
 
     /// Rerun by `reenterProcess()`: build here only what a dying process loses.
     private func composeSDK() {
+        deliveryTracker = Self.completingDeliveryTracker()
         tracker = GeofenceEventTracker(
             storage: storage,
             pendingStore: pendingStore,
-            deliveryTracker: Self.completingDeliveryTracker(),
+            deliveryTracker: deliveryTracker,
             contextStore: contextStore,
             eventBusHandler: eventBus,
             dateUtil: clock,
@@ -282,6 +285,11 @@ final class ReplayHarness {
 
     func emitted(ev: String) -> [[String: String]] {
         emitted.filter { $0["ev"] == ev }
+    }
+
+    /// Every row this composition's tracker sent, in order. Not carried across `reenterProcess()`.
+    var deliveredMetrics: [PendingGeofenceMetric] {
+        deliveryTracker.trackMetricReceivedInvocations.map(\.metric)
     }
 
     func resetOutput() {

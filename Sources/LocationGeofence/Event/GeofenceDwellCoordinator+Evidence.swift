@@ -177,7 +177,7 @@ extension GeofenceDwellCoordinator {
     /// - Returns: whether the fix ended the visit.
     @discardableResult
     private func endContinuity(of visit: GeofenceDwellVisit, geofence: Geofence, observedOutsideAt: Date) async -> Bool {
-        let exit = GeofenceExitMark(date: observedOutsideAt, processedAt: readClock())
+        let exit = GeofenceExitMark(date: observedOutsideAt, processedAt: readClock(), source: .outsideEvidence)
         guard exit.overtakes(visit) else { return false }
         recordExit(exit, geofenceId: geofence.id)
         cancelEvidence(for: geofence.id, ifVisit: visit.visitId)

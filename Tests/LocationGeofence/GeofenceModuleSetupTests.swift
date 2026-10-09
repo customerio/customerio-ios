@@ -726,7 +726,9 @@ private actor CountingDwellEmitter: GeofenceTransitionEmitting {
         return true
     }
 
-    func trackExit(geofenceId: String, occurredAt: Date, expectedUserId: String?) async {}
+    func trackExit(
+        geofenceId: String, occurredAt: Date, context: GeofenceExitContext?, expectedUserId: String?
+    ) async {}
 
     func dwellCount() -> Int {
         dwells
@@ -741,7 +743,9 @@ private actor SilentTransitionEmitter: GeofenceTransitionEmitting {
         true
     }
 
-    func trackExit(geofenceId: String, occurredAt: Date, expectedUserId: String?) async {}
+    func trackExit(
+        geofenceId: String, occurredAt: Date, context: GeofenceExitContext?, expectedUserId: String?
+    ) async {}
 }
 
 @MainActor

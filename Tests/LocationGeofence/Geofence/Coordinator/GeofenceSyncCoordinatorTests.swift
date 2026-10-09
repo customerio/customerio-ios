@@ -3166,6 +3166,177 @@ struct GeofenceSyncCoordinatorTests {
         #expect(await storage.transitionTarget(id: "configured") == .uncached(unconfigured: []))
     }
 
+    @Test
+    func refresh_givenNewExitOnlyCircleInside_expectVisitObservedWithoutEnterEvent() async {
+        let anchor = LocationData(latitude: 1.0, longitude: 2.0)
+        let storage = makeStorage()
+        let contextStore = makeContextStore()
+        let emitter = TransitionEmitterSpy()
+        let dwellCoordinator = GeofenceDwellCoordinator(
+            storage: storage,
+            transitionEmitter: emitter,
+            contextStore: contextStore,
+            logger: LoggerMock(),
+            freshFixProvider: { nil }
+        )
+        let dateUtil = DateUtilStub()
+        await storage.recordSync(
+            timestamp: dateUtil.givenNow.addingTimeInterval(-25 * 60 * 60),
+            location: LocationData(latitude: 0, longitude: 0)
+        )
+        let region = Geofence(
+            id: "exit-only",
+            latitude: anchor.latitude,
+            longitude: anchor.longitude,
+            radius: 100,
+            name: "Exit only",
+            transitionTypes: [.exit],
+            lastUpdated: Date(timeIntervalSince1970: 1)
+        )
+        let api = GeofenceApiServiceMock()
+        api.fetchNearbyGeofencesClosure = { _, _, completion in
+            completion(.success(makeApiResponse(regions: [region])))
+        }
+        let setup = makeCoordinator(
+            api: api,
+            storage: storage,
+            contextStore: contextStore,
+            emitter: emitter,
+            dwellCoordinator: dwellCoordinator,
+            dateUtil: dateUtil
+        )
+
+        _ = await setup.coordinator.refresh(
+            latitude: anchor.latitude,
+            longitude: anchor.longitude,
+            anchorIsLiveFix: true
+        )
+        // Bounded on the write, not a yield count: the visit is recorded on a task of its own.
+        for _ in 0 ..< 200 where await storage.getDwellVisit(geofenceId: region.id) == nil {
+            try? await Task.sleep(nanoseconds: 10000000)
+        }
+
+        #expect(emitter.calls.wrappedValue.isEmpty)
+        let visit = await storage.getDwellVisit(geofenceId: region.id)
+        #expect(visit != nil)
+        // Registered around the device, so the EXIT that closes this visit has no entry to measure from.
+        #expect(visit?.entryObserved == false)
+    }
+
+    /// The refresh records a widened edge before registering and keeps the record through the
+    /// refresh that drops the fence, so a callback queued at the drop is still recognised.
+    @Test
+    func remoteRefresh_givenExitOnlyCircleDropped_expectWidenedEnterStillKnownThroughTheDrop() async {
+        let anchor = LocationData(latitude: 1.0, longitude: 2.0)
+        let storage = makeStorage()
+        let dateUtil = DateUtilStub()
+        let exitOnly = Geofence(
+            id: "exit-only", latitude: 1.0, longitude: 2.0, radius: 100, name: "exit-only",
+            transitionTypes: [.exit], lastUpdated: Date(timeIntervalSince1970: 1700000000)
+        )
+        let served = Synchronized<[Geofence]>([exitOnly, makeRegion(id: "configured", latitude: 1.0, longitude: 2.0)])
+        let api = GeofenceApiServiceMock()
+        api.fetchNearbyGeofencesClosure = { _, _, completion in
+            completion(.success(makeApiResponse(regions: served.wrappedValue)))
+        }
+        let setup = makeCoordinator(api: api, storage: storage, dateUtil: dateUtil)
+        let refreshRemotely = {
+            await storage.recordSync(
+                timestamp: dateUtil.givenNow.addingTimeInterval(-25 * 60 * 60),
+                location: LocationData(latitude: 0, longitude: 0)
+            )
+            _ = await setup.coordinator.refresh(latitude: anchor.latitude, longitude: anchor.longitude, anchorIsLiveFix: true)
+        }
+
+        await refreshRemotely()
+        let registered = setup.monitor.monitoredRegionIdentifiers
+        #expect(registered.contains("exit-only"))
+        served.wrappedValue = []
+        await refreshRemotely()
+
+        #expect(await storage.transitionTarget(id: "exit-only") == .uncached(unconfigured: [.enter]))
+        #expect(await storage.transitionTarget(id: "configured") == .uncached(unconfigured: []))
+    }
+
+    /// A circle registered around a device already inside was never crossed: the stay began at
+    /// some unknown earlier time. The configured ENTER is still synthesized and the visit still
+    /// anchors dwell, but its start is discovery, so the EXIT closing it reports no duration.
+    @Test
+    func refresh_givenNewEnterExitCircleInside_expectEnterEmittedAndExitWithoutVisitDuration() async {
+        let anchor = LocationData(latitude: 1.0, longitude: 2.0)
+        let storage = makeStorage()
+        let contextStore = makeContextStore()
+        let emitter = TransitionEmitterSpy()
+        let dwellCoordinator = GeofenceDwellCoordinator(
+            storage: storage,
+            transitionEmitter: emitter,
+            contextStore: contextStore,
+            logger: LoggerMock(),
+            freshFixProvider: { nil }
+        )
+        let dateUtil = DateUtilStub()
+        await storage.recordSync(
+            timestamp: dateUtil.givenNow.addingTimeInterval(-25 * 60 * 60),
+            location: LocationData(latitude: 0, longitude: 0)
+        )
+        let region = Geofence(
+            id: "enter-exit",
+            latitude: anchor.latitude,
+            longitude: anchor.longitude,
+            radius: 100,
+            name: "Enter and exit",
+            transitionTypes: [.enter, .exit],
+            lastUpdated: Date(timeIntervalSince1970: 1),
+            dwellThresholdSeconds: 60
+        )
+        let api = GeofenceApiServiceMock()
+        api.fetchNearbyGeofencesClosure = { _, _, completion in
+            completion(.success(makeApiResponse(regions: [region])))
+        }
+        let setup = makeCoordinator(
+            api: api,
+            storage: storage,
+            contextStore: contextStore,
+            emitter: emitter,
+            dwellCoordinator: dwellCoordinator,
+            dateUtil: dateUtil
+        )
+
+        _ = await setup.coordinator.refresh(
+            latitude: anchor.latitude,
+            longitude: anchor.longitude,
+            anchorIsLiveFix: true
+        )
+        await verifyInitialInsideCircleExit(
+            region: region, storage: storage, dwellCoordinator: dwellCoordinator, setup: setup
+        )
+    }
+
+    private func verifyInitialInsideCircleExit(
+        region: Geofence,
+        storage: GeofenceStorage,
+        dwellCoordinator: GeofenceDwellCoordinator,
+        setup: Setup
+    ) async {
+        await awaitEmits(setup.emitter, count: 1)
+        for _ in 0 ..< 200 where await storage.getDwellVisit(geofenceId: region.id) == nil {
+            await Task.yield()
+        }
+        let visit = await storage.getDwellVisit(geofenceId: region.id)
+        let exitContext = await dwellCoordinator.handleBoundary(
+            geofence: region,
+            transition: .exit,
+            occurredAt: setup.dateUtil.givenNow.addingTimeInterval(600),
+            expectedUserId: setup.contextStore.currentUserId
+        )
+
+        #expect(setup.emitter.calls.wrappedValue.map(\.transition) == [.enter])
+        #expect(visit != nil)
+        #expect(visit?.entryObserved == false)
+        #expect(exitContext == nil)
+        #expect(await storage.getDwellVisit(geofenceId: region.id) == nil)
+    }
+
     /// The synthetic ENTER's send can stall (offline, a backlog flush). Its visit must not wait
     /// behind it, or a real EXIT in that window finds nothing to close and the write lands after.
     @Test
@@ -3751,7 +3922,9 @@ private final class TransitionEmitterSpy: GeofenceTransitionEmitting, @unchecked
         return true
     }
 
-    func trackExit(geofenceId: String, occurredAt: Date, expectedUserId: String?) async {
+    func trackExit(
+        geofenceId: String, occurredAt: Date, context: GeofenceExitContext?, expectedUserId: String?
+    ) async {
         await trackTransition(geofenceId: geofenceId, transition: .exit, occurredAt: occurredAt)
     }
 }
@@ -3785,7 +3958,9 @@ private actor StallingEnterEmitter: GeofenceTransitionEmitting {
         true
     }
 
-    func trackExit(geofenceId: String, occurredAt: Date, expectedUserId: String?) async {}
+    func trackExit(
+        geofenceId: String, occurredAt: Date, context: GeofenceExitContext?, expectedUserId: String?
+    ) async {}
 }
 
 // MARK: - Async signal helper

@@ -80,9 +80,10 @@ actor GeofenceStorage {
         ).outcome
     }
 
-    /// `recordMonitorEvent`, also answering whether a delivered ENTER left an OBSERVED `.exit`.
-    /// Only then is it a crossing since registration; out of an assumed one it may be `CLMonitor`
-    /// correcting its `assuming:` for a device that never left. False for every other outcome.
+    /// `recordMonitorEvent`, also answering whether a delivered transition left an OBSERVED state.
+    /// Only then is it a crossing timed by its event: out of an assumed state it may be `CLMonitor`
+    /// correcting its `assuming:` — an ENTER for a device that never left, an EXIT for one that was
+    /// never inside or left at some unknown earlier time. False for every other outcome.
     /// - Parameter reading: when the producer read the dwell clock before this call; with it, a
     ///   delivered change also closes the circle visit it ends, in the same write (`closeVisit`).
     /// - Parameter maximumRadius: the radius cap the monitor registered the circle under.
@@ -97,7 +98,7 @@ actor GeofenceStorage {
         processedAt reading: GeofenceClockReading? = nil,
         maximumRadius: Double = .infinity,
         raisedUnder: GeofenceEventCircle? = nil
-    ) -> (outcome: GeofenceMonitorEventOutcome, entryObserved: Bool) {
+    ) -> (outcome: GeofenceMonitorEventOutcome, crossingObserved: Bool) {
         var state = loadFromDisk() ?? GeofenceState()
         var records = state.monitorRegionRecords ?? [:]
         guard var record = records[identifier] else {
@@ -146,10 +147,10 @@ actor GeofenceStorage {
         let delivered = record.transitionTypes.contains(transition)
         let crossing = transition == .enter && leftObservedState
         if delivered, let reading, transition == .exit || crossing, let center = record.center, let radius = record.radius {
-            Self.closeVisit(in: &state, identifier: identifier, registered: MonitoredCircle(center: center, radius: radius, maximumRadius: maximumRadius), endedBy: transition, mark: GeofenceExitMark(date: osEventDate ?? now ?? dateUtil.now, processedAt: reading))
+            Self.closeVisit(in: &state, identifier: identifier, registered: MonitoredCircle(center: center, radius: radius, maximumRadius: maximumRadius), endedBy: transition, mark: GeofenceExitMark(date: osEventDate ?? now ?? dateUtil.now, processedAt: reading, source: transition == .exit ? .exitEvent : .enterEvent))
         }
         saveToDisk(state)
-        return (delivered ? .deliver : .suppressedFilteredType, crossing)
+        return (delivered ? .deliver : .suppressedFilteredType, leftObservedState)
     }
 
     /// A trigger exit can arrive just after a re-plant, carrying the old circle's date. Only the

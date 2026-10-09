@@ -3,14 +3,13 @@ import CoreLocation
 import Foundation
 
 /// Args: identifier, transition, location, `occurredAt` (OS event date; receipt time on the classic
-/// path, fix time for a heal), `locationIsFresh` (a fix obtained for THIS event), the circle the
-/// OS was monitoring when it RAISED the event, and `entryObserved`. Invoked on the main actor but
+/// path, fix time for a heal), `locationIsFresh` (a fix obtained for this event), the circle the
+/// OS monitored when it raised the event, and `crossingObserved`. Invoked on the main actor but
 /// not statically isolated.
 ///
-/// `entryObserved`: an ENTER is a crossing since registration, so a visit may date from it. False
-/// when the OS is correcting a state the SDK assumed (`CLMonitor` answering a wrong `assuming:`,
-/// for a device that may have been inside all along) or for a heal dated when the SDK noticed. The
-/// ENTER is delivered either way; only the visit's start differs.
+/// `crossingObserved` says the OS observed a crossing, so the visit may be timed from `occurredAt`.
+/// False for corrections of an assumed state and for heals dated when the SDK noticed a crossing.
+/// The transition is delivered either way; only its visit's timing differs.
 typealias GeofenceTransitionHandler = @Sendable (String, GeofenceTransition, LocationData?, Date, Bool, GeofenceEventCircle, Bool) -> Void
 
 typealias GeofenceAuthorizationChangedHandler = @MainActor () -> Void
