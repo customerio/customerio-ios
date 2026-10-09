@@ -304,8 +304,8 @@ struct ExitDurationObservedBoundaryTests {
     // MARK: - Helpers
 
     @available(iOS 17.0, *)
-    private static func process(on device: DurableExitDevice) async -> DurableExitProcess {
-        let process = await DurableExitProcess(device: device)
+    static func process(on device: DurableExitDevice, fileManager: FileManager = .default) async -> DurableExitProcess {
+        let process = await DurableExitProcess(device: device, fileManager: fileManager)
         let fences = [DurableExitFences.circle, DurableExitFences.polygon, exitOnly]
         await process.storage.setCachedGeofences(fences)
         await process.storage.recordRegistration(
@@ -316,7 +316,7 @@ struct ExitDurationObservedBoundaryTests {
 
     /// Registered from a fix outside it, so the next satisfied event is an observed crossing.
     @available(iOS 17.0, *)
-    private static func observedStay(
+    static func observedStay(
         _ process: DurableExitProcess, device: DurableExitDevice, fence: Geofence
     ) async throws -> GeofenceDwellVisit {
         await process.register(fence, seenAt: device.fix(at: fence, latitudeOffset: 0.01))
@@ -394,7 +394,7 @@ struct ExitDurationObservedBoundaryTests {
     }
 
     @available(iOS 17.0, *)
-    private static func exitRows(_ process: DurableExitProcess) async -> [PendingGeofenceMetric] {
+    static func exitRows(_ process: DurableExitProcess) async -> [PendingGeofenceMetric] {
         await process.outbox.rows().filter { $0.transition == .exit }.sorted { $0.timestamp < $1.timestamp }
     }
 }
