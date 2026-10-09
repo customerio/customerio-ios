@@ -218,6 +218,89 @@ struct ExitDurationObservedBoundaryTests {
         second.end()
     }
 
+    // MARK: - A re-ENTER that does not supersede the closed stay
+
+    /// A re-ENTER that does not end the stay `CLMonitor` closed (`GeofenceEnterMarks.superseding`),
+    /// so `currentVisit` hands the closed visit back and the re-ENTER replaces it.
+    enum NonSupersedingReentry: CaseIterable, Sendable {
+        /// Synthesized from the refresh anchor, as the initial-ENTER pass does: nothing proved it.
+        case unproven
+        /// An OS correction of a stay whose dwell was already emitted, which it does not end.
+        case correctionOfEmittedStay
+        /// A crossing dated within the copy tolerance of the stay's own entry.
+        case crossingWithinCopyTolerance
+    }
+
+    /// The stay's own observed EXIT closes the visit on disk and its callback is noted, but before its
+    /// routing records it, a re-ENTER that does not supersede the stay replaces the closed visit.
+    /// That exact EXIT, routed afterwards, still reports the stay it closed, and the re-entry's visit
+    /// survives it. Internal chronology: the binder's callback note and both routings are driven
+    /// directly, in an order its unordered routing tasks allow; not physical callback acceptance.
+    @Test(arguments: NonSupersedingReentry.allCases)
+    @available(iOS 17.0, *)
+    func closingExitRoutedAfterANonSupersedingReentryTimesTheClosedStay(reentry: NonSupersedingReentry) async throws {
+        let device = DurableExitDevice()
+        let process = await Self.process(on: device)
+        process.route()
+        let stay = try await Self.observedStay(process, device: device, fence: Self.circle)
+        if reentry == .correctionOfEmittedStay {
+            _ = try await Self.qualify(stay, process: process, device: device, emitted: true)
+        }
+        let dwellRowsBefore = await process.dwellRows().count
+        let withinTolerance = reentry == .crossingWithinCopyTolerance
+        let exitedAt = try await Self.closeAndNoteOwnExit(process, device: device, after: withinTolerance ? 0.25 : 60)
+        let replacement = try await Self.reenter(
+            process, device: device, after: withinTolerance ? 0.25 : 30, as: reentry, replacing: stay
+        )
+
+        await process.resolver.handleTransition(
+            identifier: Self.circle.id, transition: .exit, occurredAt: exitedAt, receivedForUserId: "user-a"
+        )
+        process.dwell.exitCallbackRouted(geofenceId: Self.circle.id, occurredAt: exitedAt)
+
+        let rows = await Self.exitRows(process)
+        #expect(rows.count == 1)
+        let row = try #require(rows.last)
+        #expect(row.visitId == stay.visitId)
+        #expect(row.enteredAt.map { Int($0.timeIntervalSince1970) } == Int(stay.enteredAt.timeIntervalSince1970))
+        #expect(row.visitDurationSeconds == Int(exitedAt.timeIntervalSince1970) - Int(stay.enteredAt.timeIntervalSince1970))
+        #expect(await process.visit()?.visitId == replacement.visitId)
+        #expect(await process.dwellRows().count == dwellRowsBefore)
+        process.end()
+    }
+
+    /// The same replacement, then an EXIT representably distinct from the one that closed the stay:
+    /// it reports nothing of the stay. Once the noted callback's routing ends with no EXIT of its
+    /// date recorded, a late copy of that date reports nothing either, and the re-entry's visit
+    /// survives both. Internal chronology, as above.
+    @Test
+    @available(iOS 17.0, *)
+    func onlyTheClosingExitReportsAStayANonSupersedingReentryReplaced() async throws {
+        let device = DurableExitDevice()
+        let process = await Self.process(on: device)
+        process.route()
+        let stay = try await Self.observedStay(process, device: device, fence: Self.circle)
+        let exitedAt = try await Self.closeAndNoteOwnExit(process, device: device, after: 60)
+        let replacement = try await Self.reenter(process, device: device, after: 30, as: .unproven, replacing: stay)
+
+        await process.resolver.handleTransition(
+            identifier: Self.circle.id, transition: .exit, occurredAt: exitedAt.addingTimeInterval(0.000_003),
+            receivedForUserId: "user-a"
+        )
+        process.dwell.exitCallbackRouted(geofenceId: Self.circle.id, occurredAt: exitedAt)
+        let lateCopy = await process.dwell.handleBoundary(
+            geofence: Self.circle, transition: .exit, occurredAt: exitedAt, expectedUserId: "user-a"
+        )
+
+        let row = try #require(await Self.exitRows(process).last)
+        #expect(row.visitId == nil)
+        #expect(row.enteredAt == nil)
+        #expect(row.visitDurationSeconds == nil)
+        #expect(lateCopy == nil)
+        #expect(await process.visit()?.visitId == replacement.visitId)
+        process.end()
+    }
+
     // MARK: - Helpers
 
     @available(iOS 17.0, *)
@@ -264,6 +347,50 @@ struct ExitDurationObservedBoundaryTests {
         }
         process.dwell.cancelEvidence(for: circle.id)
         return try #require(await process.visit())
+    }
+
+    /// The stay's own EXIT, `seconds` from now: `CLMonitor` records it and closes the circle visit on
+    /// disk in the same write, nothing routes it, and the binder's callback note is made, as OS order
+    /// puts it, before any later ENTER's.
+    @available(iOS 17.0, *)
+    private static func closeAndNoteOwnExit(
+        _ process: DurableExitProcess, device: DurableExitDevice, after seconds: TimeInterval
+    ) async throws -> Date {
+        process.dieOnNextEvent()
+        device.advance(seconds)
+        let exitedAt = device.clock.wall
+        await process.deliver(.unsatisfied, to: circle.id, at: exitedAt)
+        try #require(await process.visit()?.closedByObservedBoundary == exitedAt)
+        process.dwell.noteExitCallback(geofenceId: circle.id, occurredAt: exitedAt)
+        return exitedAt
+    }
+
+    /// A re-ENTER of `reentry`'s kind, `seconds` from now, routed to the coordinator before the
+    /// stay's EXIT is: noted first, as the binder's callback notes it, unless nothing proved it.
+    /// Returns the visit stored in place of the closed `stay`.
+    @available(iOS 17.0, *)
+    private static func reenter(
+        _ process: DurableExitProcess, device: DurableExitDevice, after seconds: TimeInterval,
+        as reentry: NonSupersedingReentry, replacing stay: GeofenceDwellVisit
+    ) async throws -> GeofenceDwellVisit {
+        device.advance(seconds)
+        let reenteredAt = device.clock.wall
+        let crossing = reentry == .crossingWithinCopyTolerance
+        let proven = reentry != .unproven
+        if proven {
+            process.dwell.noteEnter(geofenceId: circle.id, occurredAt: reenteredAt, crossing: crossing)
+        }
+        await process.dwell.handleBoundary(
+            geofence: circle, transition: .enter, occurredAt: reenteredAt, expectedUserId: "user-a",
+            crossingObserved: crossing, presenceProven: proven
+        )
+        // Before any await: the replacement's own evidence request must not replace it in turn.
+        process.dwell.cancelEvidence(for: circle.id)
+        let replacement = try #require(await process.visit())
+        try #require(replacement.visitId != stay.visitId)
+        try #require(replacement.closedByObservedBoundary == nil)
+        try #require(replacement.awaitsPresenceProof == !proven)
+        return replacement
     }
 
     @available(iOS 17.0, *)
