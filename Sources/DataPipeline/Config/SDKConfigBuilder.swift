@@ -22,7 +22,7 @@ import UIKit
 /// ```
 public class SDKConfigBuilder {
     // helper configuration options to ease setting up other configurations such as `apiHost` and `cdnHost`
-    private var region: Region = .US
+    private var region: Region?
     private var autoTrackUIKitScreenViews: Bool = false
     private var autoScreenViewBody: (() -> [String: Any])?
     #if canImport(UIKit)
@@ -52,14 +52,18 @@ public class SDKConfigBuilder {
 
     /// Initializes new `SDKConfigBuilder` with required configuration options.
     /// - Parameters:
-    ///   - cdpApiKey: Customer.io Data Pipeline API Key
+    ///   - cdpApiKey: Customer.io Data Pipeline API Key. Secret `ak_` keys are rejected and the SDK will not initialize.
     public init(cdpApiKey: String) {
         self.cdpApiKey = cdpApiKey
+        if ApiKey.isSecret(cdpApiKey) {
+            DIGraphShared.shared.logger.error(ApiKey.secretKeyError)
+        }
     }
 
     /// Specifies the workspace region to ensure CDP requests are routed to the correct regional endpoint.
     /// Default values for apiHost and cdnHost are determined by the region.
     /// However, if apiHost or cdnHost are manually specified, those values override region-based defaults.
+    /// If not set, the region is read from the key prefix (e.g. `wk_eu_`), else defaults to US.
     @discardableResult
     public func region(_ region: Region) -> SDKConfigBuilder {
         self.region = region
@@ -214,6 +218,8 @@ public class SDKConfigBuilder {
                 autoScreenViewBody: autoScreenViewBody
             ))
         }
+
+        let region = region ?? ApiKey.region(of: cdpApiKey) ?? .US
 
         // create `DataPipelineConfigOptions` from given configurations
         let dataPipelineConfig = DataPipelineConfigOptions(
