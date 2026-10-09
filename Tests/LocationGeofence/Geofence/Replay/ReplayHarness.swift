@@ -27,6 +27,10 @@ final class ReplayHarness {
     let logger: CapturingLogger
 
     let gate = ReplayBoundaryGate()
+    private(set) var dwellScheduler = ReplayDwellScheduler()
+    private var processGeneration = UUID()
+    /// Lifecycle delivery belongs to one process, even when a test retains its old graph.
+    private(set) var notificationCenter = NotificationCenter()
 
     // MARK: - The SDK
 
@@ -148,6 +152,7 @@ final class ReplayHarness {
 
     /// Rerun by `reenterProcess()`: build here only what a dying process loses.
     private func composeSDK() {
+        resetProcessRuntime()
         deliveryTracker = Self.completingDeliveryTracker()
         tracker = GeofenceEventTracker(
             storage: storage,
@@ -159,15 +164,16 @@ final class ReplayHarness {
             logger: logger
         )
 
-        // Evidence comes from the drive's position, never CoreLocation. `.default` because
-        // `enterForeground()` posts there, as the OS does.
+        // Evidence and lifecycle input belong to this composition; OS conditions persist across it.
         dwellCoordinator = GeofenceDwellCoordinator(
             storage: storage,
             transitionEmitter: tracker,
             contextStore: contextStore,
             logger: logger,
-            freshFixProvider: { [weak self] in self?.fixes.currentPosition() },
-            clock: DateUtilGeofenceClock(dateUtil: clock)
+            fixResolver: makeReplayFixResolver(),
+            notificationCenter: notificationCenter,
+            clock: DateUtilGeofenceClock(dateUtil: clock),
+            waitForEvidence: { [dwellScheduler] in try await dwellScheduler.sleep(nanoseconds: $0) }
         )
 
         resolver = makePolygonResolver()
@@ -209,6 +215,13 @@ final class ReplayHarness {
         overrideBootstrapDependencies()
     }
 
+    private func resetProcessRuntime() {
+        processGeneration = UUID()
+        notificationCenter = NotificationCenter()
+        dwellScheduler = ReplayDwellScheduler()
+        dwellScheduler.advance(to: clock.givenNow.timeIntervalSince(epoch))
+    }
+
     /// Everything `GeofenceBootstrap` resolves, plus `DateUtil` so a later read cannot reach the
     /// wall clock.
     private func overrideBootstrapDependencies() {
@@ -236,15 +249,20 @@ final class ReplayHarness {
         // The old consume task stays parked; the new wrapper's subscription supersedes it.
         monitor.setOnTransition(nil)
         detachFromBootstrap()
+        dwellScheduler.stop()
+        fixes.beginNextProcess()
         composeSDK()
     }
 
     /// Call before replacing a composition: the bootstrap's handlers would re-run `wireMonitor` on it.
-    /// Doesn't free the monitor: its `consumeTask` holds `self`, so it still reacts to
-    /// `enterForeground()`.
+    /// Its consume task can retain it, so remove its process-local foreground observer too.
     func detachFromBootstrap() {
         monitor.setOnReconciled(nil)
         monitor.setOnAuthorizationChanged(nil)
+        if let token = monitor.foregroundObserverToken {
+            NotificationCenter.default.removeObserver(token)
+            monitor.foregroundObserverToken = nil
+        }
     }
 
     deinit {
@@ -296,23 +314,54 @@ final class ReplayHarness {
         logger.reset()
     }
 
-    /// The default `fixResolver` would issue a live `CLLocationManager` request from a unit test.
-    private func makePolygonResolver() -> PolygonMembershipResolver {
+    /// OS answers pass through the shipping resolver's freshness filter.
+    private func makeReplayFixResolver() -> MovementFixResolver {
+        let generation = processGeneration
         let fixResolver = MovementFixResolver(
             logger: logger,
             dateUtil: clock,
             desiredAccuracy: kCLLocationAccuracyNearestTenMeters,
-            waitForTimeout: { _ in await Task.yield() }
+            waitForTimeout: { [dwellScheduler] seconds in
+                do {
+                    try await dwellScheduler.sleep(nanoseconds: UInt64(seconds * 1000000000))
+                } catch {
+                    // The timeout never elapsed: the request completed, or this process stopped.
+                    // Cancel the resolver's timeout task so its own guard skips the failure. A dead
+                    // process's request stays pending, as a killed app's would.
+                    withUnsafeCurrentTask { $0?.cancel() }
+                }
+            }
         )
         fixResolver.requestFreshFix = { [weak self, weak fixResolver] in
-            guard let self, let fixResolver else { return }
+            guard let self, self.processGeneration == generation, let fixResolver else { return }
             self.fixRequestCount += 1
-            // Through `handleDeliveredFix`, so a fix older than `maxAge` is refused as on a device.
-            let answer = self.fixes.requestedAnswer(within: GeofenceConstants.movementFixRequestTimeout)
-            if let fix = answer ?? self.fixes.currentPosition() {
-                fixResolver.handleDeliveredFix(fix)
+            if let answer = self.fixes.reserveRequestedAnswer() {
+                if answer.at <= self.fixes.now {
+                    fixResolver.handleDeliveredFix(answer.fix)
+                } else {
+                    Task { @MainActor [weak self, weak fixResolver] in
+                        guard let self else { return }
+                        await self.gate.park(at: answer.at, what: "requested fix") { [weak self, weak fixResolver] in
+                            guard let self, self.processGeneration == generation else { return }
+                            fixResolver?.handleDeliveredFix(answer.fix)
+                        }
+                    }
+                }
+            } else if self.fixes.allowsSyntheticRequestedAnswers {
+                // Authored fixtures without a recorded response stream supply synthetic OS answers.
+                // A refused or absent answer fails immediately; recorded runs use the real timeout.
+                if let fix = self.fixes.currentPosition() {
+                    fixResolver.handleDeliveredFix(fix)
+                }
+                fixResolver.handleRequestFailure()
             }
         }
+        return fixResolver
+    }
+
+    /// The default resolver would issue a live `CLLocationManager` request from a unit test.
+    private func makePolygonResolver() -> PolygonMembershipResolver {
+        let fixResolver = makeReplayFixResolver()
         return PolygonMembershipResolver(
             storage: storage,
             transitionEmitter: tracker,
@@ -320,6 +369,7 @@ final class ReplayHarness {
             contextStore: contextStore,
             dateUtil: clock,
             fixResolver: fixResolver,
+            notificationCenter: notificationCenter,
             dwellCoordinator: dwellCoordinator
         )
     }

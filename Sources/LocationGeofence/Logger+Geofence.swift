@@ -175,7 +175,8 @@ extension Logger {
                         // `ring` truncates; `nv` is the true vertex count.
                         ("nv", GeofenceLog.int(region.catalogRing?.count)),
                         ("ring", GeofenceLog.list(region.catalogRing ?? [], limit: 64)),
-                        ("tt", GeofenceLog.list(region.transitionTypes ?? []))
+                        ("tt", GeofenceLog.list(region.transitionTypes ?? [])),
+                        ("dwell", region.dwellThresholdSeconds.map(String.init))
                     ]),
                 geofenceTag
             )

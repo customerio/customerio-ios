@@ -73,14 +73,24 @@ enum ReplayRunner {
             await settle(harness)
         }
 
+        try await settleFinalAnswers(on: harness)
+        return Result(emitted: harness.emitted, unsupported: unsupported, stimuli: stimuli)
+    }
+
+    private static func settleFinalAnswers(on harness: ReplayHarness) async throws {
         // A capture can end mid-sync; answer it so those decisions are graded.
         try await harness.settleBoundaries()
-        return Result(emitted: harness.emitted, unsupported: unsupported, stimuli: stimuli)
+        // A recorded OS reply can follow the last external stimulus. Drive only as far as that
+        // input evidence, allowing the SDK's own deadlines and timeouts to run along the way.
+        if let horizon = harness.fixes.requestedAnswerHorizon {
+            await harness.advance(to: horizon) { await settle(harness) }
+            try await harness.settleBoundaries()
+        }
     }
 
     /// A `note`, not a stimulus: the OS's reply to work the SDK started.
     private static func loadRequestedFixAnswers(_ scenario: Scenario, on harness: ReplayHarness) {
-        harness.fixes.loadRequestedAnswers(scenario.note.compactMap { record in
+        let answers = scenario.note.compactMap { record -> ReplayFixProvider.CachedRead? in
             guard record.ev == "fix.received", record.fields["prov"] == "movement_resolver",
                   let latitude = record.latitude, let longitude = record.longitude,
                   let accuracy = record.fields["acc"].flatMap(Double.init)
@@ -89,7 +99,12 @@ enum ReplayRunner {
                 latitude: latitude, longitude: longitude, accuracy: accuracy,
                 age: record.fields["age"].flatMap(Double.init) ?? 0, at: record.at
             )
-        })
+        }
+        harness.fixes.loadRequestedAnswers(
+            answers,
+            allowSyntheticFallback: !scenario.isRecorded,
+            processStarts: scenario.when.filter { $0.ev == "process.start" }.map(\.at)
+        )
     }
 
     /// Incomplete shapes fail closed: dropping one would hand the SDK a nil the drive never recorded.

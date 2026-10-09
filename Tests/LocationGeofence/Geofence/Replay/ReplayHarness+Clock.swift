@@ -14,11 +14,28 @@ import UIKit
 @MainActor
 extension ReplayHarness {
     func advance(to at: TimeInterval, settle: () async -> Void) async {
-        await gate.advance(to: at, setClock: { [weak self] moment in self?.setClock(moment) }, settle: settle)
+        // Re-scan after every boundary and deadline: a fetch answer can schedule a timer before
+        // the next stimulus, and evidence can schedule a retry before the target is reached.
+        await gate.advance(
+            to: at,
+            setClock: { [weak self] moment in self?.setClock(moment) },
+            nextWakeup: { [dwellScheduler] in dwellScheduler.nextDeadline }
+        ) {
+            for _ in 0 ..< 3 {
+                await settle()
+            }
+        }
     }
 
     func releaseRemainingBoundaries(settle: () async throws -> Void) async rethrows {
-        try await gate.releaseAll(setClock: { [weak self] moment in self?.setClock(moment) }, settle: settle)
+        try await gate.releaseAll(
+            setClock: { [weak self] moment in self?.setClock(moment) },
+            nextWakeup: { [dwellScheduler] in dwellScheduler.nextDeadline }
+        ) {
+            for _ in 0 ..< 3 {
+                try await settle()
+            }
+        }
     }
 
     func advance(to at: TimeInterval) async {
@@ -66,6 +83,7 @@ extension ReplayHarness {
         let moment = max(at, clock.givenNow.timeIntervalSince(epoch))
         clock.givenNow = epoch.addingTimeInterval(moment)
         fixes.now = moment
+        dwellScheduler.advance(to: moment)
     }
 
     var now: Date { clock.givenNow }

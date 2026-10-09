@@ -21,10 +21,11 @@ struct ReplayFixProviderTests {
         provider.loadRequestedAnswers([answer(at: 13.7, accuracy: 29.6, age: 0.7)])
         provider.now = 3.7
 
-        let fix = provider.requestedAnswer(within: 10)
+        let fix = provider.reserveRequestedAnswer()
 
-        #expect(fix?.horizontalAccuracy == 29.6)
-        #expect(fix?.timestamp == epoch.addingTimeInterval(3.7 - 0.7))
+        #expect(fix?.at == 13.7)
+        #expect(fix?.fix.horizontalAccuracy == 29.6)
+        #expect(fix?.fix.timestamp == epoch.addingTimeInterval(13.7 - 0.7))
     }
 
     @Test
@@ -33,18 +34,18 @@ struct ReplayFixProviderTests {
         provider.loadRequestedAnswers([answer(at: 5, accuracy: 20), answer(at: 6, accuracy: 10)])
         provider.now = 4
 
-        #expect(provider.requestedAnswer(within: 10)?.horizontalAccuracy == 20)
-        #expect(provider.requestedAnswer(within: 10)?.horizontalAccuracy == 10)
-        #expect(provider.requestedAnswer(within: 10) == nil)
+        #expect(provider.reserveRequestedAnswer()?.fix.horizontalAccuracy == 20)
+        #expect(provider.reserveRequestedAnswer()?.fix.horizontalAccuracy == 10)
+        #expect(provider.reserveRequestedAnswer() == nil)
     }
 
     @Test
-    func requestedAnswer_givenOnlyAnAnswerPastTheTimeout_expectNone() {
+    func requestedAnswer_givenAnArrivalPastTimeout_expectReservedForDeliveryAtItsArrival() {
         let provider = ReplayFixProvider(epoch: epoch)
         provider.loadRequestedAnswers([answer(at: 30, accuracy: 20)])
         provider.now = 4
 
-        #expect(provider.requestedAnswer(within: 10) == nil)
+        #expect(provider.reserveRequestedAnswer()?.at == 30)
     }
 
     @Test
@@ -53,7 +54,7 @@ struct ReplayFixProviderTests {
         provider.loadRequestedAnswers([answer(at: 2, accuracy: 50), answer(at: 12, accuracy: 15)])
         provider.now = 10
 
-        #expect(provider.requestedAnswer(within: 10)?.horizontalAccuracy == 15)
+        #expect(provider.reserveRequestedAnswer()?.fix.horizontalAccuracy == 15)
     }
 
     @Test
@@ -61,6 +62,29 @@ struct ReplayFixProviderTests {
         let provider = ReplayFixProvider(epoch: epoch)
         provider.now = 4
 
-        #expect(provider.requestedAnswer(within: 10) == nil)
+        #expect(provider.reserveRequestedAnswer() == nil)
+    }
+
+    @Test
+    func currentPosition_whenDriveTimeAdvances_thenCachedFixKeepsOriginalTimestamp() {
+        let epoch = Date(timeIntervalSince1970: 1000000000)
+        let fixes = ReplayFixProvider(epoch: epoch)
+        fixes.load(stimuli: [30], samples: [
+            .init(at: 30, location: .init(latitude: 10, longitude: 20), accuracy: 10, age: 5)
+        ])
+        fixes.now = 30
+        #expect(fixes.currentPosition()?.timestamp == epoch.addingTimeInterval(25))
+        fixes.now = 90
+        #expect(fixes.currentPosition()?.timestamp == epoch.addingTimeInterval(25))
+    }
+
+    @Test
+    func currentPosition_whenRecordedReadFollowsStimulus_thenTimestampIsNotInTheFuture() {
+        let fixes = ReplayFixProvider(epoch: epoch)
+        fixes.load(stimuli: [30], samples: [.init(at: 35, location: .init(latitude: 10, longitude: 20), accuracy: 10, age: 5)])
+        fixes.now = 30
+        #expect(fixes.currentPosition()?.timestamp == epoch.addingTimeInterval(25))
+        fixes.now = 90
+        #expect(fixes.currentPosition()?.timestamp == epoch.addingTimeInterval(30))
     }
 }

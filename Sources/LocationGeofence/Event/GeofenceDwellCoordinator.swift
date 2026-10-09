@@ -6,10 +6,8 @@ import UIKit
 #endif
 
 /// Owns durable continuous visits. A deadline only requests evidence; it never proves membership.
-///
-/// Every ordering and elapsed-time decision is made on the monotonic timeline of `clock`, never on
-/// wall dates alone: a wall-clock step must neither qualify a dwell early nor make a later event
-/// look older than the visit it ends.
+/// Ordering and elapsed time use `clock`'s monotonic timeline. A wall-clock step must neither qualify
+/// dwell early nor make a later event look older than the visit it ends.
 @MainActor
 final class GeofenceDwellCoordinator {
     // `internal`, not `private`, only because the `+Emission` extension file uses them.
@@ -41,8 +39,7 @@ final class GeofenceDwellCoordinator {
     /// a visit write that lands after the loss's removal ran but began before the loss. Internal for `+Continuity`.
     var continuityLostUptime: [String: TimeInterval] = [:]
     var allContinuityLostUptime: TimeInterval?
-    /// What EXIT durations keep between callbacks; see `GeofenceExitDurationState`. Internal for
-    /// the `+ExitDuration` extension.
+    /// EXIT duration state between callbacks; see `GeofenceExitDurationState` and `+ExitDuration`.
     var exitDuration = GeofenceExitDurationState()
     // `internal`, not `private`, only because the `+Evidence` extension file uses them.
     let storage: GeofenceStorage
@@ -52,6 +49,7 @@ final class GeofenceDwellCoordinator {
     let freshFixProvider: (() async -> CLLocation?)?
     let evidenceRetryDelay: TimeInterval
     let maxEvidenceRetryAttempts: Int
+    let waitForEvidence: @MainActor (UInt64) async throws -> Void
     /// The pending evidence request per geofence: the deadline, or a bounded retry after it.
     var deadlineTasks: [String: Task<Void, Never>] = [:]
     var evidenceRetries: [String: EvidenceRetryState] = [:]
@@ -85,7 +83,8 @@ final class GeofenceDwellCoordinator {
         clock: GeofenceClock = SystemGeofenceClock(),
         locationAccess: (@MainActor () -> GeofenceLocationAccess?)? = nil,
         backgroundRefreshAvailable: (@MainActor () -> Bool)? = nil,
-        identityTracker: GeofenceIdentityTracker? = nil
+        identityTracker: GeofenceIdentityTracker? = nil,
+        waitForEvidence: @escaping @MainActor (UInt64) async throws -> Void = { try await Task.sleep(nanoseconds: $0) }
     ) {
         self.identityTracker = identityTracker ?? GeofenceIdentityTracker()
         self.storage = storage
@@ -100,6 +99,7 @@ final class GeofenceDwellCoordinator {
         self.freshFixProvider = freshFixProvider
         self.evidenceRetryDelay = evidenceRetryDelay
         self.maxEvidenceRetryAttempts = max(0, maxEvidenceRetryAttempts)
+        self.waitForEvidence = waitForEvidence
         self.fixResolver = fixResolver ?? MovementFixResolver(
             logger: logger,
             backgroundTaskRunner: GeofenceBackgroundTime.runner(name: "io.customer.geofence.dwell-fix"),

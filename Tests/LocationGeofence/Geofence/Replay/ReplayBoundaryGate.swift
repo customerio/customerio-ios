@@ -69,32 +69,43 @@ final class ReplayBoundaryGate {
     func advance(
         to target: TimeInterval,
         setClock: (TimeInterval) -> Void,
+        nextWakeup: () -> TimeInterval? = { nil },
         settle: () async -> Void
     ) async {
         var guardCount = 0
-        while let next = parked.filter({ $0.at <= target }).min(by: { ($0.at, $0.id) < ($1.at, $1.id) }) {
+        while true {
+            let next = parked.min(by: { ($0.at, $0.id) < ($1.at, $1.id) })
+            guard let moment = [next?.at, nextWakeup()].compactMap({ $0 }).filter({ $0 <= target }).min() else { break }
             guard guardCount < Self.maxReleaseRounds else {
-                fatalError("replay: boundary releases did not settle after \(Self.maxReleaseRounds) rounds (\(next.what))")
+                fatalError("replay: releases did not settle after \(Self.maxReleaseRounds) rounds (boundary=\(next?.what ?? "none"), deadline=\(String(describing: nextWakeup())))")
             }
             guardCount += 1
-            parked.removeAll { $0.id == next.id }
-            moveClock(to: next.at, setClock)
-            await next.answer()
+            moveClock(to: moment, setClock)
+            if let next, next.at <= virtualNow {
+                parked.removeAll { $0.id == next.id }
+                await next.answer()
+            }
             await settle()
         }
         moveClock(to: target, setClock)
     }
 
-    func releaseAll(setClock: (TimeInterval) -> Void, settle: () async throws -> Void) async rethrows {
+    func releaseAll(
+        setClock: (TimeInterval) -> Void,
+        nextWakeup: () -> TimeInterval? = { nil },
+        settle: () async throws -> Void
+    ) async rethrows {
         var abandoned: [String] = []
         var guardCount = 0
         while let next = parked.min(by: { ($0.at, $0.id) < ($1.at, $1.id) }) {
             guard guardCount < Self.maxReleaseRounds else { break }
             guardCount += 1
-            parked.removeAll { $0.id == next.id }
-            abandoned.append(next.what)
-            moveClock(to: next.at, setClock)
-            await next.answer()
+            moveClock(to: min(next.at, nextWakeup() ?? next.at), setClock)
+            if next.at <= virtualNow {
+                parked.removeAll { $0.id == next.id }
+                abandoned.append(next.what)
+                await next.answer()
+            }
             try await settle()
         }
         // Includes what the round limit cut short.

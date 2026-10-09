@@ -879,6 +879,25 @@ struct GeofenceLogTailTests {
     }
 
     @Test
+    func fenceCatalog_givenDwellThreshold_expectRawValueOrOmittedWhenMissing() {
+        withDiagnostics(true) {
+            for threshold in [nil, 0, 60, -1, Int.max] as [Int?] {
+                for var region in [catalogRegion(), catalogPolygonRegion()] {
+                    region.dwellThresholdSeconds = threshold
+                    let logger = CapturingLogger()
+                    logger.geofenceApiFetchResult(returnedCount: 1, elapsed: 0.4, regions: [region])
+                    guard let fields = parseTail(logger.messages.last ?? "") else {
+                        Issue.record("missing catalogue tail for threshold \(String(describing: threshold))")
+                        continue
+                    }
+                    #expect(fields["ev"] == "fence.cataloged")
+                    #expect(fields["dwell"] == threshold.map(String.init))
+                }
+            }
+        }
+    }
+
+    @Test
     func fenceCatalog_givenCircle_expectShapeAndNoRing() {
         withDiagnostics(true) {
             let logger = CapturingLogger()
