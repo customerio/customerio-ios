@@ -13,6 +13,8 @@
 			</array>
 		</dict>
 	</array>
+	<key>FirebaseMessagingInstallationIdEnabled</key>
+	<string>$(CIO_FID_ENABLED)</string>
 	<key>UIAppFonts</key>
 	<array>
 		<string>AbrilFatface-Regular.ttf</string>
