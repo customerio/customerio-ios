@@ -121,6 +121,243 @@ struct GeofenceSyncCoordinatorTests {
         return GeofenceApiResponse(config: apiConfig, geofences: apiRegions)
     }
 
+    // MARK: - Catalog cached before dwell support
+
+    /// State a pre-dwell SDK (integration base e6590003) left behind, as raw bytes rather than
+    /// through the current encoder: a fresh sync, a registration around it, and a region with no
+    /// `dwellThresholdSeconds`, which now decodes as dwell disabled.
+    private struct LegacyFixture {
+        let dir: URL
+        let storage: GeofenceStorage
+        let dateUtil: DateUtilStub
+    }
+
+    private func makeLegacyFixture() throws -> LegacyFixture {
+        let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        let json = """
+        {
+          "cachedGeofences": [
+            {
+              "id": "legacy-1",
+              "latitude": 37.0,
+              "longitude": -122.0,
+              "radius": 100,
+              "name": "legacy-1",
+              "transitionTypes": ["enter", "exit"],
+              "lastUpdated": 1700000000,
+              "geosetIds": [],
+              "metadata": {}
+            }
+          ],
+          "lastServerSyncLocation": {"latitude": 37.0, "longitude": -122.0},
+          "lastServerSyncTimestamp": 1700000000,
+          "monitoredGeofenceIds": ["legacy-1"],
+          "movementTriggerCenter": {"latitude": 37.0, "longitude": -122.0},
+          "cachedConfig": {
+            "localRefreshTriggerRadius": 1000,
+            "remoteFetchRefreshTriggerRadius": 3000,
+            "remoteFetchRefreshExpiry": 3600,
+            "duplicateEventsExpiry": 60,
+            "maxBusinessGeofences": 10,
+            "maxMonitoringDistance": 100000
+          }
+        }
+        """
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        try Data(json.utf8).write(to: dir.appendingPathComponent("geofenceState.json"))
+        let dateUtil = DateUtilStub()
+        // 100 s after the recorded sync: fresh against the one-hour expiry.
+        dateUtil.givenNow = Date(timeIntervalSince1970: 1700000100)
+        return LegacyFixture(dir: dir, storage: GeofenceStorage(directoryURL: dir), dateUtil: dateUtil)
+    }
+
+    /// The legacy fixture's config as the server sends it now.
+    private var legacyConfig: GeofenceConfig {
+        GeofenceConfig(
+            localRefreshTriggerRadius: 1000,
+            remoteFetchRefreshTriggerRadius: 3000,
+            remoteFetchRefreshExpiry: 3600,
+            duplicateEventsExpiry: 60,
+            maxBusinessGeofences: 10,
+            maxMonitoringDistance: 100000
+        )
+    }
+
+    /// The legacy fixture's region as the server sends it now.
+    private func currentLegacyRegion(dwellThresholdSeconds: Int) -> Geofence {
+        Geofence(
+            id: "legacy-1",
+            latitude: 37.0,
+            longitude: -122.0,
+            radius: 100,
+            name: "legacy-1",
+            transitionTypes: [.enter, .exit],
+            lastUpdated: Date(timeIntervalSince1970: 1700000000),
+            dwellThresholdSeconds: dwellThresholdSeconds
+        )
+    }
+
+    private func cachedThresholds(_ storage: GeofenceStorage) async -> [Int] {
+        await storage.getCachedGeofences().map(\.dwellThresholdSeconds)
+    }
+
+    @Test
+    func refresh_givenFreshCatalogCachedBeforeDwell_expectOneFetchThenNoneAfterRelaunch() async throws {
+        let fixture = try makeLegacyFixture()
+        defer { try? FileManager.default.removeItem(at: fixture.dir) }
+        let setup = makeCoordinator(storage: fixture.storage, dateUtil: fixture.dateUtil)
+        let response = makeApiResponse(regions: [currentLegacyRegion(dwellThresholdSeconds: 60)], config: legacyConfig)
+        setup.api.fetchNearbyGeofencesClosure = { _, _, completion in completion(.success(response)) }
+
+        let result = await setup.coordinator.refresh(latitude: 37.0, longitude: -122.0, anchorIsLiveFix: true)
+
+        #expect(result.errorOrNil == nil)
+        #expect(setup.api.fetchNearbyGeofencesCallsCount == 1)
+        #expect(await cachedThresholds(fixture.storage) == [60])
+
+        // A new process on the same file: the catalog is current, so ordinary freshness applies.
+        let relaunched = makeCoordinator(storage: GeofenceStorage(directoryURL: fixture.dir), dateUtil: fixture.dateUtil)
+        _ = await relaunched.coordinator.refresh(latitude: 37.0, longitude: -122.0, anchorIsLiveFix: true)
+        #expect(relaunched.api.fetchNearbyGeofencesCallsCount == 0)
+    }
+
+    @Test
+    func refresh_givenCatalogCachedBeforeDwellAndServerSendsNoDwell_expectAcknowledgedAsCurrent() async throws {
+        let fixture = try makeLegacyFixture()
+        defer { try? FileManager.default.removeItem(at: fixture.dir) }
+        let setup = makeCoordinator(storage: fixture.storage, dateUtil: fixture.dateUtil)
+        let response = makeApiResponse(regions: [currentLegacyRegion(dwellThresholdSeconds: 0)], config: legacyConfig)
+        setup.api.fetchNearbyGeofencesClosure = { _, _, completion in completion(.success(response)) }
+
+        _ = await setup.coordinator.refresh(latitude: 37.0, longitude: -122.0, anchorIsLiveFix: true)
+
+        #expect(setup.api.fetchNearbyGeofencesCallsCount == 1)
+        #expect(await cachedThresholds(fixture.storage) == [0])
+        // Dwell disabled by a current server is a real answer, not a reason to keep fetching.
+        let relaunched = makeCoordinator(storage: GeofenceStorage(directoryURL: fixture.dir), dateUtil: fixture.dateUtil)
+        _ = await relaunched.coordinator.refresh(latitude: 37.0, longitude: -122.0, anchorIsLiveFix: true)
+        #expect(relaunched.api.fetchNearbyGeofencesCallsCount == 0)
+    }
+
+    @Test
+    func refresh_givenCatalogCachedBeforeDwellAndFetchFails_expectStateUntouchedAndRetried() async throws {
+        let fixture = try makeLegacyFixture()
+        defer { try? FileManager.default.removeItem(at: fixture.dir) }
+        let stateFile = fixture.dir.appendingPathComponent("geofenceState.json")
+        let setup = makeCoordinator(storage: fixture.storage, dateUtil: fixture.dateUtil)
+        setup.api.fetchNearbyGeofencesClosure = { _, _, completion in completion(.failure(.transport)) }
+        let before = try Data(contentsOf: stateFile)
+
+        let result = await setup.coordinator.refresh(latitude: 37.0, longitude: -122.0, anchorIsLiveFix: true)
+
+        #expect(result.errorOrNil == .fetchFailed(.transport))
+        #expect(setup.api.fetchNearbyGeofencesCallsCount == 1)
+        // The pass would otherwise have skipped, which writes nothing.
+        #expect(try Data(contentsOf: stateFile) == before)
+
+        let response = makeApiResponse(regions: [currentLegacyRegion(dwellThresholdSeconds: 60)], config: legacyConfig)
+        setup.api.fetchNearbyGeofencesClosure = { _, _, completion in completion(.success(response)) }
+        _ = await setup.coordinator.refresh(latitude: 37.0, longitude: -122.0, anchorIsLiveFix: true)
+        #expect(setup.api.fetchNearbyGeofencesCallsCount == 2)
+        #expect(await cachedThresholds(fixture.storage) == [60])
+    }
+
+    @Test
+    func refresh_givenCatalogCachedBeforeDwellFetchFailsBeyondLocalRadius_expectCachedRerankStillRuns() async throws {
+        let fixture = try makeLegacyFixture()
+        defer { try? FileManager.default.removeItem(at: fixture.dir) }
+        let setup = makeCoordinator(storage: fixture.storage, dateUtil: fixture.dateUtil)
+        setup.api.fetchNearbyGeofencesClosure = { _, _, completion in completion(.failure(.transport)) }
+
+        // ~2 km north: beyond the 1 km local radius, inside the 3 km refetch radius.
+        let result = await setup.coordinator.refresh(latitude: 37.018, longitude: -122.0, anchorIsLiveFix: true)
+
+        #expect(result.errorOrNil == .fetchFailed(.transport))
+        #expect(setup.api.fetchNearbyGeofencesCallsCount == 1)
+        #expect(await fixture.storage.getLastRegistrationCenter()?.latitude == 37.018)
+        #expect(await cachedThresholds(fixture.storage) == [0])
+    }
+
+    @Test
+    func refresh_givenCatalogCachedBeforeDwellAndUnreadableResponse_expectCacheKeptAndRetried() async throws {
+        let fixture = try makeLegacyFixture()
+        defer { try? FileManager.default.removeItem(at: fixture.dir) }
+        let setup = makeCoordinator(storage: fixture.storage, dateUtil: fixture.dateUtil)
+        let unreadable = makeApiResponse(regions: [makeRegion(id: "broken", latitude: 91, longitude: -122)], config: legacyConfig)
+        setup.api.fetchNearbyGeofencesClosure = { _, _, completion in completion(.success(unreadable)) }
+
+        let result = await setup.coordinator.refresh(latitude: 37.0, longitude: -122.0, anchorIsLiveFix: true)
+
+        #expect(result.errorOrNil == .fetchFailed(.decoding))
+        #expect(setup.api.fetchNearbyGeofencesCallsCount == 1)
+        #expect(await fixture.storage.getCachedGeofences().map(\.id) == ["legacy-1"])
+
+        let response = makeApiResponse(regions: [currentLegacyRegion(dwellThresholdSeconds: 60)], config: legacyConfig)
+        setup.api.fetchNearbyGeofencesClosure = { _, _, completion in completion(.success(response)) }
+        _ = await setup.coordinator.refresh(latitude: 37.0, longitude: -122.0, anchorIsLiveFix: true)
+        #expect(setup.api.fetchNearbyGeofencesCallsCount == 2)
+        #expect(await cachedThresholds(fixture.storage) == [60])
+    }
+
+    @Test
+    func refresh_givenCatalogCachedBeforeDwellAndUserChangesDuringFetch_expectResponseNotCached() async throws {
+        let fixture = try makeLegacyFixture()
+        defer { try? FileManager.default.removeItem(at: fixture.dir) }
+        let setup = makeCoordinator(storage: fixture.storage, dateUtil: fixture.dateUtil)
+        let contextStore = setup.contextStore
+        let response = makeApiResponse(regions: [currentLegacyRegion(dwellThresholdSeconds: 60)], config: legacyConfig)
+        // Only user-1's fetch succeeds, so the retry for user-2 cannot cache anything either way.
+        setup.api.fetchNearbyGeofencesClosure = { _, _, completion in
+            if contextStore.currentUserId == "user-1" {
+                contextStore.setUserId("user-2")
+                completion(.success(response))
+            } else {
+                completion(.failure(.transport))
+            }
+        }
+
+        _ = await setup.coordinator.refresh(latitude: 37.0, longitude: -122.0, anchorIsLiveFix: true)
+
+        #expect(setup.api.fetchNearbyGeofencesCallsCount >= 1)
+        #expect(await cachedThresholds(fixture.storage) == [0])
+    }
+
+    @Test
+    func handleMovement_givenCatalogCachedBeforeDwellWithinRefetchRadius_expectOneFetch() async throws {
+        let fixture = try makeLegacyFixture()
+        defer { try? FileManager.default.removeItem(at: fixture.dir) }
+        let setup = makeCoordinator(storage: fixture.storage, dateUtil: fixture.dateUtil)
+        let response = makeApiResponse(regions: [currentLegacyRegion(dwellThresholdSeconds: 60)], config: legacyConfig)
+        setup.api.fetchNearbyGeofencesClosure = { _, _, completion in completion(.success(response)) }
+
+        // ~200 m: inside both radii, so ordinarily a polygon wake pass with no fetch.
+        let result = await setup.coordinator.handleMovement(latitude: 37.0018, longitude: -122.0, anchorIsLiveFix: true, heldFix: nil)
+
+        #expect(result.errorOrNil == nil)
+        #expect(setup.api.fetchNearbyGeofencesCallsCount == 1)
+        #expect(await cachedThresholds(fixture.storage) == [60])
+    }
+
+    @Test
+    func handleMovement_givenCatalogCachedBeforeDwellAndFetchFails_expectOrdinaryTierAndRetry() async throws {
+        let fixture = try makeLegacyFixture()
+        defer { try? FileManager.default.removeItem(at: fixture.dir) }
+        let setup = makeCoordinator(storage: fixture.storage, dateUtil: fixture.dateUtil)
+        setup.api.fetchNearbyGeofencesClosure = { _, _, completion in completion(.failure(.transport)) }
+
+        let result = await setup.coordinator.handleMovement(latitude: 37.0018, longitude: -122.0, anchorIsLiveFix: true, heldFix: nil)
+
+        #expect(result.errorOrNil == .fetchFailed(.transport))
+        #expect(setup.api.fetchNearbyGeofencesCallsCount == 1)
+        // The wake pass this movement would have taken keeps the registration centre; a cached
+        // re-rank would have moved it to the movement.
+        #expect(await fixture.storage.getLastRegistrationCenter()?.latitude == 37.0)
+        #expect(await cachedThresholds(fixture.storage) == [0])
+
+        _ = await setup.coordinator.handleMovement(latitude: 37.0018, longitude: -122.0, anchorIsLiveFix: true, heldFix: nil)
+        #expect(setup.api.fetchNearbyGeofencesCallsCount == 2)
+    }
+
     // MARK: - Guards
 
     @Test
@@ -3564,6 +3801,7 @@ private actor SpyGeofenceSyncStorage: GeofenceSyncStorage {
         case getLastSync
         case getLastRegistrationCenter
         case getRegisteredBusinessIds
+        case cachedCatalogPredatesDwell
         case setCachedGeofences
         case setCachedConfig
         case recordSync
@@ -3621,6 +3859,11 @@ private actor SpyGeofenceSyncStorage: GeofenceSyncStorage {
     func getRegisteredBusinessIds() async -> Set<String> {
         operations.append(.getRegisteredBusinessIds)
         return await underlying.getRegisteredBusinessIds()
+    }
+
+    func cachedCatalogPredatesDwell() async -> Bool {
+        operations.append(.cachedCatalogPredatesDwell)
+        return await underlying.cachedCatalogPredatesDwell()
     }
 
     func setCachedGeofences(_ regions: [Geofence]) async {

@@ -14,6 +14,139 @@ struct GeofenceStorageTests {
         GeofenceStorage(fileManager: .default, directoryURL: directory)
     }
 
+    // MARK: - Catalog cached before dwell support
+
+    private static let legacyRegionsJSON = """
+    [
+      {
+        "id": "legacy-1",
+        "latitude": 37.0,
+        "longitude": -122.0,
+        "radius": 100,
+        "name": "legacy-1",
+        "transitionTypes": ["enter", "exit"],
+        "lastUpdated": 1700000000,
+        "geosetIds": [],
+        "metadata": {}
+      }
+    ]
+    """
+
+    /// Raw bytes as a pre-dwell SDK (integration base e6590003) wrote them, never the current
+    /// encoder: regions without `dwellThresholdSeconds`, state without `catalogVersion`.
+    private func writeLegacyState(to dir: URL, regionsJSON: String) throws {
+        let json = """
+        {
+          "cachedGeofences": \(regionsJSON),
+          "lastServerSyncLocation": {"latitude": 37.0, "longitude": -122.0},
+          "lastServerSyncTimestamp": 1700000000,
+          "monitoredGeofenceIds": ["legacy-1"],
+          "movementTriggerCenter": {"latitude": 37.0, "longitude": -122.0},
+          "cachedConfig": {
+            "localRefreshTriggerRadius": 1000,
+            "remoteFetchRefreshTriggerRadius": 3000,
+            "remoteFetchRefreshExpiry": 3600,
+            "duplicateEventsExpiry": 60,
+            "maxBusinessGeofences": 10,
+            "maxMonitoringDistance": 100000
+          }
+        }
+        """
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        try Data(json.utf8).write(to: dir.appendingPathComponent("geofenceState.json"))
+    }
+
+    @Test
+    func legacyCatalog_expectDecodedWithDwellDisabledAndReportedAsPredatingDwell() async throws {
+        let dir = makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        try writeLegacyState(to: dir, regionsJSON: Self.legacyRegionsJSON)
+        let storage = makeStorage(directory: dir)
+
+        let regions = await storage.getCachedGeofences()
+        #expect(regions.map(\.id) == ["legacy-1"])
+        #expect(regions.map(\.dwellThresholdSeconds) == [0])
+        #expect(await storage.getCachedConfig()?.remoteFetchRefreshExpiry == 3600)
+        #expect(await storage.getLastSync()?.timestamp == Date(timeIntervalSince1970: 1700000000))
+        #expect(await storage.getRegisteredBusinessIds() == ["legacy-1"])
+        #expect(await storage.getLastRegistrationCenter()?.latitude == 37.0)
+        #expect(await storage.cachedCatalogPredatesDwell() == true)
+    }
+
+    @Test
+    func setCachedGeofences_givenLegacyCatalog_expectCurrentAcrossReopen() async throws {
+        let dir = makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        try writeLegacyState(to: dir, regionsJSON: Self.legacyRegionsJSON)
+        let storage = makeStorage(directory: dir)
+
+        await storage.setCachedGeofences(await storage.getCachedGeofences())
+
+        #expect(await storage.cachedCatalogPredatesDwell() == false)
+        #expect(await makeStorage(directory: dir).cachedCatalogPredatesDwell() == false)
+    }
+
+    @Test
+    func setCachedGeofences_givenEmptyServerCatalog_expectStampedCurrent() async {
+        let dir = makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let storage = makeStorage(directory: dir)
+
+        await storage.setCachedGeofences([])
+
+        #expect(await storage.loadFromDisk()?.catalogVersion == GeofenceState.currentCatalogVersion)
+    }
+
+    @Test
+    func clearUserScopedState_expectCatalogVersionKeptWithCatalog() async throws {
+        let currentDir = makeTempDirectory()
+        let legacyDir = makeTempDirectory()
+        defer {
+            try? FileManager.default.removeItem(at: currentDir)
+            try? FileManager.default.removeItem(at: legacyDir)
+        }
+        let current = makeStorage(directory: currentDir)
+        await current.setCachedGeofences([
+            Geofence(
+                id: "current-1",
+                latitude: 37.0,
+                longitude: -122.0,
+                radius: 100,
+                name: nil,
+                transitionTypes: [.enter],
+                lastUpdated: Date(timeIntervalSince1970: 1700000000)
+            )
+        ])
+        try writeLegacyState(to: legacyDir, regionsJSON: Self.legacyRegionsJSON)
+        let legacy = makeStorage(directory: legacyDir)
+
+        await current.clearUserScopedState()
+        await legacy.clearUserScopedState()
+
+        #expect(await current.getCachedGeofences().map(\.id) == ["current-1"])
+        #expect(await current.cachedCatalogPredatesDwell() == false)
+        #expect(await legacy.getCachedGeofences().map(\.id) == ["legacy-1"])
+        #expect(await legacy.cachedCatalogPredatesDwell() == true)
+    }
+
+    @Test
+    func cachedCatalogPredatesDwell_givenNoRegionsToUpgrade_expectFalse() async throws {
+        let missingDir = makeTempDirectory()
+        let corruptDir = makeTempDirectory()
+        let emptyDir = makeTempDirectory()
+        defer {
+            try? FileManager.default.removeItem(at: corruptDir)
+            try? FileManager.default.removeItem(at: emptyDir)
+        }
+        try FileManager.default.createDirectory(at: corruptDir, withIntermediateDirectories: true)
+        try Data("not json".utf8).write(to: corruptDir.appendingPathComponent("geofenceState.json"))
+        try writeLegacyState(to: emptyDir, regionsJSON: "[]")
+
+        #expect(await makeStorage(directory: missingDir).cachedCatalogPredatesDwell() == false)
+        #expect(await makeStorage(directory: corruptDir).cachedCatalogPredatesDwell() == false)
+        #expect(await makeStorage(directory: emptyDir).cachedCatalogPredatesDwell() == false)
+    }
+
     // MARK: - Cooldown operations
 
     @Test
