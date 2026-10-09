@@ -72,6 +72,7 @@ extension GeofenceDwellCoordinator {
     /// `handleBoundary` pairs it with `exitRoutingEnded` when it returns.
     func recordExitEvent(_ exit: GeofenceExitMark, geofenceId: String) {
         recordExit(exit, geofenceId: geofenceId)
+        pendingExitCallbacks[geofenceId]?[exit.date]?.recorded = true
         exitRoutingBegan(at: exit.date, geofenceId: geofenceId)
     }
 
@@ -234,7 +235,8 @@ extension GeofenceDwellCoordinator {
         return ended.visit
     }
 
-    /// A noted EXIT callback has been routed, and no delivery of it is left. If its routing
+    /// Called only when the pending flag says this callback's routing never recorded an EXIT,
+    /// even after a later EXIT subsumes its mark. No delivery of this callback is left. If its routing
     /// recorded no EXIT event of that date — the circle was since replaced, or the fence is no
     /// longer cached — nothing will claim a visit remembered for it: the date is dropped, and with
     /// the last date the visit. Runs before the routing count is pruned, so the ENTERs that EXIT

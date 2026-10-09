@@ -217,6 +217,7 @@ struct GeofenceSyncCoordinatorTests {
 
         // A new process on the same file: the catalog is current, so ordinary freshness applies.
         let relaunched = makeCoordinator(storage: GeofenceStorage(directoryURL: fixture.dir), dateUtil: fixture.dateUtil)
+        relaunched.api.fetchNearbyGeofencesClosure = { _, _, completion in completion(.success(response)) }
         _ = await relaunched.coordinator.refresh(latitude: 37.0, longitude: -122.0, anchorIsLiveFix: true)
         #expect(relaunched.api.fetchNearbyGeofencesCallsCount == 0)
     }
@@ -235,6 +236,7 @@ struct GeofenceSyncCoordinatorTests {
         #expect(await cachedThresholds(fixture.storage) == [0])
         // Dwell disabled by a current server is a real answer, not a reason to keep fetching.
         let relaunched = makeCoordinator(storage: GeofenceStorage(directoryURL: fixture.dir), dateUtil: fixture.dateUtil)
+        relaunched.api.fetchNearbyGeofencesClosure = { _, _, completion in completion(.success(response)) }
         _ = await relaunched.coordinator.refresh(latitude: 37.0, longitude: -122.0, anchorIsLiveFix: true)
         #expect(relaunched.api.fetchNearbyGeofencesCallsCount == 0)
     }

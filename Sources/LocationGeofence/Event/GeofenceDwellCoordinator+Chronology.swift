@@ -118,6 +118,8 @@ struct GeofenceEnterMarks {
 struct GeofencePendingExitCallback {
     var marks: [GeofenceExitMark]
     var count: Int
+    /// Whether routing recorded this EXIT, even if a later EXIT has since subsumed its mark.
+    var recorded = false
 }
 
 /// Ordering boundary events against visits across wall-clock steps, split from the coordinator's
@@ -198,7 +200,7 @@ extension GeofenceDwellCoordinator {
             pending.count -= 1
             pendingExitCallbacks[geofenceId]?[occurredAt] = pending.count > 0 ? pending : nil
             if pendingExitCallbacks[geofenceId]?.isEmpty == true { pendingExitCallbacks[geofenceId] = nil }
-            if pending.count <= 0 { forgetUnrecordedExitCallback(at: occurredAt, geofenceId: geofenceId) }
+            if pending.count <= 0, !pending.recorded { forgetUnrecordedExitCallback(at: occurredAt, geofenceId: geofenceId) }
         }
         exitRoutingEnded(at: occurredAt, geofenceId: geofenceId)
     }

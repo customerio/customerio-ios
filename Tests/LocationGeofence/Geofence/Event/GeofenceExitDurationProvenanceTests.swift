@@ -1119,6 +1119,79 @@ struct GeofenceExitDurationProvenanceTests {
         #expect(row.visitDurationSeconds == 80)
     }
 
+    /// The classic monitor dates each callback at receipt, so a second ENTER two seconds after the
+    /// first, with no EXIT between, reads the same whether it repeats the first or follows an EXIT
+    /// that was lost. It starts a stay of its own: the EXIT is timed from it, a true repeat costing
+    /// the two seconds, never a stay across an excursion nothing saw. No DWELL comes from either.
+    /// Receipt dates are supplied at the resolver boundary the binder uses; the coordinator,
+    /// tracker, storage and outbox are real. This does not reproduce native duplicate callbacks.
+    @Test
+    func classicEnterRepeatedWithNoExitBetweenStartsItsOwnStay() async throws {
+        let files = Files()
+        let process = await Process(files: files)
+        let id = Self.dwellCircle.id
+        await process.crossing(.enter, Self.dwellCircle)
+        let first = try #require(await process.storage.getDwellVisit(geofenceId: id))
+        files.advance(2)
+        let repeated = files.clock.wall
+        await process.crossing(.enter, Self.dwellCircle, at: repeated)
+        let second = try #require(await process.storage.getDwellVisit(geofenceId: id))
+        files.advance(60)
+
+        await process.crossing(.exit, Self.dwellCircle)
+
+        #expect(second.visitId != first.visitId)
+        let rows = await process.exitRows()
+        try #require(rows.count == 1)
+        #expect(rows[0].visitId == second.visitId)
+        #expect(rows[0].enteredAt.map { Int($0.timeIntervalSince1970) } == Int(repeated.timeIntervalSince1970))
+        #expect(rows[0].visitDurationSeconds == 60)
+        #expect(await process.rows(.dwell).isEmpty)
+        process.dwell.cancelEvidence(for: id)
+    }
+
+    /// An EXIT callback is noted; its routing records the EXIT and drops it (received for another
+    /// user) before reading the store. A re-entry replaces the visit, which is remembered for that
+    /// EXIT. The next stay's EXIT subsumes its mark before the callback ends. The EXIT was recorded,
+    /// so the callback ending forgets nothing: a later exact-date copy still times the visit it
+    /// ended. This exercises internal chronology at the resolver boundary, with scripted dates
+    /// and the existing overlap tests' redelivery seam, not native callback acceptance.
+    @Test(arguments: [false, true])
+    func recordedExitWhoseMarkIsSubsumedStillTimesTheVisitRememberedForIt(duplicateNote: Bool) async throws {
+        let files = Files()
+        let process = await Process(files: files)
+        let id = Self.exitOnly.id
+        let entry = files.clock.wall
+        await process.crossing(.enter, Self.exitOnly)
+        let first = try #require(await process.storage.getDwellVisit(geofenceId: id))
+        files.advance(60)
+        let exitedAt = files.clock.wall
+        process.dwell.noteExitCallback(geofenceId: id, occurredAt: exitedAt)
+        await process.crossing(.exit, Self.exitOnly, at: exitedAt, receivedFor: "someone-else")
+        if duplicateNote { process.dwell.noteExitCallback(geofenceId: id, occurredAt: exitedAt) }
+        files.advance(1)
+        let reentry = files.clock.wall
+        process.dwell.noteEnter(geofenceId: id, occurredAt: reentry, crossing: true)
+        await process.crossing(.enter, Self.exitOnly, at: reentry)
+        let reentered = try #require(await process.storage.getDwellVisit(geofenceId: id))
+        try #require(process.dwell.exitDuration.visitsEndedByPendingExit[id]?.exitDates == [exitedAt])
+        files.advance(59)
+        await process.crossing(.exit, Self.exitOnly)
+        try #require(process.dwell.exitMarks[id]?.contains { $0.date == exitedAt } == false)
+        process.dwell.exitCallbackRouted(geofenceId: id, occurredAt: exitedAt)
+        if duplicateNote { process.dwell.exitCallbackRouted(geofenceId: id, occurredAt: exitedAt) }
+
+        await process.crossing(.exit, Self.exitOnly, at: exitedAt)
+
+        let rows = await process.exitRows()
+        try #require(rows.count == 2)
+        let copy = try #require(rows.first { abs($0.timestamp.timeIntervalSince(exitedAt)) < 0.001 })
+        #expect(copy.visitId == first.visitId)
+        #expect(copy.enteredAt.map { Int($0.timeIntervalSince1970) } == Int(entry.timeIntervalSince1970))
+        #expect(copy.visitDurationSeconds == 60)
+        #expect(rows.first { $0.visitId == reentered.visitId }?.visitDurationSeconds == 59)
+    }
+
     // MARK: - Files and processes
 
     /// What survives a process: the files, and the device's clock.
