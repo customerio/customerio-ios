@@ -48,9 +48,8 @@ jobs:
       github.event.pull_request.head.repo.full_name == github.repository &&
       github.event.pull_request.user.login != 'dependabot[bot]' &&
       (github.event.action != 'edited' || github.event.changes.base != null))
-    # xcode-27 is a single-Xcode preview image: the label selects the toolchain and
-    # the action is passed an empty xcode-version so it uses the image default. Xcode 27
-    # and its simulator runtime ship preinstalled on this image (no download at run time).
+    # The xcode-27 image installs several Xcode 27 builds and GitHub can move its default,
+    # so the version is pinned.
     runs-on: xcode-27
     timeout-minutes: 60
     permissions:
@@ -62,7 +61,7 @@ jobs:
         id: generate-sdk-size-report
         with:
           GOOGLE_CLOUD_MATCH_READONLY_SERVICE_ACCOUNT_B64: ${{ secrets.GOOGLE_CLOUD_MATCH_READONLY_SERVICE_ACCOUNT_B64 }}
-          xcode-version: '' # single-Xcode image; setup-xcode cannot resolve its version string
+          xcode-version: '27.0'
           baseline-ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event_name == 'push' && github.sha || '' }}
 
       - name: Find existing "SDK size reports" comment

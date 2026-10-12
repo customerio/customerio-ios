@@ -7,7 +7,7 @@ inputs:
     description: 'Maps to the secret, GOOGLE_CLOUD_MATCH_READONLY_SERVICE_ACCOUNT_B64. Used for code signing. See the Fastlane config files to learn more.'
     required: true
   xcode-version:
-    description: 'Xcode version to select. Pass an empty string on single-Xcode images such as xcode-27 to use the image default. macos-26 ships several Xcodes and its default moves, so callers there keep a pin.'
+    description: 'Xcode version to select, e.g. "27.0". Runner images ship several Xcodes and GitHub moves their defaults, so callers pin. An empty string skips selection and uses the image default.'
     required: false
     default: '26.6'
   baseline-ref:
@@ -34,8 +34,7 @@ runs:
     shell: bash
     run: test $RUNNER_OS = 'macOS'
 
-  # Skipped when xcode-version is empty, so single-Xcode images such as xcode-27 use
-  # their default. setup-xcode cannot resolve the version string on those images.
+  # Skipped when xcode-version is empty, so the build uses the image's default Xcode.
   - name: Install Target Xcode version
     if: ${{ inputs.xcode-version != '' }}
     uses: maxim-lobanov/setup-xcode@60606e260d2fc5762a71e64e74b2174e8ea3c8bd # v1.6.0

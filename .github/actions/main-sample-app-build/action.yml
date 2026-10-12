@@ -11,7 +11,7 @@ inputs:
     description: 'Maps to the secret, GOOGLE_CLOUD_MATCH_READONLY_SERVICE_ACCOUNT_B64. Used for code signing. See the Fastlane config files to learn more.'
     required: true
   xcode-version:
-    description: 'Xcode version to build the main baseline with. Pass an empty string on single-Xcode images such as xcode-27 to build with the image default. Regardless of this value, the baseline cache key is tagged with the Xcode version actually in use (detected at runtime) so size diffs never compare across toolchains.'
+    description: 'Xcode version to build the main baseline with. Pass an empty string to build with the image default. Regardless of this value, the baseline cache key is tagged with the Xcode version actually in use (detected at runtime) so size diffs never compare across toolchains.'
     required: false
     default: '26.6'
   baseline-ref:
@@ -42,8 +42,8 @@ runs:
         baseline_ref="${REQUESTED_BASELINE_REF:-$FALLBACK_BASELINE_REF}"
         echo "BASELINE_REF=$baseline_ref" >> $GITHUB_ENV
         # Tag the baseline cache key with the Xcode version actually in use, detected
-        # at runtime rather than read from an input. The PR/main size report (xcode-27,
-        # image default) and the release lane (macos-26, pinned) land in separate cache
+        # at runtime rather than read from an input. The PR/main size report (xcode-27)
+        # and the release lane (macos-26) pin different Xcodes and land in separate cache
         # namespaces — a size diff never compares across toolchains, and the baseline
         # re-warms on the first main run after the selected Xcode changes.
         xcode_version="$(xcodebuild -version 2>/dev/null | awk 'NR==1 {print $2}')"
