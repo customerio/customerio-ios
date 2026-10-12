@@ -31,7 +31,10 @@ jobs:
       - uses: ./.github/actions/generate-sdk-size-report
         id: generate-sdk-size-report
         with:
-          GOOGLE_CLOUD_MATCH_READONLY_SERVICE_ACCOUNT_B64: ${{ secrets.GOOGLE_CLOUD_MATCH_READONLY_SERVICE_ACCOUNT_B64 }} 
+          GOOGLE_CLOUD_MATCH_READONLY_SERVICE_ACCOUNT_B64: ${{ secrets.GOOGLE_CLOUD_MATCH_READONLY_SERVICE_ACCOUNT_B64 }}
+          # Pinned: macos-26 ships several Xcodes and GitHub moves its default, so the
+          # release report would otherwise follow the image default silently.
+          xcode-version: '26.6'
 
   deploy-git-tag:
     name: Deploy git tag

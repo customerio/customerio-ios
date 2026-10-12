@@ -11,7 +11,7 @@ inputs:
     description: 'Maps to the secret, GOOGLE_CLOUD_MATCH_READONLY_SERVICE_ACCOUNT_B64. Used for code signing. See the Fastlane config files to learn more.'
     required: true
   xcode-version:
-    description: 'Xcode version to build the main baseline with. Pass an empty string to build with the runner image''s default Xcode (one Xcode per image). Regardless of this value, the baseline cache key is tagged with the Xcode version actually in use (detected at runtime) so size diffs never compare across toolchains.'
+    description: 'Xcode version to build the main baseline with. Pass an empty string on single-Xcode images such as xcode-27 to build with the image default. Regardless of this value, the baseline cache key is tagged with the Xcode version actually in use (detected at runtime) so size diffs never compare across toolchains.'
     required: false
     default: '26.6'
   baseline-ref:
@@ -42,10 +42,10 @@ runs:
         baseline_ref="${REQUESTED_BASELINE_REF:-$FALLBACK_BASELINE_REF}"
         echo "BASELINE_REF=$baseline_ref" >> $GITHUB_ENV
         # Tag the baseline cache key with the Xcode version actually in use, detected
-        # from the runner image rather than an input. Each runner image ships one
-        # Xcode, so the PR/main size report (xcode-27) and any macOS-26 caller land in
-        # separate cache namespaces — a size diff never compares across toolchains, and
-        # the xcode-27 baseline re-warms on the first main run after the image changes.
+        # at runtime rather than read from an input. The PR/main size report (xcode-27,
+        # image default) and the release lane (macos-26, pinned) land in separate cache
+        # namespaces — a size diff never compares across toolchains, and the baseline
+        # re-warms on the first main run after the selected Xcode changes.
         xcode_version="$(xcodebuild -version 2>/dev/null | awk 'NR==1 {print $2}')"
         if [ -n "$xcode_version" ]; then
           echo "CACHE_KEY_BASE=APN-UIKit-build-${baseline_ref}-${xcode_version}-" >> $GITHUB_ENV

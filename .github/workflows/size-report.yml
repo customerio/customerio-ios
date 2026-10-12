@@ -2,18 +2,38 @@ name: SDK size report
 
 on:
   pull_request:
+    # `edited` re-runs the report when a PR is retargeted (the baseline is the
+    # base commit); other edits are skipped by the job condition below.
+    types: [opened, synchronize, reopened, edited]
     paths:
       - 'Sources/**'
       - 'Package.swift'
       - 'Package.resolved'
       - '**/*.podspec'
+      # The measured app and the lanes that build it
+      - 'Apps/APN-UIKit/**'
+      - 'Apps/Common/**'
+      - 'Apps/fastlane/**'
+      # The size tooling itself; deploy-sdk.yml needs it to tag a release
+      - '.github/actions/generate-sdk-size-report/**'
+      - '.github/actions/build-sample-app/**'
+      - '.github/actions/main-sample-app-build/**'
+      - '.github/actions/install-bloaty-from-source/**'
       - '.github/workflows/size-report.yml'
+      - '!**/*.md'
   push:
     branches: [main]
   workflow_dispatch: # allow manual run
 
-concurrency: # cancel a superseded in-flight size run so it doesn't hold a macOS slot
-  group: ${{ github.workflow }}-${{ github.ref }}
+concurrency:
+  # Cancel a superseded in-flight size run so it doesn't hold a macOS slot. An edit
+  # that doesn't change the base gets its own group, so it can't cancel an in-flight
+  # size run; its job is skipped below.
+  group: >-
+    ${{ github.workflow }}-${{ github.ref }}-${{
+      github.event.action == 'edited' && github.event.changes.base == null &&
+      'metadata' || 'validation'
+    }}
   cancel-in-progress: true
 
 jobs:
@@ -26,10 +46,11 @@ jobs:
       (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
       (github.event_name == 'pull_request' &&
       github.event.pull_request.head.repo.full_name == github.repository &&
-      github.event.pull_request.user.login != 'dependabot[bot]')
-    # One Xcode per runner image: the `xcode-27` label selects the toolchain, so
-    # the action no longer pins Xcode with setup-xcode. Xcode 27 and its
-    # simulator runtime ship preinstalled on this image (no download at run time).
+      github.event.pull_request.user.login != 'dependabot[bot]' &&
+      (github.event.action != 'edited' || github.event.changes.base != null))
+    # xcode-27 is a single-Xcode preview image: the label selects the toolchain and
+    # the action is passed an empty xcode-version so it uses the image default. Xcode 27
+    # and its simulator runtime ship preinstalled on this image (no download at run time).
     runs-on: xcode-27
     timeout-minutes: 60
     permissions:
@@ -41,6 +62,7 @@ jobs:
         id: generate-sdk-size-report
         with:
           GOOGLE_CLOUD_MATCH_READONLY_SERVICE_ACCOUNT_B64: ${{ secrets.GOOGLE_CLOUD_MATCH_READONLY_SERVICE_ACCOUNT_B64 }}
+          xcode-version: '' # single-Xcode image; setup-xcode cannot resolve its version string
           baseline-ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event_name == 'push' && github.sha || '' }}
 
       - name: Find existing "SDK size reports" comment
