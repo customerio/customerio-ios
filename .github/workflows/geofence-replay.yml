@@ -73,7 +73,7 @@ jobs:
     name: Replay recorded drives
     needs: detect
     if: needs.detect.outputs.run == 'true'
-    runs-on: macos-26
+    runs-on: xcode-27
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
@@ -117,7 +117,7 @@ jobs:
       - name: Setup iOS
         uses: customerio/mobile-ci-tools/github-actions/ios/setup-ios/v1@main
         with:
-          xcode-version: '26.6'
+          xcode-version: '27.0'
 
       # Without `TEST_RUNNER_` the simulator never sees the variable. Output goes to a file: a
       # failing drive's report can carry corpus content.
@@ -128,7 +128,7 @@ jobs:
           set +e
           xcodebuild test \
             -scheme Customer.io-Package \
-            -destination 'platform=iOS Simulator,name=iPhone 17,OS=26.2' \
+            -destination 'platform=iOS Simulator,name=iPhone 17,OS=27.0' \
             -only-testing:LocationGeofenceTests/ScenarioReplayTests \
             -resultBundlePath "$RUNNER_TEMP/replay.xcresult" \
             -derivedDataPath .build/derivedData \
