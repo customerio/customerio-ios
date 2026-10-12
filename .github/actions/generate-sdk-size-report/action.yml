@@ -7,7 +7,7 @@ inputs:
     description: 'Maps to the secret, GOOGLE_CLOUD_MATCH_READONLY_SERVICE_ACCOUNT_B64. Used for code signing. See the Fastlane config files to learn more.'
     required: true
   xcode-version:
-    description: 'Xcode version to install. Pinned so every size report and the main-branch baseline it is diffed against are built with the same toolchain — the cache key for the stored main build includes this value.'
+    description: 'Xcode version to select, e.g. "27.0". Runner images ship several Xcodes and GitHub moves their defaults, so callers pin. An empty string skips selection and uses the image default.'
     required: false
     default: '26.6'
   baseline-ref:
@@ -34,7 +34,9 @@ runs:
     shell: bash
     run: test $RUNNER_OS = 'macOS'
 
+  # Skipped when xcode-version is empty, so the build uses the image's default Xcode.
   - name: Install Target Xcode version
+    if: ${{ inputs.xcode-version != '' }}
     uses: maxim-lobanov/setup-xcode@60606e260d2fc5762a71e64e74b2174e8ea3c8bd # v1.6.0
     with:
       xcode-version: ${{ inputs.xcode-version }}
@@ -71,6 +73,7 @@ runs:
     with:
       set-latest-main-build: ${{ steps.build-sample-app.outputs.app-xcarchive-name }}
       GOOGLE_CLOUD_MATCH_READONLY_SERVICE_ACCOUNT_B64: ${{ inputs.GOOGLE_CLOUD_MATCH_READONLY_SERVICE_ACCOUNT_B64 }}
+      # The baseline cache key is tagged with the detected Xcode version inside this action.
       xcode-version: ${{ inputs.xcode-version }}
       baseline-ref: ${{ inputs.baseline-ref }}
 
