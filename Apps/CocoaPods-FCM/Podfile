@@ -3,6 +3,9 @@ use_frameworks!
 
 require_relative '../../scripts/cocoapods_deployment_target'
 
+# The "test cocoapods FID" scheme builds these to register with the Firebase Installation ID
+project 'test cocoapods', 'Debug-FID' => :debug, 'Release-FID' => :release
+
 # Always install the SDK from the local source code so the sample app tests this specific commit of the code. 
 sdk_local_path = File.join(File.dirname(__FILE__), '../../')
 
@@ -28,7 +31,8 @@ target 'test cocoapods' do
   pod 'CustomerIOMessagingPushAPN', :path => sdk_local_path
   pod 'CustomerIOTrackingMigration', :path => sdk_local_path
 
-  pod 'CioFirebaseWrapper', '~> 1.0.0'
+  # TEMPORARY: FID registration is only on the wrapper's feature branch. Revert to a version before merging to main.
+  pod 'CioFirebaseWrapper', :git => 'https://github.com/customerio/customerio-ios-fcm.git', :branch => 'feature/firebase-installation-id'
 
   # The "CustomerIOMessagingPushFCM" SDK installs the FCM SDK for you, defaulting to the latest version. 
   # If your app needs to use a specific version of the FCM SDK, you can add the line below to your app's Podfile 
