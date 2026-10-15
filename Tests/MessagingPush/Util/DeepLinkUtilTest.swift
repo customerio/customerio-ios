@@ -30,9 +30,10 @@ class DeepLinkUtilTest: UnitTest {
         XCTAssertEqual(uiKitMock.openCallsCount, 1)
     }
 
-    func test_handleDeepLink_givenHostAppDoesNotHandleLink_expectLogDeepLinkHandledExternally() {
+    func test_handleDeepLink_givenSystemOpensLink_expectLogDeepLinkHandledExternally() {
         let url = URL(string: "https://customer.io")!
         uiKitMock.continueNSUserActivityReturnValue = false
+        uiKitMock.openClosure = { _, completion in completion(true) }
 
         deepLinkUtil.handleDeepLink(url)
 
@@ -40,6 +41,27 @@ class DeepLinkUtilTest: UnitTest {
         XCTAssertEqual(loggerMock.logHandlingNotificationDeepLinkReceivedArguments, url)
 
         XCTAssertEqual(loggerMock.logDeepLinkHandledExternallyCallsCount, 1)
+        XCTAssertEqual(loggerMock.logDeepLinkWasNotHandledCallsCount, 0)
+    }
+
+    func test_handleDeepLink_givenSystemCannotOpenLink_expectLogDeepLinkWasNotHandled() {
+        let url = URL(string: "cio-nowhere://x")!
+        uiKitMock.continueNSUserActivityReturnValue = false
+        uiKitMock.openClosure = { _, completion in completion(false) }
+
+        deepLinkUtil.handleDeepLink(url)
+
+        XCTAssertEqual(loggerMock.logDeepLinkWasNotHandledCallsCount, 1)
+        XCTAssertEqual(loggerMock.logDeepLinkHandledExternallyCallsCount, 0)
+    }
+
+    func test_handleDeepLink_givenSystemHasNotAnswered_expectNoOutcomeLogged() {
+        uiKitMock.continueNSUserActivityReturnValue = false
+
+        deepLinkUtil.handleDeepLink(URL(string: "https://customer.io")!)
+
+        XCTAssertEqual(loggerMock.logDeepLinkHandledExternallyCallsCount, 0)
+        XCTAssertEqual(loggerMock.logDeepLinkWasNotHandledCallsCount, 0)
     }
 
     func test_handleDeepLink_givenHostAppHandlesLink_expectDoNotOpenLinkSystemCall() {
