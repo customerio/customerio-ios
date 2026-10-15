@@ -125,7 +125,7 @@ class MessagingInAppImplementationTest: IntegrationTest {
     }
 
     func test_initialize_givenPublicKey_expectInitializeWithSiteIdAndPublicKey() async {
-        let givenKey = "wk_us_\(String.random)"
+        let givenKey = "pk_us_\(String.random)"
         diGraphShared.backgroundDeliveryContextStore.setCdpApiKey(givenKey)
         defer { diGraphShared.backgroundDeliveryContextStore.setCdpApiKey(nil) }
         await waitForExpectations(initializeModule())
