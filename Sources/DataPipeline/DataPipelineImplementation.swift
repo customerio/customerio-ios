@@ -27,7 +27,7 @@ class DataPipelineImplementation: DataPipelineInstance, DataPipelineTracking, Ba
         self.moduleConfig = moduleConfig
         self.logger = diGraph.logger
         self.dataPipelinesLogger = diGraph.dataPipelinesLogger
-        // Carry identity and queued events over when the app switches to a `wk_` key.
+        // Carry identity and queued events over when the app switches to a `pk_` key.
         AnalyticsStorageMigration(logger: diGraph.logger).migrate(to: moduleConfig.cdpApiKey)
         self.analytics = .init(configuration: moduleConfig.toSegmentConfiguration())
 
