@@ -247,9 +247,13 @@ actor CioSseLifecycleManager: SseLifecycleManager {
             await sseConnectionManager.startConnection()
         } else {
             logger.logWithModuleTag(
-                "SseLifecycleManager: SSE not used (sseEnabled: \(state.useSse), isUserIdentified: \(state.isUserIdentified))",
+                "SseLifecycleManager: SSE not used (sseEnabled: \(state.useSse), isUserIdentified: \(state.isUserIdentified)) - fetching queue on foreground",
                 level: .debug
             )
+            // Without SSE nothing else catches up on foreground; the polling timer may be a full interval
+            // away. Goes through the handler directly because `Gist.fetchUserMessages()` skips the fetch
+            // while `applicationState` still reports background, which it does at this point.
+            queueFetchHandler?(state)
         }
     }
 

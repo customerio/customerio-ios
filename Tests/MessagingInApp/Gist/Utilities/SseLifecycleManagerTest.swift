@@ -228,7 +228,7 @@ class SseLifecycleManagerTest: XCTestCase {
         XCTAssertEqual(queueFetchCallsCount, 1)
     }
 
-    func test_foregroundNotification_givenSseDisabled_expectNoConnection() async {
+    func test_foregroundNotification_givenSseDisabled_expectNoConnectionAndQueueFetched() async {
         setupDefaultState(useSse: false)
         sut = createLifecycleManager()
         await startLifecycleManager(sut)
@@ -242,7 +242,24 @@ class SseLifecycleManagerTest: XCTestCase {
         try? await Task.sleep(nanoseconds: 100000000)
 
         XCTAssertFalse(sseConnectionManagerMock.startConnectionCalled)
+        // Without SSE there is no connection to backfill from, so foregrounding fetches the queue itself.
+        XCTAssertEqual(queueFetchCallsCount, 1)
+    }
+
+    func test_foregroundNotification_givenStartedInBackgroundAndSseDisabled_expectQueueFetchedOnce() async {
+        applicationStateProviderMock.underlyingApplicationState = .background
+        setupDefaultState(useSse: false)
+        sut = createLifecycleManager()
+        await startLifecycleManager(sut)
+        try? await Task.sleep(nanoseconds: 100000000)
+
         XCTAssertEqual(queueFetchCallsCount, 0)
+
+        NotificationCenter.default.post(name: UIApplication.willEnterForegroundNotification, object: nil)
+        try? await Task.sleep(nanoseconds: 100000000)
+
+        XCTAssertFalse(sseConnectionManagerMock.startConnectionCalled)
+        XCTAssertEqual(queueFetchCallsCount, 1)
     }
 
     func test_foregroundNotification_givenAlreadyForegrounded_expectSkipped() async {
@@ -263,6 +280,7 @@ class SseLifecycleManagerTest: XCTestCase {
 
         // Assert: Should be skipped since already foregrounded
         XCTAssertFalse(sseConnectionManagerMock.startConnectionCalled)
+        XCTAssertEqual(queueFetchCallsCount, 0)
     }
 
     // MARK: - Background Transition Tests
@@ -442,7 +460,7 @@ class SseLifecycleManagerTest: XCTestCase {
         XCTAssertFalse(sseConnectionManagerMock.startConnectionCalled)
     }
 
-    func test_foregroundNotification_givenSseEnabledButAnonymousUser_expectNoConnection() async {
+    func test_foregroundNotification_givenSseEnabledButAnonymousUser_expectNoConnectionAndQueueFetched() async {
         setupDefaultState(useSse: true, userId: nil)
         sut = createLifecycleManager()
         await startLifecycleManager(sut)
@@ -456,7 +474,7 @@ class SseLifecycleManagerTest: XCTestCase {
         try? await Task.sleep(nanoseconds: 100000000)
 
         XCTAssertFalse(sseConnectionManagerMock.startConnectionCalled)
-        XCTAssertEqual(queueFetchCallsCount, 0)
+        XCTAssertEqual(queueFetchCallsCount, 1)
     }
 
     func test_sseFlagChangedToTrue_givenAnonymousUser_expectNoConnection() async {
