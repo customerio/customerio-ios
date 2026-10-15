@@ -61,8 +61,9 @@ public class EngineWeb: NSObject, EngineWebInstance {
         webView
     }
 
-    private var currentConfiguration: EngineWebConfiguration
+    private(set) var currentConfiguration: EngineWebConfiguration
     private let colorSchemeMode: ColorScheme
+    private let state: InAppMessageState
 
     public private(set) var currentRoute: String {
         get { _currentRoute }
@@ -74,6 +75,7 @@ public class EngineWeb: NSObject, EngineWebInstance {
         self.currentMessage = message
         self.currentConfiguration = configuration
         self.colorSchemeMode = state.colorScheme
+        self.state = state
 
         super.init()
 
@@ -250,7 +252,8 @@ extension EngineWeb: WKNavigationDelegate {
         applyInterfaceStyle(resolvedScheme)
         currentConfiguration = EngineWebConfiguration(
             siteId: currentConfiguration.siteId,
-            key: currentConfiguration.key,
+            // Read again, since the SDK's key can change while the message loads.
+            key: state.requestPublicKey,
             dataCenter: currentConfiguration.dataCenter,
             instanceId: currentConfiguration.instanceId,
             endpoint: currentConfiguration.endpoint,
