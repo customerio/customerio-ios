@@ -8,6 +8,10 @@ class ApiKeyTest: UnitTest {
         XCTAssertTrue(ApiKey.isSecret("sk_us_\(String.random)"))
     }
 
+    func test_isSecret_givenRetiredSecretKey_expectTrue() {
+        XCTAssertTrue(ApiKey.isSecret("ak_us_\(String.random)"))
+    }
+
     func test_isSecret_givenPublicOrLegacyKey_expectFalse() {
         XCTAssertFalse(ApiKey.isSecret("pk_us_\(String.random)"))
         XCTAssertFalse(ApiKey.isSecret(String.random))
