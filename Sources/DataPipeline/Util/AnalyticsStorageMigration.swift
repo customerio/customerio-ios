@@ -2,7 +2,7 @@ import CioInternalCommon
 import Foundation
 
 /// Analytics keys its storage by API key (`com.segment.storage.<key>` and `segment/<key>/`), so switching
-/// keys would reset identity and drop queued events. When an app switches to a public `wk_` key, this moves
+/// keys would reset identity and drop queued events. When an app switches to a public `pk_` key, this moves
 /// that storage over from the previously used key so the anonymous ID, user ID and queued events carry over.
 /// Finished batches are rewritten to the new key, since the new key's source is where they now belong and the
 /// old key may be disabled before they upload. Switching back to a legacy key does not reverse the move.

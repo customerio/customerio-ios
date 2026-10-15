@@ -31,7 +31,7 @@ class AnalyticsStorageMigrationTests: UnitTest {
 
     func test_migrate_givenPublicKey_expectIdentityAndQueuedEventsCarryOver() {
         let oldKey = givenKey(String.random)
-        let newKey = givenKey("wk_us_\(String.random)")
+        let newKey = givenKey("pk_us_\(String.random)")
         let oldAnalytics = givenAnalytics(writeKey: oldKey)
         oldAnalytics.identify(userId: "user-1")
         // analytics writes identity to disk asynchronously
@@ -52,7 +52,7 @@ class AnalyticsStorageMigrationTests: UnitTest {
 
     func test_migrate_givenFinishedBatch_expectNewKeyAndSamePayloadAfterOldKeyRetired() throws {
         let oldKey = givenKey(String.random)
-        let newKey = givenKey("wk_us_\(String.random)")
+        let newKey = givenKey("pk_us_\(String.random)")
         givenIdentity(writeKey: oldKey, anonymousId: "anon-1")
         // Same name and shape analytics uses for a finished batch waiting to upload.
         let batch = #"{"batch":[{"type":"track","event":"queued","messageId":"msg-1"}],"sentAt":"2026-10-07T00:00:00.000Z","writeKey":"\#(oldKey)"}"#
@@ -72,7 +72,7 @@ class AnalyticsStorageMigrationTests: UnitTest {
 
     func test_migrate_givenEventPropertyNamedWriteKey_expectOnlyBatchKeyChanged() throws {
         let oldKey = givenKey(String.random)
-        let newKey = givenKey("wk_us_\(String.random)")
+        let newKey = givenKey("pk_us_\(String.random)")
         givenIdentity(writeKey: oldKey, anonymousId: "anon-1")
         let event = #"{"type":"track","event":"queued","messageId":"msg-1","properties":{"writeKey":"\#(oldKey)"}}"#
         let batch = #"{"batch":[\#(event)],"sentAt":"2026-10-07T00:00:00.000Z","writeKey":"\#(oldKey)"}"#
@@ -89,7 +89,7 @@ class AnalyticsStorageMigrationTests: UnitTest {
 
     func test_migrate_givenPublicKey_expectOldStorageRemoved() {
         let oldKey = givenKey(String.random)
-        let newKey = givenKey("wk_us_\(String.random)")
+        let newKey = givenKey("pk_us_\(String.random)")
         givenIdentity(writeKey: oldKey, anonymousId: "anon-1")
 
         migration().migrate(to: newKey)
@@ -112,7 +112,7 @@ class AnalyticsStorageMigrationTests: UnitTest {
 
     func test_migrate_givenNewKeyAlreadyHasIdentity_expectNothingMoved() {
         let oldKey = givenKey(String.random)
-        let newKey = givenKey("wk_us_\(String.random)")
+        let newKey = givenKey("pk_us_\(String.random)")
         givenIdentity(writeKey: oldKey, anonymousId: "anon-old")
         givenIdentity(writeKey: newKey, anonymousId: "anon-new")
 
@@ -125,7 +125,7 @@ class AnalyticsStorageMigrationTests: UnitTest {
     func test_migrate_givenSeveralOldKeys_expectMostRecentlyUsedMoved() throws {
         let olderKey = givenKey(String.random)
         let recentKey = givenKey(String.random)
-        let newKey = givenKey("wk_eu_\(String.random)")
+        let newKey = givenKey("pk_eu_\(String.random)")
         givenIdentity(writeKey: olderKey, anonymousId: "anon-older")
         givenIdentity(writeKey: recentKey, anonymousId: "anon-recent")
         try FileManager.default.setAttributes(
@@ -141,7 +141,7 @@ class AnalyticsStorageMigrationTests: UnitTest {
 
     func test_migrate_givenLastKeyHasNoEventsFolder_expectIdentityCarriesOver() throws {
         let oldKey = givenKey(String.random)
-        let newKey = givenKey("wk_us_\(String.random)")
+        let newKey = givenKey("pk_us_\(String.random)")
         migration().migrate(to: oldKey)
         givenIdentity(writeKey: oldKey, anonymousId: "anon-1")
         try FileManager.default.removeItem(at: eventsDirectory.appendingPathComponent(oldKey))
@@ -153,7 +153,7 @@ class AnalyticsStorageMigrationTests: UnitTest {
 
     func test_migrate_givenEventsFailToMove_expectRetriedOnNextLaunch() throws {
         let oldKey = givenKey(String.random)
-        let newKey = givenKey("wk_us_\(String.random)")
+        let newKey = givenKey("pk_us_\(String.random)")
         givenIdentity(writeKey: oldKey, anonymousId: "anon-1")
         let queuedFile = givenQueuedEventsFile(writeKey: oldKey)
         // A file where the new events folder should be makes the move fail.
@@ -173,7 +173,7 @@ class AnalyticsStorageMigrationTests: UnitTest {
     }
 
     func test_migrate_givenNoPreviousKey_expectNothingMoved() {
-        let newKey = givenKey("wk_us_\(String.random)")
+        let newKey = givenKey("pk_us_\(String.random)")
 
         migration().migrate(to: newKey)
 
