@@ -247,9 +247,14 @@ actor CioSseLifecycleManager: SseLifecycleManager {
             await sseConnectionManager.startConnection()
         } else {
             logger.logWithModuleTag(
-                "SseLifecycleManager: SSE not used (sseEnabled: \(state.useSse), isUserIdentified: \(state.isUserIdentified))",
+                "SseLifecycleManager: SSE not used (sseEnabled: \(state.useSse), isUserIdentified: \(state.isUserIdentified)) - fetching queue to catch up",
                 level: .debug
             )
+            // Without SSE nothing else fetches on foreground, so messages would wait for the next
+            // polling tick (600s by default). Goes through the queue fetch handler rather than the
+            // `Gist.fetchUserMessages()` path: the app state is still `.background` while the
+            // willEnterForeground notification is delivered, and that path skips fetching in background.
+            queueFetchHandler?(state)
         }
     }
 
