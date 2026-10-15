@@ -469,6 +469,93 @@ class SseConnectionManagerTest: XCTestCase {
         }
         XCTAssertEqual(sseDisabledActions.count, 1)
     }
+
+    // MARK: - Identifier Change Tests
+
+    func test_startConnection_givenConnectedAndIdentifierChanged_expectConnectionRebuiltWithNewIdentifier() async {
+        let streams = SseStreamFactory()
+        sseServiceMock.connectClosure = { _, _ in streams.makeStream() }
+        // The rebuild subscribes to retry decisions again; give it its own stream, as the real helper does.
+        retryHelperMock.createNewRetryStreamClosure = {
+            AsyncStreamBackport.makeStream(of: (RetryDecision, UInt64).self).stream
+        }
+        inAppMessageManagerMock.underlyingState = InAppMessageState(
+            siteId: "test-site-id",
+            dataCenter: "us",
+            environment: .production,
+            anonymousId: "anonymous-id"
+        )
+
+        await sut.startConnection()
+        await waitUntil("the first SSE connection") { sseServiceMock.connectCallsCount == 1 }
+        streams.continuation(at: 0)?.yield(.connectionOpen)
+        await waitUntil("the first connection to be established") { heartbeatTimerMock.startTimerCalled }
+
+        inAppMessageManagerMock.underlyingState = InAppMessageState(
+            siteId: "test-site-id",
+            dataCenter: "us",
+            environment: .production,
+            userId: "identified-user"
+        )
+        await sut.startConnection()
+        await waitUntil("the SSE connection to be rebuilt") { sseServiceMock.connectCallsCount == 2 }
+
+        XCTAssertEqual(sseServiceMock.disconnectReceivedInvocations, [1])
+        let rebuilt = sseServiceMock.connectReceivedInvocations.last
+        XCTAssertEqual(rebuilt?.connectionId, 2)
+        XCTAssertEqual(rebuilt?.state.userId, "identified-user")
+
+        streams.finishAll()
+    }
+
+    func test_startConnection_givenConnectedAndIdentifierUnchanged_expectNoReconnect() async {
+        let streams = SseStreamFactory()
+        sseServiceMock.connectClosure = { _, _ in streams.makeStream() }
+
+        await sut.startConnection()
+        await waitUntil("the first SSE connection") { sseServiceMock.connectCallsCount == 1 }
+        streams.continuation(at: 0)?.yield(.connectionOpen)
+        await waitUntil("the first connection to be established") { heartbeatTimerMock.startTimerCalled }
+
+        await sut.startConnection()
+
+        await assertRemainsTrue("Starting a connection for the same identifier rebuilt the SSE connection") {
+            sseServiceMock.connectCallsCount == 1 && !sseServiceMock.disconnectCalled
+        }
+        XCTAssertEqual(sseServiceMock.connectCallsCount, 1)
+        XCTAssertFalse(sseServiceMock.disconnectCalled)
+
+        streams.finishAll()
+    }
+}
+
+/// Hands out a fresh event stream per `connect` call and keeps the continuations so a test can drive
+/// or finish each connection independently. An `AsyncStream` supports a single consumer, so tests
+/// that connect more than once cannot share one stream.
+private final class SseStreamFactory: @unchecked Sendable {
+    private let lock = NSLock()
+    private var continuations: [AsyncStream<SseEvent>.Continuation] = []
+
+    func makeStream() -> AsyncStream<SseEvent> {
+        let (stream, continuation) = AsyncStreamBackport.makeStream(of: SseEvent.self)
+        lock.lock()
+        defer { lock.unlock() }
+        continuations.append(continuation)
+        return stream
+    }
+
+    func continuation(at index: Int) -> AsyncStream<SseEvent>.Continuation? {
+        lock.lock()
+        defer { lock.unlock() }
+        return continuations.indices.contains(index) ? continuations[index] : nil
+    }
+
+    func finishAll() {
+        lock.lock()
+        let all = continuations
+        lock.unlock()
+        all.forEach { $0.finish() }
+    }
 }
 
 /// Counts hook invocations from a `@Sendable` closure. A plain captured `var` is not usable there.

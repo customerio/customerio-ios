@@ -164,14 +164,14 @@ class Gist: GistProvider {
             logger.logWithModuleTag("Gist: User identified with SSE enabled - stopping polling (SSE will handle messages)", level: .info)
             invalidateTimer()
             // Fetch here as well as from the `connected` hook, because this transition fires on ANY
-            // `userId` change — including one identified user replacing another. In that case SSE is
-            // already connected, so `startConnection()` no-ops, no `connected` event follows, and the
-            // new user's existing inbox would never load until an unrelated reconnect.
+            // `userId` change — including one identified user replacing another. `startConnection()`
+            // rebuilds the stream for the new identifier, but this fetch does not depend on that
+            // reconnect reaching `connected`.
             //
-            // Accepted cost: on anonymous → identified, where SSE was not yet connected, this fetches
-            // once here and again from `connected`. And being fire-and-forget it is not ordered
-            // against SSE, so this path keeps the overwrite window the `connected` hook removes for
-            // the others. Guaranteeing the new user sees their inbox is worth both.
+            // Accepted cost: this usually fetches once here and again from `connected`. And being
+            // fire-and-forget it is not ordered against SSE, so this path keeps the overwrite window
+            // the `connected` hook removes for the others. Guaranteeing the new user sees their inbox
+            // is worth both.
             fetchUserQueue(state: state)
         } else if !state.isUserIdentified, state.useSse {
             // User became anonymous but SSE flag is still enabled - start polling

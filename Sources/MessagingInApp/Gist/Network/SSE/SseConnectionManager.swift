@@ -79,6 +79,10 @@ actor SseConnectionManager: SseConnectionManagerProtocol {
 
     private var connectionState: SseConnectionState = .disconnected
 
+    /// The user identifier (`userId ?? anonymousId`) the active connection was started for.
+    /// The stream URL is built from it, so a connection for a different identifier must be rebuilt.
+    private var activeConnectionIdentifier: String?
+
     /// Hook invoked from the server `connected` event branch only. See `setOnConnectionConfirmed`.
     private var onConnectionConfirmed: (@Sendable () -> Void)?
     private var streamTask: Task<Void, Never>?
@@ -117,7 +121,9 @@ actor SseConnectionManager: SseConnectionManagerProtocol {
     // MARK: - Public API
 
     /// Starts an SSE connection to the queue consumer API.
-    /// This method is idempotent - calling it multiple times while connected/connecting is safe.
+    /// This method is idempotent - calling it multiple times while connected/connecting for the same
+    /// user identifier is safe. If the identifier changed (e.g. anonymous -> identified), the active
+    /// connection is stopped and rebuilt for the new identifier.
     ///
     /// Fetches the current state from InAppMessageManager to establish the connection.
     /// Allows connection attempts from DISCONNECTING state - the old connection's event collection
@@ -132,9 +138,20 @@ actor SseConnectionManager: SseConnectionManagerProtocol {
         let state = await inAppMessageManager.state
         logger.logWithModuleTag("SSE Manager: useSse=\(state.useSse), userId=\(state.userId ?? "nil"), anonymousId=\(state.anonymousId ?? "nil")", level: .debug)
 
+        let identifier = state.userId ?? state.anonymousId
+
         // Check if already active
         if connectionState == .connecting || connectionState == .connected {
-            logger.logWithModuleTag("SSE Manager: Connection already active (state: \(connectionState.description))", level: .debug)
+            guard identifier != activeConnectionIdentifier else {
+                logger.logWithModuleTag("SSE Manager: Connection already active (state: \(connectionState.description))", level: .debug)
+                return
+            }
+
+            logger.logWithModuleTag("SSE Manager: User identifier changed since connection started - restarting connection", level: .info)
+            await stopConnection()
+            // Re-enter so the decision is made against fresh state: another start may have run
+            // during the stop's await points.
+            await startConnection()
             return
         }
 
@@ -142,6 +159,7 @@ actor SseConnectionManager: SseConnectionManagerProtocol {
         // so that stopConnection() captures the correct generation
         activeConnectionGeneration += 1
         let generation = activeConnectionGeneration
+        activeConnectionIdentifier = identifier
 
         logger.logWithModuleTag("SSE Manager: Starting connection (generation \(generation))", level: .info)
 
@@ -186,6 +204,7 @@ actor SseConnectionManager: SseConnectionManagerProtocol {
         logger.logWithModuleTag("SSE Manager: stopConnection called (stopping generation \(stoppingGeneration))", level: .info)
 
         updateConnectionState(.disconnecting)
+        activeConnectionIdentifier = nil
 
         // Cancel all tasks
         streamTask?.cancel()
