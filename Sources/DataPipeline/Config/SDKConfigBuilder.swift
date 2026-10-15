@@ -52,7 +52,9 @@ public class SDKConfigBuilder {
 
     /// Initializes new `SDKConfigBuilder` with required configuration options.
     /// - Parameters:
-    ///   - cdpApiKey: Customer.io Data Pipeline API Key. Secret `ak_` keys are rejected and the SDK will not initialize.
+    ///   - cdpApiKey: Customer.io Data Pipeline API Key. Secret `sk_` keys are rejected and the SDK will not initialize.
+    ///     Switching to a public `pk_` key keeps the user's identity and sends events queued under the old key
+    ///     with the new key. Switching back to a legacy key does not undo this.
     public init(cdpApiKey: String) {
         self.cdpApiKey = cdpApiKey
         if ApiKey.isSecret(cdpApiKey) {
@@ -63,7 +65,7 @@ public class SDKConfigBuilder {
     /// Specifies the workspace region to ensure CDP requests are routed to the correct regional endpoint.
     /// Default values for apiHost and cdnHost are determined by the region.
     /// However, if apiHost or cdnHost are manually specified, those values override region-based defaults.
-    /// If not set, the region is read from the key prefix (e.g. `wk_eu_`), else defaults to US.
+    /// If not set, the region is read from the key prefix (e.g. `pk_eu_`), else defaults to US.
     @discardableResult
     public func region(_ region: Region) -> SDKConfigBuilder {
         self.region = region
