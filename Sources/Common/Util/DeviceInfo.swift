@@ -95,6 +95,10 @@ public class CIODeviceInfo: DeviceInfo {
         #if canImport(UserNotifications)
         let current = UNUserNotificationCenter.current()
         current.getNotificationSettings(completionHandler: { settings in
+            DIGraphShared.shared.logger.debug(
+                "Notification permission: \(settings.authorizationStatus.cioLogName)",
+                "Push"
+            )
             if settings.authorizationStatus == .authorized {
                 completion(true)
                 return
@@ -106,3 +110,30 @@ public class CIODeviceInfo: DeviceInfo {
         #endif
     }
 }
+
+#if canImport(UserNotifications)
+/// Logs iOS's answer on notifications for the app as one stable line, `[Push] Notification permission: <status>`,
+/// which support asks for in a customer's debug log and tools search for.
+public enum NotificationPermissionLog {
+    public static func log(_ logger: Logger, center: UNUserNotificationCenter = .current()) {
+        center.getNotificationSettings { settings in
+            logger.debug("Notification permission: \(settings.authorizationStatus.cioLogName)", "Push")
+        }
+    }
+}
+
+public extension UNAuthorizationStatus {
+    /// iOS's own name for the status, so a log line says what iOS said, not what push_enabled maps it to.
+    var cioLogName: String {
+        switch self {
+        case .notDetermined: return "notDetermined"
+        case .denied: return "denied"
+        case .authorized: return "authorized"
+        case .provisional: return "provisional"
+        default:
+            // .ephemeral (iOS 14+), and anything added later.
+            return "other(\(rawValue))"
+        }
+    }
+}
+#endif
