@@ -1,3 +1,4 @@
+import CioInternalCommon
 import UIKit
 import UserNotifications
 
@@ -81,6 +82,8 @@ final class NotificationPeerDeliveryCoordinator {
     static func startObservingApplicationActivation() {
         applicationActivationObserver.start {
             resetNilOpenSettingsActivation()
+            // The permission can change while the app is away (Settings), and this line lands after launch.
+            NotificationPermissionLog.log(DIGraphShared.shared.logger)
         }
     }
 
