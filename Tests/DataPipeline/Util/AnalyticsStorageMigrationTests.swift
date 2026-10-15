@@ -172,6 +172,30 @@ class AnalyticsStorageMigrationTests: UnitTest {
         XCTAssertFalse(FileManager.default.fileExists(atPath: eventsDirectory.appendingPathComponent(oldKey).path))
     }
 
+    func test_migrate_givenFinishedBatchWithoutKeyField_expectLeftBehindAndRetried() throws {
+        let oldKey = givenKey(String.random)
+        let newKey = givenKey("pk_us_\(String.random)")
+        givenIdentity(writeKey: oldKey, anonymousId: "anon-1")
+        let goodFile = givenQueuedEventsFile(writeKey: oldKey)
+        let badFile = eventsDirectory.appendingPathComponent(oldKey).appendingPathComponent("1-segment-events.temp")
+        try #"{"batch":[]}"#.write(to: badFile, atomically: true, encoding: .utf8)
+        let newDirectory = eventsDirectory.appendingPathComponent(newKey)
+
+        migration().migrate(to: newKey)
+
+        XCTAssertTrue(FileManager.default.fileExists(atPath: newDirectory.appendingPathComponent(goodFile.lastPathComponent).path))
+        XCTAssertTrue(FileManager.default.fileExists(atPath: badFile.path))
+        XCTAssertEqual(UserDefaults.standard.string(forKey: "io.customer.sdk.analyticsPendingEventsFrom.\(newKey)"), oldKey)
+
+        try #"{"batch":[],"writeKey":"\#(oldKey)"}"#.write(to: badFile, atomically: true, encoding: .utf8)
+        migration().migrate(to: newKey)
+
+        let moved = try String(contentsOf: newDirectory.appendingPathComponent(badFile.lastPathComponent), encoding: .utf8)
+        XCTAssertEqual(moved, #"{"batch":[],"writeKey":"\#(newKey)"}"#)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: eventsDirectory.appendingPathComponent(oldKey).path))
+        XCTAssertNil(UserDefaults.standard.string(forKey: "io.customer.sdk.analyticsPendingEventsFrom.\(newKey)"))
+    }
+
     func test_migrate_givenNoPreviousKey_expectNothingMoved() {
         let newKey = givenKey("pk_us_\(String.random)")
 
