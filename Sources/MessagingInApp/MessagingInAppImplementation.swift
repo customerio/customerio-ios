@@ -40,7 +40,7 @@ class MessagingInAppImplementation: MessagingInAppInstance {
     }
 
     private func subscribeToInAppMessageState() {
-        // Key set on `SDKConfigBuilder`. Only public `wk_` keys are sent to in-app APIs.
+        // Key set on `SDKConfigBuilder`. Only public `pk_` keys are sent to in-app APIs.
         let publicKey = backgroundDeliveryContextStore.currentCdpApiKey.flatMap { ApiKey.isPublic($0) ? $0 : nil }
 
         inAppMessageManager.dispatch(action: .initialize(

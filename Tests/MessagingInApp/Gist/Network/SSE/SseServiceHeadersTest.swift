@@ -42,13 +42,13 @@ class SseServiceHeadersTest: UnitTest {
 
     func test_buildSseUrl_givenPublicKey_expectSiteIdAndKeyQuery() async throws {
         let sut = SseService(logger: diGraphShared.logger)
-        let state = InAppMessageState(siteId: "test-site", publicKey: "wk_us_abc", dataCenter: "US", userId: "user123")
+        let state = InAppMessageState(siteId: "test-site", publicKey: "pk_us_abc", dataCenter: "US", userId: "user123")
 
         let url = await sut.buildSseUrl(state: state, identifier: "user123")
         let query = try XCTUnwrap(url.flatMap { URLComponents(url: $0, resolvingAgainstBaseURL: false)?.queryItems })
 
         XCTAssertEqual(query.map(\.name), ["sessionId", "siteId", "key", "userToken"])
         XCTAssertEqual(query.first { $0.name == "siteId" }?.value, "test-site")
-        XCTAssertEqual(query.first { $0.name == "key" }?.value, "wk_us_abc")
+        XCTAssertEqual(query.first { $0.name == "key" }?.value, "pk_us_abc")
     }
 }

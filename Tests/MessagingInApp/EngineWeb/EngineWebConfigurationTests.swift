@@ -18,11 +18,11 @@ class EngineWebConfigurationTests: UnitTest {
     }
 
     func test_messageManager_givenPublicKey_expectKeyPassedToEngine() {
-        let state = InAppMessageState(siteId: "test-site", publicKey: "wk_us_abc", dataCenter: "US")
+        let state = InAppMessageState(siteId: "test-site", publicKey: "pk_us_abc", dataCenter: "US")
 
         _ = ModalMessageManager(state: state, message: Message(messageId: "test-message"))
 
-        XCTAssertEqual(engineWebProvider.lastConfiguration?.key, "wk_us_abc")
+        XCTAssertEqual(engineWebProvider.lastConfiguration?.key, "pk_us_abc")
         XCTAssertEqual(engineWebProvider.lastConfiguration?.siteId, "test-site")
     }
 
@@ -54,7 +54,7 @@ class EngineWebConfigurationTests: UnitTest {
     func test_encode_givenKey_expectKeyEncoded() throws {
         let configuration = EngineWebConfiguration(
             siteId: "test-site",
-            key: "wk_us_abc",
+            key: "pk_us_abc",
             dataCenter: "US",
             instanceId: "instance",
             endpoint: "https://engine",
@@ -64,7 +64,7 @@ class EngineWebConfigurationTests: UnitTest {
 
         let json = try JSONSerialization.jsonObject(with: JSONEncoder().encode(configuration)) as? [String: Any]
 
-        XCTAssertEqual(json?["key"] as? String, "wk_us_abc")
+        XCTAssertEqual(json?["key"] as? String, "pk_us_abc")
         XCTAssertEqual(json?["siteId"] as? String, "test-site")
     }
 }

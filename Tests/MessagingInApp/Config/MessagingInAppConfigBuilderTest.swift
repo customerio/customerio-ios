@@ -125,7 +125,7 @@ class MessagingInAppConfigBuilderTest: UnitTest {
 
     func test_initializeFromDictionaryWithoutRegion_givenEuPublicKey_expectEuRegion() throws {
         let givenDict: [String: Any] = [
-            "cdpApiKey": "wk_eu_\(String.random)",
+            "cdpApiKey": "pk_eu_\(String.random)",
             "inApp": ["siteId": String.random]
         ]
 
@@ -136,7 +136,7 @@ class MessagingInAppConfigBuilderTest: UnitTest {
 
     func test_initializeFromDictionary_givenEuPublicKeyAndUsRegion_expectExplicitRegionWins() throws {
         let givenDict: [String: Any] = [
-            "cdpApiKey": "wk_eu_\(String.random)",
+            "cdpApiKey": "pk_eu_\(String.random)",
             "region": "US",
             "inApp": ["siteId": String.random]
         ]
@@ -158,7 +158,7 @@ class MessagingInAppConfigBuilderTest: UnitTest {
     // The gist renderer can't load messages with only the public key yet, so siteId stays required.
     func test_initializeFromDictionaryWithoutSiteId_givenPublicKey_expectThrowError() {
         let givenDict: [String: Any] = [
-            "cdpApiKey": "wk_us_\(String.random)",
+            "cdpApiKey": "pk_us_\(String.random)",
             "inApp": [:]
         ]
 

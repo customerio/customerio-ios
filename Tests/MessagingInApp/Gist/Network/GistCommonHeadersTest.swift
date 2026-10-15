@@ -63,31 +63,31 @@ class GistCommonHeadersTest: UnitTest {
     }
 
     func test_headers_givenPublicKey_expectBearerAuthorization() {
-        let headers = builder().headers(state: InAppMessageState(siteId: "test-site", publicKey: "wk_us_abc", dataCenter: "US"))
+        let headers = builder().headers(state: InAppMessageState(siteId: "test-site", publicKey: "pk_us_abc", dataCenter: "US"))
 
-        XCTAssertEqual(headers["Authorization"], "Bearer wk_us_abc")
+        XCTAssertEqual(headers["Authorization"], "Bearer pk_us_abc")
         XCTAssertEqual(headers["X-CIO-Site-Id"], "test-site")
     }
 
     func test_headers_givenKeySetAfterInit_expectCurrentKeyAndSiteIdUsed() {
         let store = DIGraphShared.shared.backgroundDeliveryContextStore
-        store.setCdpApiKey("wk_us_abc")
+        store.setCdpApiKey("pk_us_abc")
         defer { store.setCdpApiKey(nil) }
 
         let headers = builder().headers(state: InAppMessageState(siteId: "test-site", dataCenter: "US"))
 
-        XCTAssertEqual(headers["Authorization"], "Bearer wk_us_abc")
+        XCTAssertEqual(headers["Authorization"], "Bearer pk_us_abc")
         XCTAssertEqual(headers["X-CIO-Site-Id"], "test-site")
     }
 
     func test_headers_givenCapturedKeyReplacedBeforeSdkStarts_expectCurrentKeyUsed() {
         let store = DIGraphShared.shared.backgroundDeliveryContextStore
-        store.setCdpApiKey("wk_us_new")
+        store.setCdpApiKey("pk_us_new")
         defer { store.setCdpApiKey(nil) }
 
-        let headers = builder().headers(state: InAppMessageState(siteId: "test-site", publicKey: "wk_us_old", dataCenter: "US"))
+        let headers = builder().headers(state: InAppMessageState(siteId: "test-site", publicKey: "pk_us_old", dataCenter: "US"))
 
-        XCTAssertEqual(headers["Authorization"], "Bearer wk_us_new")
+        XCTAssertEqual(headers["Authorization"], "Bearer pk_us_new")
     }
 
     func test_headers_givenNoPublicKey_expectNoAuthorization() {
