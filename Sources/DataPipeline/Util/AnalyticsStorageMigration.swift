@@ -106,9 +106,19 @@ struct AnalyticsStorageMigration {
 
         do {
             try fileManager.createDirectory(at: newDirectory, withIntermediateDirectories: true)
+            var allMoved = true
             for file in try fileManager.contentsOfDirectory(at: oldDirectory, includingPropertiesForKeys: nil) {
-                try rewriteBatchKey(in: file, from: oldKey, to: newKey)
-                try fileManager.moveItem(at: file, to: newDirectory.appendingPathComponent(file.lastPathComponent))
+                do {
+                    try rewriteBatchKey(in: file, from: oldKey, to: newKey)
+                    try fileManager.moveItem(at: file, to: newDirectory.appendingPathComponent(file.lastPathComponent))
+                } catch {
+                    // Leave this file behind and keep moving the rest.
+                    logger.error("Failed to move a queued analytics batch to the new API key, will retry on next launch", nil, error)
+                    allMoved = false
+                }
+            }
+            guard allMoved else {
+                return false
             }
             try fileManager.removeItem(at: oldDirectory)
             return true
@@ -118,18 +128,34 @@ struct AnalyticsStorageMigration {
         }
     }
 
-    /// Finished batches end with `"writeKey":"<key>"}`, which the upload uses. Only that trailing field
-    /// changes, so event properties are left as queued. Unfinished ones get the new key when analytics
-    /// finishes them.
+    /// Finished batches (`.temp` files) end with `"writeKey":"<key>"}`, which the upload uses. Only that
+    /// trailing field changes, so event properties are left as queued. Unfinished ones get the new key when
+    /// analytics finishes them. Throws if a finished batch can't be rewritten, so it isn't moved with the old key.
     private func rewriteBatchKey(in file: URL, from oldKey: String, to newKey: String) throws {
-        let oldField = #""writeKey":"\#(oldKey)"}"#
-        guard let contents = try? String(contentsOf: file, encoding: .utf8),
-              let range = contents.range(of: oldField, options: .backwards),
-              contents[range.upperBound...].allSatisfy(\.isWhitespace)
-        else {
+        guard file.pathExtension == "temp" else {
             return
+        }
+        let contents = try String(contentsOf: file, encoding: .utf8)
+        // Rewritten by an earlier try whose move then failed.
+        if trailingKeyRange(of: newKey, in: contents) != nil {
+            return
+        }
+        guard let range = trailingKeyRange(of: oldKey, in: contents) else {
+            throw BatchKeyNotFoundError()
         }
         try contents.replacingCharacters(in: range, with: #""writeKey":"\#(newKey)"}"#)
             .write(to: file, atomically: true, encoding: .utf8)
     }
+
+    private func trailingKeyRange(of key: String, in contents: String) -> Range<String.Index>? {
+        guard let range = contents.range(of: #""writeKey":"\#(key)"}"#, options: .backwards),
+              contents[range.upperBound...].allSatisfy(\.isWhitespace)
+        else {
+            return nil
+        }
+        return range
+    }
 }
+
+/// A finished analytics batch didn't end with the expected `writeKey` field.
+struct BatchKeyNotFoundError: Error {}
