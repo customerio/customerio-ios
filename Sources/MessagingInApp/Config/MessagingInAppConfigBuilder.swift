@@ -68,6 +68,7 @@ public extension MessagingInAppConfigBuilder {
     private enum Keys: String {
         case siteId
         case region
+        case cdpApiKey
         case notificationInboxAccessibilityLabels
     }
 
@@ -97,13 +98,14 @@ public extension MessagingInAppConfigBuilder {
         guard let siteId = config[Keys.siteId.rawValue] as? String else {
             throw MessagingInAppConfigBuilderError.missingSiteId
         }
+        let cdpApiKey = sdkConfig[Keys.cdpApiKey.rawValue] as? String ?? ""
 
         // By default, region is provided only in top-level configuration in wrapper SDKs.
         // This prevents users from having to specify region more than once in the configuration.
         // Therefore, we retrieve the region from top-level configuration here.
-        // If the region is not present, the default region is used.
+        // If the region is not present, it comes from the key prefix, then the default region.
         let regionStr = sdkConfig[Keys.region.rawValue] as? String ?? ""
-        let region = Region.getRegion(from: regionStr)
+        let region = regionStr.isEmpty ? ApiKey.region(of: cdpApiKey) ?? Region.getRegion(from: regionStr) : Region.getRegion(from: regionStr)
 
         let builder = MessagingInAppConfigBuilder(siteId: siteId, region: region)
 

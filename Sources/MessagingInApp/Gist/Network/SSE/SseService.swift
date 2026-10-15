@@ -140,7 +140,7 @@ actor SseService: SseServiceProtocol {
 
     // MARK: - Private Helpers
 
-    private func buildSseUrl(state: InAppMessageState, identifier: String) -> URL? {
+    func buildSseUrl(state: InAppMessageState, identifier: String) -> URL? {
         // SSE API URL includes full path (like Android's getSseApiUrl())
         let sseUrlString = state.environment.networkSettings.sseAPI
         guard var components = URLComponents(string: sseUrlString) else {
@@ -151,11 +151,16 @@ actor SseService: SseServiceProtocol {
         // Add query parameters (matching Android's createSseRequest)
         let userToken = Data(identifier.utf8).base64EncodedString()
         let sessionId = SessionManager.shared.sessionId
-        components.queryItems = [
+        var queryItems = [
             URLQueryItem(name: "sessionId", value: sessionId),
-            URLQueryItem(name: "siteId", value: state.siteId),
-            URLQueryItem(name: "userToken", value: userToken)
+            URLQueryItem(name: "siteId", value: state.siteId)
         ]
+        // EventSource can't set headers, so the public key goes in the query.
+        if let publicKey = state.requestPublicKey {
+            queryItems.append(URLQueryItem(name: "key", value: publicKey))
+        }
+        queryItems.append(URLQueryItem(name: "userToken", value: userToken))
+        components.queryItems = queryItems
 
         logger.logWithModuleTag("SseService: Built URL with siteId=\(state.siteId), sessionId=\(sessionId), identifier=\(identifier)", level: .debug)
 
