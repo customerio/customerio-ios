@@ -4330,29 +4330,29 @@ public class UIKitWrapperMock: @unchecked Sendable, UIKitWrapper, Mock {
     }
 
     /// The arguments from the *last* time the function was called.
-    private let _openReceivedArguments: CioInternalCommon.Synchronized<URL?> = .init(nil)
-    public var openReceivedArguments: URL? {
+    private let _openReceivedArguments: CioInternalCommon.Synchronized<(url: URL, completion: (Bool) -> Void)?> = .init(nil)
+    public var openReceivedArguments: (url: URL, completion: (Bool) -> Void)? {
         _openReceivedArguments.wrappedValue
     }
 
     /// Arguments from *all* of the times that the function was called.
-    private let _openReceivedInvocations: CioInternalCommon.Synchronized<[URL]> = .init([])
-    public var openReceivedInvocations: [URL] {
+    private let _openReceivedInvocations: CioInternalCommon.Synchronized<[(url: URL, completion: (Bool) -> Void)]> = .init([])
+    public var openReceivedInvocations: [(url: URL, completion: (Bool) -> Void)] {
         _openReceivedInvocations.wrappedValue
     }
 
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
-    public var openClosure: ((URL) -> Void)?
+    public var openClosure: ((URL, @escaping (Bool) -> Void) -> Void)?
 
-    /// Mocked function for `open(url: URL)`. Your opportunity to return a mocked value and check result of mock in test code.
-    public func open(url: URL) {
+    /// Mocked function for `open(url: URL, completion: @escaping (Bool) -> Void)`. Your opportunity to return a mocked value and check result of mock in test code.
+    public func open(url: URL, completion: @escaping (Bool) -> Void) {
         mockCalled = true
         _openCallsCount += 1
-        _openReceivedArguments.wrappedValue = url
-        _openReceivedInvocations.append(url)
-        openClosure?(url)
+        _openReceivedArguments.wrappedValue = (url: url, completion: completion)
+        _openReceivedInvocations.append((url: url, completion: completion))
+        openClosure?(url, completion)
     }
 
     // MARK: - continueNSUserActivity
