@@ -39,7 +39,7 @@ class CustomerIOTests: IntegrationTest {
     func test_initialize_givenSecretKey_expectNotInitialized() {
         let optionalModule = CustomerIOTestsMockModule(name: "OptionalModule")
 
-        let config = SDKConfigBuilder(cdpApiKey: "ak_us_\(String.random)")
+        let config = SDKConfigBuilder(cdpApiKey: "sk_us_\(String.random)")
             .addModule(optionalModule)
             .build()
         CustomerIO.initialize(withConfig: config)
@@ -49,8 +49,15 @@ class CustomerIOTests: IntegrationTest {
         XCTAssertFalse(DataPipeline.shared.hasBeenInitialized)
     }
 
+    func test_initialize_givenRetiredSecretKey_expectNotInitialized() {
+        CustomerIO.initialize(withConfig: SDKConfigBuilder(cdpApiKey: "ak_us_\(String.random)").build())
+
+        XCTAssertEqual(0, mockLogger.coreSdkInitStartCallsCount)
+        XCTAssertFalse(DataPipeline.shared.hasBeenInitialized)
+    }
+
     func test_initialize_givenPublicKey_expectInitialized() {
-        CustomerIO.initialize(withConfig: SDKConfigBuilder(cdpApiKey: "wk_us_\(String.random)").build())
+        CustomerIO.initialize(withConfig: SDKConfigBuilder(cdpApiKey: "pk_us_\(String.random)").build())
 
         XCTAssertEqual(1, mockLogger.coreSdkInitSuccessCallsCount)
         XCTAssertTrue(DataPipeline.shared.hasBeenInitialized)
