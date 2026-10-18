@@ -95,10 +95,7 @@ public class CIODeviceInfo: DeviceInfo {
         #if canImport(UserNotifications)
         let current = UNUserNotificationCenter.current()
         current.getNotificationSettings(completionHandler: { settings in
-            DIGraphShared.shared.logger.debug(
-                "Notification permission: \(settings.authorizationStatus.cioLogName)",
-                "Push"
-            )
+            NotificationPermissionLog.log(DIGraphShared.shared.logger, status: settings.authorizationStatus)
             if settings.authorizationStatus == .authorized {
                 completion(true)
                 return
@@ -113,12 +110,17 @@ public class CIODeviceInfo: DeviceInfo {
 
 #if canImport(UserNotifications)
 /// Logs iOS's answer on notifications for the app as one stable line, `[Push] Notification permission: <status>`,
-/// which support asks for in a customer's debug log and tools search for.
+/// which support asks for in a customer's debug log, with a `push.permission` key tail (`LogTail`) for tools.
 public enum NotificationPermissionLog {
     public static func log(_ logger: Logger, center: UNUserNotificationCenter = .current()) {
         center.getNotificationSettings { settings in
-            logger.debug("Notification permission: \(settings.authorizationStatus.cioLogName)", "Push")
+            log(logger, status: settings.authorizationStatus)
         }
+    }
+
+    public static func log(_ logger: Logger, status: UNAuthorizationStatus) {
+        let name = status.cioLogName
+        logger.debug("Notification permission: \(name)" + LogTail.make("push.permission", ["status": name]), "Push")
     }
 }
 

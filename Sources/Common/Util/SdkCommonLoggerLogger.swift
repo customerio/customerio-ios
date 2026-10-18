@@ -41,22 +41,27 @@ public class SdkCommonLoggerImpl: SdkCommonLogger {
     }
 
     public func logHandlingNotificationDeepLink(url: URL) {
-        logger.debug("Handling push notification deep link with url: \(url)", Self.PUSH_TAG)
+        let tail = LogTail.make("push.deep_link", ["url": url.absoluteString])
+        logger.debug("Handling push notification deep link with url: \(url)" + tail, Self.PUSH_TAG)
     }
 
     public func logDeepLinkHandledByCallback() {
-        logger.debug("Deep link handled by host app callback implementation", Self.PUSH_TAG)
+        logger.debug("Deep link handled by host app callback implementation" + Self.outcomeTail("app_callback"), Self.PUSH_TAG)
     }
 
     public func logDeepLinkHandledByHostApp() {
-        logger.debug("Deep link handled by internal host app navigation", Self.PUSH_TAG)
+        logger.debug("Deep link handled by internal host app navigation" + Self.outcomeTail("app_navigation"), Self.PUSH_TAG)
     }
 
     public func logDeepLinkHandledExternally() {
-        logger.debug("Deep link handled by system", Self.PUSH_TAG)
+        logger.debug("Deep link handled by system" + Self.outcomeTail("system"), Self.PUSH_TAG)
     }
 
     public func logDeepLinkWasNotHandled() {
-        logger.debug("Deep link was not handled", Self.PUSH_TAG)
+        logger.debug("Deep link was not handled" + Self.outcomeTail("not_handled"), Self.PUSH_TAG)
+    }
+
+    private static func outcomeTail(_ outcome: String) -> String {
+        LogTail.make("push.deep_link_outcome", ["outcome": outcome])
     }
 }

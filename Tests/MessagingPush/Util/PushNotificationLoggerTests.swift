@@ -73,7 +73,7 @@ class PushNotificationLoggerTests: UnitTest {
         XCTAssertEqual(loggerMock.debugReceivedInvocations.first?.tag, "Push")
         XCTAssertEqual(
             loggerMock.debugReceivedInvocations.first?.message,
-            "Tracking push message delivered with deliveryId: \(deliveryId)"
+            "Tracking push message delivered with deliveryId: \(deliveryId) || ev=push.delivered id=\(deliveryId) in=app"
         )
     }
 
@@ -137,13 +137,13 @@ class PushNotificationLoggerTests: UnitTest {
     }
 
     func test_logClickedCioPushMessage_logsExpectedMessage() {
-        logger.logClickedCioPushMessage()
+        logger.logClickedCioPushMessage(deliveryId: "xyz456")
 
         XCTAssertEqual(loggerMock.debugReceivedInvocations.count, 1)
         XCTAssertEqual(loggerMock.debugReceivedInvocations.first?.tag, "Push")
         XCTAssertEqual(
             loggerMock.debugReceivedInvocations.first?.message,
-            "Clicked CIO push message"
+            "Clicked CIO push message || ev=push.clicked cio=true id=xyz456"
         )
     }
 
@@ -154,7 +154,7 @@ class PushNotificationLoggerTests: UnitTest {
         XCTAssertEqual(loggerMock.debugReceivedInvocations.first?.tag, "Push")
         XCTAssertEqual(
             loggerMock.debugReceivedInvocations.first?.message,
-            "Clicked non CIO push message, ignoring message"
+            "Clicked non CIO push message, ignoring message || ev=push.clicked cio=false"
         )
     }
 
@@ -165,7 +165,7 @@ class PushNotificationLoggerTests: UnitTest {
         XCTAssertEqual(loggerMock.debugReceivedInvocations.first?.tag, "Push")
         XCTAssertEqual(
             loggerMock.debugReceivedInvocations.first?.message,
-            "Clicked message with empty deliveryId"
+            "Clicked message with empty deliveryId || ev=push.clicked cio=true id=none"
         )
     }
 
@@ -178,7 +178,7 @@ class PushNotificationLoggerTests: UnitTest {
         XCTAssertEqual(loggerMock.debugReceivedInvocations.first?.tag, "Push")
         XCTAssertEqual(
             loggerMock.debugReceivedInvocations.first?.message,
-            "Tracking push message opened with deliveryId: \(deliveryId)"
+            "Tracking push message opened with deliveryId: \(deliveryId) || ev=push.opened id=\(deliveryId)"
         )
     }
 }
