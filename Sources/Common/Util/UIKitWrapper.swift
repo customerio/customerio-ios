@@ -15,6 +15,14 @@ public protocol UIKitWrapper: AutoMockable {
 }
 
 @available(iOSApplicationExtension, unavailable)
+public extension UIKitWrapper {
+    /// Opens the URL without waiting for iOS's answer. Wrapper SDKs call this form, so it stays.
+    func open(url: URL) {
+        open(url: url) { _ in }
+    }
+}
+
+@available(iOSApplicationExtension, unavailable)
 // sourcery: InjectRegisterShared = "UIKitWrapper"
 public class UIKitWrapperImpl: UIKitWrapper {
     public func open(url: URL, completion: @escaping (Bool) -> Void) {
