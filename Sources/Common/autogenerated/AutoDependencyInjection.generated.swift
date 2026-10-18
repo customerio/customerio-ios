@@ -62,6 +62,9 @@ extension DIGraphShared {
         _ = deviceInfo
         countDependenciesResolved += 1
 
+        _ = logLevelStore
+        countDependenciesResolved += 1
+
         _ = profileStore
         countDependenciesResolved += 1
 
@@ -167,6 +170,16 @@ extension DIGraphShared {
 
     private var newDeviceInfo: DeviceInfo {
         CIODeviceInfo()
+    }
+
+    // LogLevelStore
+    public var logLevelStore: LogLevelStore {
+        getOverriddenInstance() ??
+            newLogLevelStore
+    }
+
+    private var newLogLevelStore: LogLevelStore {
+        CioLogLevelStore(keyValueStorage: sharedKeyValueStorage)
     }
 
     // ProfileStore
@@ -348,7 +361,7 @@ extension DIGraphShared {
     }
 
     private func _get_logger() -> Logger {
-        LoggerImpl(logger: systemLogger)
+        LoggerImpl(logger: systemLogger, logLevelStore: logLevelStore)
     }
 
     // ProfileEnrichmentRegistry (singleton)

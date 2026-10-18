@@ -8,8 +8,8 @@ public extension CustomerIO {
      */
     @available(iOSApplicationExtension, unavailable)
     static func initialize(withConfig config: SDKConfigBuilderResult) {
-        // SdkConfig isn't currently stored anywhere since it wasn't required. If needed later, we
-        // can introduce an option to store and retrieve it.
+        // SdkConfig isn't stored, except its log level (below). If needed later, we can introduce an option to store
+        // and retrieve it.
         let (sdkConfig, cdpConfig, deepLinkCallback) = config.deconstruct()
 
         // Secret keys must not ship in apps. `SDKConfigBuilder` already logged the error.
@@ -24,6 +24,8 @@ public extension CustomerIO {
 
         // set the logLevel for ConsoleLogger before initializing any module
         DIGraphShared.shared.logger.setLogLevel(sdkConfig.logLevel)
+        // Saved so the next process the OS starts for a push or a tap logs at this level before the SDK initializes.
+        DIGraphShared.shared.logLevelStore.saveLogLevel(sdkConfig.logLevel)
         // initialize DataPipeline module with the provided configuration
         let commonLogger = DIGraphShared.shared.sdkCommonLogger
         commonLogger.coreSdkInitStart()

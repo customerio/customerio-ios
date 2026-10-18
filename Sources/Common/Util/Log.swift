@@ -83,10 +83,13 @@ public enum CioLogLevel: String, CaseIterable {
 // sourcery: InjectSingleton
 public class LoggerImpl: Logger {
     private let systemLogger: SystemLogger
-    public var logLevel: CioLogLevel = .error
+    /// The level the app sets wins. Until it sets one, the level its last SDK initialization saved, so a process the OS
+    /// starts for a push or a tap logs at that level before the SDK initializes; `.error` when none was saved.
+    public var logLevel: CioLogLevel
 
-    init(logger: SystemLogger) {
+    init(logger: SystemLogger, logLevelStore: LogLevelStore) {
         self.systemLogger = logger
+        self.logLevel = logLevelStore.logLevel ?? .error
     }
 
     public func setLogLevel(_ level: CioLogLevel) {

@@ -87,6 +87,26 @@ class CustomerIOTests: IntegrationTest {
         XCTAssertEqual(mockLogger.moduleInitSuccessReceivedInvocations[1], "First")
         XCTAssertEqual(mockLogger.moduleInitSuccessReceivedInvocations[2], "Second")
     }
+
+    // MARK: saved log level
+
+    func test_initialize_givenLogLevel_expectLevelSavedForNextProcess() {
+        CustomerIO.initialize(withConfig: SDKConfigBuilder(cdpApiKey: .random).logLevel(.debug).build())
+
+        XCTAssertEqual(diGraphShared.logLevelStore.logLevel, .debug)
+    }
+
+    func test_initialize_givenNoLogLevel_expectDefaultLevelSaved() {
+        CustomerIO.initialize(withConfig: SDKConfigBuilder(cdpApiKey: .random).build())
+
+        XCTAssertEqual(diGraphShared.logLevelStore.logLevel, .error)
+    }
+
+    func test_initialize_givenSecretKey_expectNoLevelSaved() {
+        CustomerIO.initialize(withConfig: SDKConfigBuilder(cdpApiKey: "ak_us_\(String.random)").logLevel(.debug).build())
+
+        XCTAssertNil(diGraphShared.logLevelStore.logLevel)
+    }
 }
 
 // MARK: - Mock module for CustomerIO initialize tests
