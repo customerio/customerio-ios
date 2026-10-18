@@ -518,6 +518,8 @@ class PushNotificationLoggerMock: @unchecked Sendable, PushNotificationLogger, M
 
         mockCalled = false // do last as resetting properties above can make this true
         _logClickedCioPushMessageCallsCount.wrappedValue = 0
+        _logClickedCioPushMessageReceivedArguments.wrappedValue = nil
+        _logClickedCioPushMessageReceivedInvocations.wrappedValue = []
 
         mockCalled = false // do last as resetting properties above can make this true
         _logClickedNonCioPushMessageCallsCount.wrappedValue = 0
@@ -841,16 +843,30 @@ class PushNotificationLoggerMock: @unchecked Sendable, PushNotificationLogger, M
         logClickedCioPushMessageCallsCount > 0
     }
 
+    /// The arguments from the *last* time the function was called.
+    private let _logClickedCioPushMessageReceivedArguments: CioInternalCommon.Synchronized<String?> = .init(nil)
+    var logClickedCioPushMessageReceivedArguments: String? {
+        _logClickedCioPushMessageReceivedArguments.wrappedValue
+    }
+
+    /// Arguments from *all* of the times that the function was called.
+    private let _logClickedCioPushMessageReceivedInvocations: CioInternalCommon.Synchronized<[String]> = .init([])
+    var logClickedCioPushMessageReceivedInvocations: [String] {
+        _logClickedCioPushMessageReceivedInvocations.wrappedValue
+    }
+
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
-    var logClickedCioPushMessageClosure: (() -> Void)?
+    var logClickedCioPushMessageClosure: ((String) -> Void)?
 
-    /// Mocked function for `logClickedCioPushMessage()`. Your opportunity to return a mocked value and check result of mock in test code.
-    func logClickedCioPushMessage() {
+    /// Mocked function for `logClickedCioPushMessage(deliveryId: String)`. Your opportunity to return a mocked value and check result of mock in test code.
+    func logClickedCioPushMessage(deliveryId: String) {
         mockCalled = true
         _logClickedCioPushMessageCallsCount += 1
-        logClickedCioPushMessageClosure?()
+        _logClickedCioPushMessageReceivedArguments.wrappedValue = deliveryId
+        _logClickedCioPushMessageReceivedInvocations.append(deliveryId)
+        logClickedCioPushMessageClosure?(deliveryId)
     }
 
     // MARK: - logClickedNonCioPushMessage

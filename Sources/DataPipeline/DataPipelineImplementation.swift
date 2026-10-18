@@ -7,6 +7,7 @@ class DataPipelineImplementation: DataPipelineInstance, DataPipelineTracking, Ba
     private let dataPipelinesLogger: DataPipelinesLogger
     let analytics: Analytics
     let eventBusHandler: EventBusHandler
+    let commonLogger: SdkCommonLogger
 
     private var globalDataStore: GlobalDataStore
     private let deviceAttributesProvider: DeviceAttributesProvider
@@ -30,6 +31,7 @@ class DataPipelineImplementation: DataPipelineInstance, DataPipelineTracking, Ba
         self.analytics = .init(configuration: moduleConfig.toSegmentConfiguration())
 
         self.eventBusHandler = diGraph.eventBusHandler
+        self.commonLogger = diGraph.sdkCommonLogger
         self.globalDataStore = diGraph.globalDataStore
         self.deviceAttributesProvider = diGraph.deviceAttributesProvider
         self.dateUtil = diGraph.dateUtil
@@ -97,6 +99,7 @@ class DataPipelineImplementation: DataPipelineInstance, DataPipelineTracking, Ba
         // subscribe to journey events emmitted from push/in-app module to send them via datapipelines
         subscribeToJourneyEvents()
         postProfileAlreadyIdentified()
+        startLoggingSdkState()
     }
 
     private func postProfileAlreadyIdentified() {
@@ -247,6 +250,7 @@ class DataPipelineImplementation: DataPipelineInstance, DataPipelineTracking, Ba
                 addDeviceAttributes(token: existingDeviceToken)
             }
         }
+        logSdkState()
     }
 
     private func commonClearIdentify() {
@@ -274,6 +278,7 @@ class DataPipelineImplementation: DataPipelineInstance, DataPipelineTracking, Ba
             // send delete device event to remove it from current profile only if the token was registered before
             analytics.track(name: "Device Deleted")
         }
+        logSdkState()
     }
 
     @available(*, deprecated, message: "Use setDeviceAttributes method instead. This property getter always returns an empty dictionary.")
@@ -330,6 +335,7 @@ class DataPipelineImplementation: DataPipelineInstance, DataPipelineTracking, Ba
 
         dataPipelinesLogger.logRegisteringPushToken(token: deviceToken, userId: registeredUserId)
         addDeviceAttributes(token: deviceToken)
+        logSdkState()
     }
 
     func trackDeliveryEvent(token: String?, event: String, deliveryId: String, timestamp: String) {

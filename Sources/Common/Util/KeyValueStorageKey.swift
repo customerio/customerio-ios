@@ -19,4 +19,5 @@ public enum KeyValueStorageKey: String {
     case inboxEnabledFlag = "inbox_enabled_flag"
     case liveActivityRegistrations = "live_activity_registrations"
     case liveActivityDeliveries = "live_activity_deliveries"
+    case logLevel = "log_level"
 }

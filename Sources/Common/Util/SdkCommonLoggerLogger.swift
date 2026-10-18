@@ -5,6 +5,9 @@ public protocol SdkCommonLogger: AutoMockable {
     func coreSdkInitSuccess()
     func moduleInitStart(_ moduleName: String)
     func moduleInitSuccess(_ moduleName: String)
+    /// Logs the identity, token and key the SDK holds now, so the latest `sdk.state` line in a log is the current state.
+    /// Only the first 8 characters of `cdpApiKey` are logged.
+    func logSdkState(userId: String?, deviceToken: String?, cdpApiKey: String?)
 
     func logHandlingNotificationDeepLink(url: URL)
     func logDeepLinkHandledByCallback()
@@ -40,23 +43,39 @@ public class SdkCommonLoggerImpl: SdkCommonLogger {
         logger.info("CustomerIO \(moduleName) module is initialized and ready to use", Self.INIT_TAG)
     }
 
+    public func logSdkState(userId: String?, deviceToken: String?, cdpApiKey: String?) {
+        let user = userId.flatMap { $0.isEmpty ? nil : $0 } ?? "anonymous"
+        let tail = LogTail.make("sdk.state", [
+            "version": SdkVersion.version,
+            "user": user,
+            "token": LogTail.orNone(deviceToken),
+            "key": LogTail.orNone(cdpApiKey.map { String($0.prefix(8)) })
+        ])
+        logger.debug("SDK state" + tail, Self.INIT_TAG)
+    }
+
     public func logHandlingNotificationDeepLink(url: URL) {
-        logger.debug("Handling push notification deep link with url: \(url)", Self.PUSH_TAG)
+        let tail = LogTail.make("push.deep_link", ["url": url.absoluteString])
+        logger.debug("Handling push notification deep link with url: \(url)" + tail, Self.PUSH_TAG)
     }
 
     public func logDeepLinkHandledByCallback() {
-        logger.debug("Deep link handled by host app callback implementation", Self.PUSH_TAG)
+        logger.debug("Deep link handled by host app callback implementation" + Self.outcomeTail("app_callback"), Self.PUSH_TAG)
     }
 
     public func logDeepLinkHandledByHostApp() {
-        logger.debug("Deep link handled by internal host app navigation", Self.PUSH_TAG)
+        logger.debug("Deep link handled by internal host app navigation" + Self.outcomeTail("app_navigation"), Self.PUSH_TAG)
     }
 
     public func logDeepLinkHandledExternally() {
-        logger.debug("Deep link handled by system", Self.PUSH_TAG)
+        logger.debug("Deep link handled by system" + Self.outcomeTail("system"), Self.PUSH_TAG)
     }
 
     public func logDeepLinkWasNotHandled() {
-        logger.debug("Deep link was not handled", Self.PUSH_TAG)
+        logger.debug("Deep link was not handled" + Self.outcomeTail("not_handled"), Self.PUSH_TAG)
+    }
+
+    private static func outcomeTail(_ outcome: String) -> String {
+        LogTail.make("push.deep_link_outcome", ["outcome": outcome])
     }
 }

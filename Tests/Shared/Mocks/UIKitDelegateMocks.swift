@@ -118,4 +118,9 @@ public extension UNUserNotificationCenter {
 private class NotificationCenterStub: NSObject {
     @objc dynamic var delegate: UNUserNotificationCenterDelegate?
     static var shared = NotificationCenterStub()
+
+    /// The SDK logs the notification permission from `willPresent`. Tests can't build `UNNotificationSettings`, so the
+    /// stub never answers and that line isn't logged.
+    @objc(getNotificationSettingsWithCompletionHandler:)
+    func getNotificationSettings(completionHandler: @escaping (UNNotificationSettings) -> Void) {}
 }

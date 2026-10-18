@@ -17,6 +17,10 @@ class MessagingPushImplementationTest: UnitTest {
     override func setUp() {
         super.setUp()
 
+        // `didReceive` logs the notification permission from `UNUserNotificationCenter.current()`, which a test
+        // process without an app bundle can't create.
+        UNUserNotificationCenter.swizzleNotificationCenter()
+
         pushLoggerMock = PushNotificationLoggerMock()
         richPushDeliveryTrackerMock = RichPushDeliveryTrackerMock()
         httpClientMock = HttpClientMock()
@@ -35,6 +39,12 @@ class MessagingPushImplementationTest: UnitTest {
             diGraph: diGraphShared,
             moduleConfig: MessagingPushConfigBuilder().build()
         )
+    }
+
+    override func tearDown() {
+        UNUserNotificationCenter.unswizzleNotificationCenter()
+
+        super.tearDown()
     }
 
     // MARK: - NSE didReceive / coordinator

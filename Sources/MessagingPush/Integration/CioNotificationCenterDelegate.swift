@@ -99,6 +99,8 @@ open class CioNotificationCenterDelegate: NSObject, UNUserNotificationCenterDele
         willPresent notification: UNNotification,
         withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
     ) {
+        // iOS calls this even when notifications are denied, so the answer is logged here too.
+        NotificationPermissionLog.log(DIGraphShared.shared.logger, center: center)
         guard willPresentDeliveryGuard.begin(notification) else {
             completionHandler(presentationOptionsForNestedWillPresent(notification))
             return

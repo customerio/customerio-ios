@@ -103,6 +103,10 @@ public final class CioInternalCommon.CioAppGroupPendingPushDeliveryStore {
 }
 public enum CioInternalCommon.CioLogLevel {
 }
+public final class CioInternalCommon.CioLogLevelStore {
+	public var logLevel: CioLogLevel?;
+	public fun func saveLogLevel(_ level: CioLogLevel);
+}
 public final class CioInternalCommon.CioProfileStore {
 	public fun func getProfileId(siteId: String) -> String?;
 	public fun func deleteProfileId(siteId: String);
@@ -390,6 +394,17 @@ public final class CioInternalCommon.LockManager {
 }
 public enum CioInternalCommon.LockReference {
 }
+public interface CioInternalCommon.LogLevelStore {
+	public var logLevel: CioLogLevel?;
+	public fun func saveLogLevel(_ level: CioLogLevel);
+}
+public enum CioInternalCommon.LogTail {
+	public final val separator: String;
+	public final val none: String;
+	public fun func make(_ event: String, _ fields: KeyValuePairs<String, String?> = List<:>) -> String;
+	public fun func orNone(_ value: String?) -> String;
+	public fun func encode(_ value: String) -> String;
+}
 public interface CioInternalCommon.Logger {
 	public var logLevel: CioLogLevel;
 	public fun func setLogDispatcher(_ dispatcher: ((CioLogLevel, String) -> Unit)?);
@@ -433,6 +448,10 @@ public final class CioInternalCommon.NewSubscriptionEvent {
 public final class CioInternalCommon.NoBackgroundTaskRunner {
 	public fun init();
 	public fun func withBackgroundTime(_ work: @Sendable () async -> Unit) async;
+}
+public enum CioInternalCommon.NotificationPermissionLog {
+	public fun func log(_ logger: Logger, center: UNUserNotificationCenter = .current());
+	public fun func log(_ logger: Logger, status: UNAuthorizationStatus);
 }
 public final class CioInternalCommon.PendingPushDeliveryMetric {
 	public final val id: UUID;
@@ -549,6 +568,7 @@ public interface CioInternalCommon.SdkCommonLogger {
 	public fun func coreSdkInitSuccess();
 	public fun func moduleInitStart(_ moduleName: String);
 	public fun func moduleInitSuccess(_ moduleName: String);
+	public fun func logSdkState(userId: String?, deviceToken: String?, cdpApiKey: String?);
 	public fun func logHandlingNotificationDeepLink(url: URL);
 	public fun func logDeepLinkHandledByCallback();
 	public fun func logDeepLinkHandledByHostApp();
@@ -560,6 +580,7 @@ public final class CioInternalCommon.SdkCommonLoggerImpl {
 	public fun func coreSdkInitSuccess();
 	public fun func moduleInitStart(_ moduleName: String);
 	public fun func moduleInitSuccess(_ moduleName: String);
+	public fun func logSdkState(userId: String?, deviceToken: String?, cdpApiKey: String?);
 	public fun func logHandlingNotificationDeepLink(url: URL);
 	public fun func logDeepLinkHandledByCallback();
 	public fun func logDeepLinkHandledByHostApp();
@@ -661,11 +682,11 @@ public final class CioInternalCommon.UIKitBackgroundTaskRunner {
 	public fun func withBackgroundTime(_ work: @Sendable () async -> Unit) async;
 }
 public interface CioInternalCommon.UIKitWrapper {
-	public fun func open(url: URL);
+	public fun func open(url: URL, completion: @escaping (Boolean) -> Unit);
 	public fun func continueNSUserActivity(webpageURL: URL) -> Boolean;
 }
 public final class CioInternalCommon.UIKitWrapperImpl {
-	public fun func open(url: URL);
+	public fun func open(url: URL, completion: @escaping (Boolean) -> Unit);
 	public fun func continueNSUserActivity(webpageURL: URL) -> Boolean;
 }
 public final class CioInternalCommon.UrlRequestHttpRequestRunner {

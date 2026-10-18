@@ -52,8 +52,15 @@ public class DeepLinkUtilImpl: DeepLinkUtil {
         } else if uiKit.continueNSUserActivity(webpageURL: deepLinkUrl) {
             logger.logDeepLinkHandledByHostApp()
         } else {
-            uiKit.open(url: deepLinkUrl)
-            logger.logDeepLinkHandledExternally()
+            // Logged once iOS answers: a URL nothing on the device can open used to be logged as
+            // handled before the open had even been tried.
+            uiKit.open(url: deepLinkUrl) { [logger] opened in
+                if opened {
+                    logger.logDeepLinkHandledExternally()
+                } else {
+                    logger.logDeepLinkWasNotHandled()
+                }
+            }
         }
     }
 }

@@ -54,6 +54,8 @@ class MessagingPushImplementation: MessagingPushInstance {
         }
 
         pushLogger.logReceivedCioPushMessage()
+        // The extension's lines reach a log reader; the app's launch lines can be lost.
+        NotificationPermissionLog.log(logger)
 
         let autoTrackDelivery = moduleConfig.autoTrackPushEvents
 

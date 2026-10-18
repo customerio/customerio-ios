@@ -14,7 +14,7 @@ class LoggerTest: UnitTest {
 
         mockCollection.add(mock: systemLoggerMock)
 
-        logger = LoggerImpl(logger: systemLoggerMock)
+        logger = LoggerImpl(logger: systemLoggerMock, logLevelStore: LogLevelStoreMock())
     }
 
     func test_all_givenNoneLogLevel_expectNothingShouldBeLogged() {

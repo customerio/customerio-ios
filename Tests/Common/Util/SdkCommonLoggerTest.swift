@@ -76,7 +76,7 @@ class SdkCommonLoggerTest: UnitTest {
         XCTAssertEqual(loggerMock.debugReceivedInvocations.first?.tag, "Push")
         XCTAssertEqual(
             loggerMock.debugReceivedInvocations.first?.message,
-            "Handling push notification deep link with url: \(url)"
+            "Handling push notification deep link with url: \(url) || ev=push.deep_link url=\(url)"
         )
     }
 
@@ -87,7 +87,7 @@ class SdkCommonLoggerTest: UnitTest {
         XCTAssertEqual(loggerMock.debugReceivedInvocations.first?.tag, "Push")
         XCTAssertEqual(
             loggerMock.debugReceivedInvocations.first?.message,
-            "Deep link handled by host app callback implementation"
+            "Deep link handled by host app callback implementation || ev=push.deep_link_outcome outcome=app_callback"
         )
     }
 
@@ -98,7 +98,7 @@ class SdkCommonLoggerTest: UnitTest {
         XCTAssertEqual(loggerMock.debugReceivedInvocations.first?.tag, "Push")
         XCTAssertEqual(
             loggerMock.debugReceivedInvocations.first?.message,
-            "Deep link handled by internal host app navigation"
+            "Deep link handled by internal host app navigation || ev=push.deep_link_outcome outcome=app_navigation"
         )
     }
 
@@ -109,7 +109,7 @@ class SdkCommonLoggerTest: UnitTest {
         XCTAssertEqual(loggerMock.debugReceivedInvocations.first?.tag, "Push")
         XCTAssertEqual(
             loggerMock.debugReceivedInvocations.first?.message,
-            "Deep link handled by system"
+            "Deep link handled by system || ev=push.deep_link_outcome outcome=system"
         )
     }
 
@@ -120,7 +120,7 @@ class SdkCommonLoggerTest: UnitTest {
         XCTAssertEqual(loggerMock.debugReceivedInvocations.first?.tag, "Push")
         XCTAssertEqual(
             loggerMock.debugReceivedInvocations.first?.message,
-            "Deep link was not handled"
+            "Deep link was not handled || ev=push.deep_link_outcome outcome=not_handled"
         )
     }
 }

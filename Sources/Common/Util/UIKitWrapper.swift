@@ -9,16 +9,27 @@ import UIKit
  */
 @available(iOSApplicationExtension, unavailable)
 public protocol UIKitWrapper: AutoMockable {
-    func open(url: URL)
+    /// `completion` gets whether iOS opened the URL: false when nothing on the device can.
+    func open(url: URL, completion: @escaping (Bool) -> Void)
     func continueNSUserActivity(webpageURL: URL) -> Bool
+}
+
+@available(iOSApplicationExtension, unavailable)
+public extension UIKitWrapper {
+    /// Opens the URL without waiting for iOS's answer. Wrapper SDKs call this form, so it stays.
+    func open(url: URL) {
+        open(url: url) { _ in }
+    }
 }
 
 @available(iOSApplicationExtension, unavailable)
 // sourcery: InjectRegisterShared = "UIKitWrapper"
 public class UIKitWrapperImpl: UIKitWrapper {
-    public func open(url: URL) {
+    public func open(url: URL, completion: @escaping (Bool) -> Void) {
         #if canImport(UIKit)
-        UIApplication.shared.open(url: url)
+        UIApplication.shared.open(url, options: [:], completionHandler: completion)
+        #else
+        completion(false)
         #endif
     }
 
