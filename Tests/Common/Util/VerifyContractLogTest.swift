@@ -24,6 +24,44 @@ struct VerifyContractLogTest {
         systemLogger.logReceivedArguments?.message
     }
 
+    // MARK: sdk.state
+
+    @Test
+    func sdkState_givenUserTokenAndKey_expectFirst8KeyCharactersOnly() {
+        commonLogger.logSdkState(userId: "u-42", deviceToken: "abcd1234", cdpApiKey: "1a2b3c4d5e6f7a8b")
+
+        #expect(line == "[Init] SDK state || ev=sdk.state version=\(SdkVersion.version) user=u-42 token=abcd1234 key=1a2b3c4d")
+        #expect(systemLogger.logReceivedArguments?.level == .debug)
+    }
+
+    @Test
+    func sdkState_givenNothingHeld_expectAnonymousAndNone() {
+        commonLogger.logSdkState(userId: nil, deviceToken: nil, cdpApiKey: nil)
+
+        #expect(line == "[Init] SDK state || ev=sdk.state version=\(SdkVersion.version) user=anonymous token=none key=none")
+    }
+
+    @Test
+    func sdkState_givenEmptyValues_expectAnonymousAndNone() {
+        commonLogger.logSdkState(userId: "", deviceToken: "", cdpApiKey: "")
+
+        let reader = LogTailReader(line ?? "")
+        #expect(reader?.keys == ["ev", "version", "user", "token", "key"])
+        #expect(reader?.values["user"] == "anonymous")
+        #expect(reader?.values["token"] == "none")
+        #expect(reader?.values["key"] == "none")
+    }
+
+    @Test
+    func sdkState_givenUserIdWithSpaces_expectDecodesToUserId() {
+        commonLogger.logSdkState(userId: "jane doe@example.com", deviceToken: nil, cdpApiKey: "short")
+
+        let reader = LogTailReader(line ?? "")
+        #expect(reader?.sentence == "[Init] SDK state")
+        #expect(reader?.values["user"] == "jane doe@example.com")
+        #expect(reader?.values["key"] == "short")
+    }
+
     // MARK: push.permission
 
     @Test

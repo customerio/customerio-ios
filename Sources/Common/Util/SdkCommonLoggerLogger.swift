@@ -5,6 +5,9 @@ public protocol SdkCommonLogger: AutoMockable {
     func coreSdkInitSuccess()
     func moduleInitStart(_ moduleName: String)
     func moduleInitSuccess(_ moduleName: String)
+    /// Logs the identity, token and key the SDK holds now, so the latest `sdk.state` line in a log is the current state.
+    /// Only the first 8 characters of `cdpApiKey` are logged.
+    func logSdkState(userId: String?, deviceToken: String?, cdpApiKey: String?)
 
     func logHandlingNotificationDeepLink(url: URL)
     func logDeepLinkHandledByCallback()
@@ -38,6 +41,17 @@ public class SdkCommonLoggerImpl: SdkCommonLogger {
 
     public func moduleInitSuccess(_ moduleName: String) {
         logger.info("CustomerIO \(moduleName) module is initialized and ready to use", Self.INIT_TAG)
+    }
+
+    public func logSdkState(userId: String?, deviceToken: String?, cdpApiKey: String?) {
+        let user = userId.flatMap { $0.isEmpty ? nil : $0 } ?? "anonymous"
+        let tail = LogTail.make("sdk.state", [
+            "version": SdkVersion.version,
+            "user": user,
+            "token": LogTail.orNone(deviceToken),
+            "key": LogTail.orNone(cdpApiKey.map { String($0.prefix(8)) })
+        ])
+        logger.debug("SDK state" + tail, Self.INIT_TAG)
     }
 
     public func logHandlingNotificationDeepLink(url: URL) {

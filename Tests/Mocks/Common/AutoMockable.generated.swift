@@ -3802,6 +3802,11 @@ public class SdkCommonLoggerMock: @unchecked Sendable, SdkCommonLogger, Mock {
         _moduleInitSuccessReceivedInvocations.wrappedValue = []
 
         mockCalled = false // do last as resetting properties above can make this true
+        _logSdkStateCallsCount.wrappedValue = 0
+        _logSdkStateReceivedArguments.wrappedValue = nil
+        _logSdkStateReceivedInvocations.wrappedValue = []
+
+        mockCalled = false // do last as resetting properties above can make this true
         _logHandlingNotificationDeepLinkCallsCount.wrappedValue = 0
         _logHandlingNotificationDeepLinkReceivedArguments.wrappedValue = nil
         _logHandlingNotificationDeepLinkReceivedInvocations.wrappedValue = []
@@ -3947,6 +3952,45 @@ public class SdkCommonLoggerMock: @unchecked Sendable, SdkCommonLogger, Mock {
         _moduleInitSuccessReceivedArguments.wrappedValue = moduleName
         _moduleInitSuccessReceivedInvocations.append(moduleName)
         moduleInitSuccessClosure?(moduleName)
+    }
+
+    // MARK: - logSdkState
+
+    /// Number of times the function was called.
+    private let _logSdkStateCallsCount: CioInternalCommon.Synchronized<Int> = .init(0)
+    public var logSdkStateCallsCount: Int {
+        _logSdkStateCallsCount.wrappedValue
+    }
+
+    /// `true` if the function was ever called.
+    public var logSdkStateCalled: Bool {
+        logSdkStateCallsCount > 0
+    }
+
+    /// The arguments from the *last* time the function was called.
+    private let _logSdkStateReceivedArguments: CioInternalCommon.Synchronized<(userId: String?, deviceToken: String?, cdpApiKey: String?)?> = .init(nil)
+    public var logSdkStateReceivedArguments: (userId: String?, deviceToken: String?, cdpApiKey: String?)? {
+        _logSdkStateReceivedArguments.wrappedValue
+    }
+
+    /// Arguments from *all* of the times that the function was called.
+    private let _logSdkStateReceivedInvocations: CioInternalCommon.Synchronized<[(userId: String?, deviceToken: String?, cdpApiKey: String?)]> = .init([])
+    public var logSdkStateReceivedInvocations: [(userId: String?, deviceToken: String?, cdpApiKey: String?)] {
+        _logSdkStateReceivedInvocations.wrappedValue
+    }
+
+    /**
+     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
+     */
+    public var logSdkStateClosure: ((String?, String?, String?) -> Void)?
+
+    /// Mocked function for `logSdkState(userId: String?, deviceToken: String?, cdpApiKey: String?)`. Your opportunity to return a mocked value and check result of mock in test code.
+    public func logSdkState(userId: String?, deviceToken: String?, cdpApiKey: String?) {
+        mockCalled = true
+        _logSdkStateCallsCount += 1
+        _logSdkStateReceivedArguments.wrappedValue = (userId: userId, deviceToken: deviceToken, cdpApiKey: cdpApiKey)
+        _logSdkStateReceivedInvocations.append((userId: userId, deviceToken: deviceToken, cdpApiKey: cdpApiKey))
+        logSdkStateClosure?(userId, deviceToken, cdpApiKey)
     }
 
     // MARK: - logHandlingNotificationDeepLink
