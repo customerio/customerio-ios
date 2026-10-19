@@ -104,12 +104,9 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         )
         MessagingInApp
             .initialize(
-                withConfig: MessagingInAppConfigBuilder(
-                    siteId: settings.inApp.siteId,
-                    region: settings.inApp.region.toCIORegion()
-                )
-                .setNotificationInboxAccessibilityLabels(Self.inboxAccessibilityLabels)
-                .build()
+                withConfig: MessagingInAppConfigBuilder(siteId: settings.inApp.siteId)
+                    .setNotificationInboxAccessibilityLabels(Self.inboxAccessibilityLabels)
+                    .build()
             )
             .setEventListener(self)
 

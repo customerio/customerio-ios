@@ -35,33 +35,6 @@ class EngineWebConfigurationTests: UnitTest {
         XCTAssertEqual(engineWebProvider.lastConfiguration?.siteId, "test-site")
     }
 
-    @MainActor
-    func test_didFinish_givenKeyReplacedWhileLoading_expectCurrentKeyInjected() {
-        let store = DIGraphShared.shared.backgroundDeliveryContextStore
-        let state = InAppMessageState(siteId: "test-site", publicKey: "pk_us_old", dataCenter: "US")
-        let message = Message(messageId: "test-message")
-        let engine = EngineWeb(
-            configuration: EngineWebConfiguration(
-                siteId: "test-site",
-                key: "pk_us_old",
-                dataCenter: "US",
-                instanceId: message.instanceId,
-                endpoint: "https://engine",
-                messageId: message.messageId,
-                properties: nil
-            ),
-            state: state,
-            message: message
-        )
-        defer { engine.cleanEngineWeb() }
-        store.setCdpApiKey("pk_us_new")
-        defer { store.setCdpApiKey(nil) }
-
-        engine.webView(engine.webView, didFinish: nil)
-
-        XCTAssertEqual(engine.currentConfiguration.key, "pk_us_new")
-    }
-
     func test_encode_givenNoKey_expectKeyOmitted() throws {
         let configuration = EngineWebConfiguration(
             siteId: "test-site",

@@ -6,16 +6,23 @@ import XCTest
 class MessagingInAppConfigBuilderTest: UnitTest {
     func test_initializeAndModify_expectCustomValues() {
         let givenSiteId = String.random
-        let givenRegion = Region.EU
 
-        let config = MessagingInAppConfigBuilder(siteId: givenSiteId, region: givenRegion).build()
+        let config = MessagingInAppConfigBuilder(siteId: givenSiteId).build()
 
         XCTAssertEqual(config.siteId, givenSiteId)
-        XCTAssertEqual(config.region, givenRegion)
+    }
+
+    // Apps already built with a region still compile. The region is kept on the config but not used.
+    @available(*, deprecated)
+    func test_initialize_givenDeprecatedRegion_expectSiteIdAndRegionKept() {
+        let config = MessagingInAppConfigBuilder(siteId: "site-1", region: .EU).build()
+
+        XCTAssertEqual(config.siteId, "site-1")
+        XCTAssertEqual(config.region, .EU)
     }
 
     func test_build_givenNoNotificationInboxAccessibilityLabels_expectAllNil() {
-        let config = MessagingInAppConfigBuilder(siteId: String.random, region: .US).build()
+        let config = MessagingInAppConfigBuilder(siteId: String.random).build()
 
         XCTAssertNil(config.notificationInboxAccessibilityLabels.bell)
         XCTAssertNil(config.notificationInboxAccessibilityLabels.bellWithUnreadCount)
@@ -24,7 +31,7 @@ class MessagingInAppConfigBuilderTest: UnitTest {
     }
 
     func test_setNotificationInboxAccessibilityLabels_expectLabelsOnConfig() {
-        let config = MessagingInAppConfigBuilder(siteId: String.random, region: .US)
+        let config = MessagingInAppConfigBuilder(siteId: String.random)
             .setNotificationInboxAccessibilityLabels(NotificationInboxAccessibilityLabels(
                 bell: "Aviseringar",
                 bellWithUnreadCount: { count in count == 1 ? "1 oläst avisering" : "\(count) olästa aviseringar" },
@@ -95,7 +102,8 @@ class MessagingInAppConfigBuilderTest: UnitTest {
         XCTAssertNil(config.notificationInboxAccessibilityLabels.emptyState)
     }
 
-    func test_initializeFromDictionaryWithCustomValues_expectCorrectValues() {
+    @available(*, deprecated)
+    func test_initializeFromDictionaryWithCustomValues_expectRegionNotRead() {
         let givenSiteId = String.random
         let givenRegion = "EU"
 
@@ -110,7 +118,8 @@ class MessagingInAppConfigBuilderTest: UnitTest {
 
         XCTAssertNotNil(config)
         XCTAssertEqual(config?.siteId, givenSiteId)
-        XCTAssertEqual(config?.region.rawValue, givenRegion)
+        // Region comes from the SDK setup instead.
+        XCTAssertEqual(config?.region, .US)
     }
 
     func test_initializeFromEmptyDictionary_expectThrowError() {
@@ -123,32 +132,9 @@ class MessagingInAppConfigBuilderTest: UnitTest {
         }
     }
 
-    func test_initializeFromDictionaryWithoutRegion_givenEuPublicKey_expectEuRegion() throws {
-        let givenDict: [String: Any] = [
-            "cdpApiKey": "pk_eu_\(String.random)",
-            "inApp": ["siteId": String.random]
-        ]
-
-        let config = try XCTUnwrap(MessagingInAppConfigBuilder.build(from: givenDict))
-
-        XCTAssertEqual(config.region, .EU)
-    }
-
-    func test_initializeFromDictionary_givenEuPublicKeyAndUsRegion_expectExplicitRegionWins() throws {
-        let givenDict: [String: Any] = [
-            "cdpApiKey": "pk_eu_\(String.random)",
-            "region": "US",
-            "inApp": ["siteId": String.random]
-        ]
-
-        let config = try XCTUnwrap(MessagingInAppConfigBuilder.build(from: givenDict))
-
-        XCTAssertEqual(config.region, .US)
-    }
-
     // Apps written against the old API read `siteId` as a non-optional `String`.
     func test_siteId_givenLegacyCaller_expectNonOptionalString() {
-        let config = MessagingInAppConfigBuilder(siteId: "site-1", region: .US).build()
+        let config = MessagingInAppConfigBuilder(siteId: "site-1").build()
 
         let siteId: String = config.siteId
 
@@ -177,6 +163,7 @@ class MessagingInAppConfigBuilderTest: UnitTest {
         }
     }
 
+    @available(*, deprecated)
     func test_initializeFromDictionaryWithOnlySiteId_expectConfigWithDefaultRegion() {
         let givenSiteId = String.random
         let givenDict: [String: Any] = [
@@ -218,6 +205,7 @@ class MessagingInAppConfigBuilderTest: UnitTest {
         }
     }
 
+    @available(*, deprecated)
     func test_initializeFromDictionaryWithIncorrectRegionType_expectDefaultValues() {
         let givenSiteId = String.random
         let givenDict: [String: Any] = [
@@ -234,6 +222,7 @@ class MessagingInAppConfigBuilderTest: UnitTest {
         XCTAssertEqual(config?.region, Region.US)
     }
 
+    @available(*, deprecated)
     func test_initializeFromDictionaryWithIncorrectRegionValue_expectDefaultValues() {
         let givenSiteId = String.random
         let givenDict: [String: Any] = [

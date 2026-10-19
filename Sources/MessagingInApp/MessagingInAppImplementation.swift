@@ -22,7 +22,7 @@ class MessagingInAppImplementation: MessagingInAppInstance {
     private let threadUtil: ThreadUtil
     private let eventBusHandler: EventBusHandler
     private let notificationInbox: NotificationInbox
-    private let backgroundDeliveryContextStore: BackgroundDeliveryContextStore
+    private let dataPipeline: DataPipelineTracking?
 
     init(diGraph: DIGraphShared, moduleConfig: MessagingInAppConfigOptions) {
         self.moduleConfig = moduleConfig
@@ -32,7 +32,8 @@ class MessagingInAppImplementation: MessagingInAppInstance {
         self.threadUtil = diGraph.threadUtil
         self.eventBusHandler = diGraph.eventBusHandler
         self.notificationInbox = diGraph.notificationInbox
-        self.backgroundDeliveryContextStore = diGraph.backgroundDeliveryContextStore
+        // Set up by `CustomerIO.initialize`, which holds the key and region the SDK uses.
+        self.dataPipeline = diGraph.getOptional(DataPipelineTracking.self)
 
         Self.currentColorScheme = moduleConfig.colorScheme
         Self.currentNotificationInboxAccessibilityLabels = moduleConfig.notificationInboxAccessibilityLabels
@@ -40,12 +41,15 @@ class MessagingInAppImplementation: MessagingInAppInstance {
     }
 
     private func subscribeToInAppMessageState() {
-        // Key set on `SDKConfigBuilder`. Only public `pk_` keys are sent to in-app APIs.
-        let publicKey = backgroundDeliveryContextStore.currentCdpApiKey.flatMap { ApiKey.isPublic($0) ? $0 : nil }
+        if dataPipeline == nil {
+            logger.logWithModuleTag("CustomerIO isn't initialized yet, so in-app uses the US region and no public key. Initialize CustomerIO first.", level: .error)
+        }
+        // Only public `pk_` keys are sent to in-app APIs.
+        let publicKey = dataPipeline.map(\.apiKey).flatMap { ApiKey.isPublic($0) ? $0 : nil }
 
         inAppMessageManager.dispatch(action: .initialize(
             siteId: moduleConfig.siteId,
-            dataCenter: moduleConfig.region.rawValue,
+            dataCenter: (dataPipeline?.region ?? .US).rawValue,
             environment: GistEnvironment.production,
             colorScheme: moduleConfig.colorScheme,
             publicKey: publicKey

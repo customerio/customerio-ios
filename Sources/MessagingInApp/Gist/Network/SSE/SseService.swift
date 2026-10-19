@@ -151,18 +151,16 @@ actor SseService: SseServiceProtocol {
         // Add query parameters (matching Android's createSseRequest)
         let userToken = Data(identifier.utf8).base64EncodedString()
         let sessionId = SessionManager.shared.sessionId
-        var queryItems = [
+        // The public key identifies the workspace when set, so the site ID is only sent without it.
+        let workspaceItem = state.publicKey.map { URLQueryItem(name: "key", value: $0) }
+            ?? URLQueryItem(name: "siteId", value: state.siteId)
+        components.queryItems = [
             URLQueryItem(name: "sessionId", value: sessionId),
-            URLQueryItem(name: "siteId", value: state.siteId)
+            workspaceItem,
+            URLQueryItem(name: "userToken", value: userToken)
         ]
-        // EventSource can't set headers, so the public key goes in the query.
-        if let publicKey = state.requestPublicKey {
-            queryItems.append(URLQueryItem(name: "key", value: publicKey))
-        }
-        queryItems.append(URLQueryItem(name: "userToken", value: userToken))
-        components.queryItems = queryItems
 
-        logger.logWithModuleTag("SseService: Built URL with siteId=\(state.siteId), sessionId=\(sessionId), identifier=\(identifier)", level: .debug)
+        logger.logWithModuleTag("SseService: Built URL with \(workspaceItem.name), sessionId=\(sessionId), identifier=\(identifier)", level: .debug)
 
         return components.url
     }
@@ -174,7 +172,8 @@ actor SseService: SseServiceProtocol {
         let commonHeaders = GistCommonHeaders(sdkClient: diGraph.sdkClient, deviceInfo: diGraph.deviceInfo)
         let isAnonymous = state.userId == nil
 
-        var headers = commonHeaders.headers(state: state)
+        // The public key is in the URL query params, so it isn't sent as a header too.
+        var headers = commonHeaders.headers(state: state, includeAuthorization: false)
         // Note: userToken is NOT included in headers for SSE - it's in the URL query params
         headers[HTTPHeader.userAnonymous.rawValue] = String(isAnonymous)
         return headers

@@ -2,7 +2,7 @@ import CioAnalytics
 import CioInternalCommon
 
 class DataPipelineImplementation: DataPipelineInstance, DataPipelineTracking, BackgroundDeliveryCdpApiKeyProvider {
-    private let moduleConfig: DataPipelineConfigOptions
+    let moduleConfig: DataPipelineConfigOptions
     private let logger: Logger
     private let dataPipelinesLogger: DataPipelinesLogger
     let analytics: Analytics

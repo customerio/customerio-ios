@@ -129,6 +129,8 @@ class SDKConfigBuilderTest: UnitTest {
 
         XCTAssertEqual(result.dataPipelineConfig.apiHost, "cdp-eu.customer.io/v1")
         XCTAssertEqual(result.dataPipelineConfig.cdnHost, "cdp-eu.customer.io/v1")
+        // Modules such as in-app read the region from here.
+        XCTAssertEqual(result.dataPipelineConfig.region, .EU)
     }
 
     func test_givenUsPublicKeyAndNoRegion_expectUsDefaults() {

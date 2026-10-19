@@ -9,7 +9,7 @@ import Foundation
 /// **Usage Example:**
 ///
 /// ```
-/// let config = MessagingInAppConfigBuilder(siteId, region: .US)
+/// let config = MessagingInAppConfigBuilder(siteId: siteId)
 ///   // additional configuration as needed...
 ///   .build()
 /// // Use `config` for initializing in-app module...
@@ -17,14 +17,24 @@ import Foundation
 public class MessagingInAppConfigBuilder {
     // configuration options for MessagingInAppConfigOptions
     private let siteId: String
-    private let region: Region
+    // Only kept for the deprecated `MessagingInAppConfigOptions.region`.
+    private var region: Region = .US
     private var colorScheme: ColorScheme = .auto
     private var notificationInboxAccessibilityLabels = NotificationInboxAccessibilityLabels()
 
     /// Initializes new `MessagingInAppConfigBuilder` with required configuration options.
+    /// In-app uses the API key and region `CustomerIO` is set up with, so initialize `CustomerIO` first.
     /// - Parameters:
     ///   - siteId: Workspace Site ID
-    ///   - region: Workspace Region
+    public init(siteId: String) {
+        self.siteId = siteId
+    }
+
+    /// Initializes new `MessagingInAppConfigBuilder` with required configuration options.
+    /// - Parameters:
+    ///   - siteId: Workspace Site ID
+    ///   - region: Ignored, in-app uses the region `CustomerIO` is set up with.
+    @available(*, deprecated, message: "region is ignored, in-app uses the region CustomerIO is set up with. Use init(siteId:).")
     public init(siteId: String, region: Region) {
         self.siteId = siteId
         self.region = region
@@ -67,8 +77,6 @@ public extension MessagingInAppConfigBuilder {
     /// Constants used to map each of the options in MessagingInAppConfigOptions.
     private enum Keys: String {
         case siteId
-        case region
-        case cdpApiKey
         case notificationInboxAccessibilityLabels
     }
 
@@ -98,16 +106,9 @@ public extension MessagingInAppConfigBuilder {
         guard let siteId = config[Keys.siteId.rawValue] as? String else {
             throw MessagingInAppConfigBuilderError.missingSiteId
         }
-        let cdpApiKey = sdkConfig[Keys.cdpApiKey.rawValue] as? String ?? ""
 
-        // By default, region is provided only in top-level configuration in wrapper SDKs.
-        // This prevents users from having to specify region more than once in the configuration.
-        // Therefore, we retrieve the region from top-level configuration here.
-        // If the region is not present, it comes from the key prefix, then the default region.
-        let regionStr = sdkConfig[Keys.region.rawValue] as? String ?? ""
-        let region = regionStr.isEmpty ? ApiKey.region(of: cdpApiKey) ?? Region.getRegion(from: regionStr) : Region.getRegion(from: regionStr)
-
-        let builder = MessagingInAppConfigBuilder(siteId: siteId, region: region)
+        // Region comes from the SDK setup, so it isn't read here.
+        let builder = MessagingInAppConfigBuilder(siteId: siteId)
 
         if let colorSchemeStr = config["colorScheme"] as? String {
             switch colorSchemeStr {
