@@ -83,15 +83,73 @@ class AnalyticsStorageMigrationTests: UnitTest {
         XCTAssertNil(newValues["segment.userId"])
     }
 
-    // Apps can also run Segment's own SDK with the same storage names, so storage this SDK didn't use is left alone.
-    func test_copyIdentity_givenStorageFromKeyThisSdkNeverUsed_expectNothingCopied() {
+    // MARK: first launch on an SDK that records keys
+
+    func test_copyIdentity_givenSavedApiKey_expectItsStorageMigrated() throws {
+        let oldKey = givenKey(String.random)
+        let otherKey = givenKey(String.random)
+        let newKey = givenKey("pk_us_\(String.random)")
+        givenStorage(writeKey: otherKey, values: ["segment.anonymousId": "anon-other"])
+        givenStorage(writeKey: oldKey, values: ["segment.anonymousId": "anon-1"])
+        let otherBatch = try givenFinishedBatch(writeKey: otherKey)
+        let oldBatch = try givenFinishedBatch(writeKey: oldKey)
+
+        let migration = migration(savedApiKey: oldKey)
+        XCTAssertTrue(migration.copyIdentity(to: newKey))
+        migration.moveQueuedEvents(to: newKey, on: queue)
+        queue.sync {}
+
+        XCTAssertEqual(storedValues(writeKey: newKey)["segment.anonymousId"] as? String, "anon-1")
+        XCTAssertFalse(FileManager.default.fileExists(atPath: oldBatch.path))
+        XCTAssertTrue(FileManager.default.fileExists(atPath: otherBatch.path))
+    }
+
+    func test_copyIdentity_givenSavedCustomerIOSettings_expectOnlyThatStorageMigrated() throws {
+        let oldKey = givenKey(String.random)
         let segmentKey = givenKey(String.random)
         let newKey = givenKey("pk_us_\(String.random)")
-        givenStorage(writeKey: segmentKey, values: ["segment.anonymousId": "anon-segment"])
+        try givenStorage(writeKey: segmentKey, values: ["segment.anonymousId": "anon-segment", "segment.settings": settings(destination: "Segment.io")])
+        try givenStorage(writeKey: oldKey, values: ["segment.anonymousId": "anon-1", "segment.settings": settings(destination: "Customer.io Data Pipelines")])
+        let segmentBatch = try givenFinishedBatch(writeKey: segmentKey)
+
+        let migration = migration()
+        XCTAssertTrue(migration.copyIdentity(to: newKey))
+        migration.moveQueuedEvents(to: newKey, on: queue)
+        queue.sync {}
+
+        XCTAssertEqual(storedValues(writeKey: newKey)["segment.anonymousId"] as? String, "anon-1")
+        XCTAssertTrue(FileManager.default.fileExists(atPath: segmentBatch.path))
+    }
+
+    func test_copyIdentity_givenNothingSavedAndOneOtherKey_expectItMigrated() throws {
+        let oldKey = givenKey(String.random)
+        let newKey = givenKey("pk_us_\(String.random)")
+        givenStorage(writeKey: oldKey, values: ["segment.anonymousId": "anon-1"])
+        let oldBatch = try givenFinishedBatch(writeKey: oldKey)
+
+        let migration = migration()
+        XCTAssertTrue(migration.copyIdentity(to: newKey))
+        migration.moveQueuedEvents(to: newKey, on: queue)
+        queue.sync {}
+
+        XCTAssertEqual(storedValues(writeKey: newKey)["segment.anonymousId"] as? String, "anon-1")
+        XCTAssertFalse(FileManager.default.fileExists(atPath: oldBatch.path))
+        XCTAssertEqual(UserDefaults.standard.stringArray(forKey: "io.customer.sdk.analyticsWriteKeys"), [oldKey, newKey])
+    }
+
+    // Apps can also run Segment's own SDK with the same storage names, so with nothing saved to tell them apart
+    // no storage is taken.
+    func test_copyIdentity_givenNothingSavedAndSeveralOtherKeys_expectNothingMigrated() throws {
+        let firstKey = givenKey(String.random)
+        let secondKey = givenKey(String.random)
+        let newKey = givenKey("pk_us_\(String.random)")
+        givenStorage(writeKey: firstKey, values: ["segment.anonymousId": "anon-1"])
+        givenStorage(writeKey: secondKey, values: ["segment.anonymousId": "anon-2"])
 
         XCTAssertFalse(migration().copyIdentity(to: newKey))
 
         XCTAssertNil(UserDefaults.standard.persistentDomain(forName: "com.segment.storage.\(newKey)"))
+        XCTAssertEqual(UserDefaults.standard.stringArray(forKey: "io.customer.sdk.analyticsWriteKeys"), [newKey])
     }
 
     func test_copyIdentity_givenKeyUnchanged_expectNothingHappens() {
@@ -225,8 +283,14 @@ class AnalyticsStorageMigrationTests: UnitTest {
 }
 
 private extension AnalyticsStorageMigrationTests {
-    func migration() -> AnalyticsStorageMigration {
-        AnalyticsStorageMigration(logger: log, eventsDirectory: eventsDirectory)
+    func migration(savedApiKey: String? = nil) -> AnalyticsStorageMigration {
+        AnalyticsStorageMigration(logger: log, savedApiKey: savedApiKey, eventsDirectory: eventsDirectory)
+    }
+
+    /// Settings as analytics saves them after fetching them for a key.
+    func settings(destination: String) throws -> Data {
+        let json = #"{"integrations":{"\#(destination)":{"apiKey":"key"}}}"#
+        return try PropertyListEncoder().encode(JSONDecoder().decode(Settings.self, from: Data(json.utf8)))
     }
 
     func moveQueuedEvents(to newKey: String, from earlierKeys: [String]) {
