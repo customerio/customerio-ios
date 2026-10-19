@@ -199,6 +199,8 @@ public final class CioInternalCommon.DIGraphShared {
 }
 public interface CioInternalCommon.DataPipelineTracking {
 	public var isUserIdentified: Boolean;
+	public var apiKey: String;
+	public var region: Region;
 	public fun func track(name: String, properties: List<String: Any>);
 	public fun func trackDeliveryEvent(token: String?, event: String, deliveryId: String, timestamp: String);
 }
