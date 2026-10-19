@@ -13,8 +13,8 @@ class AnalyticsStorageMigrationTests: UnitTest {
     override func setUp() {
         super.setUp()
 
-        // The SDK set up by `UnitTest` saves its own key as the last key used.
-        UserDefaults.standard.removeObject(forKey: "io.customer.sdk.analyticsWriteKey")
+        // The SDK set up by `UnitTest` records its own key as used.
+        UserDefaults.standard.removeObject(forKey: "io.customer.sdk.analyticsWriteKeys")
         eventsDirectory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
     }
 
@@ -24,7 +24,7 @@ class AnalyticsStorageMigrationTests: UnitTest {
             UserDefaults.standard.removePersistentDomain(forName: "com.segment.storage.\(key)")
             Analytics.removeActiveWriteKey(key)
         }
-        UserDefaults.standard.removeObject(forKey: "io.customer.sdk.analyticsWriteKey")
+        UserDefaults.standard.removeObject(forKey: "io.customer.sdk.analyticsWriteKeys")
 
         super.tearDown()
     }
@@ -83,14 +83,15 @@ class AnalyticsStorageMigrationTests: UnitTest {
         XCTAssertNil(newValues["segment.userId"])
     }
 
-    func test_copyIdentity_givenNoSavedLastKey_expectMostRecentKeyWithIdentityUsed() {
-        let oldKey = givenKey(String.random)
+    // Apps can also run Segment's own SDK with the same storage names, so storage this SDK didn't use is left alone.
+    func test_copyIdentity_givenStorageFromKeyThisSdkNeverUsed_expectNothingCopied() {
+        let segmentKey = givenKey(String.random)
         let newKey = givenKey("pk_us_\(String.random)")
-        givenStorage(writeKey: oldKey, values: ["segment.anonymousId": "anon-1"])
+        givenStorage(writeKey: segmentKey, values: ["segment.anonymousId": "anon-segment"])
 
-        XCTAssertTrue(migration().copyIdentity(to: newKey))
+        XCTAssertFalse(migration().copyIdentity(to: newKey))
 
-        XCTAssertEqual(storedValues(writeKey: newKey)["segment.anonymousId"] as? String, "anon-1")
+        XCTAssertNil(UserDefaults.standard.persistentDomain(forName: "com.segment.storage.\(newKey)"))
     }
 
     func test_copyIdentity_givenKeyUnchanged_expectNothingHappens() {
@@ -134,7 +135,7 @@ class AnalyticsStorageMigrationTests: UnitTest {
         let contents = try String(contentsOf: batch, encoding: .utf8)
         // The new key already has a batch with the same name.
         let newKeyBatch = try givenFinishedBatch(writeKey: newKey)
-        moveQueuedEvents(to: newKey)
+        moveQueuedEvents(to: newKey, from: [oldKey])
 
         let analytics = givenAnalytics(writeKey: newKey)
 
@@ -155,7 +156,7 @@ class AnalyticsStorageMigrationTests: UnitTest {
             #"{"type":"identify","messageId":"msg-2","timestamp":"2026-10-07T00:00:01.000Z","userId":"user-1","anonymousId":"anon-1","traits":{"n":1}}"#
         ]
         let file = try givenUnfinishedBatch(writeKey: oldKey, contents: unfinishedBatch(events))
-        moveQueuedEvents(to: newKey)
+        moveQueuedEvents(to: newKey, from: [oldKey])
 
         let analytics = givenAnalytics(writeKey: newKey)
 
@@ -172,7 +173,7 @@ class AnalyticsStorageMigrationTests: UnitTest {
         let complete = #"{"type":"track","event":"first","messageId":"msg-1"}"#
         let contents = unfinishedBatch([complete]) + #",{"type":"track","event":"sec"#
         let file = try givenUnfinishedBatch(writeKey: oldKey, contents: contents)
-        moveQueuedEvents(to: newKey)
+        moveQueuedEvents(to: newKey, from: [oldKey])
 
         let analytics = givenAnalytics(writeKey: newKey)
 
@@ -184,7 +185,7 @@ class AnalyticsStorageMigrationTests: UnitTest {
         let oldKey = givenKey(String.random)
         let newKey = givenKey("pk_us_\(String.random)")
         let file = try givenUnfinishedBatch(writeKey: oldKey, contents: #"[{"type":"track","messageId":"msg-1"}]"#)
-        moveQueuedEvents(to: newKey)
+        moveQueuedEvents(to: newKey, from: [oldKey])
 
         let analytics = givenAnalytics(writeKey: newKey)
 
@@ -200,12 +201,26 @@ class AnalyticsStorageMigrationTests: UnitTest {
         let secondEvent = #"{"type":"track","event":"second","messageId":"msg-2"}"#
         _ = try givenUnfinishedBatch(writeKey: firstKey, contents: unfinishedBatch([firstEvent]))
         _ = try givenUnfinishedBatch(writeKey: secondKey, contents: unfinishedBatch([secondEvent]))
-        moveQueuedEvents(to: newKey)
+        moveQueuedEvents(to: newKey, from: [firstKey, secondKey])
 
         let analytics = givenAnalytics(writeKey: newKey)
 
         let messageIds = try uploadedEvents(analytics).compactMap { $0["messageId"] as? String }
         XCTAssertEqual(Set(messageIds), ["msg-1", "msg-2"])
+    }
+
+    func test_moveQueuedEvents_givenFolderOfKeyThisSdkNeverUsed_expectLeftAlone() throws {
+        let oldKey = givenKey(String.random)
+        let segmentKey = givenKey(String.random)
+        let newKey = givenKey("pk_us_\(String.random)")
+        let segmentBatch = try givenFinishedBatch(writeKey: segmentKey)
+        let segmentUnfinished = try givenUnfinishedBatch(writeKey: segmentKey, contents: unfinishedBatch([#"{"messageId":"msg-1"}"#]))
+
+        moveQueuedEvents(to: newKey, from: [oldKey])
+
+        XCTAssertTrue(FileManager.default.fileExists(atPath: segmentBatch.path))
+        XCTAssertTrue(FileManager.default.fileExists(atPath: segmentUnfinished.path))
+        XCTAssertNil(givenAnalytics(writeKey: newKey).pendingUploads)
     }
 }
 
@@ -214,7 +229,8 @@ private extension AnalyticsStorageMigrationTests {
         AnalyticsStorageMigration(logger: log, eventsDirectory: eventsDirectory)
     }
 
-    func moveQueuedEvents(to newKey: String) {
+    func moveQueuedEvents(to newKey: String, from earlierKeys: [String]) {
+        UserDefaults.standard.set(earlierKeys + [newKey], forKey: "io.customer.sdk.analyticsWriteKeys")
         migration().moveQueuedEvents(to: newKey, on: queue)
         queue.sync {}
     }
@@ -225,7 +241,7 @@ private extension AnalyticsStorageMigrationTests {
     }
 
     func givenLastKey(_ key: String) {
-        UserDefaults.standard.set(key, forKey: "io.customer.sdk.analyticsWriteKey")
+        UserDefaults.standard.set([key], forKey: "io.customer.sdk.analyticsWriteKeys")
     }
 
     func givenAnalytics(writeKey: String) -> Analytics {
