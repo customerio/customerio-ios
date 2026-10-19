@@ -1,3 +1,4 @@
+import CioAnalytics
 import CioInternalCommon
 import Foundation
 
@@ -15,6 +16,11 @@ struct AnalyticsStorageMigration {
     // Keys this SDK has run with, most recent last. Apps can also run Segment's own SDK, which uses the same
     // storage names, so only storage for these keys is ever moved.
     private static let usedKeysDefaultsKey = "io.customer.sdk.analyticsWriteKeys"
+    // Analytics saves the settings fetched for each key. Only Customer.io's name this destination.
+    private static let settingsKey = "segment.settings"
+    private static let customerIODestinationKey = "Customer.io Data Pipelines"
+    // Key used by `DataPipeline` for calls made before the SDK is initialized.
+    private static let deadInstanceKey = "DEADINSTANCE"
     // Analytics uploads every `.temp` file in its key's folder, and leaves others alone.
     private static let finishedBatchExtension = "temp"
     private static let unfinishedBatchSuffix = "-segment-events"
@@ -24,14 +30,18 @@ struct AnalyticsStorageMigration {
     private let userDefaults: UserDefaults
     private let eventsDirectory: URL
     private let logger: Logger
+    // Key saved for background delivery by earlier SDK versions, when the app opted in.
+    private let savedApiKey: String?
 
     init(
         logger: Logger,
+        savedApiKey: String? = nil,
         fileManager: FileManager = .default,
         userDefaults: UserDefaults = .standard,
         eventsDirectory: URL = Self.defaultEventsDirectory
     ) {
         self.logger = logger
+        self.savedApiKey = savedApiKey
         self.fileManager = fileManager
         self.userDefaults = userDefaults
         self.eventsDirectory = eventsDirectory
@@ -51,7 +61,7 @@ struct AnalyticsStorageMigration {
     /// identity `newKey` already has. Must run before analytics is created with `newKey`, as it reads identity then.
     /// Returns true when this launch switched to a public key, so queued events should be moved too.
     func copyIdentity(to newKey: String) -> Bool {
-        let usedKeys = userDefaults.stringArray(forKey: Self.usedKeysDefaultsKey) ?? []
+        let usedKeys = userDefaults.stringArray(forKey: Self.usedKeysDefaultsKey) ?? discoveredKeys(excluding: newKey)
         defer { userDefaults.set(usedKeys.filter { $0 != newKey } + [newKey], forKey: Self.usedKeysDefaultsKey) }
         guard ApiKey.isPublic(newKey), let previousKey = usedKeys.last, previousKey != newKey else {
             return false
@@ -145,5 +155,53 @@ struct AnalyticsStorageMigration {
             index = contents.index(after: index)
         }
         return events
+    }
+
+    /// For apps updating from an SDK that didn't record its keys: this SDK's earlier keys, the previous one last.
+    /// Keys are found from the key saved for background delivery and from saved settings. If neither names one,
+    /// a single other key's storage is taken as this SDK's, and several are left alone.
+    private func discoveredKeys(excluding newKey: String) -> [String] {
+        guard ApiKey.isPublic(newKey) else {
+            return []
+        }
+
+        let otherKeys = otherKeysByLastUse(excluding: newKey)
+        var keys = otherKeys.filter(hasCustomerIOSettings)
+        if let savedApiKey, savedApiKey != newKey {
+            keys = keys.filter { $0 != savedApiKey } + [savedApiKey]
+        }
+        if !keys.isEmpty {
+            return keys
+        }
+        guard otherKeys.count == 1 else {
+            logger.info("Found \(otherKeys.count) earlier analytics storages and none known to be this SDK's, so none were moved to the new API key")
+            return []
+        }
+        return otherKeys
+    }
+
+    private func hasCustomerIOSettings(_ key: String) -> Bool {
+        guard let data = userDefaults.persistentDomain(forName: Self.suitePrefix + key)?[Self.settingsKey] as? Data,
+              let settings = try? PropertyListDecoder().decode(Settings.self, from: data)
+        else {
+            return false
+        }
+        return settings.integrations?.dictionaryValue?[Self.customerIODestinationKey] != nil
+    }
+
+    /// Keys with an events folder, least recently used first.
+    private func otherKeysByLastUse(excluding newKey: String) -> [String] {
+        let folders = (try? fileManager.contentsOfDirectory(
+            at: eventsDirectory,
+            includingPropertiesForKeys: [.contentModificationDateKey]
+        )) ?? []
+        return folders
+            .filter { $0.lastPathComponent != newKey && $0.lastPathComponent != Self.deadInstanceKey }
+            .sorted { modificationDate($0) < modificationDate($1) }
+            .map(\.lastPathComponent)
+    }
+
+    private func modificationDate(_ url: URL) -> Date {
+        (try? url.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate) ?? .distantPast
     }
 }
