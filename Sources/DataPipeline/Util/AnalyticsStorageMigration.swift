@@ -118,7 +118,7 @@ struct AnalyticsStorageMigration {
             for file in try fileManager.contentsOfDirectory(at: oldDirectory, includingPropertiesForKeys: nil) {
                 do {
                     try rewriteBatchKey(in: file, from: oldKey, to: newKey)
-                    try fileManager.moveItem(at: file, to: newDirectory.appendingPathComponent(file.lastPathComponent))
+                    try fileManager.moveItem(at: file, to: destination(for: file, in: newDirectory))
                 } catch {
                     // Leave this file behind and keep moving the rest.
                     logger.error("Failed to move a queued analytics batch to the new API key, will retry on next launch", nil, error)
@@ -134,6 +134,16 @@ struct AnalyticsStorageMigration {
             logger.error("Failed to move queued analytics events to the new API key, will retry on next launch", nil, error)
             return false
         }
+    }
+
+    /// Batches from different keys share index-based names, so a taken name gets a unique prefix.
+    /// Analytics uploads every `.temp` file in the folder, whatever its name.
+    private func destination(for file: URL, in directory: URL) -> URL {
+        let destination = directory.appendingPathComponent(file.lastPathComponent)
+        guard fileManager.fileExists(atPath: destination.path) else {
+            return destination
+        }
+        return directory.appendingPathComponent("\(UUID().uuidString)-\(file.lastPathComponent)")
     }
 
     /// Finished batches (`.temp` files) end with `"writeKey":"<key>"}`, which the upload uses. Only that

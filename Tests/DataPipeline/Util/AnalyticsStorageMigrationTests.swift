@@ -218,6 +218,30 @@ class AnalyticsStorageMigrationTests: UnitTest {
         XCTAssertNil(UserDefaults.standard.string(forKey: "io.customer.sdk.analyticsPendingEventsFrom.\(secondKey)"))
     }
 
+    func test_migrate_givenEarlierMoveUnfinishedAndSameBatchNames_expectAllBatchesMoved() throws {
+        let originalKey = givenKey(String.random)
+        let firstKey = givenKey("pk_us_\(String.random)")
+        let secondKey = givenKey("pk_us_\(String.random)")
+        givenIdentity(writeKey: originalKey, anonymousId: "anon-1")
+        _ = givenQueuedEventsFile(writeKey: originalKey)
+        let firstDirectory = eventsDirectory.appendingPathComponent(firstKey)
+        try Data().write(to: firstDirectory)
+        migration().migrate(to: firstKey)
+        try FileManager.default.removeItem(at: firstDirectory)
+        // The first key queued its own batch under the same name before switching again.
+        try FileManager.default.createDirectory(at: firstDirectory, withIntermediateDirectories: true)
+        _ = givenQueuedEventsFile(writeKey: firstKey)
+
+        migration().migrate(to: secondKey)
+
+        let secondDirectory = eventsDirectory.appendingPathComponent(secondKey)
+        let moved = try FileManager.default.contentsOfDirectory(at: secondDirectory, includingPropertiesForKeys: nil)
+            .map { try String(contentsOf: $0, encoding: .utf8) }
+        XCTAssertEqual(moved, Array(repeating: #"{"batch":[],"writeKey":"\#(secondKey)"}"#, count: 2))
+        XCTAssertFalse(FileManager.default.fileExists(atPath: firstDirectory.path))
+        XCTAssertNil(UserDefaults.standard.string(forKey: "io.customer.sdk.analyticsPendingEventsFrom.\(secondKey)"))
+    }
+
     func test_migrate_givenNoPreviousKey_expectNothingMoved() {
         let newKey = givenKey("pk_us_\(String.random)")
 
