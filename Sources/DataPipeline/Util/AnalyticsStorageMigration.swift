@@ -12,10 +12,9 @@ struct AnalyticsStorageMigration {
     private static let suitePrefix = "com.segment.storage."
     // Identity analytics reads when it starts.
     private static let identityKeys = ["segment.userId", "segment.traits", "segment.anonymousId"]
-    // Key used by `DataPipeline` for calls made before the SDK is initialized.
-    private static let deadInstanceKey = "DEADINSTANCE"
-    // Last key the SDK ran with, so a key switch can be noticed.
-    private static let lastKeyDefaultsKey = "io.customer.sdk.analyticsWriteKey"
+    // Keys this SDK has run with, most recent last. Apps can also run Segment's own SDK, which uses the same
+    // storage names, so only storage for these keys is ever moved.
+    private static let usedKeysDefaultsKey = "io.customer.sdk.analyticsWriteKeys"
     // Analytics uploads every `.temp` file in its key's folder, and leaves others alone.
     private static let finishedBatchExtension = "temp"
     private static let unfinishedBatchSuffix = "-segment-events"
@@ -52,8 +51,9 @@ struct AnalyticsStorageMigration {
     /// identity `newKey` already has. Must run before analytics is created with `newKey`, as it reads identity then.
     /// Returns true when this launch switched to a public key, so queued events should be moved too.
     func copyIdentity(to newKey: String) -> Bool {
-        defer { userDefaults.set(newKey, forKey: Self.lastKeyDefaultsKey) }
-        guard ApiKey.isPublic(newKey), let previousKey = previousKey(excluding: newKey) else {
+        let usedKeys = userDefaults.stringArray(forKey: Self.usedKeysDefaultsKey) ?? []
+        defer { userDefaults.set(usedKeys.filter { $0 != newKey } + [newKey], forKey: Self.usedKeysDefaultsKey) }
+        guard ApiKey.isPublic(newKey), let previousKey = usedKeys.last, previousKey != newKey else {
             return false
         }
 
@@ -72,7 +72,8 @@ struct AnalyticsStorageMigration {
     func moveQueuedEvents(to newKey: String, on queue: DispatchQueue = .global(qos: .utility)) {
         queue.async {
             let newDirectory = eventsDirectory.appendingPathComponent(newKey)
-            for oldDirectory in earlierKeyDirectories(excluding: newKey) {
+            let earlierKeys = (userDefaults.stringArray(forKey: Self.usedKeysDefaultsKey) ?? []).filter { $0 != newKey }
+            for oldDirectory in earlierKeys.map(eventsDirectory.appendingPathComponent) {
                 let files = (try? fileManager.contentsOfDirectory(at: oldDirectory, includingPropertiesForKeys: nil)) ?? []
                 for file in files {
                     do {
@@ -144,34 +145,5 @@ struct AnalyticsStorageMigration {
             index = contents.index(after: index)
         }
         return events
-    }
-
-    private func hasIdentity(_ key: String) -> Bool {
-        userDefaults.persistentDomain(forName: Self.suitePrefix + key)?["segment.anonymousId"] != nil
-    }
-
-    /// Last key the SDK ran with, or else, for apps updating from an SDK that didn't save it, the most recently
-    /// used key that has identity stored.
-    private func previousKey(excluding newKey: String) -> String? {
-        if let lastKey = userDefaults.string(forKey: Self.lastKeyDefaultsKey) {
-            return lastKey == newKey ? nil : lastKey
-        }
-
-        return earlierKeyDirectories(excluding: newKey)
-            .filter { hasIdentity($0.lastPathComponent) }
-            .max { modificationDate($0) < modificationDate($1) }?
-            .lastPathComponent
-    }
-
-    private func earlierKeyDirectories(excluding newKey: String) -> [URL] {
-        let directories = (try? fileManager.contentsOfDirectory(
-            at: eventsDirectory,
-            includingPropertiesForKeys: [.contentModificationDateKey]
-        )) ?? []
-        return directories.filter { $0.lastPathComponent != newKey && $0.lastPathComponent != Self.deadInstanceKey }
-    }
-
-    private func modificationDate(_ url: URL) -> Date {
-        (try? url.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate) ?? .distantPast
     }
 }
