@@ -13,7 +13,7 @@ struct AnalyticsStorageMigration {
     private static let deadInstanceKey = "DEADINSTANCE"
     // Last key the SDK ran with, so the next switch doesn't have to guess it.
     private static let lastKeyDefaultsKey = "io.customer.sdk.analyticsWriteKey"
-    // Old key whose queued events still need moving to the new key.
+    // Old keys whose queued events still need moving to the new key.
     private static let pendingEventsDefaultsPrefix = "io.customer.sdk.analyticsPendingEventsFrom."
 
     private let fileManager: FileManager
@@ -53,20 +53,22 @@ struct AnalyticsStorageMigration {
 
         let pendingEventsKey = Self.pendingEventsDefaultsPrefix + newKey
         if !hasIdentity(newKey), let oldKey = previousKey(excluding: newKey) {
-            userDefaults.set(oldKey, forKey: pendingEventsKey)
+            // Carry over keys whose events an earlier switch to `oldKey` didn't finish moving.
+            let olderPendingEventsKey = Self.pendingEventsDefaultsPrefix + oldKey
+            let sourceKeys = (userDefaults.stringArray(forKey: olderPendingEventsKey) ?? []) + [oldKey]
+            userDefaults.set(sourceKeys, forKey: pendingEventsKey)
+            userDefaults.removeObject(forKey: olderPendingEventsKey)
             moveUserDefaults(from: oldKey, to: newKey)
             logger.info("Moved analytics storage to the new API key")
         }
-        guard let oldKey = userDefaults.string(forKey: pendingEventsKey) else {
+        guard let sourceKeys = userDefaults.stringArray(forKey: pendingEventsKey) else {
             return
         }
-        // An earlier switch to `oldKey` may not have finished moving its own queued events.
-        let olderPendingEventsKey = Self.pendingEventsDefaultsPrefix + oldKey
-        if let olderKey = userDefaults.string(forKey: olderPendingEventsKey), moveEventFiles(from: olderKey, to: newKey) {
-            userDefaults.removeObject(forKey: olderPendingEventsKey)
-        }
-        if userDefaults.string(forKey: olderPendingEventsKey) == nil, moveEventFiles(from: oldKey, to: newKey) {
+        let unmovedKeys = sourceKeys.filter { !moveEventFiles(from: $0, to: newKey) }
+        if unmovedKeys.isEmpty {
             userDefaults.removeObject(forKey: pendingEventsKey)
+        } else {
+            userDefaults.set(unmovedKeys, forKey: pendingEventsKey)
         }
     }
 

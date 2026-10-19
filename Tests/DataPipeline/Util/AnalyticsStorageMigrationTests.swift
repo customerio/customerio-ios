@@ -185,7 +185,7 @@ class AnalyticsStorageMigrationTests: UnitTest {
 
         XCTAssertTrue(FileManager.default.fileExists(atPath: newDirectory.appendingPathComponent(goodFile.lastPathComponent).path))
         XCTAssertTrue(FileManager.default.fileExists(atPath: badFile.path))
-        XCTAssertEqual(UserDefaults.standard.string(forKey: "io.customer.sdk.analyticsPendingEventsFrom.\(newKey)"), oldKey)
+        XCTAssertEqual(UserDefaults.standard.stringArray(forKey: "io.customer.sdk.analyticsPendingEventsFrom.\(newKey)"), [oldKey])
 
         try #"{"batch":[],"writeKey":"\#(oldKey)"}"#.write(to: badFile, atomically: true, encoding: .utf8)
         migration().migrate(to: newKey)
@@ -193,7 +193,7 @@ class AnalyticsStorageMigrationTests: UnitTest {
         let moved = try String(contentsOf: newDirectory.appendingPathComponent(badFile.lastPathComponent), encoding: .utf8)
         XCTAssertEqual(moved, #"{"batch":[],"writeKey":"\#(newKey)"}"#)
         XCTAssertFalse(FileManager.default.fileExists(atPath: eventsDirectory.appendingPathComponent(oldKey).path))
-        XCTAssertNil(UserDefaults.standard.string(forKey: "io.customer.sdk.analyticsPendingEventsFrom.\(newKey)"))
+        XCTAssertNil(UserDefaults.standard.stringArray(forKey: "io.customer.sdk.analyticsPendingEventsFrom.\(newKey)"))
     }
 
     func test_migrate_givenEarlierMoveUnfinishedAndKeySwitchedAgain_expectOriginalEventsMoved() throws {
@@ -214,8 +214,8 @@ class AnalyticsStorageMigrationTests: UnitTest {
         XCTAssertEqual(moved, #"{"batch":[],"writeKey":"\#(secondKey)"}"#)
         XCTAssertEqual(anonymousId(writeKey: secondKey), "anon-1")
         XCTAssertFalse(FileManager.default.fileExists(atPath: eventsDirectory.appendingPathComponent(originalKey).path))
-        XCTAssertNil(UserDefaults.standard.string(forKey: "io.customer.sdk.analyticsPendingEventsFrom.\(firstKey)"))
-        XCTAssertNil(UserDefaults.standard.string(forKey: "io.customer.sdk.analyticsPendingEventsFrom.\(secondKey)"))
+        XCTAssertNil(UserDefaults.standard.stringArray(forKey: "io.customer.sdk.analyticsPendingEventsFrom.\(firstKey)"))
+        XCTAssertNil(UserDefaults.standard.stringArray(forKey: "io.customer.sdk.analyticsPendingEventsFrom.\(secondKey)"))
     }
 
     func test_migrate_givenEarlierMoveUnfinishedAndSameBatchNames_expectAllBatchesMoved() throws {
@@ -239,7 +239,33 @@ class AnalyticsStorageMigrationTests: UnitTest {
             .map { try String(contentsOf: $0, encoding: .utf8) }
         XCTAssertEqual(moved, Array(repeating: #"{"batch":[],"writeKey":"\#(secondKey)"}"#, count: 2))
         XCTAssertFalse(FileManager.default.fileExists(atPath: firstDirectory.path))
-        XCTAssertNil(UserDefaults.standard.string(forKey: "io.customer.sdk.analyticsPendingEventsFrom.\(secondKey)"))
+        XCTAssertNil(UserDefaults.standard.stringArray(forKey: "io.customer.sdk.analyticsPendingEventsFrom.\(secondKey)"))
+    }
+
+    func test_migrate_givenTwoUnfinishedMovesAndKeySwitchedAgain_expectOriginalEventsMoved() throws {
+        let originalKey = givenKey(String.random)
+        let firstKey = givenKey("pk_us_\(String.random)")
+        let secondKey = givenKey("pk_us_\(String.random)")
+        let thirdKey = givenKey("pk_us_\(String.random)")
+        givenIdentity(writeKey: originalKey, anonymousId: "anon-1")
+        let queuedFile = givenQueuedEventsFile(writeKey: originalKey)
+        // A file where each new key's events folder should be makes those moves fail.
+        for key in [firstKey, secondKey] {
+            let blocker = eventsDirectory.appendingPathComponent(key)
+            try Data().write(to: blocker)
+            migration().migrate(to: key)
+            try FileManager.default.removeItem(at: blocker)
+        }
+
+        migration().migrate(to: thirdKey)
+
+        let moved = try String(contentsOf: eventsDirectory.appendingPathComponent(thirdKey).appendingPathComponent(queuedFile.lastPathComponent), encoding: .utf8)
+        XCTAssertEqual(moved, #"{"batch":[],"writeKey":"\#(thirdKey)"}"#)
+        XCTAssertEqual(anonymousId(writeKey: thirdKey), "anon-1")
+        XCTAssertFalse(FileManager.default.fileExists(atPath: eventsDirectory.appendingPathComponent(originalKey).path))
+        for key in [firstKey, secondKey, thirdKey] {
+            XCTAssertNil(UserDefaults.standard.stringArray(forKey: "io.customer.sdk.analyticsPendingEventsFrom.\(key)"))
+        }
     }
 
     func test_migrate_givenNoPreviousKey_expectNothingMoved() {
