@@ -16,8 +16,10 @@ class DataPipelinePublishedEvents: EventPlugin {
     }
 
     func identify(event: IdentifyEvent) -> IdentifyEvent? {
-        if let identifier = event.userId ?? event.anonymousId {
-            eventBusHandler.postEvent(ProfileIdentifiedEvent(identifier: identifier))
+        if let userId = event.userId {
+            eventBusHandler.postEvent(ProfileIdentifiedEvent(identifier: userId))
+        } else if let anonymousId = event.anonymousId {
+            eventBusHandler.postEvent(AnonymousProfileIdentifiedEvent(identifier: anonymousId))
         }
         return event
     }
