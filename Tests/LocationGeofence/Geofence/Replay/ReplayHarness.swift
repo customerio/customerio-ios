@@ -27,6 +27,8 @@ final class ReplayHarness {
     let logger: CapturingLogger
 
     let gate = ReplayBoundaryGate()
+    /// Everything the SDK starts goes through this, so the runner waits for idle instead of sleeping.
+    let taskSpawner = TrackingTaskSpawner()
 
     // MARK: - The SDK
 
@@ -95,6 +97,14 @@ final class ReplayHarness {
 
         // Wired once: the recording outlives any process the drive restarts.
         authority.answerCachedLocation = { [fixes] in fixes.nextCachedLocation() }
+        gate.onParkedCountChanged = { [taskSpawner] count in taskSpawner.setParked(count) }
+        di.override(value: taskSpawner as GeofenceTaskSpawning, forType: GeofenceTaskSpawning.self)
+        // A missed override is silent: work started through it goes untracked and replays read as
+        // the old flake.
+        precondition(
+            (di.geofenceTaskSpawner as? TrackingTaskSpawner) === taskSpawner,
+            "the harness graph doesn't return the tracking spawner"
+        )
 
         composeSDK()
     }
@@ -115,7 +125,8 @@ final class ReplayHarness {
             dateUtil: clock,
             authority: authority,
             // One for the whole drive: CoreLocation keeps monitoring while the app is dead.
-            makeConditionMonitor: { [conditionMonitor] _ in conditionMonitor }
+            makeConditionMonitor: { [conditionMonitor] _ in conditionMonitor },
+            taskSpawner: taskSpawner
         )
         monitor.movementFixResolver.requestFreshFix = { [weak self] in self?.fixRequestCount += 1 }
         // Known limitation: the timeout always wins, so every fresh-fix request falls back to the
@@ -147,7 +158,8 @@ final class ReplayHarness {
             contextStore: contextStore,
             transitionEmitter: tracker,
             dateUtil: clock,
-            logger: logger
+            logger: logger,
+            taskSpawner: taskSpawner
         )
 
         trigger = GeofenceRefreshTrigger(
@@ -159,7 +171,8 @@ final class ReplayHarness {
             explicitRefreshRequested: Synchronized<Bool>(false),
             // Not the fix provider: that would read the OS cache where the drive recorded no read.
             lastKnownLocation: { [weak self] in self?.moduleLastKnownLocation },
-            acquireFix: { [weak self] in self?.acquireFixCallCount += 1 }
+            acquireFix: { [weak self] in self?.acquireFixCallCount += 1 },
+            taskSpawner: taskSpawner
         )
 
         // Kept though `wireMonitor()` binds too: a hand-driven test never sends `module.init`.
@@ -167,15 +180,21 @@ final class ReplayHarness {
             monitor: monitor,
             resolver: resolver,
             coordinator: coordinator,
-            logger: logger
+            logger: logger,
+            taskSpawner: taskSpawner
         )
         // Also rebinds visits to the fresh resolver on `reenterProcess()`.
         GeofenceMonitorBinder.bindVisits(
             visitMonitor: visitMonitor,
             resolver: resolver,
-            contextStore: contextStore
+            contextStore: contextStore,
+            taskSpawner: taskSpawner
         )
 
+        overrideGraph()
+    }
+
+    private func overrideGraph() {
         // Plus `DateUtil`, so a later read cannot reach the wall clock.
         di.override(value: logger as Logger, forType: Logger.self)
         di.override(value: clock as DateUtil, forType: DateUtil.self)
@@ -187,6 +206,11 @@ final class ReplayHarness {
         di.override(value: monitor as GeofenceRegionMonitoring, forType: GeofenceRegionMonitoring.self)
         di.override(value: visitMonitor as GeofenceVisitMonitoring, forType: GeofenceVisitMonitoring.self)
         di.override(value: coordinator as GeofenceSyncCoordinator, forType: GeofenceSyncCoordinator.self)
+    }
+
+    /// Returns once everything the SDK started is finished or parked on `gate`.
+    func awaitIdle() async {
+        await taskSpawner.awaitIdle()
     }
 
     /// Call after `trigger.onModuleInit()`, as `GeofenceModuleState.setup` does.
@@ -250,7 +274,8 @@ final class ReplayHarness {
             logger: logger,
             dateUtil: clock,
             desiredAccuracy: kCLLocationAccuracyNearestTenMeters,
-            waitForTimeout: { _ in await Task.yield() }
+            waitForTimeout: { _ in await Task.yield() },
+            taskSpawner: taskSpawner
         )
         fixResolver.requestFreshFix = { [weak self, weak fixResolver] in
             guard let self, let fixResolver else { return }
@@ -267,7 +292,8 @@ final class ReplayHarness {
             logger: logger,
             contextStore: contextStore,
             dateUtil: clock,
-            fixResolver: fixResolver
+            fixResolver: fixResolver,
+            taskSpawner: taskSpawner
         )
     }
 }

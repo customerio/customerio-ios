@@ -48,8 +48,8 @@ public final class GeofenceModule: CustomerIOModule {
             di.logger.geofenceModuleWoke(launchReason: .locationEvent)
         }
         GeofenceBootstrap.emitDiscoverabilityLogIfNeeded(di: di)
-        Task { await di.geofenceEventTracker.flushPending() }
-        Task { @MainActor in
+        di.geofenceTaskSpawner.spawn { await di.geofenceEventTracker.flushPending() }
+        di.geofenceTaskSpawner.spawn { @MainActor in
             await GeofenceBootstrap.wireMonitor(di: di)
         }
     }

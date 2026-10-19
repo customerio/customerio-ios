@@ -59,6 +59,8 @@ final class MovementFixResolver: NSObject, @preconcurrency CLLocationManagerDele
 
     /// Settable because the monitors construct this resolver, so a caller can't reach `init`.
     var waitForTimeout: (TimeInterval) async -> Void
+    /// Starts the timeout, which is what delivers a fire-and-forget caller's completion.
+    private let taskSpawner: GeofenceTaskSpawning
 
     init(
         logger: Logger,
@@ -69,7 +71,8 @@ final class MovementFixResolver: NSObject, @preconcurrency CLLocationManagerDele
         desiredAccuracy: CLLocationAccuracy = kCLLocationAccuracyHundredMeters,
         waitForTimeout: @escaping (TimeInterval) async -> Void = { seconds in
             try? await Task.sleep(nanoseconds: UInt64(seconds * 1000000000))
-        }
+        },
+        taskSpawner: GeofenceTaskSpawning = LiveGeofenceTaskSpawner()
     ) {
         self.logger = logger
         self.maxAge = maxAge
@@ -77,6 +80,7 @@ final class MovementFixResolver: NSObject, @preconcurrency CLLocationManagerDele
         self.backgroundTaskRunner = backgroundTaskRunner
         self.dateUtil = dateUtil
         self.waitForTimeout = waitForTimeout
+        self.taskSpawner = taskSpawner
         self.desiredAccuracy = desiredAccuracy
     }
 
@@ -166,7 +170,7 @@ final class MovementFixResolver: NSObject, @preconcurrency CLLocationManagerDele
 
     private func startTimeout() {
         timeoutTask?.cancel()
-        timeoutTask = Task { @MainActor [weak self, requestTimeout, waitForTimeout] in
+        timeoutTask = taskSpawner.spawn { @MainActor [weak self, requestTimeout, waitForTimeout] in
             await waitForTimeout(requestTimeout)
             guard !Task.isCancelled else { return }
             self?.handleRequestFailure()
