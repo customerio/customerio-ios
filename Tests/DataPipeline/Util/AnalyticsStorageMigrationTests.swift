@@ -8,6 +8,7 @@ import XCTest
 class AnalyticsStorageMigrationTests: UnitTest {
     private var eventsDirectory: URL!
     private var usedKeys: [String] = []
+    private let queue = DispatchQueue(label: "AnalyticsStorageMigrationTests")
 
     override func setUp() {
         super.setUp()
@@ -22,14 +23,34 @@ class AnalyticsStorageMigrationTests: UnitTest {
         for key in usedKeys {
             UserDefaults.standard.removePersistentDomain(forName: "com.segment.storage.\(key)")
             Analytics.removeActiveWriteKey(key)
-            UserDefaults.standard.removeObject(forKey: "io.customer.sdk.analyticsPendingEventsFrom.\(key)")
         }
         UserDefaults.standard.removeObject(forKey: "io.customer.sdk.analyticsWriteKey")
 
         super.tearDown()
     }
 
-    func test_migrate_givenPublicKey_expectIdentityAndQueuedEventsCarryOver() {
+    // MARK: identity
+
+    func test_copyIdentity_givenPublicKey_expectIdentityCopiedAndOldKept() {
+        let oldKey = givenKey(String.random)
+        let newKey = givenKey("pk_us_\(String.random)")
+        let identity: [String: Any] = ["segment.anonymousId": "anon-1", "segment.userId": "user-1", "segment.traits": Data([1, 2])]
+        givenStorage(writeKey: oldKey, values: identity.merging(["segment.settings": "old settings"]) { $1 })
+        givenLastKey(oldKey)
+
+        XCTAssertTrue(migration().copyIdentity(to: newKey))
+
+        let newValues = storedValues(writeKey: newKey)
+        XCTAssertEqual(newValues["segment.anonymousId"] as? String, "anon-1")
+        XCTAssertEqual(newValues["segment.userId"] as? String, "user-1")
+        XCTAssertEqual(newValues["segment.traits"] as? Data, Data([1, 2]))
+        XCTAssertNil(newValues["segment.settings"])
+        let oldValues = storedValues(writeKey: oldKey)
+        XCTAssertEqual(oldValues["segment.anonymousId"] as? String, "anon-1")
+        XCTAssertEqual(oldValues["segment.userId"] as? String, "user-1")
+    }
+
+    func test_copyIdentity_givenRealAnalyticsIdentity_expectNewAnalyticsStartsWithIt() {
         let oldKey = givenKey(String.random)
         let newKey = givenKey("pk_us_\(String.random)")
         let oldAnalytics = givenAnalytics(writeKey: oldKey)
@@ -39,241 +60,152 @@ class AnalyticsStorageMigrationTests: UnitTest {
             UserDefaults(suiteName: "com.segment.storage.\(oldKey)")?.string(forKey: "segment.userId") == "user-1"
         }, object: nil)
         wait(for: [userIdStored], timeout: 5)
-        let anonymousId = oldAnalytics.anonymousId
-        let queuedFile = givenQueuedEventsFile(writeKey: oldKey)
+        givenLastKey(oldKey)
 
-        migration().migrate(to: newKey)
+        _ = migration().copyIdentity(to: newKey)
 
         let newAnalytics = givenAnalytics(writeKey: newKey)
-        XCTAssertEqual(newAnalytics.anonymousId, anonymousId)
+        XCTAssertEqual(newAnalytics.anonymousId, oldAnalytics.anonymousId)
         XCTAssertEqual(newAnalytics.userId, "user-1")
-        XCTAssertEqual(newAnalytics.pendingUploads?.map(\.lastPathComponent), [queuedFile.lastPathComponent])
     }
 
-    func test_migrate_givenFinishedBatch_expectNewKeyAndSamePayloadAfterOldKeyRetired() throws {
+    func test_copyIdentity_givenNewKeyHasIdentity_expectNotOverwritten() {
         let oldKey = givenKey(String.random)
         let newKey = givenKey("pk_us_\(String.random)")
-        givenIdentity(writeKey: oldKey, anonymousId: "anon-1")
-        // Same name and shape analytics uses for a finished batch waiting to upload.
-        let batch = #"{"batch":[{"type":"track","event":"queued","messageId":"msg-1"}],"sentAt":"2026-10-07T00:00:00.000Z","writeKey":"\#(oldKey)"}"#
-        let file = eventsDirectory.appendingPathComponent(oldKey).appendingPathComponent("0-segment-events.temp")
-        try batch.write(to: file, atomically: true, encoding: .utf8)
+        givenStorage(writeKey: oldKey, values: ["segment.anonymousId": "anon-old", "segment.userId": "user-old"])
+        givenStorage(writeKey: newKey, values: ["segment.anonymousId": "anon-new"])
+        givenLastKey(oldKey)
 
-        migration().migrate(to: newKey)
-        // Retire the old key: nothing left should still need it.
-        Analytics.removeActiveWriteKey(oldKey)
+        XCTAssertTrue(migration().copyIdentity(to: newKey))
 
-        let newAnalytics = givenAnalytics(writeKey: newKey)
-        let pending = try XCTUnwrap(newAnalytics.pendingUploads?.first { $0.lastPathComponent == file.lastPathComponent })
-        let uploaded = try String(contentsOf: pending)
-        XCTAssertEqual(uploaded, batch.replacingOccurrences(of: oldKey, with: newKey))
-        XCTAssertFalse(uploaded.contains(oldKey))
+        let newValues = storedValues(writeKey: newKey)
+        XCTAssertEqual(newValues["segment.anonymousId"] as? String, "anon-new")
+        XCTAssertNil(newValues["segment.userId"])
     }
 
-    func test_migrate_givenEventPropertyNamedWriteKey_expectOnlyBatchKeyChanged() throws {
+    func test_copyIdentity_givenNoSavedLastKey_expectMostRecentKeyWithIdentityUsed() {
         let oldKey = givenKey(String.random)
         let newKey = givenKey("pk_us_\(String.random)")
-        givenIdentity(writeKey: oldKey, anonymousId: "anon-1")
-        let event = #"{"type":"track","event":"queued","messageId":"msg-1","properties":{"writeKey":"\#(oldKey)"}}"#
-        let batch = #"{"batch":[\#(event)],"sentAt":"2026-10-07T00:00:00.000Z","writeKey":"\#(oldKey)"}"#
-        let file = eventsDirectory.appendingPathComponent(oldKey).appendingPathComponent("0-segment-events.temp")
-        try batch.write(to: file, atomically: true, encoding: .utf8)
+        givenStorage(writeKey: oldKey, values: ["segment.anonymousId": "anon-1"])
 
-        migration().migrate(to: newKey)
+        XCTAssertTrue(migration().copyIdentity(to: newKey))
 
-        let newAnalytics = givenAnalytics(writeKey: newKey)
-        let pending = try XCTUnwrap(newAnalytics.pendingUploads?.first { $0.lastPathComponent == file.lastPathComponent })
-        let uploaded = try String(contentsOf: pending)
-        XCTAssertEqual(uploaded, #"{"batch":[\#(event)],"sentAt":"2026-10-07T00:00:00.000Z","writeKey":"\#(newKey)"}"#)
+        XCTAssertEqual(storedValues(writeKey: newKey)["segment.anonymousId"] as? String, "anon-1")
     }
 
-    func test_migrate_givenPublicKey_expectOldStorageRemoved() {
-        let oldKey = givenKey(String.random)
-        let newKey = givenKey("pk_us_\(String.random)")
-        givenIdentity(writeKey: oldKey, anonymousId: "anon-1")
+    func test_copyIdentity_givenKeyUnchanged_expectNothingHappens() {
+        let key = givenKey("pk_us_\(String.random)")
+        let otherKey = givenKey(String.random)
+        givenStorage(writeKey: otherKey, values: ["segment.anonymousId": "anon-other"])
+        givenStorage(writeKey: key, values: ["segment.userId": "user-1"])
+        givenLastKey(key)
 
-        migration().migrate(to: newKey)
+        // false means queued events aren't moved either
+        XCTAssertFalse(migration().copyIdentity(to: key))
 
-        XCTAssertEqual(anonymousId(writeKey: newKey), "anon-1")
-        XCTAssertNil(UserDefaults.standard.persistentDomain(forName: "com.segment.storage.\(oldKey)"))
-        XCTAssertFalse(FileManager.default.fileExists(atPath: eventsDirectory.appendingPathComponent(oldKey).path))
+        XCTAssertEqual(storedValues(writeKey: key) as NSDictionary, ["segment.userId": "user-1"])
     }
 
-    func test_migrate_givenLegacyKey_expectNothingMoved() {
+    func test_copyIdentity_givenLegacyKey_expectNothingHappens() {
         let oldKey = givenKey(String.random)
         let newKey = givenKey(String.random)
-        givenIdentity(writeKey: oldKey, anonymousId: "anon-1")
+        givenStorage(writeKey: oldKey, values: ["segment.anonymousId": "anon-1"])
+        givenLastKey(oldKey)
 
-        migration().migrate(to: newKey)
+        XCTAssertFalse(migration().copyIdentity(to: newKey))
 
         XCTAssertNil(UserDefaults.standard.persistentDomain(forName: "com.segment.storage.\(newKey)"))
-        XCTAssertNotNil(UserDefaults.standard.persistentDomain(forName: "com.segment.storage.\(oldKey)"))
     }
 
-    func test_migrate_givenNewKeyAlreadyHasIdentity_expectNothingMoved() {
+    func test_copyIdentity_givenNoPreviousKey_expectNothingHappens() {
+        let newKey = givenKey("pk_us_\(String.random)")
+
+        XCTAssertFalse(migration().copyIdentity(to: newKey))
+
+        XCTAssertNil(UserDefaults.standard.persistentDomain(forName: "com.segment.storage.\(newKey)"))
+    }
+
+    // MARK: queued events
+
+    func test_moveQueuedEvents_givenFinishedBatch_expectMovedUnchangedAndQueuedForUpload() throws {
         let oldKey = givenKey(String.random)
         let newKey = givenKey("pk_us_\(String.random)")
-        givenIdentity(writeKey: oldKey, anonymousId: "anon-old")
-        givenIdentity(writeKey: newKey, anonymousId: "anon-new")
+        let batch = try givenFinishedBatch(writeKey: oldKey)
+        let contents = try String(contentsOf: batch, encoding: .utf8)
+        // The new key already has a batch with the same name.
+        let newKeyBatch = try givenFinishedBatch(writeKey: newKey)
+        moveQueuedEvents(to: newKey)
 
-        migration().migrate(to: newKey)
+        let analytics = givenAnalytics(writeKey: newKey)
 
-        XCTAssertEqual(anonymousId(writeKey: newKey), "anon-new")
-        XCTAssertEqual(anonymousId(writeKey: oldKey), "anon-old")
-    }
-
-    func test_migrate_givenSeveralOldKeys_expectMostRecentlyUsedMoved() throws {
-        let olderKey = givenKey(String.random)
-        let recentKey = givenKey(String.random)
-        let newKey = givenKey("pk_eu_\(String.random)")
-        givenIdentity(writeKey: olderKey, anonymousId: "anon-older")
-        givenIdentity(writeKey: recentKey, anonymousId: "anon-recent")
-        try FileManager.default.setAttributes(
-            [.modificationDate: Date(timeIntervalSinceNow: -3600)],
-            ofItemAtPath: eventsDirectory.appendingPathComponent(olderKey).path
+        let moved = eventsDirectory.appendingPathComponent(newKey).appendingPathComponent("\(oldKey)-\(batch.lastPathComponent)")
+        XCTAssertEqual(try String(contentsOf: moved, encoding: .utf8), contents)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: batch.path))
+        XCTAssertEqual(
+            Set(analytics.pendingUploads?.map(\.lastPathComponent) ?? []),
+            [moved.lastPathComponent, newKeyBatch.lastPathComponent]
         )
-
-        migration().migrate(to: newKey)
-
-        XCTAssertEqual(anonymousId(writeKey: newKey), "anon-recent")
-        XCTAssertEqual(anonymousId(writeKey: olderKey), "anon-older")
     }
 
-    func test_migrate_givenLastKeyHasNoEventsFolder_expectIdentityCarriesOver() throws {
+    func test_moveQueuedEvents_givenUnfinishedBatch_expectEventsAddedAsQueuedAndFileDeleted() throws {
         let oldKey = givenKey(String.random)
         let newKey = givenKey("pk_us_\(String.random)")
-        migration().migrate(to: oldKey)
-        givenIdentity(writeKey: oldKey, anonymousId: "anon-1")
-        try FileManager.default.removeItem(at: eventsDirectory.appendingPathComponent(oldKey))
+        let events = [
+            #"{"type":"track","event":"first","messageId":"msg-1","timestamp":"2026-10-07T00:00:00.000Z","userId":"user-1","anonymousId":"anon-1","properties":{"text":"has } and \" in it"}}"#,
+            #"{"type":"identify","messageId":"msg-2","timestamp":"2026-10-07T00:00:01.000Z","userId":"user-1","anonymousId":"anon-1","traits":{"n":1}}"#
+        ]
+        let file = try givenUnfinishedBatch(writeKey: oldKey, contents: unfinishedBatch(events))
+        moveQueuedEvents(to: newKey)
 
-        migration().migrate(to: newKey)
+        let analytics = givenAnalytics(writeKey: newKey)
 
-        XCTAssertEqual(anonymousId(writeKey: newKey), "anon-1")
+        XCTAssertFalse(FileManager.default.fileExists(atPath: file.path))
+        XCTAssertEqual(try uploadedEvents(analytics), try events.map(jsonObject))
+        let batch = try String(contentsOf: XCTUnwrap(analytics.pendingUploads?.first), encoding: .utf8)
+        XCTAssertTrue(batch.hasSuffix(#""writeKey":"\#(newKey)"}"#))
+        events.forEach { XCTAssertTrue(batch.contains($0)) }
     }
 
-    func test_migrate_givenEventsFailToMove_expectRetriedOnNextLaunch() throws {
+    func test_moveQueuedEvents_givenCutOffLastEvent_expectItDropped() throws {
         let oldKey = givenKey(String.random)
         let newKey = givenKey("pk_us_\(String.random)")
-        givenIdentity(writeKey: oldKey, anonymousId: "anon-1")
-        let queuedFile = givenQueuedEventsFile(writeKey: oldKey)
-        // A file where the new events folder should be makes the move fail.
-        let newDirectory = eventsDirectory.appendingPathComponent(newKey)
-        try Data().write(to: newDirectory)
+        let complete = #"{"type":"track","event":"first","messageId":"msg-1"}"#
+        let contents = unfinishedBatch([complete]) + #",{"type":"track","event":"sec"#
+        let file = try givenUnfinishedBatch(writeKey: oldKey, contents: contents)
+        moveQueuedEvents(to: newKey)
 
-        migration().migrate(to: newKey)
+        let analytics = givenAnalytics(writeKey: newKey)
 
-        XCTAssertEqual(anonymousId(writeKey: newKey), "anon-1")
-        XCTAssertTrue(FileManager.default.fileExists(atPath: queuedFile.path))
-
-        try FileManager.default.removeItem(at: newDirectory)
-        migration().migrate(to: newKey)
-
-        XCTAssertTrue(FileManager.default.fileExists(atPath: newDirectory.appendingPathComponent(queuedFile.lastPathComponent).path))
-        XCTAssertFalse(FileManager.default.fileExists(atPath: eventsDirectory.appendingPathComponent(oldKey).path))
+        XCTAssertFalse(FileManager.default.fileExists(atPath: file.path))
+        XCTAssertEqual(try uploadedEvents(analytics), try [jsonObject(complete)])
     }
 
-    func test_migrate_givenFinishedBatchWithoutKeyField_expectLeftBehindAndRetried() throws {
+    func test_moveQueuedEvents_givenUnknownFormat_expectFileKept() throws {
         let oldKey = givenKey(String.random)
         let newKey = givenKey("pk_us_\(String.random)")
-        givenIdentity(writeKey: oldKey, anonymousId: "anon-1")
-        let goodFile = givenQueuedEventsFile(writeKey: oldKey)
-        let badFile = eventsDirectory.appendingPathComponent(oldKey).appendingPathComponent("1-segment-events.temp")
-        try #"{"batch":[]}"#.write(to: badFile, atomically: true, encoding: .utf8)
-        let newDirectory = eventsDirectory.appendingPathComponent(newKey)
+        let file = try givenUnfinishedBatch(writeKey: oldKey, contents: #"[{"type":"track","messageId":"msg-1"}]"#)
+        moveQueuedEvents(to: newKey)
 
-        migration().migrate(to: newKey)
+        let analytics = givenAnalytics(writeKey: newKey)
 
-        XCTAssertTrue(FileManager.default.fileExists(atPath: newDirectory.appendingPathComponent(goodFile.lastPathComponent).path))
-        XCTAssertTrue(FileManager.default.fileExists(atPath: badFile.path))
-        XCTAssertEqual(UserDefaults.standard.stringArray(forKey: "io.customer.sdk.analyticsPendingEventsFrom.\(newKey)"), [oldKey])
-
-        try #"{"batch":[],"writeKey":"\#(oldKey)"}"#.write(to: badFile, atomically: true, encoding: .utf8)
-        migration().migrate(to: newKey)
-
-        let moved = try String(contentsOf: newDirectory.appendingPathComponent(badFile.lastPathComponent), encoding: .utf8)
-        XCTAssertEqual(moved, #"{"batch":[],"writeKey":"\#(newKey)"}"#)
-        XCTAssertFalse(FileManager.default.fileExists(atPath: eventsDirectory.appendingPathComponent(oldKey).path))
-        XCTAssertNil(UserDefaults.standard.stringArray(forKey: "io.customer.sdk.analyticsPendingEventsFrom.\(newKey)"))
+        XCTAssertTrue(FileManager.default.fileExists(atPath: file.path))
+        XCTAssertNil(analytics.pendingUploads)
     }
 
-    func test_migrate_givenEarlierMoveUnfinishedAndKeySwitchedAgain_expectOriginalEventsMoved() throws {
-        let originalKey = givenKey(String.random)
-        let firstKey = givenKey("pk_us_\(String.random)")
+    func test_moveQueuedEvents_givenUnfinishedBatchesFromSeveralEarlierKeys_expectAllAdded() throws {
+        let firstKey = givenKey(String.random)
         let secondKey = givenKey("pk_us_\(String.random)")
-        givenIdentity(writeKey: originalKey, anonymousId: "anon-1")
-        let queuedFile = givenQueuedEventsFile(writeKey: originalKey)
-        // A file where the first key's events folder should be makes that move fail.
-        let firstDirectory = eventsDirectory.appendingPathComponent(firstKey)
-        try Data().write(to: firstDirectory)
-        migration().migrate(to: firstKey)
-        try FileManager.default.removeItem(at: firstDirectory)
-
-        migration().migrate(to: secondKey)
-
-        let moved = try String(contentsOf: eventsDirectory.appendingPathComponent(secondKey).appendingPathComponent(queuedFile.lastPathComponent), encoding: .utf8)
-        XCTAssertEqual(moved, #"{"batch":[],"writeKey":"\#(secondKey)"}"#)
-        XCTAssertEqual(anonymousId(writeKey: secondKey), "anon-1")
-        XCTAssertFalse(FileManager.default.fileExists(atPath: eventsDirectory.appendingPathComponent(originalKey).path))
-        XCTAssertNil(UserDefaults.standard.stringArray(forKey: "io.customer.sdk.analyticsPendingEventsFrom.\(firstKey)"))
-        XCTAssertNil(UserDefaults.standard.stringArray(forKey: "io.customer.sdk.analyticsPendingEventsFrom.\(secondKey)"))
-    }
-
-    func test_migrate_givenEarlierMoveUnfinishedAndSameBatchNames_expectAllBatchesMoved() throws {
-        let originalKey = givenKey(String.random)
-        let firstKey = givenKey("pk_us_\(String.random)")
-        let secondKey = givenKey("pk_us_\(String.random)")
-        givenIdentity(writeKey: originalKey, anonymousId: "anon-1")
-        _ = givenQueuedEventsFile(writeKey: originalKey)
-        let firstDirectory = eventsDirectory.appendingPathComponent(firstKey)
-        try Data().write(to: firstDirectory)
-        migration().migrate(to: firstKey)
-        try FileManager.default.removeItem(at: firstDirectory)
-        // The first key queued its own batch under the same name before switching again.
-        try FileManager.default.createDirectory(at: firstDirectory, withIntermediateDirectories: true)
-        _ = givenQueuedEventsFile(writeKey: firstKey)
-
-        migration().migrate(to: secondKey)
-
-        let secondDirectory = eventsDirectory.appendingPathComponent(secondKey)
-        let moved = try FileManager.default.contentsOfDirectory(at: secondDirectory, includingPropertiesForKeys: nil)
-            .map { try String(contentsOf: $0, encoding: .utf8) }
-        XCTAssertEqual(moved, Array(repeating: #"{"batch":[],"writeKey":"\#(secondKey)"}"#, count: 2))
-        XCTAssertFalse(FileManager.default.fileExists(atPath: firstDirectory.path))
-        XCTAssertNil(UserDefaults.standard.stringArray(forKey: "io.customer.sdk.analyticsPendingEventsFrom.\(secondKey)"))
-    }
-
-    func test_migrate_givenTwoUnfinishedMovesAndKeySwitchedAgain_expectOriginalEventsMoved() throws {
-        let originalKey = givenKey(String.random)
-        let firstKey = givenKey("pk_us_\(String.random)")
-        let secondKey = givenKey("pk_us_\(String.random)")
-        let thirdKey = givenKey("pk_us_\(String.random)")
-        givenIdentity(writeKey: originalKey, anonymousId: "anon-1")
-        let queuedFile = givenQueuedEventsFile(writeKey: originalKey)
-        // A file where each new key's events folder should be makes those moves fail.
-        for key in [firstKey, secondKey] {
-            let blocker = eventsDirectory.appendingPathComponent(key)
-            try Data().write(to: blocker)
-            migration().migrate(to: key)
-            try FileManager.default.removeItem(at: blocker)
-        }
-
-        migration().migrate(to: thirdKey)
-
-        let moved = try String(contentsOf: eventsDirectory.appendingPathComponent(thirdKey).appendingPathComponent(queuedFile.lastPathComponent), encoding: .utf8)
-        XCTAssertEqual(moved, #"{"batch":[],"writeKey":"\#(thirdKey)"}"#)
-        XCTAssertEqual(anonymousId(writeKey: thirdKey), "anon-1")
-        XCTAssertFalse(FileManager.default.fileExists(atPath: eventsDirectory.appendingPathComponent(originalKey).path))
-        for key in [firstKey, secondKey, thirdKey] {
-            XCTAssertNil(UserDefaults.standard.stringArray(forKey: "io.customer.sdk.analyticsPendingEventsFrom.\(key)"))
-        }
-    }
-
-    func test_migrate_givenNoPreviousKey_expectNothingMoved() {
         let newKey = givenKey("pk_us_\(String.random)")
+        let firstEvent = #"{"type":"track","event":"first","messageId":"msg-1"}"#
+        let secondEvent = #"{"type":"track","event":"second","messageId":"msg-2"}"#
+        _ = try givenUnfinishedBatch(writeKey: firstKey, contents: unfinishedBatch([firstEvent]))
+        _ = try givenUnfinishedBatch(writeKey: secondKey, contents: unfinishedBatch([secondEvent]))
+        moveQueuedEvents(to: newKey)
 
-        migration().migrate(to: newKey)
+        let analytics = givenAnalytics(writeKey: newKey)
 
-        XCTAssertNil(UserDefaults.standard.persistentDomain(forName: "com.segment.storage.\(newKey)"))
+        let messageIds = try uploadedEvents(analytics).compactMap { $0["messageId"] as? String }
+        XCTAssertEqual(Set(messageIds), ["msg-1", "msg-2"])
     }
 }
 
@@ -282,9 +214,18 @@ private extension AnalyticsStorageMigrationTests {
         AnalyticsStorageMigration(logger: log, eventsDirectory: eventsDirectory)
     }
 
+    func moveQueuedEvents(to newKey: String) {
+        migration().moveQueuedEvents(to: newKey, on: queue)
+        queue.sync {}
+    }
+
     func givenKey(_ key: String) -> String {
         usedKeys.append(key)
         return key
+    }
+
+    func givenLastKey(_ key: String) {
+        UserDefaults.standard.set(key, forKey: "io.customer.sdk.analyticsWriteKey")
     }
 
     func givenAnalytics(writeKey: String) -> Analytics {
@@ -292,27 +233,54 @@ private extension AnalyticsStorageMigrationTests {
             .storageMode(.diskAtURL(eventsDirectory.appendingPathComponent(writeKey)))
             .trackApplicationLifecycleEvents(false)
             .autoAddSegmentDestination(false)
+            .flushPolicies([])
         let analytics = Analytics(configuration: configuration)
         analytics.waitUntilStarted()
         return analytics
     }
 
-    /// Stores identity and an events directory for `writeKey`, as analytics does after running with it.
-    func givenIdentity(writeKey: String, anonymousId: String) {
-        UserDefaults.standard.setPersistentDomain(["segment.anonymousId": anonymousId], forName: "com.segment.storage.\(writeKey)")
-        try? FileManager.default.createDirectory(
-            at: eventsDirectory.appendingPathComponent(writeKey),
-            withIntermediateDirectories: true
-        )
+    /// Stores analytics values and an events directory for `writeKey`, as analytics does after running with it.
+    func givenStorage(writeKey: String, values: [String: Any]) {
+        UserDefaults.standard.setPersistentDomain(values, forName: "com.segment.storage.\(writeKey)")
+        try? FileManager.default.createDirectory(at: eventsDirectory.appendingPathComponent(writeKey), withIntermediateDirectories: true)
     }
 
-    func anonymousId(writeKey: String) -> String? {
-        UserDefaults.standard.persistentDomain(forName: "com.segment.storage.\(writeKey)")?["segment.anonymousId"] as? String
+    func storedValues(writeKey: String) -> [String: Any] {
+        UserDefaults.standard.persistentDomain(forName: "com.segment.storage.\(writeKey)") ?? [:]
     }
 
-    func givenQueuedEventsFile(writeKey: String) -> URL {
-        let file = eventsDirectory.appendingPathComponent(writeKey).appendingPathComponent("0-segment-events.temp")
-        try? #"{"batch":[],"writeKey":"\#(writeKey)"}"#.write(to: file, atomically: true, encoding: .utf8)
+    /// Same name and shape analytics uses for a finished batch waiting to upload.
+    func givenFinishedBatch(writeKey: String) throws -> URL {
+        let batch = #"{"batch":[{"type":"track","event":"queued","messageId":"msg-\#(writeKey)"}],"sentAt":"2026-10-07T00:00:00.000Z","writeKey":"\#(writeKey)"}"#
+        return try givenFile(writeKey: writeKey, name: "0-segment-events.temp", contents: batch)
+    }
+
+    func givenUnfinishedBatch(writeKey: String, contents: String) throws -> URL {
+        try givenFile(writeKey: writeKey, name: "3-segment-events", contents: contents)
+    }
+
+    func givenFile(writeKey: String, name: String, contents: String) throws -> URL {
+        let directory = eventsDirectory.appendingPathComponent(writeKey)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        let file = directory.appendingPathComponent(name)
+        try contents.write(to: file, atomically: true, encoding: .utf8)
         return file
+    }
+
+    /// Same shape analytics writes while a batch is still open.
+    func unfinishedBatch(_ events: [String]) -> String {
+        "{ \"batch\": [\n" + events.joined(separator: "\n,") + "\n"
+    }
+
+    func jsonObject(_ string: String) throws -> NSDictionary {
+        try XCTUnwrap(JSONSerialization.jsonObject(with: Data(string.utf8)) as? NSDictionary)
+    }
+
+    /// Events in the batches analytics would upload for the new key.
+    func uploadedEvents(_ analytics: Analytics) throws -> [NSDictionary] {
+        try (analytics.pendingUploads ?? []).flatMap { file -> [NSDictionary] in
+            let batch = try XCTUnwrap(JSONSerialization.jsonObject(with: Data(contentsOf: file)) as? [String: Any])
+            return try XCTUnwrap(batch["batch"] as? [NSDictionary])
+        }
     }
 }
