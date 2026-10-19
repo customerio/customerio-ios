@@ -82,6 +82,8 @@ final class CoreLocationConditionMonitor: GeofenceConditionMonitoring, @unchecke
         get async {
             let underlying = await monitor.events
             return AsyncThrowingStream { continuation in
+                // Relays for the stream's life; the consumer counts each event it receives.
+                // swiftlint:disable:next geofence_untracked_task
                 let task = Task {
                     do {
                         for try await event in underlying {

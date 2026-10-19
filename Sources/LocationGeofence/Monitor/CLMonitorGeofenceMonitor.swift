@@ -143,6 +143,8 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring {
     private func startConsuming() {
         // Work until the first subscription, so nothing counts as idle before the SDK is listening.
         taskSpawner.workStarted()
+        // Consumes for the process's life; its subscription and each event are counted instead.
+        // swiftlint:disable:next geofence_untracked_task
         consumeTask = Task { [weak self, taskSpawner] in
             guard let self else { return taskSpawner.workFinished() }
             let monitor = await self.monitorInstance().value

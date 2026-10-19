@@ -183,6 +183,8 @@ final class MovementFixResolver: NSObject, @preconcurrency CLLocationManagerDele
         let signal = RequestCompletionSignal()
         currentRequestSignal = signal
         let runner = backgroundTaskRunner
+        // Holds background time until the request completes; the timeout that completes it is counted.
+        // swiftlint:disable:next geofence_untracked_task
         Task {
             await runner.withBackgroundTime { await signal.wait() }
         }
