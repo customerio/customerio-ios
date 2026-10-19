@@ -196,6 +196,28 @@ class AnalyticsStorageMigrationTests: UnitTest {
         XCTAssertNil(UserDefaults.standard.string(forKey: "io.customer.sdk.analyticsPendingEventsFrom.\(newKey)"))
     }
 
+    func test_migrate_givenEarlierMoveUnfinishedAndKeySwitchedAgain_expectOriginalEventsMoved() throws {
+        let originalKey = givenKey(String.random)
+        let firstKey = givenKey("pk_us_\(String.random)")
+        let secondKey = givenKey("pk_us_\(String.random)")
+        givenIdentity(writeKey: originalKey, anonymousId: "anon-1")
+        let queuedFile = givenQueuedEventsFile(writeKey: originalKey)
+        // A file where the first key's events folder should be makes that move fail.
+        let firstDirectory = eventsDirectory.appendingPathComponent(firstKey)
+        try Data().write(to: firstDirectory)
+        migration().migrate(to: firstKey)
+        try FileManager.default.removeItem(at: firstDirectory)
+
+        migration().migrate(to: secondKey)
+
+        let moved = try String(contentsOf: eventsDirectory.appendingPathComponent(secondKey).appendingPathComponent(queuedFile.lastPathComponent), encoding: .utf8)
+        XCTAssertEqual(moved, #"{"batch":[],"writeKey":"\#(secondKey)"}"#)
+        XCTAssertEqual(anonymousId(writeKey: secondKey), "anon-1")
+        XCTAssertFalse(FileManager.default.fileExists(atPath: eventsDirectory.appendingPathComponent(originalKey).path))
+        XCTAssertNil(UserDefaults.standard.string(forKey: "io.customer.sdk.analyticsPendingEventsFrom.\(firstKey)"))
+        XCTAssertNil(UserDefaults.standard.string(forKey: "io.customer.sdk.analyticsPendingEventsFrom.\(secondKey)"))
+    }
+
     func test_migrate_givenNoPreviousKey_expectNothingMoved() {
         let newKey = givenKey("pk_us_\(String.random)")
 

@@ -57,7 +57,15 @@ struct AnalyticsStorageMigration {
             moveUserDefaults(from: oldKey, to: newKey)
             logger.info("Moved analytics storage to the new API key")
         }
-        if let oldKey = userDefaults.string(forKey: pendingEventsKey), moveEventFiles(from: oldKey, to: newKey) {
+        guard let oldKey = userDefaults.string(forKey: pendingEventsKey) else {
+            return
+        }
+        // An earlier switch to `oldKey` may not have finished moving its own queued events.
+        let olderPendingEventsKey = Self.pendingEventsDefaultsPrefix + oldKey
+        if let olderKey = userDefaults.string(forKey: olderPendingEventsKey), moveEventFiles(from: olderKey, to: newKey) {
+            userDefaults.removeObject(forKey: olderPendingEventsKey)
+        }
+        if userDefaults.string(forKey: olderPendingEventsKey) == nil, moveEventFiles(from: oldKey, to: newKey) {
             userDefaults.removeObject(forKey: pendingEventsKey)
         }
     }
