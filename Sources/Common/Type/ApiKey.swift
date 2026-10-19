@@ -6,9 +6,9 @@ import Foundation
 public enum ApiKey {
     public static let secretKeyError = "Secret (sk_) keys must not be used in apps. Use your public key in apps."
 
-    /// `true` for secret `sk_` keys and retired `ak_` secret keys.
+    /// `true` for secret `sk_` keys.
     public static func isSecret(_ key: String) -> Bool {
-        key.hasPrefix("sk_") || key.hasPrefix("ak_")
+        key.hasPrefix("sk_")
     }
 
     /// `true` for public `pk_` keys.
