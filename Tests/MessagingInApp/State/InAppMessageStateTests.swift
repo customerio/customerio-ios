@@ -224,6 +224,49 @@ class InAppMessageStateTests: IntegrationTest {
         XCTAssertTrue(state.shownMessageQueueIds.isEmpty)
     }
 
+    // MARK: - User Switch Tests
+
+    func test_setUserToken_givenDifferentUserSet_expectPreviousUserStateClearedAndNewUserFetched() async {
+        await inAppMessageManager.dispatchAsync(action: .setUserIdentifier(user: "user-a"))
+        await inAppMessageManager.dispatchAsync(action: .processMessageQueue(messages: [Message(queueId: "user-a-message")]))
+        await inAppMessageManager.dispatchAsync(action: .setSseEnabled(enabled: true))
+        gistQueueNetworkMock.resetMock()
+
+        gist.setUserToken("user-b")
+
+        let state = await inAppMessageManager.waitForState(pollInterval: 0.01) { $0.userId == "user-b" }
+        XCTAssertTrue(state.messagesInQueue.isEmpty)
+        XCTAssertFalse(state.useSse)
+        await waitUntil(pollInterval: 0.01) {
+            self.gistQueueNetworkMock.requestReceivedInvocations.contains { $0.state.userId == "user-b" }
+        }
+    }
+
+    func test_setUserToken_givenAnonymousUser_expectStateKept() async {
+        await inAppMessageManager.dispatchAsync(action: .setAnonymousIdentifier(anonymousId: "anonymous-id"))
+        await inAppMessageManager.dispatchAsync(action: .processMessageQueue(messages: [Message(queueId: "anonymous-message")]))
+
+        gist.setUserToken("user-b")
+
+        let state = await inAppMessageManager.waitForState(pollInterval: 0.01) { $0.userId == "user-b" }
+        XCTAssertEqual(state.anonymousId, "anonymous-id")
+        XCTAssertTrue(state.messagesInQueue.contains { $0.queueId == "anonymous-message" })
+    }
+
+    func test_setUserToken_givenRepeatedUserSwitches_expectEachUserSetAndFetched() async {
+        await inAppMessageManager.dispatchAsync(action: .setUserIdentifier(user: "user-0"))
+
+        for index in 1 ... 25 {
+            let userId = "user-\(index)"
+            gist.setUserToken(userId)
+
+            _ = await inAppMessageManager.waitForState(pollInterval: 0.01) { $0.userId == userId }
+            await waitUntil(pollInterval: 0.01) {
+                self.gistQueueNetworkMock.requestReceivedInvocations.contains { $0.state.userId == userId }
+            }
+        }
+    }
+
     // MARK: - Message Processing Tests
 
     func test_processMessageQueue_givenMessagePriorities_expectHighestPriorityLoaded() async {

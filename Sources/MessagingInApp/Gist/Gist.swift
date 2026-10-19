@@ -226,8 +226,7 @@ class Gist: GistProvider {
                 return
             }
 
-            inAppMessageManager.dispatch(action: .setUserIdentifier(user: userToken))
-            setupPollingAndFetch(skipMessageFetch: false, pollingInterval: state.pollInterval)
+            identifyUser(userToken, currentState: state)
         }
     }
 
@@ -358,6 +357,26 @@ class Gist: GistProvider {
                     logger.logWithModuleTag("Error fetching messages from Gist queue service. \(error.localizedDescription)", level: .error)
                     inAppMessageManager.dispatch(action: .clearMessageQueue)
                 }
+            }
+        }
+    }
+}
+
+private extension Gist {
+    func identifyUser(_ userToken: String, currentState state: InAppMessageState) {
+        guard let previousUserId = state.userId, !previousUserId.isEmpty else {
+            inAppMessageManager.dispatch(action: .setUserIdentifier(user: userToken))
+            setupPollingAndFetch(skipMessageFetch: false, pollingInterval: state.pollInterval)
+            return
+        }
+
+        // Switching users without clearIdentify: reset as clearIdentify would, so the previous user's
+        // messages and SSE stream don't carry over. Chained because separate dispatches aren't ordered.
+        queueManager.clearCachedUserQueue()
+        invalidateTimer()
+        inAppMessageManager.dispatch(action: .resetState) { [self] in
+            inAppMessageManager.dispatch(action: .setUserIdentifier(user: userToken)) { [self] in
+                setupPollingAndFetch(skipMessageFetch: false, pollingInterval: state.pollInterval)
             }
         }
     }
