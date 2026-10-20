@@ -66,6 +66,7 @@ extension Context {
             do {
                 workingEvent.context = try JSON(context)
             } catch {
+                Analytics.reportInternalError(error)
                 return event
             }
             return workingEvent

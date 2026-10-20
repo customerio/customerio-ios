@@ -275,11 +275,11 @@ class DataPipelineImplementation: DataPipelineInstance, DataPipelineTracking, Ba
         // Do not delete push token from device storage. The token is valid
         // once given to SDK. We need it for future profile identifications.
 
-        if let registeredDeviceToken = registeredDeviceToken {
+        if let storedToken = registeredDeviceToken {
             // send delete device event to remove it from current profile only if the token was registered before
-            // The Context plugin adds the token when the event is processed. Events wait while settings refresh,
-            // so a token registered meanwhile would replace this one. Set the token being deleted on the event.
-            let token = contextPlugin.deviceToken ?? registeredDeviceToken
+            // The Context plugin adds the token when the event is processed, which can be after a newer token is
+            // set (events wait while settings refresh). Set the token being deleted on the event.
+            let token = contextPlugin.deviceToken ?? storedToken
             analytics.track(name: "Device Deleted", properties: nil, enrichments: [Context.deviceTokenEnrichment(token)])
         }
     }
@@ -313,7 +313,7 @@ class DataPipelineImplementation: DataPipelineInstance, DataPipelineTracking, Ba
 
         // Consolidate all Apple platforms under iOS
         deviceAttributesProvider.getDefaultDeviceAttributes { defaultDeviceAttributes in
-            // A token registered since then sends its own event, and the plugin would stamp it on this one.
+            // A token registered since then sends its own events. Tracking this one late would re-create the device just deleted.
             // Registration holds this lock, so the token can't change between this check and tracking.
             self.deviceTokenLock.lock()
             defer { self.deviceTokenLock.unlock() }

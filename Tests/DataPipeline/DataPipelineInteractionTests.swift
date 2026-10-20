@@ -789,6 +789,17 @@ class CDPInteractionDefaultConfigTests: DataPipelineInteractionTests {
         XCTAssertNotNil(globalDataStoreMock.pushDeviceToken)
     }
 
+    func test_deleteDeviceToken_givenStoredTokenNotRegisteredThisLaunch_expectDeviceDeletedCarriesStoredToken() {
+        let givenToken = String.random
+        globalDataStoreMock.pushDeviceToken = givenToken
+        outputReader.resetPlugin()
+
+        customerIO.deleteDeviceToken()
+
+        XCTAssertEqual(outputReader.deviceDeleteEvents.count, 1)
+        XCTAssertEqual(outputReader.deviceDeleteEvents.first?.deviceToken, givenToken)
+    }
+
     func test_deleteDeviceToken_givenProfileIdentified_givenExistingPushToken_expectDeleteDeviceEvent() {
         let givenDeviceToken = String.random
         let givenIdentifier = String.random
