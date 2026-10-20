@@ -14,30 +14,31 @@ jobs:
     permissions:
       pull-requests: write # to comment on PRs
     steps:
-    # Uses the same conventionalcommits preset as semantic-release (.releaserc), so a title that
-    # passes here is one semantic-release can read once the PR is squash merged.
+    # Same conventionalcommits parser as semantic-release (.releaserc), default types: feat, fix, docs, style,
+    # refactor, perf, test, build, ci, chore, revert.
     - uses: amannn/action-semantic-pull-request@48f256284bd46cdaab1048c3721360e808335d50 # v6.1.1
       id: lint-pr-title
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-    # The lint step fails the job; always() lets this run with its error message.
+    # Help comment when the title is invalid. The error_message check skips it when the lint step failed for
+    # another reason (an API error). The comment is best effort: fork and Dependabot runs get a read-only token.
     - uses: marocchino/sticky-pull-request-comment@5770ad5eb8f42dd2c4f34da00c94c5381e49af88 # v3.0.5
-      if: always() && steps.lint-pr-title.outputs.error_message != null
+      if: failure() && steps.lint-pr-title.outputs.error_message != ''
+      continue-on-error: true
       with:
         header: pr-title-lint-error
         message: |
-          Hey there @${{ github.event.pull_request.user.login }} 👋. This project uses [Conventional Commits](https://www.conventionalcommits.org/) for pull request titles, and the title of this pull request needs a fix. I'll check again after you edit the title.
+          This project uses [Conventional Commits](https://www.conventionalcommits.org/) for pull request titles, and the title of this pull request doesn't match. [The failed check](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) says what is wrong. Edit the title and it runs again.
 
-          ```
-          ${{ steps.lint-pr-title.outputs.error_message }}
-          ```
+          Format: `<type>: short description`, with an optional scope (`fix(push): short description`). Add `!` for a breaking change: `refactor!: remove deprecated v1 endpoints`.
 
-          The title should look like `<type>: short description of change`, or `<type>!: short description of breaking change` for a breaking change. Examples: `feat: edit profile photo`, `fix(push): handle missing token`, `refactor!: remove deprecated v1 endpoints`.
+          Types: `feat` (minor release), `fix` and `perf` (patch release), `docs`, `style`, `refactor`, `test`, `build`, `ci`, `chore`, `revert`. A `!` makes a major release.
 
     # Remove the help comment once the title is valid.
     - uses: marocchino/sticky-pull-request-comment@5770ad5eb8f42dd2c4f34da00c94c5381e49af88 # v3.0.5
-      if: steps.lint-pr-title.outputs.error_message == null
+      if: steps.lint-pr-title.outcome == 'success'
+      continue-on-error: true
       with:
         header: pr-title-lint-error
         delete: true
