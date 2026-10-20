@@ -26,7 +26,7 @@ jobs:
       sdk-size-report: ${{ steps.generate-sdk-size-report.outputs.sdk-size-report }}
       sdk-size-including-dependencies-report: ${{ steps.generate-sdk-size-report.outputs.sdk-size-including-dependencies-report }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: ./.github/actions/generate-sdk-size-report
         id: generate-sdk-size-report
@@ -43,8 +43,9 @@ jobs:
       new_release_version: ${{ steps.semantic-release.outputs.new_release_version }}
     steps:
       # Mint the App installation token before checkout so we can pass it to actions/checkout.
-      # This is required because actions/checkout persists its token into local git config
-      # (http.https://github.com/.extraheader); whatever token the App-bypass ruleset trusts
+      # This is required because actions/checkout persists its token into git config
+      # (http.https://github.com/.extraheader, in a $RUNNER_TEMP file that .git/config includes
+      # since checkout v6); whatever token the App-bypass ruleset trusts
       # must be the one persisted, otherwise semantic-release's `git push` falls back to
       # github-actions[bot] and is rejected with GH013.
       - name: Generate App installation token
@@ -54,14 +55,24 @@ jobs:
           client-id: ${{ secrets.CIO_APP_CLIENT_ID }}
           private-key: ${{ secrets.CIO_APP_SECRET }}
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           token: ${{ steps.generate_token.outputs.token }}
 
-      # CLI to replace strings in files. The CLI recommends using `cargo install` which is slow. This Action is fast because it downloads pre-built binaries.
-      # If using sd on macos, "brew install" works great. for Linux, this is the recommended way.
+      # CLI to replace strings in files. The CLI recommends using `cargo install` which is slow, so this downloads the pre-built binary.
+      # If using sd on macos, "brew install" works great.
+      # Pinned with a checksum so a new sd release cannot change deployments. Bump deliberately.
       - name: Install sd CLI to use later in the workflow
-        uses: kenji-miyake/setup-sd@08c14e27d65a1c215342ef00c81583ae67f4c5ef # v2.0.0
+        env:
+          SD_VERSION: 1.1.0
+          SD_SHA256: 3613eca74cd686739bb5a6d68319aa56c747e7315274d02323a2ca2b1c5d82d2
+        run: |
+          archive="sd-v${SD_VERSION}-x86_64-unknown-linux-gnu"
+          curl --fail --silent --show-error --location --output "$RUNNER_TEMP/$archive.tar.gz" \
+            "https://github.com/chmln/sd/releases/download/v${SD_VERSION}/$archive.tar.gz"
+          echo "$SD_SHA256  $RUNNER_TEMP/$archive.tar.gz" | sha256sum --check --strict
+          tar -xzf "$RUNNER_TEMP/$archive.tar.gz" -C "$RUNNER_TEMP"
+          echo "$RUNNER_TEMP/$archive" >> "$GITHUB_PATH"
 
       # We want to track the SDK binary size for each release.
       # The reports is pushed by semantic-release action below by including files listed in the `assets` array in the `.releaserc` file.
@@ -87,7 +98,7 @@ jobs:
       # 2. Updates metadata files. Such as updating the version number in package.json and adding entries to CHANGELOG.md file.
       # 3. Create git tag and push it to github.
       - name: Deploy git tag via semantic-release
-        uses: cycjimmy/semantic-release-action@0a51e81a6baff2acad3ee88f4121c589c73d0f0e # v4.2.0
+        uses: cycjimmy/semantic-release-action@b12c8f6015dc215fe37bc154d4ad456dd3833c90 # v6.0.0
         id: semantic-release
         with:
           # Versions are pinned so a new semantic-release or plugin release cannot change
@@ -104,9 +115,15 @@ jobs:
           GITHUB_TOKEN: ${{ steps.generate_token.outputs.token }}
 
       - name: Notify team of git tag being created
-        uses: slackapi/slack-github-action@70cd7be8e40a46e8b0eced40b0de447bdb42f68e # v1.26.0
+        uses: slackapi/slack-github-action@dcb1066f776dd043e64d0e8ba94ca15cc7e1875d # v4.0.0
         if: steps.semantic-release.outputs.new_release_published == 'true' # only run if a git tag was made.
         with:
+          # Incoming webhook URL that sends message into the correct Slack channel.
+          # Help on how to get the webhook URL: https://docs.slack.dev/tools/slack-github-action/sending-data-slack-incoming-webhook/
+          webhook: ${{ secrets.SLACK_NOTIFY_RELEASES_WEBHOOK_URL }}
+          webhook-type: incoming-webhook
+          # Fail the step when Slack rejects the message, as v1 of this action did.
+          errors: true
           # Use block kit for format of the JSON payloads: https://app.slack.com/block-kit-builder
           payload: |
             {
@@ -134,16 +151,17 @@ jobs:
                   }
               ]
             }
-        env:
-          # Incoming webhook URL that sends message into the correct Slack channel.
-          # Help on how to get the webhook URL: https://github.com/marketplace/actions/slack-send#setup-2
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_NOTIFY_RELEASES_WEBHOOK_URL }}
-          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
 
       - name: Notify team of failure
-        uses: slackapi/slack-github-action@70cd7be8e40a46e8b0eced40b0de447bdb42f68e # v1.26.0
+        uses: slackapi/slack-github-action@dcb1066f776dd043e64d0e8ba94ca15cc7e1875d # v4.0.0
         if: ${{ failure() }} # only run this if any previous step failed
         with:
+          # Incoming webhook URL that sends message into the correct Slack channel.
+          # Help on how to get the webhook URL: https://docs.slack.dev/tools/slack-github-action/sending-data-slack-incoming-webhook/
+          webhook: ${{ secrets.SLACK_NOTIFY_RELEASES_WEBHOOK_URL }}
+          webhook-type: incoming-webhook
+          # Fail the step when Slack rejects the message, as v1 of this action did.
+          errors: true
           # Use block kit for format of the JSON payloads: https://app.slack.com/block-kit-builder
           payload: |
             {
@@ -171,11 +189,6 @@ jobs:
                   }
               ]
             }
-        env:
-          # Incoming webhook URL that sends message into the correct Slack channel.
-          # Help on how to get the webhook URL: https://github.com/marketplace/actions/slack-send#setup-2
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_NOTIFY_RELEASES_WEBHOOK_URL }}
-          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
 
   deploy-cocoapods:
     name: Deploy SDK to Cocoapods
@@ -193,13 +206,13 @@ jobs:
       trunk-closed: ${{ steps.push-pods.outputs.trunk-closed }}
     steps:
       - name: Checkout git tag that got created in previous step
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         if: ${{ needs.deploy-git-tag.outputs.new_release_published == 'true' }}
         with:
           ref: ${{ needs.deploy-git-tag.outputs.new_release_git_head }}
 
       - name: Checkout git tag that was previously created
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         if: ${{ github.event_name == 'workflow_dispatch' }}
         with:
           ref: ${{ inputs.existing-git-tag }}
@@ -367,9 +380,15 @@ jobs:
           echo "::warning::$summary"
 
       - name: Notify team of successful deployment
-        uses: slackapi/slack-github-action@70cd7be8e40a46e8b0eced40b0de447bdb42f68e # v1.26.0
+        uses: slackapi/slack-github-action@dcb1066f776dd043e64d0e8ba94ca15cc7e1875d # v4.0.0
         if: ${{ success() && steps.push-pods.outputs.trunk-closed != 'true' }}
         with:
+          # Incoming webhook URL that sends message into the correct Slack channel.
+          # Help on how to get the webhook URL: https://docs.slack.dev/tools/slack-github-action/sending-data-slack-incoming-webhook/
+          webhook: ${{ secrets.SLACK_NOTIFY_RELEASES_WEBHOOK_URL }}
+          webhook-type: incoming-webhook
+          # Fail the step when Slack rejects the message, as v1 of this action did.
+          errors: true
           # Use block kit for format of the JSON payloads: https://app.slack.com/block-kit-builder
           payload: |
             {
@@ -397,19 +416,20 @@ jobs:
                   }
               ]
             }
-        env:
-          # Incoming webhook URL that sends message into the correct Slack channel.
-          # Help on how to get the webhook URL: https://github.com/marketplace/actions/slack-send#setup-2
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_NOTIFY_RELEASES_WEBHOOK_URL }}
-          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
 
       - name: Notify team that CocoaPods refused the release
         id: notify-refusal
-        uses: slackapi/slack-github-action@70cd7be8e40a46e8b0eced40b0de447bdb42f68e # v1.26.0
+        uses: slackapi/slack-github-action@dcb1066f776dd043e64d0e8ba94ca15cc7e1875d # v4.0.0
         # Not success(): a partial release goes red, and that is exactly the
         # refusal the team most needs this message for.
         if: ${{ !cancelled() && steps.push-pods.outputs.trunk-closed == 'true' }}
         with:
+          # Incoming webhook URL that sends message into the correct Slack channel.
+          # Help on how to get the webhook URL: https://docs.slack.dev/tools/slack-github-action/sending-data-slack-incoming-webhook/
+          webhook: ${{ secrets.SLACK_NOTIFY_RELEASES_WEBHOOK_URL }}
+          webhook-type: incoming-webhook
+          # Fail the step when Slack rejects the message, as v1 of this action did.
+          errors: true
           # Use block kit for format of the JSON payloads: https://app.slack.com/block-kit-builder
           # toJSON quotes and escapes these values. Pasting them in raw would let a
           # quote in the version or the summary produce invalid JSON, which fails
@@ -440,14 +460,9 @@ jobs:
                   }
               ]
             }
-        env:
-          # Incoming webhook URL that sends message into the correct Slack channel.
-          # Help on how to get the webhook URL: https://github.com/marketplace/actions/slack-send#setup-2
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_NOTIFY_RELEASES_WEBHOOK_URL }}
-          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
 
       - name: Notify team of failure
-        uses: slackapi/slack-github-action@70cd7be8e40a46e8b0eced40b0de447bdb42f68e # v1.26.0
+        uses: slackapi/slack-github-action@dcb1066f776dd043e64d0e8ba94ca15cc7e1875d # v4.0.0
         # A closed trunk gets the message above instead, which carries the failed
         # pods and the run link when both happened at once. Two alerts for one run
         # would leave the team reconciling them - but if that step did not post,
@@ -457,6 +472,12 @@ jobs:
         # none on what is already a double failure.
         if: ${{ failure() && (steps.push-pods.outputs.trunk-closed != 'true' || steps.notify-refusal.outcome != 'success') }}
         with:
+          # Incoming webhook URL that sends message into the correct Slack channel.
+          # Help on how to get the webhook URL: https://docs.slack.dev/tools/slack-github-action/sending-data-slack-incoming-webhook/
+          webhook: ${{ secrets.SLACK_NOTIFY_RELEASES_WEBHOOK_URL }}
+          webhook-type: incoming-webhook
+          # Fail the step when Slack rejects the message, as v1 of this action did.
+          errors: true
           # Use block kit for format of the JSON payloads: https://app.slack.com/block-kit-builder
           payload: |
             {
@@ -484,11 +505,6 @@ jobs:
                   }
               ]
             }
-        env:
-          # Incoming webhook URL that sends message into the correct Slack channel.
-          # Help on how to get the webhook URL: https://github.com/marketplace/actions/slack-send#setup-2
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_NOTIFY_RELEASES_WEBHOOK_URL }}
-          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
 
   wait-for-cocoapods:
     name: Wait for deploy-cocoapods to finish
