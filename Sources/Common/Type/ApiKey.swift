@@ -13,7 +13,7 @@ public enum ApiKey {
 
     /// `true` for public `pk_` keys.
     public static func isPublic(_ key: String) -> Bool {
-        prefix(of: key)?.kind == "pk"
+        key.hasPrefix("pk_")
     }
 
     /// Region in the key prefix, or `nil` for legacy keys.

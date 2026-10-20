@@ -33,7 +33,7 @@ public class MessagingPushConfigBuilder {
 
     // configuration options for MessagingPushConfigOptions
     private let cdpApiKey: String
-    private var region: Region = .US
+    private var region: Region?
     private var autoFetchDeviceToken: Bool = true
     private var autoTrackPushEvents: Bool = true
     private var showPushAppInForeground: Bool = true
@@ -56,7 +56,14 @@ public class MessagingPushConfigBuilder {
         self.cdpApiKey = cdpApiKey
     }
 
-    /// Configures the region for NotificationServiceExtension for metric tracking
+    // Same as the extension-only `init(cdpApiKey:)` plus `.region()`, callable from the app target so tests can use it.
+    init(cdpApiKey: String, region: Region?) {
+        self.cdpApiKey = cdpApiKey
+        self.region = region
+    }
+
+    /// Configures the region for NotificationServiceExtension for metric tracking.
+    /// If not set, the region is read from the key prefix (e.g. `pk_eu_`), else defaults to US.
     @discardableResult
     @available(iOS, unavailable)
     @available(visionOS, unavailable)
@@ -116,7 +123,7 @@ public class MessagingPushConfigBuilder {
         let configOptions = MessagingPushConfigOptions(
             logLevel: logLevel,
             cdpApiKey: cdpApiKey,
-            region: region,
+            region: region ?? ApiKey.region(of: cdpApiKey) ?? .US,
             autoFetchDeviceToken: autoFetchDeviceToken,
             autoTrackPushEvents: autoTrackPushEvents,
             showPushAppInForeground: showPushAppInForeground,
