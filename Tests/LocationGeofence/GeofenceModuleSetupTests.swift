@@ -390,7 +390,7 @@ private struct Fixture {
         state.setup(di: di, locationMode: locationMode)
     }
 
-    /// Not `ContinuousClock`: it's iOS 16+ and this package targets iOS 13.
+    /// Not `ContinuousClock`: it's iOS 16+ and this package targets iOS 15.
     func settle(
         _ condition: () -> Bool,
         within: TimeInterval = 10,

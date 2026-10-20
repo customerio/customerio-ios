@@ -13,7 +13,6 @@ import SwiftUI
 /// Path parsing is delegated to the vendored `SVGPath` (see `Vendor/SVGPath`), which robustly handles
 /// the full SVG path grammar. This type only extracts the `<path d="…">` elements + `viewBox` from the
 /// markup and combines the paths.
-@available(iOS 13.0, *)
 struct InboxBellGlyph {
     /// One `<path>` element: its geometry (in viewBox coordinates) + the fill rule to apply to IT.
     struct Subpath {
@@ -123,7 +122,6 @@ struct InboxBellGlyph {
 ///
 /// The caller fills each sub-path with `FillStyle(eoFill: subpath.usesEvenOddFill)` so the SVG's own
 /// declared `fill-rule` is honored per-path (MBL-2123) rather than assuming even-odd.
-@available(iOS 13.0, *)
 struct InboxBellIcon: Shape {
     /// One sub-path from the glyph (viewBox coordinates). Rendered as its own filled shape.
     let subpath: Path

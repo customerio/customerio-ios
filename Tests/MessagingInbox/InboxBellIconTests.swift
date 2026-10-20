@@ -6,7 +6,6 @@ import XCTest
 /// Coverage for the branding-SVG bell glyph (`InboxBellGlyph.build` extraction via vendored SVGPath +
 /// `InboxBellIcon` fit) and the branding-driven bell position mapping — the pure, non-SwiftUI-rendered
 /// pieces of the overlay, unit-testable without a host.
-@available(iOS 13.0, *)
 final class InboxBellIconTests: XCTestCase {
     // MARK: - InboxBellGlyph / InboxBellIcon (branding SVG → fitted Shape)
 

@@ -118,12 +118,10 @@ class ModalViewManager {
 
     private func getUIWindow() -> UIWindow {
         var modalWindow = UIWindow(frame: UIScreen.main.bounds)
-        if #available(iOS 13.0, *) {
-            for connectedScene in UIApplication.shared.connectedScenes
-                where connectedScene.activationState == .foregroundActive {
-                if let windowScene = connectedScene as? UIWindowScene {
-                    modalWindow = UIWindow(windowScene: windowScene)
-                }
+        for connectedScene in UIApplication.shared.connectedScenes
+            where connectedScene.activationState == .foregroundActive {
+            if let windowScene = connectedScene as? UIWindowScene {
+                modalWindow = UIWindow(windowScene: windowScene)
             }
         }
         modalWindow.windowLevel = .normal
