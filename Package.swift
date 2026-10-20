@@ -81,7 +81,9 @@ let package = Package(
 
         // Only used by CioFirebaseWrapper, and only when the `FCM` trait is on. Same lower bound as customerio-ios-fcm;
         // the upper bound now admits Firebase 13 (SwiftPM-only).
-        .package(url: "https://github.com/firebase/firebase-ios-sdk.git", "8.7.0"..<"14.0.0")
+        // `traits: []`: Firebase 13 enables its Firestore trait by default. Asking for no traits leaves that choice to the
+        // app; without it, an app that turns Firestore off fails to resolve in Xcode 27.1.
+        .package(url: "https://github.com/firebase/firebase-ios-sdk.git", "8.7.0"..<"14.0.0", traits: [])
     ],
     targets: [ 
         // Common - Code used by multiple modules in the SDK project.
