@@ -1,4 +1,4 @@
-// swift-tools-version:6.1
+// swift-tools-version:5.5
 
 /**
  Manifest file for Swift Package Manager. This file defines our Swift Package for customers to install our SDK modules into their app. 
@@ -19,7 +19,7 @@ var products: [PackageDescription.Product] = [
     .library(name: "MessagingPushAPN", targets: ["CioMessagingPushAPN"]),
     .library(name: "MessagingPushFCM", targets: ["CioMessagingPushFCM"]),
     // Firebase adapter for MessagingPushFCM, moved from customerio-ios-fcm. Keeps the old product and module name so
-    // apps only change the package they take it from. Needs the `FCM` trait (see `traits` below).
+    // apps only change the package they take it from. It declares no Firebase dependency: the app links FirebaseMessaging.
     .library(name: "CioFirebaseWrapper", targets: ["CioFirebaseWrapper"]),
     .library(name: "MessagingInApp", targets: ["CioMessagingInApp"]),
     .library(name: "MessagingInbox", targets: ["CioMessagingInbox"]),
@@ -40,22 +40,12 @@ if (ProcessInfo.processInfo.environment["CI"] != nil) { // true if running on a 
     products.append(.library(name: "Migration", targets: ["CioTrackingMigration"]))
 }
 
-// Root-package builds only (this repo's CI and local tests): `CIO_FCM_TRAIT=1` turns `FCM` on by default, because
-// xcodebuild has no flag to enable a root package's traits. Apps enable the trait on their package reference instead.
-let fcmTraitEnabledByDefault = ProcessInfo.processInfo.environment["CIO_FCM_TRAIT"] != nil
-
 let package = Package(
     name: "Customer.io",
     platforms: [
         .iOS(.v15)
     ],
     products: products,
-    // Firebase is opt-in. Only apps that enable `FCM` resolve, fetch and build firebase-ios-sdk; the default enables nothing.
-    // Without the trait, CioFirebaseWrapper compiles to an unavailable `initialize(withConfig:)` that says how to enable it.
-    traits: [
-        .trait(name: "FCM", description: "Firebase Cloud Messaging: builds CioFirebaseWrapper against firebase-ios-sdk."),
-        .default(enabledTraits: fcmTraitEnabledByDefault ? ["FCM"] : [])
-    ],
     dependencies: [
         // Help for the format of declaring SPM dependencies:
         // https://web.archive.org/web/20220525200227/https://www.timc.dev/posts/understanding-swift-packages/
@@ -77,13 +67,7 @@ let package = Package(
         // the SwiftPM release is the `vX.Y.Z` git tag).
         // Pinned exactly, matching the podspec and the Android Gradle pin, so one SDK version always
         // resolves one Jist across every package manager (Jist is 0.x — minor bumps may break).
-        .package(url: "https://github.com/customerio/jist.git", .exact("0.1.0")),
-
-        // Only used by CioFirebaseWrapper, and only when the `FCM` trait is on. Same lower bound as customerio-ios-fcm;
-        // the upper bound now admits Firebase 13 (SwiftPM-only).
-        // No `traits:` argument on purpose: `traits: []` is rejected for Firebase <= 12, which declares no traits, and
-        // SwiftPM checks it even when `FCM` is off, so APN apps using Firebase 12 for analytics would fail to resolve.
-        .package(url: "https://github.com/firebase/firebase-ios-sdk.git", "8.7.0"..<"14.0.0")
+        .package(url: "https://github.com/customerio/jist.git", .exact("0.1.0"))
     ],
     targets: [ 
         // Common - Code used by multiple modules in the SDK project.
@@ -180,21 +164,13 @@ let package = Package(
         .testTarget(name: "MessagingPushFCMTests",
                     dependencies: ["CioMessagingPushFCM", "SharedTests", "CioInternalCommonMocks", "CioMessagingPushMocks", "CioMessagingPushFCMMocks"],
                     path: "Tests/MessagingPushFCM"),
-        // FCM Firebase adapter (moved from customerio-ios-fcm). Firebase is linked only with the `FCM` trait.
+        // FCM Firebase adapter (moved from customerio-ios-fcm). Finds FirebaseMessaging at runtime, so it adds no package
+        // dependency: APN-only apps never resolve Firebase, and FCM apps choose any Firebase version and distribution.
         .target(name: "CioFirebaseWrapper",
-                dependencies: [
-                    "CioMessagingPushFCM",
-                    "CioMessagingPush",
-                    .product(name: "FirebaseMessaging", package: "firebase-ios-sdk", condition: .when(traits: ["FCM"])),
-                    .product(name: "FirebaseInstallations", package: "firebase-ios-sdk", condition: .when(traits: ["FCM"]))
-                ],
+                dependencies: ["CioMessagingPushFCM", "CioMessagingPush", "CioInternalCommon"],
                 path: "Sources/FirebaseWrapper"),
         .testTarget(name: "FirebaseWrapperTests",
-                    dependencies: [
-                        "CioFirebaseWrapper",
-                        "CioMessagingPushFCM",
-                        .product(name: "FirebaseMessaging", package: "firebase-ios-sdk", condition: .when(traits: ["FCM"]))
-                    ],
+                    dependencies: ["CioFirebaseWrapper", "CioMessagingPushFCM"],
                     path: "Tests/FirebaseWrapper"),
 
         // Messaging in-app
@@ -270,7 +246,5 @@ let package = Package(
         .testTarget(name: "LiveActivitiesTests",
                     dependencies: ["CioLiveActivities", "CioInternalCommon"],
                     path: "Tests/LiveActivities"),
-    ],
-    // swift-tools 6 defaults targets to the Swift 6 language mode; keep the SDK on Swift 5 mode as before.
-    swiftLanguageModes: [.v5]
+    ]
 )

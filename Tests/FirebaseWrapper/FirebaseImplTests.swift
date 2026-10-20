@@ -1,20 +1,44 @@
-// Moved from customerio/customerio-ios-fcm (Tests/FirebaseImplTests.swift). Compiled only with the FCM trait.
-#if FCM
 @testable import CioFirebaseWrapper
-import FirebaseMessaging
+import CioMessagingPushFCM
 import XCTest
 
-/// Stands in for `Messaging` on Firebase versions with FID registration (12.16.0+).
-private final class FIDMessagingStub: NSObject {
-    static var current: NSObject = .init()
+// Objective-C stand-ins for FIRMessaging and FIRInstallations, with the same selectors, so the runtime lookup is tested
+// without linking Firebase.
+@objc(CioTestTokenOnlyMessaging)
+private final class TokenOnlyMessagingStub: NSObject {
+    static var current = TokenOnlyMessagingStub()
 
+    @objc(APNSToken) var apnsToken: Data?
+    var token: String?
+    var tokenError: Error?
+
+    @objc class func messaging() -> TokenOnlyMessagingStub {
+        current
+    }
+
+    @objc(tokenWithCompletion:)
+    func token(completion: @escaping (String?, Error?) -> Void) {
+        completion(token, tokenError)
+    }
+}
+
+// FirebaseMessaging 12.16.0+: adds FID registration.
+@objc(CioTestFIDMessaging)
+private final class FIDMessagingStub: NSObject {
+    static var current = FIDMessagingStub()
+
+    @objc(APNSToken) var apnsToken: Data?
     var installationIdEnabled = false
     var registerError: Error?
     var registerCallCount = 0
-    var delegateSetCount = 0
 
-    @objc var delegate: AnyObject? {
-        didSet { delegateSetCount += 1 }
+    @objc class func messaging() -> FIDMessagingStub {
+        current
+    }
+
+    @objc(tokenWithCompletion:)
+    func token(completion: @escaping (String?, Error?) -> Void) {
+        completion("token", nil)
     }
 
     @objc var isInstallationIdEnabled: Bool {
@@ -28,117 +52,156 @@ private final class FIDMessagingStub: NSObject {
     }
 }
 
-private extension Messaging {
-    static func swizzleFIDMessaging() {
-        let originalMethod = class_getClassMethod(Messaging.self, #selector(Messaging.messaging))!
-        let swizzledMethod = class_getClassMethod(Messaging.self, #selector(Messaging.fidMessagingMock))!
-        method_exchangeImplementations(originalMethod, swizzledMethod)
+@objc(CioTestInstallations)
+private final class InstallationsStub: NSObject {
+    static var current = InstallationsStub()
+
+    var installationId: String?
+
+    @objc class func installations() -> InstallationsStub {
+        current
     }
 
-    @objc class func fidMessagingMock() -> Messaging {
-        unsafeBitCast(FIDMessagingStub.current, to: Messaging.self)
+    @objc(installationIDWithCompletion:)
+    func installationID(completion: @escaping (String?, Error?) -> Void) {
+        completion(installationId, nil)
+    }
+}
+
+private class FirebaseServiceDelegateSpy: FirebaseServiceDelegate {
+    var tokens: [String?] = []
+    var registrations: [String?] = []
+
+    func didReceiveRegistrationToken(_ token: String?) {
+        tokens.append(token)
+    }
+
+    func didReceiveRegistration(_ installationId: String?) {
+        registrations.append(installationId)
     }
 }
 
 class FirebaseImplTests: XCTestCase {
-    private var firebaseImpl: FirebaseImpl!
     private var notificationCenter: NotificationCenter!
 
     override func setUp() {
         super.setUp()
-
-        Messaging.swizzleFIDMessaging()
         notificationCenter = NotificationCenter()
-        firebaseImpl = FirebaseImpl(notificationCenter: notificationCenter)
-    }
-
-    override func tearDown() {
-        Messaging.swizzleFIDMessaging() // swaps back
-        FIDMessagingStub.current = NSObject()
-        firebaseImpl = nil
-        notificationCenter = nil
-
-        super.tearDown()
-    }
-
-    func testIsInstallationIdEnabled_givenFirebaseWithoutFidRegistration_expectFalse() {
-        FIDMessagingStub.current = NSObject()
-
-        XCTAssertFalse(firebaseImpl.isInstallationIdEnabled)
-    }
-
-    func testIsInstallationIdEnabled_givenFidModeOn_expectTrue() {
-        let messaging = FIDMessagingStub()
-        messaging.installationIdEnabled = true
-        FIDMessagingStub.current = messaging
-
-        XCTAssertTrue(firebaseImpl.isInstallationIdEnabled)
-    }
-
-    func testIsInstallationIdEnabled_givenFidModeOff_expectFalse() {
+        TokenOnlyMessagingStub.current = TokenOnlyMessagingStub()
         FIDMessagingStub.current = FIDMessagingStub()
-
-        XCTAssertFalse(firebaseImpl.isInstallationIdEnabled)
+        InstallationsStub.current = InstallationsStub()
     }
 
-    func testFetchInstallationId_givenFirebaseWithoutFidRegistration_expectNoFid() {
-        FIDMessagingStub.current = NSObject()
-        var result: (fid: String?, error: Error?)?
-
-        firebaseImpl.fetchInstallationId { result = ($0, $1) }
-
-        XCTAssertNotNil(result)
-        XCTAssertNil(result?.fid)
-        XCTAssertNil(result?.error)
+    private func tokenOnlyImpl() -> FirebaseImpl {
+        FirebaseImpl(notificationCenter: notificationCenter, messagingClassName: "CioTestTokenOnlyMessaging", installationsClassName: "CioTestInstallations")
     }
 
-    func testFetchInstallationId_givenRegisterFails_expectError() {
-        let messaging = FIDMessagingStub()
-        messaging.installationIdEnabled = true
-        messaging.registerError = TestError.networkError
-        FIDMessagingStub.current = messaging
-        var result: (fid: String?, error: Error?)?
-
-        firebaseImpl.fetchInstallationId { result = ($0, $1) }
-
-        XCTAssertEqual(messaging.registerCallCount, 1)
-        XCTAssertNil(result?.fid)
-        XCTAssertEqual(result?.error as? TestError, .networkError)
+    private func fidImpl() -> FirebaseImpl {
+        FirebaseImpl(notificationCenter: notificationCenter, messagingClassName: "CioTestFIDMessaging", installationsClassName: "CioTestInstallations")
     }
 
-    func testDelegate_whenSet_expectAppMessagingDelegateUntouched() {
-        let messaging = FIDMessagingStub()
-        FIDMessagingStub.current = messaging
-        let delegate = MockFirebaseServiceDelegate()
+    func test_apnsToken_givenMessagingLinked_expectSetOnMessaging() {
+        let impl = tokenOnlyImpl()
+        let token = Data([0x01, 0x02])
 
-        firebaseImpl.delegate = delegate
+        impl.apnsToken = token
 
-        XCTAssertTrue(firebaseImpl.delegate === delegate)
-        XCTAssertEqual(messaging.delegateSetCount, 0)
+        XCTAssertEqual(TokenOnlyMessagingStub.current.apnsToken, token)
+        XCTAssertEqual(impl.apnsToken, token)
     }
 
-    func testRegistrationRefreshed_givenFidModeOn_expectRegistration() {
-        let messaging = FIDMessagingStub()
-        messaging.installationIdEnabled = true
-        FIDMessagingStub.current = messaging
-        let delegate = MockFirebaseServiceDelegate()
-        firebaseImpl.delegate = delegate
+    func test_fetchToken_givenMessagingLinked_expectTokenFromMessaging() {
+        TokenOnlyMessagingStub.current.token = "fcm-token"
+        var received: String?
 
-        notificationCenter.post(name: .MessagingRegistrationTokenRefreshed, object: "fid")
+        tokenOnlyImpl().fetchToken { token, _ in received = token }
 
-        XCTAssertEqual(delegate.receivedRegistrations, ["fid"])
-        XCTAssertEqual(delegate.tokenCallCount, 0)
+        XCTAssertEqual(received, "fcm-token")
     }
 
-    func testRegistrationRefreshed_givenFirebaseWithoutFidRegistration_expectToken() {
-        FIDMessagingStub.current = NSObject()
-        let delegate = MockFirebaseServiceDelegate()
-        firebaseImpl.delegate = delegate
+    func test_fetchToken_givenMessagingNotLinked_expectNotLinkedError() {
+        let impl = FirebaseImpl(notificationCenter: notificationCenter, messagingClassName: "CioTestMissingClass")
+        var receivedError: Error?
 
-        notificationCenter.post(name: .MessagingRegistrationTokenRefreshed, object: "fcm_token")
+        impl.fetchToken { _, error in receivedError = error }
 
-        XCTAssertEqual(delegate.receivedToken, "fcm_token")
-        XCTAssertTrue(delegate.receivedRegistrations.isEmpty)
+        XCTAssertFalse(impl.isFirebaseMessagingLinked)
+        XCTAssertEqual(receivedError as? FirebaseImplError, .firebaseMessagingNotLinked)
+        XCTAssertNil(impl.apnsToken)
+    }
+
+    func test_isInstallationIdEnabled_givenFirebaseWithoutFID_expectFalse() {
+        XCTAssertTrue(tokenOnlyImpl().isFirebaseMessagingLinked)
+        XCTAssertFalse(tokenOnlyImpl().isInstallationIdEnabled)
+    }
+
+    func test_isInstallationIdEnabled_givenFIDEnabled_expectTrue() {
+        FIDMessagingStub.current.installationIdEnabled = true
+
+        XCTAssertTrue(fidImpl().isInstallationIdEnabled)
+    }
+
+    func test_fetchInstallationId_givenRegistrationSucceeds_expectInstallationId() {
+        InstallationsStub.current.installationId = "fid-123"
+        var received: String?
+
+        fidImpl().fetchInstallationId { fid, _ in received = fid }
+
+        XCTAssertEqual(FIDMessagingStub.current.registerCallCount, 1)
+        XCTAssertEqual(received, "fid-123")
+    }
+
+    func test_fetchInstallationId_givenRegistrationFails_expectError() {
+        FIDMessagingStub.current.registerError = NSError(domain: "test", code: 1)
+        InstallationsStub.current.installationId = "fid-123"
+        var received: String?
+        var receivedError: Error?
+
+        fidImpl().fetchInstallationId { fid, error in
+            received = fid
+            receivedError = error
+        }
+
+        XCTAssertNil(received)
+        XCTAssertNotNil(receivedError)
+    }
+
+    func test_fetchInstallationId_givenFirebaseWithoutFID_expectNilWithoutError() {
+        var called = false
+        var received: String?
+        var receivedError: Error?
+
+        tokenOnlyImpl().fetchInstallationId { fid, error in
+            called = true
+            received = fid
+            receivedError = error
+        }
+
+        XCTAssertTrue(called)
+        XCTAssertNil(received)
+        XCTAssertNil(receivedError)
+    }
+
+    func test_registrationNotification_givenTokenMode_expectTokenForwarded() {
+        let impl = tokenOnlyImpl()
+        let delegate = FirebaseServiceDelegateSpy()
+        impl.delegate = delegate
+
+        notificationCenter.post(name: FirebaseImpl.registrationRefreshedNotification, object: "new-token")
+
+        XCTAssertEqual(delegate.tokens, ["new-token"])
+        XCTAssertTrue(delegate.registrations.isEmpty)
+    }
+
+    func test_registrationNotification_givenFIDMode_expectRegistrationForwarded() {
+        FIDMessagingStub.current.installationIdEnabled = true
+        let impl = fidImpl()
+        let delegate = FirebaseServiceDelegateSpy()
+        impl.delegate = delegate
+
+        notificationCenter.post(name: FirebaseImpl.registrationRefreshedNotification, object: "new-fid")
+
+        XCTAssertEqual(delegate.registrations, ["new-fid"])
+        XCTAssertTrue(delegate.tokens.isEmpty)
     }
 }
-#endif
