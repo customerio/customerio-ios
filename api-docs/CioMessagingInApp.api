@@ -1,6 +1,3 @@
-public final class AnyEncodable {
-	public var value: Any;
-}
 public final class CioMessagingInApp.AnyEncodable {
 	public final val value: Any;
 	public fun init<T>(_ value: T?);
