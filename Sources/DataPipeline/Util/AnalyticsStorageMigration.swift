@@ -59,7 +59,8 @@ struct AnalyticsStorageMigration {
 
     /// Copies the previous key's identity to `newKey`, keeping it for the previous key too, and never replacing
     /// identity `newKey` already has. Must run before analytics is created with `newKey`, as it reads identity then.
-    /// Returns true when this launch switched to a public key, so queued events should be moved too.
+    /// Returns true when this launch switched to a public key.
+    @discardableResult
     func copyIdentity(to newKey: String) -> Bool {
         let usedKeys = userDefaults.stringArray(forKey: Self.usedKeysDefaultsKey) ?? discoveredKeys(excluding: newKey)
         defer { userDefaults.set(usedKeys.filter { $0 != newKey } + [newKey], forKey: Self.usedKeysDefaultsKey) }
@@ -78,8 +79,15 @@ struct AnalyticsStorageMigration {
     }
 
     /// Moves batches queued under earlier keys to `newKey` on `queue`, so main thread start up isn't slowed.
+    /// Runs on every launch with a public key, not only the one that switched, because nothing else ever uploads an
+    /// earlier key's folder, so batches left by a move that was cut short are picked up next time. Only keys this SDK
+    /// recorded are checked, and when their folders are empty this only lists them.
     /// Files are only ever added to the new key's folder whole, so analytics can run while this does.
     func moveQueuedEvents(to newKey: String, on queue: DispatchQueue = .global(qos: .utility)) {
+        guard ApiKey.isPublic(newKey) else {
+            return
+        }
+
         queue.async {
             let newDirectory = eventsDirectory.appendingPathComponent(newKey)
             let earlierKeys = (userDefaults.stringArray(forKey: Self.usedKeysDefaultsKey) ?? []).filter { $0 != newKey }

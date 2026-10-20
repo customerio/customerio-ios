@@ -280,9 +280,66 @@ class AnalyticsStorageMigrationTests: UnitTest {
         XCTAssertTrue(FileManager.default.fileExists(atPath: segmentUnfinished.path))
         XCTAssertNil(givenAnalytics(writeKey: newKey).pendingUploads)
     }
+
+    // MARK: later launches
+
+    func test_launch_givenMoveCutShortOnSwitch_expectLeftoverMovedOnNextLaunch() throws {
+        let oldKey = givenKey(String.random)
+        let newKey = givenKey("pk_us_\(String.random)")
+        launch(with: oldKey)
+        let batch = try givenFinishedBatch(writeKey: oldKey)
+        // The app is killed after identity is copied and before the background move runs.
+        XCTAssertTrue(migration().copyIdentity(to: newKey))
+
+        launch(with: newKey)
+
+        let moved = eventsDirectory.appendingPathComponent(newKey).appendingPathComponent("\(oldKey)-\(batch.lastPathComponent)")
+        XCTAssertFalse(FileManager.default.fileExists(atPath: batch.path))
+        XCTAssertEqual(givenAnalytics(writeKey: newKey).pendingUploads?.map(\.lastPathComponent), [moved.lastPathComponent])
+    }
+
+    func test_launch_givenEarlierKeyFolderEmpty_expectNothingChanged() throws {
+        let oldKey = givenKey(String.random)
+        let newKey = givenKey("pk_us_\(String.random)")
+        givenStorage(writeKey: oldKey, values: ["segment.anonymousId": "anon-1"])
+        launch(with: oldKey)
+        launch(with: newKey)
+        let identity = storedValues(writeKey: newKey) as NSDictionary
+
+        launch(with: newKey)
+
+        let oldDirectory = eventsDirectory.appendingPathComponent(oldKey)
+        XCTAssertEqual(try FileManager.default.contentsOfDirectory(atPath: oldDirectory.path), [])
+        XCTAssertFalse(FileManager.default.fileExists(atPath: eventsDirectory.appendingPathComponent(newKey).path))
+        XCTAssertEqual(storedValues(writeKey: newKey) as NSDictionary, identity)
+    }
+
+    func test_launch_givenSegmentFolderAppearsAfterSwitch_expectLeftAlone() throws {
+        let oldKey = givenKey(String.random)
+        let segmentKey = givenKey(String.random)
+        let newKey = givenKey("pk_us_\(String.random)")
+        launch(with: oldKey)
+        launch(with: newKey)
+        let segmentBatch = try givenFinishedBatch(writeKey: segmentKey)
+        let segmentUnfinished = try givenUnfinishedBatch(writeKey: segmentKey, contents: unfinishedBatch([#"{"messageId":"msg-1"}"#]))
+
+        launch(with: newKey)
+
+        XCTAssertTrue(FileManager.default.fileExists(atPath: segmentBatch.path))
+        XCTAssertTrue(FileManager.default.fileExists(atPath: segmentUnfinished.path))
+        XCTAssertNil(givenAnalytics(writeKey: newKey).pendingUploads)
+    }
 }
 
 private extension AnalyticsStorageMigrationTests {
+    /// Same calls the SDK makes on every launch, before analytics starts.
+    func launch(with key: String) {
+        let migration = migration()
+        migration.copyIdentity(to: key)
+        migration.moveQueuedEvents(to: key, on: queue)
+        queue.sync {}
+    }
+
     func migration(savedApiKey: String? = nil) -> AnalyticsStorageMigration {
         AnalyticsStorageMigration(logger: log, savedApiKey: savedApiKey, eventsDirectory: eventsDirectory)
     }
