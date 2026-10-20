@@ -52,6 +52,14 @@ private final class FIDMessagingStub: NSObject {
     }
 }
 
+// `+[FIRMessaging messaging]` before `FirebaseApp.configure()`: the class exists, the instance doesn't.
+@objc(CioTestUnconfiguredMessaging)
+private final class UnconfiguredMessagingStub: NSObject {
+    @objc class func messaging() -> UnconfiguredMessagingStub? {
+        nil
+    }
+}
+
 @objc(CioTestInstallations)
 private final class InstallationsStub: NSObject {
     static var current = InstallationsStub()
@@ -128,6 +136,16 @@ class FirebaseImplTests: XCTestCase {
         XCTAssertFalse(impl.isFirebaseMessagingLinked)
         XCTAssertEqual(receivedError as? FirebaseImplError, .firebaseMessagingNotLinked)
         XCTAssertNil(impl.apnsToken)
+    }
+
+    func test_fetchToken_givenFirebaseNotConfigured_expectNotConfiguredError() {
+        let impl = FirebaseImpl(notificationCenter: notificationCenter, messagingClassName: "CioTestUnconfiguredMessaging")
+        var receivedError: Error?
+
+        impl.fetchToken { _, error in receivedError = error }
+
+        XCTAssertTrue(impl.isFirebaseMessagingLinked)
+        XCTAssertEqual(receivedError as? FirebaseImplError, .firebaseNotConfigured)
     }
 
     func test_isInstallationIdEnabled_givenFirebaseWithoutFID_expectFalse() {

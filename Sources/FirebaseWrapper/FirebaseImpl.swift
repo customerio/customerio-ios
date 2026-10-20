@@ -25,6 +25,8 @@ import Foundation
 enum FirebaseImplError: Error {
     /// The app doesn't link FirebaseMessaging.
     case firebaseMessagingNotLinked
+    /// FirebaseMessaging is linked, but `+[FIRMessaging messaging]` returned nil: the app hasn't called `FirebaseApp.configure()` yet.
+    case firebaseNotConfigured
 }
 
 class FirebaseImpl: FirebaseService {
@@ -65,7 +67,7 @@ class FirebaseImpl: FirebaseService {
 
     func fetchToken(completion: @escaping (String?, Error?) -> Void) {
         guard let messaging = messaging else {
-            completion(nil, FirebaseImplError.firebaseMessagingNotLinked)
+            completion(nil, isFirebaseMessagingLinked ? FirebaseImplError.firebaseNotConfigured : FirebaseImplError.firebaseMessagingNotLinked)
             return
         }
         messaging.token(completion: completion)
