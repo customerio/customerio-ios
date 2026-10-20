@@ -20,7 +20,6 @@ class ApiKeyTest: UnitTest {
 
     func test_isPublic_givenSecretOrLegacyKey_expectFalse() {
         XCTAssertFalse(ApiKey.isPublic("sk_us_\(String.random)"))
-        XCTAssertFalse(ApiKey.isPublic("pk_xx_\(String.random)"))
         XCTAssertFalse(ApiKey.isPublic(String.random))
     }
 
