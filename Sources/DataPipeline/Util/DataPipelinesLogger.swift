@@ -8,6 +8,7 @@ protocol DataPipelinesLogger: AutoMockable {
     func automaticTokenRegistrationForNewProfile(token: String, userId: String)
     func logDeletingTokenDueToNewProfileIdentification()
     func logTrackingDevicesAttributesWithoutValidToken()
+    func logReservedDeviceTokenTypeIgnored()
 }
 
 // sourcery: InjectRegisterShared = "DataPipelinesLogger"
@@ -46,5 +47,9 @@ class DataPipelinesLoggerImpl: DataPipelinesLogger {
 
     public func logTrackingDevicesAttributesWithoutValidToken() {
         logger.debug("No device token found. ignoring request to track device attributes", Self.PUSH_TAG)
+    }
+
+    public func logReservedDeviceTokenTypeIgnored() {
+        logger.error("Device attribute \(DeviceTokenType.attributeKey) is reserved for the SDK, ignoring the provided value", Self.PUSH_TAG, nil)
     }
 }

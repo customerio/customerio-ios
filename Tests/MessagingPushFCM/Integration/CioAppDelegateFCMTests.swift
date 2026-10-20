@@ -180,9 +180,42 @@ class CioAppDelegateFCMTests: XCTestCase {
         // Call method directly
         appDelegateFCM.didReceiveRegistrationToken(fcmToken)
 
-        // Verify behavior
-        XCTAssertTrue(mockMessagingPush.registerDeviceTokenFCMCalled)
-        XCTAssertEqual(mockMessagingPush.registerDeviceTokenFCMReceivedArguments, fcmToken)
+        // Verify behavior - forwarded as a Firebase token callback, so the SDK knows its type
+        XCTAssertTrue(mockMessagingPush.didReceiveRegistrationTokenCalled)
+        XCTAssertEqual(mockMessagingPush.didReceiveRegistrationTokenReceivedArguments?.fcmToken, fcmToken)
+        XCTAssertFalse(mockMessagingPush.registerDeviceTokenFCMCalled)
+    }
+
+    func testDidReceiveRegistration_whenCalled_thenWrappedFirebaseServiceDelegateIsCalled() {
+        _ = appDelegateFCM.application(UIApplication.shared, didFinishLaunchingWithOptions: nil)
+
+        mockFirebaseService.simulateRegistration("fid-value")
+
+        XCTAssertEqual(mockFirebaseServiceDelegate.receivedRegistrations, ["fid-value"])
+    }
+
+    func testDidReceiveRegistration_whenCalled_thenInstallationIdIsForwardedToCIO() {
+        _ = appDelegateFCM.application(UIApplication.shared, didFinishLaunchingWithOptions: nil)
+
+        mockFirebaseService.simulateRegistration("fid-value")
+
+        XCTAssertEqual(mockMessagingPush.didReceiveRegistrationCallsCount, 1)
+        XCTAssertEqual(mockMessagingPush.didReceiveRegistrationReceivedArguments?.installationId, "fid-value")
+        XCTAssertFalse(mockFirebaseServiceDelegate.didReceiveRegistrationTokenCalled)
+    }
+
+    func testFirebaseServiceDelegate_whenDelegateHasNoFidSupport_thenFidRegistrationStillReachesCIO() {
+        // A delegate written before FID support, e.g. a customer's own
+        class TokenOnlyDelegate: FirebaseServiceDelegate {
+            func didReceiveRegistrationToken(_ token: String?) {}
+        }
+        let tokenOnlyDelegate = TokenOnlyDelegate()
+        mockFirebaseService.delegate = tokenOnlyDelegate
+        _ = appDelegateFCM.application(UIApplication.shared, didFinishLaunchingWithOptions: nil)
+
+        mockFirebaseService.simulateRegistration("fid-value")
+
+        XCTAssertEqual(mockMessagingPush.didReceiveRegistrationReceivedArguments?.installationId, "fid-value")
     }
 
     // MARK: - Tests for inherited AppDelegate functionality
@@ -198,7 +231,7 @@ class CioAppDelegateFCMTests: XCTestCase {
         // Verify behavior
         XCTAssertTrue(mockAppDelegate.didFailToRegisterForRemoteNotificationsCalled)
         XCTAssertEqual((mockAppDelegate.errorReceived as NSError?)?.domain, "test")
-        XCTAssertTrue(mockMessagingPush.deleteDeviceTokenCalled == true)
+        XCTAssertFalse(mockMessagingPush.deleteDeviceTokenCalled)
     }
 
     // MARK: - Tests for UNUserNotificationCenterDelegate methods
@@ -214,5 +247,89 @@ class CioAppDelegateFCMTests: XCTestCase {
         // Verify behavior
         XCTAssertTrue(mockAppDelegate.didRegisterForRemoteNotificationsCalled)
         XCTAssertEqual(mockAppDelegate.deviceTokenReceived, deviceToken)
+    }
+
+    // MARK: - Fetching FCM registration on APN registration
+
+    func testDidRegisterForRemoteNotifications_whenTokenMode_thenFetchedTokenIsRegistered() {
+        let apnsToken = "apns_token".data(using: .utf8)!
+        _ = appDelegateFCM.application(UIApplication.shared, didFinishLaunchingWithOptions: nil)
+
+        appDelegateFCM.application(UIApplication.shared, didRegisterForRemoteNotificationsWithDeviceToken: apnsToken)
+        mockFirebaseService.simulateTokenSuccess("fcm-token")
+
+        XCTAssertEqual(mockFirebaseService.apnsToken, apnsToken)
+        XCTAssertEqual(mockFirebaseService.fetchTokenCallCount, 1)
+        XCTAssertEqual(mockFirebaseService.fetchInstallationIdCallCount, 0)
+        // Forwarded as a Firebase token callback, so the SDK knows its type
+        XCTAssertEqual(mockMessagingPush.didReceiveRegistrationTokenReceivedInvocations.map(\.fcmToken), ["fcm-token"])
+        XCTAssertFalse(mockMessagingPush.didReceiveRegistrationCalled)
+        XCTAssertFalse(mockMessagingPush.registerDeviceTokenFCMCalled)
+    }
+
+    func testDidRegisterForRemoteNotifications_whenFidMode_thenFetchedFidIsRegistered() {
+        let apnsToken = "apns_token".data(using: .utf8)!
+        mockFirebaseService.mockIsInstallationIdEnabled = true
+        _ = appDelegateFCM.application(UIApplication.shared, didFinishLaunchingWithOptions: nil)
+
+        appDelegateFCM.application(UIApplication.shared, didRegisterForRemoteNotificationsWithDeviceToken: apnsToken)
+        mockFirebaseService.simulateInstallationIdSuccess("fid-value")
+
+        XCTAssertEqual(mockFirebaseService.apnsToken, apnsToken)
+        XCTAssertEqual(mockFirebaseService.fetchInstallationIdCallCount, 1)
+        XCTAssertEqual(mockFirebaseService.fetchTokenCallCount, 0)
+        // Forwarded as a Firebase FID callback, so the SDK knows its type
+        XCTAssertEqual(mockMessagingPush.didReceiveRegistrationReceivedInvocations.map(\.installationId), ["fid-value"])
+        XCTAssertFalse(mockMessagingPush.didReceiveRegistrationTokenCalled)
+        XCTAssertFalse(mockMessagingPush.registerDeviceTokenFCMCalled)
+    }
+
+    func testDidRegisterForRemoteNotifications_whenFidFetchFails_thenNothingIsRegistered() {
+        mockFirebaseService.mockIsInstallationIdEnabled = true
+        _ = appDelegateFCM.application(UIApplication.shared, didFinishLaunchingWithOptions: nil)
+
+        appDelegateFCM.application(UIApplication.shared, didRegisterForRemoteNotificationsWithDeviceToken: Data())
+        mockFirebaseService.simulateInstallationIdError(NSError(domain: "test", code: 1))
+
+        XCTAssertFalse(mockMessagingPush.didReceiveRegistrationCalled)
+        XCTAssertFalse(mockMessagingPush.registerDeviceTokenFCMCalled)
+    }
+
+    func testDidRegisterForRemoteNotifications_whenAutoFetchDeviceTokenIsDisabled_thenNothingIsFetched() {
+        appDelegateFCM = CioAppDelegate(
+            messagingPush: mockMessagingPush,
+            appDelegate: mockAppDelegate,
+            config: { self.createMockConfig(autoFetchDeviceToken: false) },
+            logger: mockLogger
+        )
+        _ = appDelegateFCM.application(UIApplication.shared, didFinishLaunchingWithOptions: nil)
+
+        appDelegateFCM.application(UIApplication.shared, didRegisterForRemoteNotificationsWithDeviceToken: Data())
+
+        XCTAssertTrue(mockAppDelegate.didRegisterForRemoteNotificationsCalled)
+        XCTAssertNil(mockFirebaseService.apnsToken)
+        XCTAssertEqual(mockFirebaseService.fetchTokenCallCount, 0)
+        XCTAssertEqual(mockFirebaseService.fetchInstallationIdCallCount, 0)
+    }
+
+    func testFirebaseService_whenServiceHasNoFidSupport_thenDefaultsToTokenMode() {
+        // A service written before FID support, e.g. an older CioFirebaseWrapper
+        class TokenOnlyFirebaseService: FirebaseService {
+            var apnsToken: Data?
+            var delegate: FirebaseServiceDelegate?
+            func fetchToken(completion: @escaping (String?, Error?) -> Void) {}
+        }
+        let service = TokenOnlyFirebaseService()
+        var fetchedFid: String?
+        var fetchCompleted = false
+
+        service.fetchInstallationId { fid, _ in
+            fetchedFid = fid
+            fetchCompleted = true
+        }
+
+        XCTAssertFalse(service.isInstallationIdEnabled)
+        XCTAssertTrue(fetchCompleted)
+        XCTAssertNil(fetchedFid)
     }
 }
