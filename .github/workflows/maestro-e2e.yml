@@ -101,10 +101,10 @@ jobs:
         suite: ${{ fromJSON(needs.prepare.outputs.suites) }}
     steps:
       - name: Check out iOS SDK
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Check out shared E2E harness
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           repository: customerio/mobile-e2e
           ref: ${{ inputs.harness_ref || 'main' }}
@@ -185,7 +185,7 @@ jobs:
 
       - name: Upload E2E evidence
         if: ${{ always() && steps.sanitize.outcome == 'success' }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: maestro-ios-${{ matrix.suite }}
           path: artifacts/e2e/

@@ -110,13 +110,13 @@ runs:
 
     - name: Does ${{ inputs.sample-app }} use CocoaPods? 
       id: check_podfile_exists
-      uses: andstor/file-existence-action@076e0072799f4942c8bc574a82233e1e4d13e9d6 # v3.0.0
+      uses: andstor/file-existence-action@558493d6c74bf472d87c84eab196434afc2fa029 # v3.1.0
       with:
         files: "Apps/${{ inputs.sample-app }}/Podfile"
 
     - name: Cache CocoaPods downloaded dependencies for faster builds in the future 
       if: steps.check_podfile_exists.outputs.files_exists == 'true'
-      uses: actions/cache@v4
+      uses: actions/cache@v6
       with:
         path: Apps/${{ inputs.sample-app }}/Pods
         key: ${{ runner.os }}-${{ inputs.sample-app}}-Pods-${{ hashFiles('Apps/${{ inputs.sample-app }}/Podfile.lock') }}
@@ -125,7 +125,7 @@ runs:
 
     - name: Cache SPM downloaded dependencies for faster builds in the future 
       if: steps.check_podfile_exists.outputs.files_exists == 'false'
-      uses: actions/cache@v4
+      uses: actions/cache@v6
       with:
         path: Apps/${{ inputs.sample-app }}/spm_packages
         key: ${{ runner.os }}-${{ inputs.sample-app}}-SPMPackages-${{ github.ref }}
@@ -152,7 +152,7 @@ runs:
       run: cat $GITHUB_EVENT_PATH
 
     - name: Build app via Fastlane 
-      uses: maierj/fastlane-action@5a3b971aaa26776459bb26894d6c1a1a84a311a7 # v3.1.0
+      uses: maierj/fastlane-action@182983d8f94bad9884001c03c1c2786f4c7165ed # v3.2.0
       with:
         lane: "ios build"
         subdirectory: "Apps/${{ inputs.sample-app }}"
