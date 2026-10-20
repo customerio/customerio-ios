@@ -55,3 +55,20 @@ class Context: Plugin {
         return workingEvent
     }
 }
+
+extension Context {
+    /// Sets `device.token` on a single event. Enrichments run after this plugin, so the given token wins over
+    /// `deviceToken` at processing time.
+    static func deviceTokenEnrichment(_ token: String) -> EnrichmentClosure {
+        { event in
+            guard var workingEvent = event, var context = workingEvent.context?.dictionaryValue else { return event }
+            context[keyPath: "device.token"] = token
+            do {
+                workingEvent.context = try JSON(context)
+            } catch {
+                return event
+            }
+            return workingEvent
+        }
+    }
+}

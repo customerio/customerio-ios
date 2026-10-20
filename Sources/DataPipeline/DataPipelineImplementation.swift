@@ -275,9 +275,12 @@ class DataPipelineImplementation: DataPipelineInstance, DataPipelineTracking, Ba
         // Do not delete push token from device storage. The token is valid
         // once given to SDK. We need it for future profile identifications.
 
-        if let _ = registeredDeviceToken {
+        if let registeredDeviceToken = registeredDeviceToken {
             // send delete device event to remove it from current profile only if the token was registered before
-            analytics.track(name: "Device Deleted")
+            // The Context plugin adds the token when the event is processed. Events wait while settings refresh,
+            // so a token registered meanwhile would replace this one. Set the token being deleted on the event.
+            let token = contextPlugin.deviceToken ?? registeredDeviceToken
+            analytics.track(name: "Device Deleted", properties: nil, enrichments: [Context.deviceTokenEnrichment(token)])
         }
     }
 
@@ -324,7 +327,7 @@ class DataPipelineImplementation: DataPipelineInstance, DataPipelineTracking, Ba
             let tokenType = self.globalDataStore.pushDeviceToken == token ? self.globalDataStore.pushDeviceTokenType : nil
             let deviceAttributes = defaultDeviceAttributes.mergeWith(customAttributes.withDeviceTokenType(tokenType, logger: self.dataPipelinesLogger))
             self.contextPlugin.attributes = deviceAttributes
-            self.analytics.track(name: "Device Created or Updated", properties: deviceAttributes)
+            self.analytics.track(name: "Device Created or Updated", properties: deviceAttributes, enrichments: [Context.deviceTokenEnrichment(token)])
         }
     }
 
