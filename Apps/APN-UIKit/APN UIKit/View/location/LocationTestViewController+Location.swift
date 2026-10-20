@@ -84,11 +84,7 @@ extension LocationTestViewController {
     }
 
     func currentAuthorizationStatus() -> CLAuthorizationStatus {
-        if #available(iOS 14.0, *) {
-            return locationManager.authorizationStatus
-        } else {
-            return CLLocationManager.authorizationStatus()
-        }
+        locationManager.authorizationStatus
     }
 
     func setLocation(latitude: Double, longitude: Double, sourceName: String? = nil) {
@@ -117,12 +113,7 @@ extension LocationTestViewController {
     }
 
     func requestCurrentLocation() {
-        let status: CLAuthorizationStatus
-        if #available(iOS 14.0, *) {
-            status = locationManager.authorizationStatus
-        } else {
-            status = CLLocationManager.authorizationStatus()
-        }
+        let status = locationManager.authorizationStatus
 
         switch status {
         case .notDetermined:
@@ -153,12 +144,7 @@ extension LocationTestViewController {
 
     /// Asks for location permission if needed, then asks the SDK to request a single location update.
     func requestSdkLocationUpdateOnce() {
-        let status: CLAuthorizationStatus
-        if #available(iOS 14.0, *) {
-            status = locationManager.authorizationStatus
-        } else {
-            status = CLLocationManager.authorizationStatus()
-        }
+        let status = locationManager.authorizationStatus
 
         switch status {
         case .notDetermined:
