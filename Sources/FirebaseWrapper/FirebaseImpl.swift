@@ -48,8 +48,9 @@ class FirebaseImpl: FirebaseService {
         }
     }
 
+    // Only checks the class: `+[FIRMessaging messaging]` returns nil until the app calls `FirebaseApp.configure()`.
     var isFirebaseMessagingLinked: Bool {
-        messaging != nil
+        NSClassFromString(messagingClassName) != nil
     }
 
     var apnsToken: Data? {
