@@ -1,14 +1,18 @@
 public interface CioMessagingPushFCM.FirebaseService {
 	public var apnsToken: Data?;
+	public var isInstallationIdEnabled: Boolean;
 	public var delegate: (any FirebaseServiceDelegate)?;
 	public fun func fetchToken(completion: @escaping (String?, Error?) -> Unit);
+	public fun func fetchInstallationId(completion: @escaping (String?, Error?) -> Unit);
 }
 public interface CioMessagingPushFCM.FirebaseServiceDelegate {
 	public fun func didReceiveRegistrationToken(_ token: String?);
+	public fun func didReceiveRegistration(_ installationId: String?);
 }
 public final class CioMessagingPushFCM.MessagingPushFCM {
 	public fun func registerDeviceToken(fcmToken: String?);
 	public fun func messaging(_ messaging: Any, didReceiveRegistrationToken fcmToken: String?);
+	public fun func messaging(_ messaging: Any, didReceiveRegistration installationId: String?);
 	public fun func application(_ application: Any, didFailToRegisterForRemoteNotificationsWithError error: Error);
 	public fun func deleteDeviceToken();
 	public fun func trackMetric(deliveryID: String, event: Metric, deviceToken: String);
@@ -21,6 +25,7 @@ public final class CioMessagingPushFCM.MessagingPushFCM {
 public interface CioMessagingPushFCM.MessagingPushFCMInstance {
 	public fun func registerDeviceToken(fcmToken: String?);
 	public fun func messaging(_ messaging: Any, didReceiveRegistrationToken fcmToken: String?);
+	public fun func messaging(_ messaging: Any, didReceiveRegistration installationId: String?);
 	public fun func application(_ application: Any, didFailToRegisterForRemoteNotificationsWithError error: Error);
 	public fun func deleteDeviceToken();
 	public fun func trackMetric(deliveryID: String, event: Metric, deviceToken: String);
