@@ -32,6 +32,7 @@ extension GeofenceDwellCoordinator {
     /// refresh drops; `rememberCatalog` follows once the catalog is written.
     func beginCatalogReplacement() {
         polygonCatalogGeneration &+= 1
+        catalogReplacementInProgress = true
     }
 
     /// The catalog as a refresh just persisted it: a fence the server replaced with a circle is
@@ -40,9 +41,16 @@ extension GeofenceDwellCoordinator {
     /// have read the old catalog, and notes the corrections that waited for the shapes.
     func rememberCatalog(_ geofences: [Geofence]) {
         polygonCatalogGeneration &+= 1
+        catalogReplacementInProgress = false
         polygonIds = Set(geofences.filter { $0.vertices != nil }.map(\.id))
         polygonIdsLoaded = true
         drainPendingCorrections()
+        // The shape checks that waited for this catalog, or read the old one while it was written.
+        let waiting = pendingShapeChecks
+        pendingShapeChecks.removeAll()
+        for geofenceId in waiting {
+            Task { [weak self] in await self?.forgetCoveringCircleEnter(geofenceId: geofenceId) }
+        }
     }
 
     /// The cache as it stands at launch. Dropped if a refresh replaced the catalog meanwhile,
@@ -63,11 +71,21 @@ extension GeofenceDwellCoordinator {
     /// A polygon's covering-circle ENTER reached the resolver: a correction its callback noted
     /// before the shape was known is withdrawn, so no evidence re-armed by that wake can end the
     /// visit. A crossing stays noted: the device left the circle, so the polygon too. The shape is
-    /// read from the persisted catalog here, never from the caller's copy, and the answer is
-    /// dropped if a refresh replaced the catalog while it was read.
+    /// read from the persisted catalog here, never from the caller's copy. While a refresh is
+    /// replacing the catalog the read waits for it (`pendingShapeChecks`), as it does again if a
+    /// replacement begins during the read: an answer from a catalog on its way out proves nothing.
     func forgetCoveringCircleEnter(geofenceId: String) async {
+        guard !catalogReplacementInProgress else {
+            pendingShapeChecks.append(geofenceId)
+            return
+        }
         let generation = polygonCatalogGeneration
-        guard await storage.isPolygon(id: geofenceId), polygonCatalogGeneration == generation else { return }
+        let isPolygon = await storage.isPolygon(id: geofenceId)
+        guard polygonCatalogGeneration == generation, !catalogReplacementInProgress else {
+            pendingShapeChecks.append(geofenceId)
+            return
+        }
+        guard isPolygon else { return }
         pendingCorrections.removeAll { $0.geofenceId == geofenceId }
         rememberPolygons([geofenceId])
     }

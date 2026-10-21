@@ -22,6 +22,13 @@ extension GeofenceDwellCoordinator {
         // made, and a continuity break since — an access downgrade, say — changes nothing about it.
         if visit.dwellReservation == nil {
             guard continuityHolds(for: visit, geofenceId: geofence.id), !visit.awaitsPresenceProof else { return }
+            // A correction noted before the shapes were loaded may end this stay once they are
+            // (`pendingCorrections`); reserved now, the dwell would be a fact the drain cannot
+            // undo. Left to the deadline or the next evidence, after the load.
+            if pendingCorrections.contains(where: { $0.geofenceId == geofence.id }) {
+                scheduleEvidenceRetry(for: geofence, visit: visit)
+                return
+            }
         }
         let reading = readClock()
         let elapsed = visit.timing?.elapsed(enteredAt: visit.enteredAt, until: observedAt, at: reading)

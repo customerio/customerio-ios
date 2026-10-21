@@ -39,6 +39,10 @@ final class GeofenceDwellCoordinator {
     /// noted at the load, for circles only. Internal for `+Chronology` and `+Polygons`.
     var polygonIdsLoaded = false
     var pendingCorrections: [(geofenceId: String, mark: GeofenceExitMark)] = []
+    /// Set between `beginCatalogReplacement` and `rememberCatalog`: a shape read begun now would
+    /// read whichever catalog the write has reached, so it waits in `pendingShapeChecks` instead.
+    var catalogReplacementInProgress = false
+    var pendingShapeChecks: [String] = []
     var pendingExitCallbacks: [String: [Date: GeofencePendingExitCallback]] = [:] // `noteExitCallback`
     /// This coordinator's first clock reading, taken when it was built; the wall offset of its
     /// previous reading, and the uptime it last saw the wall clock step at. Internal for

@@ -206,6 +206,60 @@ struct GeofenceDwellCoordinatorTests {
         setup.coordinator.cancelEvidence(for: setup.geofence.id)
     }
 
+    /// Evidence that qualifies a stay while a correction for its circle still waits for the shapes
+    /// reserves nothing: reserved, the dwell would be a fact the correction could no longer undo.
+    /// The drain applies the correction, which ends the unqualified stay; the next ENTER starts
+    /// one of its own.
+    @Test
+    func queuedCorrectionBlocksAdmissionUntilTheShapesLoad() async throws {
+        let fix = CLLocation(
+            coordinate: CLLocationCoordinate2D(latitude: 0.5, longitude: 0.5), altitude: 0,
+            horizontalAccuracy: 5, verticalAccuracy: 10, timestamp: Date()
+        )
+        let clock = ManualGeofenceClock(wall: fix.timestamp.addingTimeInterval(-300))
+        let setup = await makeSetup(isPolygon: false, freshFixProvider: { fix }, clock: clock)
+        await setup.coordinator.handleBoundary(geofence: setup.geofence, transition: .enter, occurredAt: clock.wall)
+        let first = try #require(await setup.storage.getDwellVisit(geofenceId: setup.geofence.id))
+        clock.advance(to: fix.timestamp)
+        setup.coordinator.polygonIdsLoaded = false
+        setup.coordinator.noteEnter(geofenceId: setup.geofence.id, occurredAt: clock.wall, crossing: false)
+
+        await setup.coordinator.requestQualifyingEvidence(geofenceId: setup.geofence.id)
+
+        #expect(await setup.emitter.dwells().isEmpty)
+        #expect(await setup.storage.getDwellVisit(geofenceId: setup.geofence.id)?.dwellReservation == nil)
+
+        setup.coordinator.rememberCatalog([setup.geofence])
+        #expect(await setup.coordinator.currentVisit(geofence: setup.geofence, userId: "user-1") == nil)
+        clock.advance(1)
+        await setup.coordinator.handleBoundary(geofence: setup.geofence, transition: .enter, occurredAt: clock.wall)
+        let next = try #require(await setup.storage.getDwellVisit(geofenceId: setup.geofence.id))
+        #expect(next.visitId != first.visitId)
+        setup.coordinator.cancelEvidence(for: setup.geofence.id)
+    }
+
+    /// A shape read that would run while a refresh replaces the catalog waits for the new one,
+    /// and reads the fence as the refresh persisted it.
+    @Test
+    func shapeReadDuringCatalogReplacementWaitsForTheNewCatalog() async throws {
+        let setup = await makeSetup(isPolygon: false)
+        await settleQuietly()
+        setup.coordinator.noteEnter(geofenceId: setup.geofence.id, occurredAt: Date(), crossing: false)
+        try #require(setup.coordinator.enterMarks[setup.geofence.id]?.correction != nil)
+
+        setup.coordinator.beginCatalogReplacement()
+        await setup.coordinator.forgetCoveringCircleEnter(geofenceId: setup.geofence.id)
+        #expect(setup.coordinator.pendingShapeChecks == [setup.geofence.id])
+        #expect(setup.coordinator.enterMarks[setup.geofence.id]?.correction != nil)
+
+        setup.coordinator.rememberCatalog([setup.geofence])
+        await settleQuietly()
+
+        #expect(setup.coordinator.pendingShapeChecks.isEmpty)
+        #expect(!setup.coordinator.polygonIds.contains(setup.geofence.id))
+        #expect(setup.coordinator.enterMarks[setup.geofence.id]?.correction != nil)
+    }
+
     /// A correction racing the visit an earlier ENTER already opened — the same arrival, dated
     /// within the 1 s tolerance — keeps that visit as it is. Half a second, not exactly the
     /// tolerance: two clock reads microseconds apart would put a 1 s gap a hair either side of it.
