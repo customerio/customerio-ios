@@ -8,14 +8,22 @@ extension GeofenceDwellCoordinator {
     /// confirmed the device outside at `outsideAt` with nothing to deliver, so the EXIT that should
     /// have removed the visit was lost (the process died between the membership write and the
     /// removal). No EXIT is delivered and no mark is recorded; the visit simply cannot resume a
-    /// stay the SDK saw end. Only a visit begun before the outside fix, and only while the belief
-    /// is still outside, judged in the removal itself: a newer inside pass may have written a new
-    /// visit while this one was suspended, and that stay is its own.
-    func endVisitLeftOutside(geofence: Geofence, outsideAt: Date, expectedUserId: String?) async {
+    /// stay the SDK saw end. Only a visit the outside fix overtakes on the monotonic timeline, as
+    /// `processedAt` — the pass's own clock reading, taken before its membership write — places
+    /// it, and only while the belief is still outside, judged in the removal itself: a newer
+    /// inside pass may have written a new visit while this one was suspended, and that stay is
+    /// its own; a wall clock since stepped back cannot keep the stranded one.
+    func endVisitLeftOutside(
+        geofence: Geofence,
+        outsideAt: Date,
+        processedAt: GeofenceClockReading? = nil,
+        expectedUserId: String?
+    ) async {
         rememberShape(of: geofence)
+        let outside = GeofenceExitMark(date: outsideAt, processedAt: processedAt ?? readClock(), source: .outsideEvidence)
         guard let userId = contextStore.currentUserId, !userId.isEmpty,
               expectedUserId == nil || expectedUserId == userId,
-              let removed = await storage.removeDwellVisitLeftOutside(geofenceId: geofence.id, outsideAt: outsideAt)
+              let removed = await storage.removeDwellVisitLeftOutside(geofenceId: geofence.id, endedBy: outside)
         else { return }
         cancelEvidence(for: geofence.id, ifVisit: removed)
     }

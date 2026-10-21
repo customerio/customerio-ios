@@ -116,14 +116,15 @@ extension GeofenceStorage {
     }
 
     /// Removes a polygon visit a pass found left behind outside — only while the stored belief is
-    /// still outside and the visit began before the outside fix at `outsideAt`, both judged here,
-    /// in the one write. A visit begun after that fix was written by a newer inside pass and is a
-    /// stay of its own.
+    /// still outside and the outside fix `outside` overtakes the visit on the monotonic timeline
+    /// (`GeofenceExitMark.overtakes`), both judged here, in the one write. A visit begun after that
+    /// fix was written by a newer inside pass and is a stay of its own; a wall clock stepped back
+    /// behind the visit's entry cannot keep it, as the mark orders by processing then.
     /// - Returns: the removed visit's id, nil when nothing was removed.
-    func removeDwellVisitLeftOutside(geofenceId: String, outsideAt: Date) -> String? {
+    func removeDwellVisitLeftOutside(geofenceId: String, endedBy outside: GeofenceExitMark) -> String? {
         var state = loadFromDisk() ?? GeofenceState()
         guard state.polygonMembership?[geofenceId]?.membership == .outside,
-              let visit = state.dwellVisits?[geofenceId], visit.enteredAt < outsideAt
+              let visit = state.dwellVisits?[geofenceId], outside.overtakes(visit)
         else { return nil }
         state.dwellVisits?.removeValue(forKey: geofenceId)
         return saveToDisk(state) ? visit.visitId : nil

@@ -129,8 +129,37 @@ struct PolygonVisitBoundaryTests {
 
         #expect(await setup.storage.getDwellVisit(geofenceId: Self.polygon.id)?.visitId == newer.visitId)
         // Nor one begun before it while the belief has since turned inside.
-        #expect(await setup.storage.removeDwellVisitLeftOutside(geofenceId: Self.polygon.id, outsideAt: setup.clock.wall.addingTimeInterval(1)) == nil)
+        let later = GeofenceExitMark(
+            date: setup.clock.wall.addingTimeInterval(1), processedAt: setup.clock.read(), source: .outsideEvidence
+        )
+        #expect(await setup.storage.removeDwellVisitLeftOutside(geofenceId: Self.polygon.id, endedBy: later) == nil)
         #expect(await setup.storage.getDwellVisit(geofenceId: Self.polygon.id)?.visitId == newer.visitId)
+    }
+
+    /// The wall clock stepped back behind the stranded visit's entry while the process stayed
+    /// alive. Dates no longer order the two, so the outside confirmation is placed by processing:
+    /// it ran after the visit was recorded, and the visit is ended all the same.
+    @Test
+    func outsideConfirmationAfterABackwardClockStepEndsTheStrandedVisit() async throws {
+        let setup = await makeSetup()
+        await setup.judge(.outside)
+        setup.advance(30)
+        await setup.judge(.inside)
+        let stranded = try #require(await setup.storage.getDwellVisit(geofenceId: Self.polygon.id))
+        setup.advance(60)
+        setup.stepWall(-3600)
+        // The EXIT's membership write, whose visit removal was lost; dated on the stepped clock.
+        let write = await setup.storage.recordPolygonMembership(
+            .outside, forIdentifier: Self.polygon.id, now: setup.clock.wall
+        )
+        try #require(write == .deliver(.exit))
+        try #require(await setup.storage.getDwellVisit(geofenceId: Self.polygon.id)?.visitId == stranded.visitId)
+        setup.advance(60)
+
+        await setup.judge(.outside)
+
+        #expect(await setup.storage.getDwellVisit(geofenceId: Self.polygon.id) == nil)
+        #expect(await setup.exitRows().isEmpty)
     }
 
     /// A confirmation keeps the inside proof fresh: a stay confirmed inside an hour in and left
@@ -213,6 +242,12 @@ struct PolygonVisitBoundaryTests {
         /// Both clocks move together: the tracker's cooldown and the fix resolver read `dateUtil`.
         func advance(_ seconds: TimeInterval) {
             clock.advance(seconds)
+            dateUtil.givenNow = clock.wall
+        }
+
+        /// A time change: the wall clock moves, uptime does not.
+        func stepWall(_ seconds: TimeInterval) {
+            clock.stepWall(seconds)
             dateUtil.givenNow = clock.wall
         }
 

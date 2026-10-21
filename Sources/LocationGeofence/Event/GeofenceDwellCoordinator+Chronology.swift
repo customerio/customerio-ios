@@ -2,11 +2,11 @@ import Foundation
 
 /// An EXIT, or a decisive outside fix that orders like one, as the coordinator processed it; or a
 /// native ENTER, noted with the same ordering to tell a later crossing from a copy.
-struct GeofenceExitMark: Equatable {
+struct GeofenceExitMark: Equatable, Sendable {
     /// What recorded the mark. Only an EXIT event is delivered, and may still be in flight to
     /// report the visit it ended; outside evidence ends a visit with no event of its own. A native
     /// ENTER is noted with the same ordering, in `enterMarks` only.
-    enum Source: Equatable {
+    enum Source: Equatable, Sendable {
         case exitEvent
         case outsideEvidence
         case enterEvent

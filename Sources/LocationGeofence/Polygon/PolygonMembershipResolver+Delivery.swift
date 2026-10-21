@@ -23,6 +23,9 @@ extension PolygonMembershipResolver {
         receivedForUserId: String? = nil,
         qualifiesDwell: Bool = true
     ) async {
+        // Before the write: a visit a newer pass records while this one is suspended must read as
+        // later than this pass, whatever the wall clock does meanwhile (`endVisitLeftOutside`).
+        let processedAt = dwellCoordinator?.readClock()
         let write = await storage.recordPolygonMembershipWrite(
             membership,
             forIdentifier: geofence.id,
@@ -40,7 +43,7 @@ extension PolygonMembershipResolver {
             let visitContext = await forwardDwellEvidence(
                 PolygonDwellEvidence(membership: membership, outcome: outcome),
                 geofence: geofence, at: evidence, confirmedByFix: confirmedByFix,
-                insideProvenAt: write.previousProvenAt,
+                insideProvenAt: write.previousProvenAt, processedAt: processedAt,
                 expectedUserId: expectedUserId, qualifiesDwell: qualifiesDwell
             )
             // The visit is closed either way; a discovered exit only withholds its duration.
@@ -219,6 +222,7 @@ extension PolygonMembershipResolver {
         at evidence: Date,
         confirmedByFix: Bool,
         insideProvenAt: Date? = nil,
+        processedAt: GeofenceClockReading? = nil,
         expectedUserId: String?,
         qualifiesDwell: Bool = true
     ) async -> GeofenceExitContext? {
@@ -252,7 +256,9 @@ extension PolygonMembershipResolver {
         case .stillOutside:
             // Outside, and nothing to deliver: the belief was already outside. A visit the store
             // still holds was left behind by an EXIT whose removal never ran, and must not resume.
-            await dwellCoordinator?.endVisitLeftOutside(geofence: geofence, outsideAt: evidence, expectedUserId: expectedUserId)
+            await dwellCoordinator?.endVisitLeftOutside(
+                geofence: geofence, outsideAt: evidence, processedAt: processedAt, expectedUserId: expectedUserId
+            )
             return nil
         case .none:
             return nil
