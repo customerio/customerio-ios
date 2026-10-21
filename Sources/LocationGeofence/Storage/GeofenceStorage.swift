@@ -14,6 +14,28 @@ actor GeofenceStorage {
     private let directoryURL: URL?
     /// `lastStateChangedAt` is weighed against fix timestamps, so it must come from the same clock.
     private let dateUtil: DateUtil
+    /// Test seam: runs inside `reserveDwellEmission` before its load, so a test can interleave
+    /// main-actor work with the reservation write. Nil in production.
+    private var beforeReservationWrite: (@Sendable () async -> Void)?
+
+    func setBeforeReservationWrite(_ hook: (@Sendable () async -> Void)?) {
+        beforeReservationWrite = hook
+    }
+
+    func runBeforeReservationWrite() async {
+        await beforeReservationWrite?()
+    }
+
+    /// Test seam, as `beforeReservationWrite`: runs inside `isPolygon(id:)` before its load.
+    private var beforeShapeRead: (@Sendable () async -> Void)?
+
+    func setBeforeShapeRead(_ hook: (@Sendable () async -> Void)?) {
+        beforeShapeRead = hook
+    }
+
+    func runBeforeShapeRead() async {
+        await beforeShapeRead?()
+    }
     init(
         fileManager: FileManager = .default,
         directoryURL: URL? = nil,

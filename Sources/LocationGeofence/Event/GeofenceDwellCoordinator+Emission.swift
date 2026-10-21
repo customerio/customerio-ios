@@ -25,7 +25,7 @@ extension GeofenceDwellCoordinator {
             // A correction noted before the shapes were loaded may end this stay once they are
             // (`pendingCorrections`); reserved now, the dwell would be a fact the drain cannot
             // undo. Left to the deadline or the next evidence, after the load.
-            if pendingCorrections.contains(where: { $0.geofenceId == geofence.id }) {
+            if correctionQueued(for: geofence.id) {
                 scheduleEvidenceRetry(for: geofence, visit: visit)
                 return
             }
@@ -77,6 +77,12 @@ extension GeofenceDwellCoordinator {
         await finishDwellEmission(geofence: geofence, visit: visit)
     }
 
+    /// Whether a correction for `geofenceId` still waits for the shapes to load
+    /// (`pendingCorrections`): once applied it may end the stay, so no first admission may stand.
+    func correctionQueued(for geofenceId: String) -> Bool {
+        pendingCorrections.contains { $0.geofenceId == geofenceId }
+    }
+
     /// Whether a first admission of `visit` — one with no reservation yet — is refused because an
     /// EXIT or outside proof this process recorded ends it, though its removal has not landed, or
     /// a native EXIT callback still being routed would: the DWELL would span a departure already
@@ -98,9 +104,21 @@ extension GeofenceDwellCoordinator {
         for visit: GeofenceDwellVisit,
         geofence: Geofence
     ) async -> GeofenceDwellReservation? {
+        // Rechecked at the write itself, after the awaits that led here, and once more after it:
+        // a correction queued while the write was in flight is not seen by the check before it,
+        // so a reservation it overtook is taken back before anything is delivered.
+        if visit.dwellReservation == nil, correctionQueued(for: geofence.id) {
+            scheduleEvidenceRetry(for: geofence, visit: visit)
+            return nil
+        }
         // `visit` may be a copy read before another attempt reserved; the stored reservation wins.
         switch await storage.reserveDwellEmission(proposed, for: visit, geofenceId: geofence.id) {
         case .reserved(let stored):
+            if stored == proposed, visit.dwellReservation == nil, correctionQueued(for: geofence.id),
+               await storage.retractDwellReservation(stored, from: visit, geofenceId: geofence.id) {
+                scheduleEvidenceRetry(for: geofence, visit: visit)
+                return nil
+            }
             // Reserved, the visit only repeats its delivery and needs no location, even when withheld below.
             releaseCollectionLease(geofenceId: geofence.id, ifVisit: visit.visitId)
             guard stored != proposed || !knownExitRefusesFirstAdmission(of: visit, geofenceId: geofence.id) else { return nil }

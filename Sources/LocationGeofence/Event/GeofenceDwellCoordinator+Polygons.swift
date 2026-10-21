@@ -45,11 +45,14 @@ extension GeofenceDwellCoordinator {
         polygonIds = Set(geofences.filter { $0.vertices != nil }.map(\.id))
         polygonIdsLoaded = true
         drainPendingCorrections()
-        // The shape checks that waited for this catalog, or read the old one while it was written.
-        let waiting = pendingShapeChecks
-        pendingShapeChecks.removeAll()
-        for geofenceId in waiting {
-            Task { [weak self] in await self?.forgetCoveringCircleEnter(geofenceId: geofenceId) }
+        // The shape checks that waited for this catalog, or read the old one while it was written;
+        // until none is left, so one appended during the drain runs too.
+        while !pendingShapeChecks.isEmpty {
+            let waiting = pendingShapeChecks
+            pendingShapeChecks.removeAll()
+            for geofenceId in waiting {
+                Task { [weak self] in await self?.forgetCoveringCircleEnter(geofenceId: geofenceId) }
+            }
         }
     }
 
@@ -75,19 +78,23 @@ extension GeofenceDwellCoordinator {
     /// replacing the catalog the read waits for it (`pendingShapeChecks`), as it does again if a
     /// replacement begins during the read: an answer from a catalog on its way out proves nothing.
     func forgetCoveringCircleEnter(geofenceId: String) async {
-        guard !catalogReplacementInProgress else {
-            pendingShapeChecks.append(geofenceId)
+        // Until a read spans no replacement. A replacement still in progress when the read would
+        // run, or begin again, hands the check to `rememberCatalog`; one that began and ended
+        // during the read is simply read past, so the check never waits for a refresh that will
+        // not come.
+        while true {
+            guard !catalogReplacementInProgress else {
+                pendingShapeChecks.append(geofenceId)
+                return
+            }
+            let generation = polygonCatalogGeneration
+            let isPolygon = await storage.isPolygon(id: geofenceId)
+            guard polygonCatalogGeneration == generation else { continue }
+            guard isPolygon else { return }
+            pendingCorrections.removeAll { $0.geofenceId == geofenceId }
+            rememberPolygons([geofenceId])
             return
         }
-        let generation = polygonCatalogGeneration
-        let isPolygon = await storage.isPolygon(id: geofenceId)
-        guard polygonCatalogGeneration == generation, !catalogReplacementInProgress else {
-            pendingShapeChecks.append(geofenceId)
-            return
-        }
-        guard isPolygon else { return }
-        pendingCorrections.removeAll { $0.geofenceId == geofenceId }
-        rememberPolygons([geofenceId])
     }
 
     /// Notes the corrections that arrived before the shapes were known, for the fences the catalog

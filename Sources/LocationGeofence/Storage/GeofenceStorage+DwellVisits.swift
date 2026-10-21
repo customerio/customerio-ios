@@ -83,7 +83,8 @@ extension GeofenceStorage {
         _ proposed: GeofenceDwellReservation,
         for visit: GeofenceDwellVisit,
         geofenceId: String
-    ) -> DwellReservationResult {
+    ) async -> DwellReservationResult {
+        await runBeforeReservationWrite()
         var state = loadFromDisk() ?? GeofenceState()
         guard var stored = state.dwellVisits?[geofenceId],
               stored.visitId == visit.visitId,
@@ -98,6 +99,20 @@ extension GeofenceStorage {
         stored.dwellReservation = proposed
         state.dwellVisits?[geofenceId] = stored
         return saveToDisk(state) ? .reserved(proposed) : .writeFailed
+    }
+
+    /// Takes back a reservation this process just wrote and has not delivered — only while the
+    /// stored visit is still `visit` holding exactly `reservation`, unemitted — so an admission
+    /// abandoned after its write leaves no fact behind.
+    /// - Returns: whether the reservation was removed.
+    func retractDwellReservation(_ reservation: GeofenceDwellReservation, from visit: GeofenceDwellVisit, geofenceId: String) -> Bool {
+        var state = loadFromDisk() ?? GeofenceState()
+        guard var stored = state.dwellVisits?[geofenceId], stored.visitId == visit.visitId,
+              stored.dwellReservation == reservation, !stored.emitted
+        else { return false }
+        stored.dwellReservation = nil
+        state.dwellVisits?[geofenceId] = stored
+        return saveToDisk(state)
     }
 
     func removeDwellVisit(geofenceId: String) {

@@ -238,6 +238,63 @@ struct GeofenceDwellCoordinatorTests {
         setup.coordinator.cancelEvidence(for: setup.geofence.id)
     }
 
+    /// A correction queued while the reservation write is in flight was not there for the check
+    /// before it: the reservation it overtook is taken back before anything is delivered.
+    @Test
+    func correctionQueuedDuringTheReservationWriteIsNotReserved() async throws {
+        let fix = CLLocation(
+            coordinate: CLLocationCoordinate2D(latitude: 0.5, longitude: 0.5), altitude: 0,
+            horizontalAccuracy: 5, verticalAccuracy: 10, timestamp: Date()
+        )
+        let clock = ManualGeofenceClock(wall: fix.timestamp.addingTimeInterval(-300))
+        let setup = await makeSetup(isPolygon: false, freshFixProvider: { fix }, clock: clock)
+        await setup.coordinator.handleBoundary(geofence: setup.geofence, transition: .enter, occurredAt: clock.wall)
+        clock.advance(to: fix.timestamp)
+        setup.coordinator.polygonIdsLoaded = false
+        let coordinator = setup.coordinator
+        let geofenceId = setup.geofence.id
+        let correctedAt = clock.wall
+        await setup.storage.setBeforeReservationWrite {
+            await MainActor.run { coordinator.noteEnter(geofenceId: geofenceId, occurredAt: correctedAt, crossing: false) }
+        }
+
+        await setup.coordinator.requestQualifyingEvidence(geofenceId: setup.geofence.id)
+
+        #expect(await setup.emitter.dwells().isEmpty)
+        #expect(setup.coordinator.pendingCorrections.count == 1)
+        #expect(await setup.storage.getDwellVisit(geofenceId: setup.geofence.id)?.dwellReservation == nil)
+        await setup.storage.setBeforeReservationWrite(nil)
+        setup.coordinator.cancelEvidence(for: setup.geofence.id)
+    }
+
+    /// A replacement that begins and ends while a shape check reads the catalog, after the drain
+    /// has run, does not strand the check: it reads again and completes without another refresh.
+    @Test
+    func shapeCheckReadsAgainAfterAReplacementDuringItsRead() async throws {
+        let setup = await makeSetup(isPolygon: true)
+        await settleQuietly()
+        setup.coordinator.polygonIds = []
+        let coordinator = setup.coordinator
+        // The replacement begins and ends, drain included, while the check's first read is in
+        // flight; the catalog it reads afterwards still holds the polygon.
+        let replaced = MutableFlag()
+        await setup.storage.setBeforeShapeRead {
+            await MainActor.run {
+                guard !replaced.value else { return }
+                replaced.value = true
+                coordinator.beginCatalogReplacement()
+                coordinator.rememberCatalog([])
+            }
+        }
+
+        await setup.coordinator.forgetCoveringCircleEnter(geofenceId: setup.geofence.id)
+
+        #expect(replaced.value)
+        #expect(setup.coordinator.polygonIds.contains(setup.geofence.id))
+        #expect(setup.coordinator.pendingShapeChecks.isEmpty)
+        await setup.storage.setBeforeShapeRead(nil)
+    }
+
     /// A shape read that would run while a refresh replaces the catalog waits for the new one,
     /// and reads the fence as the refresh persisted it.
     @Test
@@ -2560,4 +2617,10 @@ private final class MutableAccess {
     init(_ value: GeofenceLocationAccess?) {
         self.value = value
     }
+}
+
+/// A flag a test flips from inside a storage hook.
+@MainActor
+private final class MutableFlag {
+    var value = false
 }
