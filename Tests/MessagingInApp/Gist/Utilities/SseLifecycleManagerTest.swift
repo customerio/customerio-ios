@@ -16,6 +16,7 @@ class SseLifecycleManagerTest: XCTestCase {
     private var sut: CioSseLifecycleManager!
     private var queueFetchCallsCount = 0
     private var queueFetchReceivedStates: [InAppMessageState] = []
+    private var queueFetchMustBeFreshValues: [Bool] = []
     private var connectionConfirmedHandler: (() -> Void)?
 
     override func setUp() {
@@ -26,6 +27,7 @@ class SseLifecycleManagerTest: XCTestCase {
         applicationStateProviderMock = ApplicationStateProviderMock()
         queueFetchCallsCount = 0
         queueFetchReceivedStates = []
+        queueFetchMustBeFreshValues = []
         connectionConfirmedHandler = nil
 
         // Default to foreground state for most tests (explicit control)
@@ -53,8 +55,9 @@ class SseLifecycleManagerTest: XCTestCase {
     }
 
     private func startLifecycleManager(_ manager: CioSseLifecycleManager) async {
-        await manager.start(queueFetchHandler: { [weak self] _ in
+        await manager.start(queueFetchHandler: { [weak self] _, mustBeFresh in
             self?.queueFetchCallsCount += 1
+            self?.queueFetchMustBeFreshValues.append(mustBeFresh)
         })
         // Captured here rather than read from the mock later: several tests call resetMock(), which
         // clears its recorded arguments, and the hook is only registered once at start.
@@ -264,6 +267,8 @@ class SseLifecycleManagerTest: XCTestCase {
 
         XCTAssertFalse(sseConnectionManagerMock.startConnectionCalled)
         XCTAssertEqual(queueFetchCallsCount, 1)
+        // The first foreground belongs to launch, so its catch-up may share a launch fetch in flight.
+        XCTAssertEqual(queueFetchMustBeFreshValues, [false])
     }
 
     func test_foregroundNotification_givenStartedInBackgroundAndSseEnabledAndIdentified_expectNoFetchUntilConnectionConfirmed() async {
@@ -282,6 +287,8 @@ class SseLifecycleManagerTest: XCTestCase {
 
         await simulateConnectionConfirmed()
         XCTAssertEqual(queueFetchCallsCount, 1)
+        // The stream just opened, so an older request in flight can't stand in for the backfill.
+        XCTAssertEqual(queueFetchMustBeFreshValues, [true])
     }
 
     func test_foregroundNotification_givenSseDisabled_expectCatchUpFetchReceivesCurrentState() async {
@@ -294,7 +301,7 @@ class SseLifecycleManagerTest: XCTestCase {
             useSse: false
         )
         sut = createLifecycleManager()
-        await sut.start(queueFetchHandler: { [weak self] state in
+        await sut.start(queueFetchHandler: { [weak self] state, _ in
             self?.queueFetchReceivedStates.append(state)
         })
 
@@ -331,6 +338,8 @@ class SseLifecycleManagerTest: XCTestCase {
         try? await Task.sleep(nanoseconds: 100000000)
 
         XCTAssertEqual(queueFetchCallsCount, 2)
+        // Only the foreground after a real background period needs data newer than a request in flight.
+        XCTAssertEqual(queueFetchMustBeFreshValues, [false, true])
     }
 
     func test_start_givenAppInForegroundAndSseDisabled_expectNoFetchFromLifecycleManager() async {

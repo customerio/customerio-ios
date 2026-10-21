@@ -2532,24 +2532,24 @@ class SseLifecycleManagerMock: @unchecked Sendable, SseLifecycleManager, Mock {
     }
 
     /// The arguments from the *last* time the function was called.
-    private let _startReceivedArguments: CioInternalCommon.Synchronized<((InAppMessageState) -> Void)?> = .init(nil)
-    var startReceivedArguments: ((InAppMessageState) -> Void)? {
+    private let _startReceivedArguments: CioInternalCommon.Synchronized<((_ state: InAppMessageState, _ mustBeFresh: Bool) -> Void)?> = .init(nil)
+    var startReceivedArguments: ((_ state: InAppMessageState, _ mustBeFresh: Bool) -> Void)? {
         _startReceivedArguments.wrappedValue
     }
 
     /// Arguments from *all* of the times that the function was called.
-    private let _startReceivedInvocations: CioInternalCommon.Synchronized<[(InAppMessageState) -> Void]> = .init([])
-    var startReceivedInvocations: [(InAppMessageState) -> Void] {
+    private let _startReceivedInvocations: CioInternalCommon.Synchronized<[(_ state: InAppMessageState, _ mustBeFresh: Bool) -> Void]> = .init([])
+    var startReceivedInvocations: [(_ state: InAppMessageState, _ mustBeFresh: Bool) -> Void] {
         _startReceivedInvocations.wrappedValue
     }
 
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
-    var startClosure: ((@escaping (InAppMessageState) -> Void) -> Void)?
+    var startClosure: ((@escaping (_ state: InAppMessageState, _ mustBeFresh: Bool) -> Void) -> Void)?
 
-    /// Mocked function for `start(queueFetchHandler: @escaping (InAppMessageState) -> Void)`. Your opportunity to return a mocked value and check result of mock in test code.
-    func start(queueFetchHandler: @escaping (InAppMessageState) -> Void) {
+    /// Mocked function for `start(queueFetchHandler: @escaping (_ state: InAppMessageState, _ mustBeFresh: Bool) -> Void)`. Your opportunity to return a mocked value and check result of mock in test code.
+    func start(queueFetchHandler: @escaping (_ state: InAppMessageState, _ mustBeFresh: Bool) -> Void) {
         mockCalled = true
         _startCallsCount += 1
         _startReceivedArguments.wrappedValue = queueFetchHandler

@@ -8,6 +8,8 @@ public enum KeyValueStorageKey: String {
     case pushDeviceToken
     case pushDeviceTokenType
     case inAppUserQueueFetchCachedResponse
+    // The identity the cached queue response was fetched for; a 304 for anyone else must not reuse it.
+    case inAppUserQueueFetchCachedResponseOwner = "in_app_user_queue_fetch_cached_response_owner"
     case broadcastMessages = "broadcast_messages"
     case broadcastMessagesExpiry = "broadcast_messages_expiry"
     case broadcastMessagesTracking = "broadcast_messages_tracking"

@@ -21,6 +21,15 @@ class QueueManager {
         }
     }
 
+    private var cachedFetchUserQueueResponseOwner: String? {
+        get {
+            keyValueStore.string(.inAppUserQueueFetchCachedResponseOwner)
+        }
+        set {
+            keyValueStore.setString(newValue, forKey: .inAppUserQueueFetchCachedResponseOwner)
+        }
+    }
+
     init(
         keyValueStore: SharedKeyValueStorage,
         gistQueueNetwork: GistQueueNetwork,
@@ -41,10 +50,12 @@ class QueueManager {
 
     func clearCachedUserQueue() {
         cachedFetchUserQueueResponse = nil
+        cachedFetchUserQueueResponseOwner = nil
         inboxMessageCache.clearAll()
     }
 
     func fetchUserQueue(state: InAppMessageState, completionHandler: @escaping (Result<[Message]?, Error>) -> Void) {
+        let requestOwner = QueueFetchKey(state: state)?.cacheOwner
         do {
             try gistQueueNetwork.request(state: state, request: QueueEndpoint.getUserQueue, completionHandler: { response in
                 switch response {
@@ -55,7 +66,11 @@ class QueueManager {
                     self.logger.logWithModuleTag("Gist queue fetch response: \(response.statusCode)", level: .debug)
                     switch response.statusCode {
                     case 304:
-                        guard let lastCachedResponse = self.cachedFetchUserQueueResponse else {
+                        // Only reuse the cached body for the identity it was fetched for: after a user
+                        // switch it holds the previous user's messages.
+                        guard let lastCachedResponse = self.cachedFetchUserQueueResponse,
+                              requestOwner != nil, self.cachedFetchUserQueueResponseOwner == requestOwner
+                        else {
                             return completionHandler(.success(nil))
                         }
 
@@ -85,6 +100,7 @@ class QueueManager {
                             }
 
                             self.cachedFetchUserQueueResponse = data
+                            self.cachedFetchUserQueueResponseOwner = requestOwner
                             let processedQueue = self.processAnonymousMessages(userQueue)
 
                             completionHandler(.success(processedQueue))

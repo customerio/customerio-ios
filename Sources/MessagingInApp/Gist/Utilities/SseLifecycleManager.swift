@@ -22,7 +22,9 @@ protocol SseLifecycleManager: AutoMockable {
     /// - Parameter queueFetchHandler: Called to fetch messages that arrive outside a live SSE stream:
     ///   those that already existed before the stream opened (once per confirmed SSE connection), and
     ///   those queued while backgrounded when the app foregrounds without SSE (once per foreground transition).
-    func start(queueFetchHandler: @escaping (InAppMessageState) -> Void) async
+    ///   `mustBeFresh` is true when an older request in flight can't stand in for this fetch: the stream
+    ///   just opened, or the app is returning from the background.
+    func start(queueFetchHandler: @escaping (_ state: InAppMessageState, _ mustBeFresh: Bool) -> Void) async
 }
 
 // sourcery: InjectRegisterShared = "SseLifecycleManager"
@@ -38,7 +40,10 @@ actor CioSseLifecycleManager: SseLifecycleManager {
     private var userIdSubscriber: InAppMessageStoreSubscriber?
 
     private var isForegrounded: Bool = false
-    private var queueFetchHandler: ((InAppMessageState) -> Void)?
+    // Set by the first real background transition. Until then a foreground belongs to launch, so its
+    // catch-up fetch may share a launch request already in flight.
+    private var hasBeenBackgrounded: Bool = false
+    private var queueFetchHandler: ((InAppMessageState, Bool) -> Void)?
 
     init(
         logger: Logger,
@@ -52,7 +57,7 @@ actor CioSseLifecycleManager: SseLifecycleManager {
         self.applicationStateProvider = applicationStateProvider
     }
 
-    func start(queueFetchHandler: @escaping (InAppMessageState) -> Void) async {
+    func start(queueFetchHandler: @escaping (_ state: InAppMessageState, _ mustBeFresh: Bool) -> Void) async {
         self.queueFetchHandler = queueFetchHandler
         logger.logWithModuleTag("SseLifecycleManager: Starting lifecycle manager", level: .debug)
 
@@ -132,7 +137,8 @@ actor CioSseLifecycleManager: SseLifecycleManager {
             "SseLifecycleManager: Connection confirmed - backfilling messages that predate the stream",
             level: .info
         )
-        queueFetchHandler?(state)
+        // A request already in flight may predate the stream, so it can't stand in for this one.
+        queueFetchHandler?(state, true)
     }
 
     // MARK: - SSE Eligibility
@@ -256,7 +262,9 @@ actor CioSseLifecycleManager: SseLifecycleManager {
             // Go through the queue fetch handler rather than the app-state-guarded polling path:
             // `willEnterForegroundNotification` fires while the app still reports `.background`.
             // The handler is a no-op when there is neither a userId nor an anonymousId.
-            queueFetchHandler?(state)
+            // Returning from the background needs data from after it; the launch foreground can share
+            // a launch fetch that is already in flight.
+            queueFetchHandler?(state, hasBeenBackgrounded)
         }
     }
 
@@ -268,6 +276,7 @@ actor CioSseLifecycleManager: SseLifecycleManager {
         }
 
         isForegrounded = false
+        hasBeenBackgrounded = true
 
         // Always stop SSE connection when app backgrounds (matching Android behavior)
         // stopConnection() is idempotent, safe to call even if not connected
