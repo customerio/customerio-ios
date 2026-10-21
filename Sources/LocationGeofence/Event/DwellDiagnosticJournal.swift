@@ -41,6 +41,9 @@ struct DwellDiagnosticRecord: Equatable, Sendable {
     /// Metres, as Core Location reported them.
     let returnedAccuracy: Double?
     let fixAge: TimeInterval?
+    /// Seconds a rejected stay's qualifying elapsed time fell short of its threshold, as a
+    /// `belowThreshold` rejection judged it. A duration, never a date.
+    let thresholdShortfall: TimeInterval?
 
     /// Nil unless `atUptime` is finite and non-negative. Other numbers that are not are dropped, and
     /// strings are cut to a bounded count of Unicode scalars, so they stay valid Unicode.
@@ -52,7 +55,8 @@ struct DwellDiagnosticRecord: Equatable, Sendable {
         reason: DwellDiagnosticReason? = nil,
         requestedAccuracy: String? = nil,
         returnedAccuracy: Double? = nil,
-        fixAge: TimeInterval? = nil
+        fixAge: TimeInterval? = nil,
+        thresholdShortfall: TimeInterval? = nil
     ) {
         guard let atUptime = Self.nonNegative(atUptime) else { return nil }
         self.event = event
@@ -63,6 +67,7 @@ struct DwellDiagnosticRecord: Equatable, Sendable {
         self.requestedAccuracy = Self.bounded(requestedAccuracy, to: Self.maxLabelScalars)
         self.returnedAccuracy = returnedAccuracy.flatMap(Self.nonNegative)
         self.fixAge = fixAge.flatMap(Self.nonNegative)
+        self.thresholdShortfall = thresholdShortfall.flatMap(Self.nonNegative)
     }
 
     private static func nonNegative(_ value: Double) -> Double? {
@@ -290,6 +295,9 @@ actor DwellDiagnosticJournal {
         let requestedAccuracy: String?
         let returnedAccuracy: Double?
         let fixAge: Double?
+        /// Optional: an entry written before it existed decodes it as nil, an entry without one
+        /// writes no key, and earlier builds' decoders ignore the key, so the version stays 1.
+        let thresholdShortfall: Double?
 
         init(_ record: DwellDiagnosticRecord) {
             self.event = record.event.rawValue
@@ -300,6 +308,7 @@ actor DwellDiagnosticJournal {
             self.requestedAccuracy = record.requestedAccuracy
             self.returnedAccuracy = record.returnedAccuracy
             self.fixAge = record.fixAge
+            self.thresholdShortfall = record.thresholdShortfall
         }
 
         var record: DwellDiagnosticRecord? {
@@ -312,7 +321,8 @@ actor DwellDiagnosticJournal {
                 reason: reason.flatMap(DwellDiagnosticReason.init(rawValue:)),
                 requestedAccuracy: requestedAccuracy,
                 returnedAccuracy: returnedAccuracy,
-                fixAge: fixAge
+                fixAge: fixAge,
+                thresholdShortfall: thresholdShortfall
             )
         }
     }

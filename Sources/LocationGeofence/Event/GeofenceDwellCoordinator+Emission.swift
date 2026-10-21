@@ -20,15 +20,24 @@ extension GeofenceDwellCoordinator {
         // judged now; a dwell already admitted goes on to its outbox row, a fact about the stay
         // before the loss.
         guard continuityHolds(for: visit, geofenceId: geofence.id), !visit.awaitsPresenceProof else { return }
+        let reading = readClock()
+        let elapsed = visit.timing?.elapsed(enteredAt: visit.enteredAt, until: observedAt, at: reading)
         guard let proposed = Self.qualifiedReservation(
-            for: visit, observedAt: observedAt, at: readClock(),
+            for: visit, observedAt: observedAt, elapsed: elapsed,
             thresholdSeconds: geofence.dwellThresholdSeconds, source: source
         ) else {
+            let shortfall = elapsed.flatMap { elapsed -> TimeInterval? in
+                let value = TimeInterval(geofence.dwellThresholdSeconds) - elapsed.qualifyingSeconds
+                return value.isFinite && value > 0 ? value : nil
+            }
+            rememberEarlyEvidence(
+                geofenceId: geofence.id, visitId: visit.visitId, timestamp: observedAt, shortfall: shortfall
+            )
             // Continuity held on this boot with no reservation, so the stay is still too short.
             // Checked against the identity now: the caller's awaits may have spanned a sign-out.
             recordDiagnostic(
                 .dwellRejected, capturedToken: diagnosticToken(for: visit),
-                fenceId: geofence.id, reason: .belowThreshold
+                fenceId: geofence.id, reason: .belowThreshold, thresholdShortfall: shortfall
             )
             return
         }
@@ -119,19 +128,18 @@ extension GeofenceDwellCoordinator {
         )
     }
 
-    /// Qualifies on time no wall-clock step can lengthen (`GeofenceVisitElapsed`), judged as the
-    /// evidence is processed at `reading`.
+    /// Qualifies using the elapsed time already measured for this evidence. No wall-clock step
+    /// can lengthen that time (`GeofenceVisitElapsed`).
     private static func qualifiedReservation(
         for visit: GeofenceDwellVisit,
         observedAt: Date,
-        at reading: GeofenceClockReading,
+        elapsed: GeofenceVisitElapsed?,
         thresholdSeconds: Int,
         source: String
     ) -> GeofenceDwellReservation? {
         // Already qualified when reserved; later evidence neither re-qualifies nor moves it.
         if let reserved = visit.dwellReservation { return reserved }
-        guard let elapsed = visit.timing?.elapsed(enteredAt: visit.enteredAt, until: observedAt, at: reading),
-              elapsed.reaches(thresholdSeconds)
+        guard let elapsed, elapsed.reaches(thresholdSeconds)
         else { return nil }
         return dwellReservation(
             for: visit, observedAt: observedAt,

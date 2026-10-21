@@ -97,13 +97,14 @@ final class DwellDiagnosticRecorder {
         reason: DwellDiagnosticReason? = nil,
         requestedAccuracy: String? = nil,
         returnedAccuracy: Double? = nil,
-        fixAge: TimeInterval? = nil
+        fixAge: TimeInterval? = nil,
+        thresholdShortfall: TimeInterval? = nil
     ) -> Bool {
         guard isEnabled,
               let entry = DwellDiagnosticRecord(
                   event: event, atUptime: uptime ?? now(), fenceId: fenceId,
                   deadlineUptime: deadlineUptime, reason: reason, requestedAccuracy: requestedAccuracy,
-                  returnedAccuracy: returnedAccuracy, fixAge: fixAge
+                  returnedAccuracy: returnedAccuracy, fixAge: fixAge, thresholdShortfall: thresholdShortfall
               )
         else { return false }
         return record(entry, token: token)

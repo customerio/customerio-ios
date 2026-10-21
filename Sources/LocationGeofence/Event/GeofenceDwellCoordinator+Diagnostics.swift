@@ -10,9 +10,13 @@ extension GeofenceDwellCoordinator {
         _ event: DwellDiagnosticEvent,
         fenceId: String? = nil,
         deadlineUptime: TimeInterval? = nil,
-        reason: DwellDiagnosticReason? = nil
+        reason: DwellDiagnosticReason? = nil,
+        thresholdShortfall: TimeInterval? = nil
     ) {
-        submitDiagnostic(event, fenceId: fenceId, deadlineUptime: deadlineUptime, reason: reason, token: nil)
+        submitDiagnostic(
+            event, fenceId: fenceId, deadlineUptime: deadlineUptime, reason: reason,
+            thresholdShortfall: thresholdShortfall, token: nil
+        )
     }
 
     /// For a record about a cause judged before an await: `capturedToken` is the journal generation
@@ -24,10 +28,14 @@ extension GeofenceDwellCoordinator {
         capturedToken: UInt64?,
         fenceId: String? = nil,
         deadlineUptime: TimeInterval? = nil,
-        reason: DwellDiagnosticReason? = nil
+        reason: DwellDiagnosticReason? = nil,
+        thresholdShortfall: TimeInterval? = nil
     ) {
         guard let capturedToken else { return }
-        submitDiagnostic(event, fenceId: fenceId, deadlineUptime: deadlineUptime, reason: reason, token: capturedToken)
+        submitDiagnostic(
+            event, fenceId: fenceId, deadlineUptime: deadlineUptime, reason: reason,
+            thresholdShortfall: thresholdShortfall, token: capturedToken
+        )
     }
 
     /// The generation `visit`'s records belong to, read now and synchronously. Nil without a
@@ -47,12 +55,13 @@ extension GeofenceDwellCoordinator {
         fenceId: String?,
         deadlineUptime: TimeInterval?,
         reason: DwellDiagnosticReason?,
+        thresholdShortfall: TimeInterval? = nil,
         token: UInt64?
     ) {
         guard let diagnosticRecorder,
               let record = DwellDiagnosticRecord(
                   event: event, atUptime: clock.read().uptime, fenceId: fenceId,
-                  deadlineUptime: deadlineUptime, reason: reason
+                  deadlineUptime: deadlineUptime, reason: reason, thresholdShortfall: thresholdShortfall
               )
         else { return }
         diagnosticRecorder.record(record, token: token)

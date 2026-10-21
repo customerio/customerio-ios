@@ -17,8 +17,8 @@ Use the installed Xcode developer directory when the global selection points at 
 
 ## Virtual deadlines and evidence
 
-The dwell coordinator accepts an internal wait function whose production default remains
-`Task.sleep`. Replay supplies a cancellable virtual scheduler. Network answers, deadlines and retries
+The dwell coordinator accepts an internal wait function. Production uses a continuous-clock wait
+where supported; replay supplies a cancellable virtual scheduler. Network answers, deadlines and retries
 share one time-ordered loop, including deadlines created while another answer is being released.
 Equal deadlines resume in registration order. A simulated process restart cancels the old timers
 before the new SDK composition reads the persisted visits.
@@ -31,6 +31,10 @@ The suite checks fresh inside evidence, stale and uncertain fixes, proven outsid
 duplicate callbacks, EXIT before the threshold, DWELL/EXIT visit identity and duration, re-entry,
 process restart and a legacy catalogue with no threshold. A threshold different from the retry
 delay guards against an immediate evidence request followed by a retry accidentally looking correct.
+
+DWELL is deduplicated per continuous visit. ENTER and EXIT retain their separate cooldowns, so a
+qualifying visit can emit DWELL even when its ENTER was suppressed by cooldown. A DWELL event does
+not require a previously delivered ENTER.
 
 `ReplayDwellSchedulerTests` also checks cancellation, deadline ordering and timers created during
 boundary releases. `ReplayFixProviderTests` checks that re-reading a cached fix does not make it fresh.

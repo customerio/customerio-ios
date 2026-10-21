@@ -38,6 +38,11 @@ pass that requires one accepts only a fix delivered after its request and newer 
 resolver received. That does not guarantee a new measurement: Core Location may answer with a recent
 location it already held.
 
+If an inside measurement falls just before the dwell threshold, the SDK can spend one of its
+existing retry attempts on a shorter wait based on that timing shortfall. The first check still
+runs at the threshold, and a circle's short retry requests a newer measurement. Later failures
+keep the normal backoff. This does not extend the collection cap or qualify a stay without proof.
+
 Physical-device screen-off testing is still required to establish whether the OS keeps this session
 alive, lets it start from a short background wake, and lets pending deadlines run near their due
 time. Session callbacks can arrive in the foreground or just after the session starts, so their
@@ -55,7 +60,9 @@ only the context record's opaque identity version and lineage, allowing a same-i
 retain history while a different identity clears it before any append.
 
 A `requestedAccuracy` label names the accuracy a request asked for, which is not a promise;
-`returnedAccuracy` is what the fix reported. Each pending-dwell session callback is recorded by its
+`returnedAccuracy` is what the fix reported. A `belowThreshold` rejection includes the optional
+`thresholdShortfall`, in seconds, when the elapsed time could be measured. Older journal records
+remain readable without that field. Each pending-dwell session callback is recorded by its
 kind, as `sessionLocationCallback`, `sessionErrorCallback` or `sessionAuthorizationCallback`, under
 the run that started the session, so a reset or identity change leaves that run's late callbacks
 unrecorded. Journals from earlier builds may hold `wakeSession`, which covered all three kinds; it is

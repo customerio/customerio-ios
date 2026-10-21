@@ -111,14 +111,19 @@ struct DwellDiagnosticJournalTests {
         defer { removeRoot() }
         #expect(DwellDiagnosticRecord(event: .fixReceived, atUptime: -1) == nil)
         #expect(DwellDiagnosticRecord(event: .fixReceived, atUptime: .nan) == nil)
+        for value in [-1, Double.nan, Double.infinity] {
+            let invalid = DwellDiagnosticRecord(event: .dwellRejected, atUptime: 42, thresholdShortfall: value)
+            #expect(invalid?.thresholdShortfall == nil)
+        }
         let clipped = try #require(DwellDiagnosticRecord(
             event: .dwellRejected, atUptime: 42, fenceId: String(repeating: "🏬", count: 200),
             deadlineUptime: .infinity, reason: .staleFix,
-            requestedAccuracy: String(repeating: "a", count: 40), returnedAccuracy: -5, fixAge: .nan
+            requestedAccuracy: String(repeating: "a", count: 40), returnedAccuracy: -5, fixAge: .nan,
+            thresholdShortfall: .nan
         ))
         let full = try #require(DwellDiagnosticRecord(
             event: .fixReceived, atUptime: 43, fenceId: "fence", deadlineUptime: 300,
-            requestedAccuracy: "nearestTenMeters", returnedAccuracy: 8.5, fixAge: 1.25
+            requestedAccuracy: "nearestTenMeters", returnedAccuracy: 8.5, fixAge: 1.25, thresholdShortfall: 3.4
         ))
         let journal = make(enabled: true)
         #expect(await journal.append(clipped))
@@ -132,7 +137,7 @@ struct DwellDiagnosticJournalTests {
         let records = try #require(stored["records"] as? [[String: Any]])
         let allowed: Set = [
             "event", "atUptime", "fenceId", "deadlineUptime", "reason",
-            "requestedAccuracy", "returnedAccuracy", "fixAge"
+            "requestedAccuracy", "returnedAccuracy", "fixAge", "thresholdShortfall"
         ]
         #expect(records.count == 2 && records.allSatisfy { Set($0.keys).isSubset(of: allowed) })
         let first = try #require(records.first)

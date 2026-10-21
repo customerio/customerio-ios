@@ -17,12 +17,18 @@ extension GeofenceDwellCoordinator {
         /// The journal generation this visit's records go to, read when the state was made and
         /// before any wait. Nil records nothing. For diagnostics only.
         var diagnosticToken: UInt64?
+        var shortRetryUsed = false
+        var nextFixAfter: Date?
+        var activeRequest: UUID?
+        var earlyEvidence: (timestamp: Date, shortfall: TimeInterval)?
     }
 
     func scheduleDeadline(for geofence: Geofence, visit: GeofenceDwellVisit) {
         deadlineTasks.removeValue(forKey: geofence.id)?.cancel()
+        let previous = evidenceRetries[geofence.id].flatMap { $0.visitId == visit.visitId ? $0 : nil }
         evidenceRetries[geofence.id] = EvidenceRetryState(
-            visitId: visit.visitId, attempts: 0, diagnosticToken: diagnosticToken(for: visit)
+            visitId: visit.visitId, attempts: 0, diagnosticToken: diagnosticToken(for: visit),
+            shortRetryUsed: previous?.shortRetryUsed ?? false, nextFixAfter: previous?.nextFixAfter
         )
         guard geofence.dwellThresholdSeconds > 0, !visit.emitted else {
             cancelEvidence(for: geofence.id)
@@ -65,17 +71,24 @@ extension GeofenceDwellCoordinator {
             cancelEvidence(for: geofenceId)
             return
         }
-        if visit.dwellReservation != nil {
-            // Delivering a reservation needs no location, so nothing here needs the process kept alive.
-            releaseCollectionLease(geofenceId: geofenceId, ifVisit: visit.visitId)
-            // A reserved dwell whose delivery did not complete — a failed write, or a relaunch —
-            // is repeated as reserved; fresh evidence would describe a different instant.
-            await deliverReservedDwell(geofence: geofence, visit: visit, userId: expectedUserId)
-            await retryIfStillPending(geofence: geofence, visitId: visit.visitId, expectedUserId: expectedUserId)
-        } else if geofence.vertices != nil {
-            await requestPolygonEvidence(geofence: geofence, visit: visit, expectedUserId: expectedUserId)
-        } else {
-            await requestCircleEvidence(geofence: geofence, visit: visit, expectedUserId: expectedUserId)
+        guard let request = beginEvidenceRequest(geofenceId: geofence.id, visit: visit) else { return }
+        defer { finishEvidenceRequest(request) }
+        await GeofenceDwellEvidenceScope.$request.withValue(request) {
+            if visit.dwellReservation != nil {
+                // Delivering a reservation needs no location, so nothing here needs the process kept alive.
+                releaseCollectionLease(geofenceId: geofenceId, ifVisit: visit.visitId)
+                // A reserved dwell whose delivery did not complete — a failed write, or a relaunch —
+                // is repeated as reserved; fresh evidence would describe a different instant.
+                await deliverReservedDwell(geofence: geofence, visit: visit, userId: expectedUserId)
+                await retryIfStillPending(geofence: geofence, visitId: visit.visitId, expectedUserId: expectedUserId)
+            } else if geofence.vertices != nil {
+                await requestPolygonEvidence(geofence: geofence, visit: visit, expectedUserId: expectedUserId)
+            } else {
+                await requestCircleEvidence(
+                    geofence: geofence, visit: visit, expectedUserId: expectedUserId,
+                    newerThan: request.minimumTimestamp
+                )
+            }
         }
     }
 
@@ -97,9 +110,10 @@ extension GeofenceDwellCoordinator {
     private func requestCircleEvidence(
         geofence: Geofence,
         visit: GeofenceDwellVisit,
-        expectedUserId: String
+        expectedUserId: String,
+        newerThan minimumTimestamp: Date? = nil
     ) async {
-        let fix = await freshFix()
+        let fix = await freshFix(newerThan: minimumTimestamp)
         guard !Task.isCancelled,
               contextStore.currentUserId == expectedUserId,
               let remaining = await activeVisit(
@@ -227,19 +241,6 @@ extension GeofenceDwellCoordinator {
         }
     }
 
-    private func freshFix() async -> CLLocation? {
-        if let freshFixProvider { return await freshFixProvider() }
-        return await withCheckedContinuation { continuation in
-            fixResolver.resolve(cached: fixResolver.latestFix, purpose: .pendingEvents) { location, isFresh in
-                guard isFresh, location != nil else {
-                    continuation.resume(returning: nil)
-                    return
-                }
-                continuation.resume(returning: self.fixResolver.latestFix)
-            }
-        }
-    }
-
     private func activeVisit(
         geofence: Geofence,
         userId: String,
@@ -285,9 +286,9 @@ extension GeofenceDwellCoordinator {
             return
         }
         state.attempts += 1
+        let delay = shortEvidenceRetryDelay(geofenceId: geofence.id, state: &state) ?? max(0, evidenceRetryDelay)
         evidenceRetries[geofence.id] = state
         deadlineTasks.removeValue(forKey: geofence.id)?.cancel()
-        let delay = max(0, evidenceRetryDelay)
         let wait = waitForEvidence
         let due = clock.read().uptime + delay
         let waitToken = scheduledDiagnosticDeadline(geofenceId: geofence.id, due: due)
