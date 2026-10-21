@@ -42,6 +42,7 @@ extension GeofenceDwellCoordinator {
     /// fence no longer registered or collected, or whose visit belongs to replaced geometry. Judged against
     /// what the refresh wrote, not a later read.
     func reconcileCollection(geofences: [Geofence], registeredIds: Set<String>) {
+        rememberCatalog(geofences)
         // The first occurrence of a duplicated id decides, as every cache lookup does.
         let current = Dictionary(geofences.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
         let ceiling = Self.collectedThresholdCeilingSeconds

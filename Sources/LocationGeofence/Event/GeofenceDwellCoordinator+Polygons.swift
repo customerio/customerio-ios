@@ -20,6 +20,12 @@ extension GeofenceDwellCoordinator {
         cancelEvidence(for: geofence.id, ifVisit: removed)
     }
 
+    /// The catalog as a refresh just persisted it: a fence the server replaced with a circle is
+    /// no longer a polygon, whatever an operation begun on the old definition remembers later.
+    func rememberCatalog(_ geofences: [Geofence]) {
+        polygonIds = Set(geofences.filter { $0.vertices != nil }.map(\.id))
+    }
+
     /// The cache as it stands at launch; a fence seen since is remembered as it arrives.
     func loadPolygonIds() {
         Task { [weak self, storage] in

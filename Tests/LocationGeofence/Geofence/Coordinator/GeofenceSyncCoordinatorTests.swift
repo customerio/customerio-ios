@@ -258,6 +258,33 @@ struct GeofenceSyncCoordinatorTests {
         dwell.cancelEvidence(for: "legacy-1")
     }
 
+    /// Sign-out clears the visits, so the evidence waits serving them are cancelled with them.
+    @Test
+    func reset_givenPendingDwellEvidence_expectItCancelled() async throws {
+        let storage = makeStorage()
+        let contextStore = makeContextStore()
+        let region = Geofence(
+            id: "g1", latitude: 0, longitude: 0, radius: 100, name: "g1", transitionTypes: [.enter, .exit],
+            lastUpdated: Date(timeIntervalSince1970: 1700000000), dwellThresholdSeconds: 600
+        )
+        await storage.setCachedGeofences([region])
+        await storage.recordRegistration(center: LocationData(latitude: 0, longitude: 0), businessIds: [region.id])
+        let dwell = GeofenceDwellCoordinator(
+            storage: storage, transitionEmitter: TransitionEmitterSpy(), contextStore: contextStore,
+            logger: LoggerMock(), notificationCenter: NotificationCenter(), evidenceRetryDelay: 3600
+        )
+        await dwell.handleBoundary(geofence: region, transition: .enter, occurredAt: Date())
+        try #require(dwell.deadlineTasks[region.id] != nil)
+        let setup = makeCoordinator(storage: storage, contextStore: contextStore, dwellCoordinator: dwell)
+        contextStore.clearUserId()
+
+        let result = await setup.coordinator.reset()
+
+        #expect(result.errorOrNil == nil)
+        #expect(dwell.deadlineTasks.isEmpty)
+        #expect(await storage.getDwellVisit(geofenceId: region.id) == nil)
+    }
+
     /// Control: a circle the OS holds the device outside gets no candidate from the same refresh.
     @Test
     func refresh_givenDwellEnabledOnACircleHeldOutside_expectNoVisit() async throws {
