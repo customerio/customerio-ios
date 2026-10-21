@@ -76,6 +76,12 @@ struct GeofenceDwellVisit: Codable, Equatable, Sendable {
     /// must not match. The storage's seconds-since-1970 date encoding shifts many dates by a bit on
     /// the way through, so this is stored as the raw bits of its reference-date interval instead.
     var closedByObservedBoundary: Date?
+
+    /// Whether a dwell was reserved on this visit and not yet delivered: a fact about the stay
+    /// still owed to the outbox, which no loss of observation since may discard.
+    var owesDwell: Bool {
+        dwellReservation != nil && !emitted
+    }
 }
 
 /// A dwell occurrence, stored as integer epoch milliseconds so a disk round trip cannot move it: a

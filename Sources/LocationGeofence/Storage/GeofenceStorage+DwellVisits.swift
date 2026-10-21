@@ -157,11 +157,13 @@ extension GeofenceStorage {
     /// Removes the visits — of one fence, or (nil) every fence — whose continuity spans `loss`:
     /// entered no later than it, recorded on another boot, or recorded with no timing at all. A
     /// visit entered after the loss was seen is not one it interrupted, however late this runs.
+    /// One that still owes its reserved dwell is kept: the reservation is a fact about the stay
+    /// before the loss (`GeofenceDwellVisit.owesDwell`).
     /// - Returns: the removed visit id per fence.
     @discardableResult
     func removeDwellVisits(geofenceId: String?, spanning loss: GeofenceClockReading) -> [String: String] {
         removeDwellVisits { id, visit in
-            (geofenceId == nil || id == geofenceId) && (visit.timing?.spans(loss) ?? true)
+            (geofenceId == nil || id == geofenceId) && !visit.owesDwell && (visit.timing?.spans(loss) ?? true)
         }
     }
 

@@ -99,7 +99,7 @@ extension GeofenceDwellCoordinator {
         else { return false }
         // Only while the reservation is still owed: once delivered, the visit is just the marker
         // that the stay had its DWELL, and a loss ends it as any other.
-        if visit.dwellReservation != nil, !visit.emitted { return true }
+        if visit.owesDwell { return true }
         guard !lossOvertook(visit, geofenceId: geofenceId) else { return false }
         // The app was not running for some time between processes, and under this access nothing
         // relaunches it for an EXIT.
@@ -140,7 +140,7 @@ extension GeofenceDwellCoordinator {
         Task { [weak self] in
             guard let self else { return }
             let removed = await self.storage.removeDwellVisits { _, visit in
-                Self.observesOnlyInForeground(visit) && (visit.timing?.spans(reading) ?? true)
+                Self.observesOnlyInForeground(visit) && !visit.owesDwell && (visit.timing?.spans(reading) ?? true)
             }
             for (id, visitId) in removed {
                 self.cancelEvidence(for: id, ifVisit: visitId)

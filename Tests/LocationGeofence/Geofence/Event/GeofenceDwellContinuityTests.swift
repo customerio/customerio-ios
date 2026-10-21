@@ -284,7 +284,9 @@ struct GeofenceDwellContinuityTests {
     }
 
     /// A dwell already handed to the outbox before the loss is a fact about the stay before it:
-    /// the loss ends the visit, but the queued row stays.
+    /// the queued row stays, and the visit, which still owed that dwell when the loss landed,
+    /// survives the loss until its delivery is marked, after which it is an emitted stay the next
+    /// read ends. It never owes a second dwell.
     @Test
     func lossAfterADwellWasQueuedKeepsTheQueuedRow() async throws {
         let clock = ManualGeofenceClock()
@@ -308,6 +310,9 @@ struct GeofenceDwellContinuityTests {
 
         let rows = await outbox.rows()
         #expect(rows.map(\.transition) == [.dwell])
+        let stored = await setup.storage.getDwellVisit(geofenceId: setup.geofence.id)
+        #expect(stored == nil || stored?.emitted == true)
+        #expect(await setup.coordinator.currentVisit(geofence: setup.geofence, userId: "user-1") == nil)
         #expect(await setup.storage.getDwellVisit(geofenceId: setup.geofence.id) == nil)
     }
 

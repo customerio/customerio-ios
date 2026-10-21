@@ -99,6 +99,37 @@ struct GeofenceDwellCoordinatorTests {
         setup.coordinator.cancelEvidence(for: setup.geofence.id)
     }
 
+    /// The monitor reports an authorization downgrade as an interruption of every fence, whose
+    /// cleanup removes the visits it spans. One still owing its reserved dwell — delivered once
+    /// and failed, say — survives it, and the retry delivers the reservation.
+    @Test
+    func interruptionKeepsAnUndeliveredReservationForTheRetry() async throws {
+        let clock = ManualGeofenceClock(wall: Date(timeIntervalSince1970: 1000))
+        let setup = await makeSetup(isPolygon: false, clock: clock)
+        let enteredAt = clock.wall
+        let reservation = GeofenceDwellReservation(
+            occurredAtEpochMilliseconds: Int64(enteredAt.timeIntervalSince1970 * 1000) + 60000,
+            enteredAtEpochMilliseconds: Int64(enteredAt.timeIntervalSince1970 * 1000), durationSeconds: 60,
+            thresholdSeconds: 60, detectionSource: "location_evidence"
+        )
+        let reserved = GeofenceDwellVisit(
+            visitId: UUID().uuidString, enteredAt: enteredAt, geometryRevision: setup.geofence.dwellRevision,
+            userId: "user-1", emitted: false, entryObserved: true, dwellReservation: reservation,
+            timing: GeofenceVisitTiming(enteredAt: enteredAt, recordedAt: clock.read())
+        )
+        try #require(await setup.storage.saveDwellVisit(reserved, geofenceId: setup.geofence.id))
+        clock.advance(90)
+
+        await setup.coordinator.interruptContinuity(geofenceId: nil).value
+        try #require(await setup.storage.getDwellVisit(geofenceId: setup.geofence.id)?.visitId == reserved.visitId)
+        await setup.coordinator.requestQualifyingEvidence(geofenceId: setup.geofence.id)
+
+        let dwells = await setup.emitter.dwells()
+        #expect(dwells.map(\.context.visitId) == [reserved.visitId])
+        #expect(dwells.first?.context.durationSeconds == 60)
+        setup.coordinator.cancelEvidence(for: setup.geofence.id)
+    }
+
     /// A correction racing the visit an earlier ENTER already opened — the same arrival, dated
     /// within the 1 s tolerance — keeps that visit as it is. Half a second, not exactly the
     /// tolerance: two clock reads microseconds apart would put a 1 s gap a hair either side of it.
