@@ -6,16 +6,32 @@ import UIKit
 import XCTest
 
 class MissedLaunchLifecycleReplayTest: UnitTest {
+    // Segment's lifecycle plugin stores the app version and build here when it handles a replayed launch
+    private static let storedVersionKeys = ["SEGVersionKey", "SEGBuildKeyV2"]
+
     private var notificationCenter: NotificationCenter!
     private var callbacksRecorder: LifecycleCallbacksRecorder!
     private var scheduledOnMainQueue: [() -> Void] = []
+    private var storedVersionValues: [String: Any] = [:]
 
     override func setUp() {
         super.setUp()
 
+        storedVersionValues = Self.storedVersionKeys.reduce(into: [:]) { values, key in
+            values[key] = UserDefaults.standard.object(forKey: key)
+        }
         notificationCenter = NotificationCenter()
         callbacksRecorder = LifecycleCallbacksRecorder()
         analytics.add(plugin: callbacksRecorder)
+    }
+
+    override func tearDown() {
+        // Restores what was stored before, so later tests in this process don't see a build written by these tests
+        Self.storedVersionKeys.forEach { key in
+            UserDefaults.standard.set(storedVersionValues[key], forKey: key)
+        }
+
+        super.tearDown()
     }
 
     private func createSubject(state: UIApplication.State?) -> MissedLaunchLifecycleReplay {
@@ -45,23 +61,24 @@ class MissedLaunchLifecycleReplayTest: UnitTest {
 
     // MARK: - App already active
 
-    func test_start_whenAppActive_thenReplaysLaunchAndBecomeActiveImmediately() {
+    func test_start_whenAppActive_thenReplaysLaunchNowAndBecomeActiveOnNextMainQueueRun() {
         let subject = createSubject(state: .active)
 
         subject.start()
+        XCTAssertEqual(callbacksRecorder.callbacks, [.didFinishLaunching])
 
+        runScheduledOnMainQueue()
         XCTAssertEqual(callbacksRecorder.callbacks, [.didFinishLaunching, .didBecomeActive])
-        XCTAssertTrue(scheduledOnMainQueue.isEmpty)
     }
 
     func test_start_whenAppActive_thenTracksInstalledAndFirstOpenedAndForegrounded() {
-        UserDefaults.standard.removeObject(forKey: "SEGVersionKey")
-        UserDefaults.standard.removeObject(forKey: "SEGBuildKeyV2")
+        Self.storedVersionKeys.forEach { UserDefaults.standard.removeObject(forKey: $0) }
         let outputReader = OutputReaderPlugin()
         analytics.add(plugin: outputReader)
         let subject = createSubject(state: .active)
 
         subject.start()
+        runScheduledOnMainQueue()
 
         let lifecycleEvents = outputReader.events
             .compactMap { $0 as? TrackEvent }
@@ -71,6 +88,17 @@ class MissedLaunchLifecycleReplayTest: UnitTest {
             ["Application Installed", "Application Opened", "Application Foregrounded"]
         )
         XCTAssertEqual(lifecycleEvents[1].properties?.dictionaryValue?["from_background"] as? Bool, false)
+    }
+
+    // UIKit calls the delegate's applicationDidBecomeActive while already active and posts the notification after it
+    func test_start_whenCalledInsideBecomeActiveCallback_thenLeavesBecomeActiveToItsNotification() {
+        let subject = createSubject(state: .active)
+
+        subject.start()
+        notificationCenter.post(name: UIApplication.didBecomeActiveNotification, object: nil)
+        runScheduledOnMainQueue()
+
+        XCTAssertEqual(callbacksRecorder.callbacks, [.didFinishLaunching])
     }
 
     // MARK: - App inactive or in background
@@ -145,7 +173,19 @@ class MissedLaunchLifecycleReplayTest: UnitTest {
         XCTAssertEqual(callbacksRecorder.callbacks, [])
 
         runScheduledOnMainQueue()
+        runScheduledOnMainQueue()
         XCTAssertEqual(callbacksRecorder.callbacks, [.didFinishLaunching, .didBecomeActive])
+    }
+
+    func test_start_whenCalledOffMainAndBecomeActiveNotificationArrivesBeforeMainQueueRuns_thenReplaysOnlyLaunch() {
+        let subject = createSubject(state: .active)
+
+        startOnBackgroundThread(subject)
+        notificationCenter.post(name: UIApplication.didBecomeActiveNotification, object: nil)
+        runScheduledOnMainQueue()
+        runScheduledOnMainQueue()
+
+        XCTAssertEqual(callbacksRecorder.callbacks, [.didFinishLaunching])
     }
 
     func test_start_whenCalledOffMainWhileInactiveAndLaunchAlreadyHappened_thenReplaysLaunch() {
