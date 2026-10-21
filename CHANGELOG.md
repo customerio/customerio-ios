@@ -1,3 +1,9 @@
+## [4.12.0](https://github.com/customerio/customerio-ios/compare/4.11.0...4.12.0) (2026-10-21)
+
+### Features
+
+* **MBL-2604:** support pk_ public keys, refuse sk_ keys and move storage to the new key ([#1342](https://github.com/customerio/customerio-ios/issues/1342)) ([34592d8](https://github.com/customerio/customerio-ios/commit/34592d846e53ecb5c42a4fd8de532ed37e30d5ef))
+
 ## [4.11.0](https://github.com/customerio/customerio-ios/compare/4.10.0...4.11.0) (2026-10-21)
 
 ### Features
