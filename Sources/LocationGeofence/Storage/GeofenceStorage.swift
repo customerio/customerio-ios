@@ -36,6 +36,15 @@ actor GeofenceStorage {
     func runBeforeShapeRead() async {
         await beforeShapeRead?()
     }
+
+    /// Test seam: makes `retractDwellReservation` report a failed persist without writing.
+    private var retractionFails = false
+
+    func setRetractionFails(_ fails: Bool) {
+        retractionFails = fails
+    }
+
+    var retractionFailsForTesting: Bool { retractionFails }
     init(
         fileManager: FileManager = .default,
         directoryURL: URL? = nil,

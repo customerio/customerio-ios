@@ -43,6 +43,11 @@ final class GeofenceDwellCoordinator {
     /// read whichever catalog the write has reached, so it waits in `pendingShapeChecks` instead.
     var catalogReplacementInProgress = false
     var pendingShapeChecks: [String] = []
+    /// Reservations an admission wrote and then refused, whose retraction failed to persist, by
+    /// visit id. Such a visit is judged as unreserved everywhere (`standing`) until the retraction
+    /// succeeds, so the orphan is never delivered and a correction can still end the stay. In
+    /// memory only: a relaunch reads the orphan as a fact. Internal for `+Emission`.
+    var refusedReservations: [String: GeofenceDwellReservation] = [:]
     var pendingExitCallbacks: [String: [Date: GeofencePendingExitCallback]] = [:] // `noteExitCallback`
     /// This coordinator's first clock reading, taken when it was built; the wall offset of its
     /// previous reading, and the uptime it last saw the wall clock step at. Internal for

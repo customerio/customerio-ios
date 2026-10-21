@@ -267,6 +267,79 @@ struct GeofenceDwellCoordinatorTests {
         setup.coordinator.cancelEvidence(for: setup.geofence.id)
     }
 
+    /// A correction queued and then drained into the marks while the reservation write is in
+    /// flight is no longer queued when the write returns, but it supersedes the stay all the
+    /// same: the reservation is taken back and nothing is delivered.
+    @Test
+    func correctionAppliedDuringTheReservationWriteIsNotReserved() async throws {
+        let fix = CLLocation(
+            coordinate: CLLocationCoordinate2D(latitude: 0.5, longitude: 0.5), altitude: 0,
+            horizontalAccuracy: 5, verticalAccuracy: 10, timestamp: Date()
+        )
+        let clock = ManualGeofenceClock(wall: fix.timestamp.addingTimeInterval(-300))
+        let setup = await makeSetup(isPolygon: false, freshFixProvider: { fix }, clock: clock)
+        await setup.coordinator.handleBoundary(geofence: setup.geofence, transition: .enter, occurredAt: clock.wall)
+        clock.advance(to: fix.timestamp)
+        setup.coordinator.polygonIdsLoaded = false
+        let coordinator = setup.coordinator
+        let geofence = setup.geofence
+        let correctedAt = clock.wall
+        await setup.storage.setBeforeReservationWrite {
+            await MainActor.run {
+                coordinator.noteEnter(geofenceId: geofence.id, occurredAt: correctedAt, crossing: false)
+                coordinator.rememberCatalog([geofence])
+            }
+        }
+
+        await setup.coordinator.requestQualifyingEvidence(geofenceId: setup.geofence.id)
+
+        #expect(await setup.emitter.dwells().isEmpty)
+        #expect(setup.coordinator.pendingCorrections.isEmpty)
+        #expect(setup.coordinator.enterMarks[setup.geofence.id]?.correction != nil)
+        #expect(await setup.storage.getDwellVisit(geofenceId: setup.geofence.id)?.dwellReservation == nil)
+        #expect(await setup.coordinator.currentVisit(geofence: setup.geofence, userId: "user-1") == nil)
+        await setup.storage.setBeforeReservationWrite(nil)
+        setup.coordinator.cancelEvidence(for: setup.geofence.id)
+    }
+
+    /// A retraction that fails to persist still delivers nothing, now or on a later retry: the
+    /// reservation left on disk is remembered as refused, so the visit is judged unreserved and
+    /// the correction, once applied, ends it with the orphan.
+    @Test
+    func failedRetractionUnderAQueuedCorrectionDeliversNothing() async throws {
+        let fix = CLLocation(
+            coordinate: CLLocationCoordinate2D(latitude: 0.5, longitude: 0.5), altitude: 0,
+            horizontalAccuracy: 5, verticalAccuracy: 10, timestamp: Date()
+        )
+        let clock = ManualGeofenceClock(wall: fix.timestamp.addingTimeInterval(-300))
+        let setup = await makeSetup(isPolygon: false, freshFixProvider: { fix }, clock: clock)
+        await setup.coordinator.handleBoundary(geofence: setup.geofence, transition: .enter, occurredAt: clock.wall)
+        clock.advance(to: fix.timestamp)
+        setup.coordinator.polygonIdsLoaded = false
+        let coordinator = setup.coordinator
+        let geofenceId = setup.geofence.id
+        let correctedAt = clock.wall
+        await setup.storage.setRetractionFails(true)
+        await setup.storage.setBeforeReservationWrite {
+            await MainActor.run { coordinator.noteEnter(geofenceId: geofenceId, occurredAt: correctedAt, crossing: false) }
+        }
+
+        await setup.coordinator.requestQualifyingEvidence(geofenceId: setup.geofence.id)
+
+        #expect(await setup.emitter.dwells().isEmpty)
+        #expect(await setup.storage.getDwellVisit(geofenceId: setup.geofence.id)?.dwellReservation != nil)
+        await setup.storage.setBeforeReservationWrite(nil)
+        // A retry while the correction still waits delivers nothing either.
+        await setup.coordinator.requestQualifyingEvidence(geofenceId: setup.geofence.id)
+        #expect(await setup.emitter.dwells().isEmpty)
+        await setup.storage.setRetractionFails(false)
+
+        setup.coordinator.rememberCatalog([setup.geofence])
+        #expect(await setup.coordinator.currentVisit(geofence: setup.geofence, userId: "user-1") == nil)
+        #expect(await setup.storage.getDwellVisit(geofenceId: setup.geofence.id) == nil)
+        setup.coordinator.cancelEvidence(for: setup.geofence.id)
+    }
+
     /// A replacement that begins and ends while a shape check reads the catalog, after the drain
     /// has run, does not strand the check: it reads again and completes without another refresh.
     @Test

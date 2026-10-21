@@ -110,6 +110,7 @@ extension GeofenceStorage {
         guard var stored = state.dwellVisits?[geofenceId], stored.visitId == visit.visitId,
               stored.dwellReservation == reservation, !stored.emitted
         else { return false }
+        guard !retractionFailsForTesting else { return false }
         stored.dwellReservation = nil
         state.dwellVisits?[geofenceId] = stored
         return saveToDisk(state)
