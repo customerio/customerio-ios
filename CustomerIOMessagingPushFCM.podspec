@@ -27,5 +27,5 @@ Pod::Spec.new do |spec|
   
   spec.dependency "CustomerIOMessagingPush", "= #{spec.version.to_s}"  
 
-  # Firebase dependency removed - now handled by CioFirebaseWrapper package
+  # No Firebase dependency: the CioFirebaseWrapper pod (in this repo) adapts the app's FirebaseMessaging
 end
