@@ -43,6 +43,8 @@ extension GeofenceDwellCoordinator {
     }
 
     /// Remembers `geofence`'s shape, dropping any correction mark a polygon's covering circle left.
+    /// Only for a fence read from the persisted catalog, as the resolver reads its targets: a
+    /// snapshot held across a refresh could otherwise re-add an id the server has since made a circle.
     func rememberShape(of geofence: Geofence) {
         if geofence.vertices != nil {
             rememberPolygons([geofence.id])
