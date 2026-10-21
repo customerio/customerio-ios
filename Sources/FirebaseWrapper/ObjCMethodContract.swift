@@ -8,14 +8,14 @@ enum ObjCType: Equatable {
     case block
     case bool
 
-    // `BOOL` is `bool` on arm64 and `signed char` on x86_64 simulators.
-    private static var boolEncoding: String {
-        #if arch(x86_64)
-        return "c"
-        #else
-        return "B"
-        #endif
-    }
+    // This platform's encoding of Objective-C `BOOL`: `bool` (`B`) on iOS devices and simulators, `signed char` (`c`) on
+    // x86_64 Mac Catalyst. Read from `-[NSObject isProxy]`, which returns `BOOL`, so it always matches the runtime's ABI.
+    static let boolEncoding: String = {
+        guard let method = class_getInstanceMethod(NSObject.self, #selector(NSObject.isProxy)) else { return "B" }
+        let type = method_copyReturnType(method)
+        defer { free(type) }
+        return String(cString: type)
+    }()
 
     fileprivate func matches(_ encoding: String) -> Bool {
         let type = Self.strippingQualifiers(encoding)

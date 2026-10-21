@@ -23,7 +23,8 @@ public extension MessagingPushFCM {
         withConfig config: MessagingPushConfigOptions = MessagingPushConfigBuilder().build()
     ) -> MessagingPushInstance {
         let logger = DIGraphShared.shared.logger
-        let firebaseService = FirebaseImpl(logger: logger)
+        // Reused across calls, so queued registration work and the delegate chain survive re-initialization.
+        let firebaseService = FirebaseImplStore.adapter { FirebaseImpl(logger: logger) }
 
         switch firebaseService.availability {
         case .available:
