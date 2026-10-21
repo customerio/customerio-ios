@@ -83,7 +83,7 @@ jobs:
       (github.event_name == 'pull_request' &&
       github.event.pull_request.head.repo.full_name == github.repository &&
       github.event.pull_request.user.login != 'dependabot[bot]')
-    runs-on: macos-26
+    runs-on: xcode-27
     timeout-minutes: 60
     permissions:
       pull-requests: write
@@ -94,6 +94,9 @@ jobs:
         id: generate-sdk-size-report
         with:
           GOOGLE_CLOUD_MATCH_READONLY_SERVICE_ACCOUNT_B64: ${{ secrets.GOOGLE_CLOUD_MATCH_READONLY_SERVICE_ACCOUNT_B64 }}
+          # Same Xcode as the other regular jobs. PR and main runs both pass it, so the main baseline
+          # cache (keyed by Xcode version) still matches. The release report in deploy-sdk.yml stays on 26.6.
+          xcode-version: '27.0'
           baseline-ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event_name == 'push' && github.sha || '' }}
 
       - name: Find existing "SDK size reports" comment
