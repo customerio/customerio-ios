@@ -130,6 +130,35 @@ struct GeofenceDwellCoordinatorTests {
         setup.coordinator.cancelEvidence(for: setup.geofence.id)
     }
 
+    /// Which fences are polygons comes from the persisted catalog only. A refresh that replaces
+    /// the catalog wins over a launch load still reading the old one, and over a covering-circle
+    /// callback whose fence the server has since made a circle.
+    @Test
+    func catalogReplacementWinsOverStalePolygonReads() async throws {
+        let setup = await makeSetup(isPolygon: true)
+        await settleQuietly()
+        try #require(setup.coordinator.polygonIds.contains(setup.geofence.id))
+
+        // The load reads the old catalog, then the refresh lands before it resumes.
+        setup.coordinator.loadPolygonIds()
+        setup.coordinator.rememberCatalog([])
+        await settleQuietly()
+        #expect(setup.coordinator.polygonIds.isEmpty)
+
+        // The callback's fence is now a circle in the catalog: not a polygon, whatever the caller held.
+        let circle = Geofence(
+            id: setup.geofence.id, latitude: 0.5, longitude: 0.5, radius: 100, name: "Campus",
+            transitionTypes: [.enter, .exit], lastUpdated: Date(timeIntervalSince1970: 2), dwellThresholdSeconds: 60
+        )
+        await setup.storage.setCachedGeofences([circle])
+        setup.coordinator.rememberCatalog([circle])
+        setup.coordinator.noteEnter(geofenceId: circle.id, occurredAt: Date(), crossing: false)
+        await setup.coordinator.forgetCoveringCircleEnter(geofenceId: circle.id)
+
+        #expect(!setup.coordinator.polygonIds.contains(circle.id))
+        #expect(setup.coordinator.enterMarks[circle.id]?.correction != nil)
+    }
+
     /// A correction racing the visit an earlier ENTER already opened — the same arrival, dated
     /// within the 1 s tolerance — keeps that visit as it is. Half a second, not exactly the
     /// tolerance: two clock reads microseconds apart would put a 1 s gap a hair either side of it.

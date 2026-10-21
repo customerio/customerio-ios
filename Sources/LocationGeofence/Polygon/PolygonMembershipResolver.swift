@@ -123,7 +123,7 @@ final class PolygonMembershipResolver {
         case .enter:
             // The callback noted this ENTER before the shape was known: a covering-circle ENTER is
             // no crossing of the polygon, so it must not end or restart the polygon's visit.
-            dwellCoordinator?.forgetCoveringCircleEnter(geofence: geofence)
+            await dwellCoordinator?.forgetCoveringCircleEnter(geofenceId: identifier)
             guard geofence.polygonRegion != nil else {
                 // Not a circle: forwarding would fire an enter anywhere inside the covering circle.
                 logger.geofencePolygonUndecided(identifier: identifier, reason: .ringUnbuildable, pass: nil)

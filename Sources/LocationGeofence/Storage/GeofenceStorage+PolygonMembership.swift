@@ -146,6 +146,11 @@ extension GeofenceStorage {
         return state.cachedGeofences?.first { $0.id == id }
     }
 
+    /// Whether the cached catalog holds `id` as a polygon now.
+    func isPolygon(id: String) -> Bool {
+        loadFromDisk()?.cachedGeofences?.first { $0.id == id }?.vertices != nil
+    }
+
     func getPolygonMembership() -> [String: PolygonMembershipRecord] {
         loadFromDisk()?.polygonMembership ?? [:]
     }

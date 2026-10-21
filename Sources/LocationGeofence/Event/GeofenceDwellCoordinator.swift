@@ -26,11 +26,14 @@ final class GeofenceDwellCoordinator {
     /// Fences known to be polygons. The OS monitors only a polygon's covering circle: a correction
     /// of the state it assumed for that circle proves nothing about the polygon and is never noted
     /// as a mark, so it can neither end nor restart the polygon's visit; a crossing of the circle
-    /// still is. Learned from the persisted catalog only — at launch, on every refresh, and from
-    /// the fences the resolver reads for its callbacks and passes — never from a snapshot a caller
-    /// holds, so a cold wake before the load is corrected by the resolver
-    /// (`forgetCoveringCircleEnter`). Internal for `+Chronology`.
+    /// still is. Learned from the persisted catalog only — at launch, on every refresh, and when a
+    /// covering-circle ENTER is routed (`forgetCoveringCircleEnter`, which reads the shape from
+    /// storage, so a cold wake before the load is corrected there) — never from a fence a caller
+    /// holds, which may predate a refresh. Internal for `+Chronology`.
     var polygonIds: Set<String> = []
+    /// Bumped whenever a refresh replaces the catalog (`rememberCatalog`), so a catalog read begun
+    /// before it cannot re-add a polygon the refresh dropped. Internal for `+Polygons`.
+    var polygonCatalogGeneration: UInt64 = 0
     var pendingExitCallbacks: [String: [Date: GeofencePendingExitCallback]] = [:] // `noteExitCallback`
     /// This coordinator's first clock reading, taken when it was built; the wall offset of its
     /// previous reading, and the uptime it last saw the wall clock step at. Internal for

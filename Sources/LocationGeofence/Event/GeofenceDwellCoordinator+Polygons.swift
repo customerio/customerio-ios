@@ -19,7 +19,6 @@ extension GeofenceDwellCoordinator {
         processedAt: GeofenceClockReading? = nil,
         expectedUserId: String?
     ) async {
-        rememberShape(of: geofence)
         let outside = GeofenceExitMark(date: outsideAt, processedAt: processedAt ?? readClock(), source: .outsideEvidence)
         guard let userId = contextStore.currentUserId, !userId.isEmpty,
               expectedUserId == nil || expectedUserId == userId,
@@ -29,35 +28,33 @@ extension GeofenceDwellCoordinator {
     }
 
     /// The catalog as a refresh just persisted it: a fence the server replaced with a circle is
-    /// no longer a polygon, whatever an operation begun on the old definition remembers later.
+    /// no longer a polygon, whatever an operation begun on the old definition learns later. The
+    /// generation it bumps retires every catalog read still in flight (`loadPolygonIds`,
+    /// `forgetCoveringCircleEnter`), so a stale answer cannot re-add an id this call dropped.
     func rememberCatalog(_ geofences: [Geofence]) {
+        polygonCatalogGeneration &+= 1
         polygonIds = Set(geofences.filter { $0.vertices != nil }.map(\.id))
     }
 
-    /// The cache as it stands at launch; a fence seen since is remembered as it arrives.
+    /// The cache as it stands at launch. Dropped if a refresh replaced the catalog meanwhile.
     func loadPolygonIds() {
+        let generation = polygonCatalogGeneration
         Task { [weak self, storage] in
             let ids = await storage.getCachedGeofences().filter { $0.vertices != nil }.map(\.id)
-            self?.rememberPolygons(ids)
-        }
-    }
-
-    /// Remembers `geofence`'s shape, dropping any correction mark a polygon's covering circle left.
-    /// Only for a fence read from the persisted catalog, as the resolver reads its targets: a
-    /// snapshot held across a refresh could otherwise re-add an id the server has since made a circle.
-    func rememberShape(of geofence: Geofence) {
-        if geofence.vertices != nil {
-            rememberPolygons([geofence.id])
-        } else {
-            polygonIds.remove(geofence.id)
+            guard let self, self.polygonCatalogGeneration == generation else { return }
+            self.rememberPolygons(ids)
         }
     }
 
     /// A polygon's covering-circle ENTER reached the resolver: a correction its callback noted
     /// before the shape was known is withdrawn, so no evidence re-armed by that wake can end the
-    /// visit. A crossing stays noted: the device left the circle, so the polygon too.
-    func forgetCoveringCircleEnter(geofence: Geofence) {
-        rememberShape(of: geofence)
+    /// visit. A crossing stays noted: the device left the circle, so the polygon too. The shape is
+    /// read from the persisted catalog here, never from the caller's copy, and the answer is
+    /// dropped if a refresh replaced the catalog while it was read.
+    func forgetCoveringCircleEnter(geofenceId: String) async {
+        let generation = polygonCatalogGeneration
+        guard await storage.isPolygon(id: geofenceId), polygonCatalogGeneration == generation else { return }
+        rememberPolygons([geofenceId])
     }
 
     private func rememberPolygons(_ ids: [String]) {
