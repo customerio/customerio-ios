@@ -24,6 +24,13 @@ class QueueManagerCachedResponseTest: UnitTest {
         inAppMessageManagerMock = InAppMessageManagerMock()
         inAppMessageManagerMock.dispatchReturnValue = Task {}
         inAppMessageManagerMock.underlyingState = InAppMessageState()
+        // QueueManager checks the response still belongs to the current identity before using it.
+        let manager: InAppMessageManagerMock = inAppMessageManagerMock
+        inAppMessageManagerMock.fetchStateClosure = { [weak manager] completion in
+            let state = manager?.underlyingState ?? InAppMessageState()
+            completion(state)
+            return Task { state }
+        }
 
         let anonymousMessageManagerMock = AnonymousMessageManagerMock()
         anonymousMessageManagerMock.getEligibleMessagesReturnValue = []
@@ -72,15 +79,49 @@ class QueueManagerCachedResponseTest: UnitTest {
         XCTAssertEqual(dispatchedInboxMessageCounts, [1])
     }
 
-    func test_fetchUserQueue_givenCachedBodyWithoutOwner_expectNotReused() async {
-        // A body cached before its owner was recorded; whose it is can't be told.
+    func test_fetchUserQueue_givenCachedBodyWithoutOwner_expectReusedOnceThenOwnedByRequester() async {
+        // A body cached by an older SDK version, before owners were recorded: replayed for the
+        // requester as it always was, and from then on owned by them.
         keyValueStore.setData(body, forKey: .inAppUserQueueFetchCachedResponse)
 
         stubResponse(statusCode: 304, body: Data())
         let result = await fetchUserQueue(state: InAppMessageState(userId: "user-a"))
 
-        assertSuccessWithoutQueue(result)
+        assertSuccessWithQueue(result)
+        XCTAssertEqual(dispatchedInboxMessageCounts, [1])
+        XCTAssertEqual(keyValueStore.string(.inAppUserQueueFetchCachedResponseOwner), "identified:user-a")
+
+        let otherUserResult = await fetchUserQueue(state: InAppMessageState(userId: "user-b"))
+        assertSuccessWithoutQueue(otherUserResult)
+        XCTAssertEqual(dispatchedInboxMessageCounts, [1])
+    }
+
+    // A response for an identity that is no longer current is discarded before it can touch the
+    // cache or the inbox.
+    func test_fetchUserQueue_givenUserChangedWhileInFlight_expectNothingCachedOrPublished() async {
+        stubResponse(statusCode: 200, body: body, switchingTo: InAppMessageState(userId: "user-b"))
+
+        let result = await fetchUserQueue(state: InAppMessageState(userId: "user-a"))
+
+        assertDiscarded(result)
         XCTAssertEqual(dispatchedInboxMessageCounts, [])
+        XCTAssertNil(keyValueStore.data(.inAppUserQueueFetchCachedResponse))
+    }
+
+    func test_fetchUserQueue_givenNoContentForPreviousUser_expectCurrentUsersCacheKept() async {
+        stubResponse(statusCode: 200, body: body)
+        _ = await fetchUserQueue(state: InAppMessageState(userId: "user-b"))
+
+        // user-a's request was in flight when user-b identified; its 204 arrives late.
+        stubResponse(statusCode: 204, body: Data(), switchingTo: InAppMessageState(userId: "user-b"))
+        let staleResult = await fetchUserQueue(state: InAppMessageState(userId: "user-a"))
+        assertDiscarded(staleResult)
+
+        stubResponse(statusCode: 304, body: Data())
+        let result = await fetchUserQueue(state: InAppMessageState(userId: "user-b"))
+
+        assertSuccessWithQueue(result)
+        XCTAssertEqual(dispatchedInboxMessageCounts, [1, 1])
     }
 
     func test_clearCachedUserQueue_expectOwnerCleared() async {
@@ -104,6 +145,15 @@ class QueueManagerCachedResponseTest: UnitTest {
         }
     }
 
+    private func assertDiscarded(_ result: Result<[Message]?, Error>, file: StaticString = #filePath, line: UInt = #line) {
+        switch result {
+        case .success:
+            XCTFail("expected the response to be discarded", file: file, line: line)
+        case .failure(let error):
+            XCTAssertTrue(error is QueueFetchError, "expected a discard, got \(error)", file: file, line: line)
+        }
+    }
+
     private func assertSuccessWithQueue(_ result: Result<[Message]?, Error>, file: StaticString = #filePath, line: UInt = #line) {
         switch result {
         case .success(let messages):
@@ -121,8 +171,13 @@ class QueueManagerCachedResponseTest: UnitTest {
         }
     }
 
-    private func stubResponse(statusCode: Int, body: Data) {
+    /// - Parameter switchingTo: An identity that becomes current while the request is in flight.
+    private func stubResponse(statusCode: Int, body: Data, switchingTo: InAppMessageState? = nil) {
+        let manager: InAppMessageManagerMock = inAppMessageManagerMock
         gistQueueNetworkMock.requestClosure = { _, _, completion in
+            if let switchingTo {
+                manager.underlyingState = switchingTo
+            }
             let response = HTTPURLResponse(
                 url: URL(string: "https://example.com/api/v1/users")!,
                 statusCode: statusCode,
@@ -133,8 +188,10 @@ class QueueManagerCachedResponseTest: UnitTest {
         }
     }
 
+    /// Requests the queue for `state`, which is the current identity when the request starts.
     private func fetchUserQueue(state: InAppMessageState) async -> Result<[Message]?, Error> {
-        await withCheckedContinuation { continuation in
+        inAppMessageManagerMock.underlyingState = state
+        return await withCheckedContinuation { continuation in
             queueManager.fetchUserQueue(state: state) { result in
                 continuation.resume(returning: result)
             }

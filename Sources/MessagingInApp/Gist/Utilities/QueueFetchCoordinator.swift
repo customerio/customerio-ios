@@ -25,6 +25,12 @@ struct QueueFetchKey: Equatable {
     }
 }
 
+/// Why a queue response was not applied.
+enum QueueFetchError: Error {
+    /// The identity changed while the request was in flight, so the response belongs to the previous one.
+    case identityChanged
+}
+
 /// Lets queue fetches for the same identity share one request.
 ///
 /// Several triggers fire within milliseconds of each other at launch (identity registration, the

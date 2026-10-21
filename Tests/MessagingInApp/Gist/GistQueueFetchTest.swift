@@ -96,6 +96,19 @@ class GistQueueFetchTest: UnitTest {
         XCTAssertEqual(queueManagerSpy.pendingCompletions.count, 2)
     }
 
+    func test_queueFetch_givenResponseDiscardedForPreviousUser_expectQueueNotCleared() async {
+        let queueFetchHandler = await startedQueueFetchHandler()
+        queueFetchHandler(userA, false)
+
+        queueManagerSpy.complete(0, with: .failure(QueueFetchError.identityChanged))
+
+        let clears = inAppMessageManagerMock.dispatchReceivedInvocations.filter { invocation in
+            if case .clearMessageQueue = invocation.action { return true }
+            return false
+        }
+        XCTAssertTrue(clears.isEmpty)
+    }
+
     func test_queueFetch_givenFreshCallerJoinedInFlightRequest_expectOneFollowUp() async {
         let queueFetchHandler = await startedQueueFetchHandler()
         queueFetchHandler(userA, false)

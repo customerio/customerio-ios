@@ -334,9 +334,8 @@ class Gist: GistProvider {
 // MARK: - Queue fetch
 
 extension Gist {
-    /// - Parameter mustBeFresh: Set by callers that need data from after they fired. When a request
-    ///   for the same identity is already in flight, they get one follow-up fetch after it completes;
-    ///   every other caller simply shares the in-flight request (see `QueueFetchCoordinator`).
+    /// - Parameter mustBeFresh: Set by callers that need data from after they fired; they get one
+    ///   follow-up instead of sharing an older request in flight (see `QueueFetchCoordinator`).
     private func fetchUserQueue(state: InAppMessageState, mustBeFresh: Bool = false) {
         // Allow fetching with either userId or anonymousId
         guard let key = QueueFetchKey(state: state) else {
@@ -390,6 +389,8 @@ extension Gist {
             logger.logWithModuleTag("Gist queue service found \(messages.count) new messages", level: .info)
             inAppMessageManager.dispatch(action: .processMessageQueue(messages: messages))
 
+        case .failure(let error) where error is QueueFetchError:
+            return // Discarded for a previous user; not this response's queue to clear.
         case .failure(let error):
             logger.logWithModuleTag("Error fetching messages from Gist queue service. \(error.localizedDescription)", level: .error)
             inAppMessageManager.dispatch(action: .clearMessageQueue)

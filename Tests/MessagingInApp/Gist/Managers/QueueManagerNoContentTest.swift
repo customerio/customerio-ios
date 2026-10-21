@@ -24,6 +24,13 @@ class QueueManagerNoContentTest: UnitTest {
         inAppMessageManagerMock = InAppMessageManagerMock()
         inAppMessageManagerMock.dispatchReturnValue = Task {}
         inAppMessageManagerMock.underlyingState = InAppMessageState()
+        // QueueManager checks the response still belongs to the current identity before using it.
+        let manager: InAppMessageManagerMock = inAppMessageManagerMock
+        inAppMessageManagerMock.fetchStateClosure = { [weak manager] completion in
+            let state = manager?.underlyingState ?? InAppMessageState()
+            completion(state)
+            return Task { state }
+        }
         repositoryFake = VisualInboxRepositoryFake()
 
         // The 200 path runs the anonymous-message merge; the mock's return value is implicitly
