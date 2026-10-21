@@ -27,7 +27,7 @@ struct GeofenceDwellEarlyEvidenceTests {
 
         rig.advance(to: retry)
         try #require(await settleOnMain { rig.emitter.dwells.count == 1 })
-        #expect(rig.requests == initialRequests + 2, "the circle retry must request a newer measurement")
+        #expect(rig.requests == initialRequests + 2, "the retry must request a newer measurement")
         #expect(rig.emitter.dwells.first?.occurredAt == rig.at(60.5))
         #expect(await rig.storage.getDwellVisit(geofenceId: rig.geofence.id)?.emitted == true)
     }
@@ -124,6 +124,50 @@ struct GeofenceDwellEarlyEvidenceTests {
     }
 
     @Test
+    func polygonDeadline_givenRecentMovementFix_thenStillRequestsFreshEvidence() async throws {
+        let rig = await EarlyDwellRig.make(polygon: true)
+        defer { rig.close() }
+        try await rig.enter()
+        rig.advance(to: 50)
+        rig.answers = [rig.fix(at: 50)]
+        _ = await rig.resolver.evaluateMembership(
+            geofenceIds: [rig.geofence.id], reason: .foreground, requiresFreshFix: false
+        )
+        let before = rig.requests
+        rig.answers = [rig.fix(at: 56.6), rig.fix(at: 60.5)]
+
+        let retry = try await rig.firstShortRetry()
+        rig.advance(to: retry)
+
+        try #require(await settleOnMain { rig.emitter.dwells.count == 1 })
+        #expect(rig.requests == before + 2, "neither dwell request may reuse the ten-second-old movement fix")
+        #expect(rig.emitter.dwells.first?.occurredAt == rig.at(60.5))
+    }
+
+    @Test
+    func rearm_givenShortRetryWaitingForProvider_thenStillRequiresNewerMeasurement() async throws {
+        let rig = await EarlyDwellRig.make(polygon: false)
+        defer { rig.close() }
+        try await rig.enter()
+        rig.answers = [rig.fix(at: 56.6)]
+        let retry = try await rig.firstShortRetry()
+        rig.holdAnswers = true
+        rig.advance(to: retry)
+        try #require(await settleOnMain { rig.requests == 2 })
+        let previousLogs = rig.providerLogCount
+
+        await rig.coordinator.rearmPendingEvidence(includePolygons: true)
+        try #require(await settleOnMain { rig.providerLogCount > previousLogs })
+        rig.provider.handleDeliveredFix(rig.fix(at: 60.5))
+
+        try #require(
+            await settleOnMain { rig.emitter.dwells.count == 1 },
+            "a rearm must join the newer-fix request instead of accepting the old cached fix"
+        )
+        #expect(rig.emitter.dwells.first?.occurredAt == rig.at(60.5))
+    }
+
+    @Test
     func request_givenConcurrentMovementRejection_thenNoFixKeepsNormalBackoff() async throws {
         let rig = await EarlyDwellRig.make(polygon: false)
         defer { rig.close() }
@@ -181,9 +225,11 @@ private final class EarlyDwellRig {
     let provider: MovementFixResolver
     let emitter: EarlyDwellEmitter
     let diagnostics: DwellDiagnosticRecorder
+    let providerLogger: LoggerMock
     var answers: [CLLocation?] = []
     var holdAnswers = false
     private(set) var requests = 0
+    var providerLogCount: Int { providerLogger.infoReceivedInvocations.count + providerLogger.debugReceivedInvocations.count }
 
     private init(polygon: Bool, diagnosticEnabled: Bool) {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
@@ -200,7 +246,8 @@ private final class EarlyDwellRig {
         let diagnostics = DwellDiagnosticRecorder(
             journal: journal, isEnabled: diagnosticEnabled, now: { clock.read().uptime }
         )
-        let provider = MovementFixResolver(logger: LoggerMock(), dateUtil: dateUtil, diagnosticRecorder: diagnostics)
+        let providerLogger = LoggerMock()
+        let provider = MovementFixResolver(logger: providerLogger, dateUtil: dateUtil, diagnosticRecorder: diagnostics)
         provider.systemCachedFix = { nil }
         let coordinator = GeofenceDwellCoordinator(
             storage: storage, transitionEmitter: emitter, contextStore: context, logger: LoggerMock(),
@@ -220,10 +267,18 @@ private final class EarlyDwellRig {
         self.context = context
         self.emitter = emitter
         self.diagnostics = diagnostics
+        self.providerLogger = providerLogger
         self.provider = provider
         self.coordinator = coordinator
         self.resolver = resolver
-        self.geofence = Geofence(
+        self.geofence = Self.makeGeofence(polygon: polygon)
+        provider.requestFreshFix = { [weak self] in
+            self?.deliverNextFix()
+        }
+    }
+
+    private static func makeGeofence(polygon: Bool) -> Geofence {
+        Geofence(
             id: "retry-fence", latitude: 0.25, longitude: 0.25, radius: 100, name: "Retry fence",
             transitionTypes: [.enter, .exit], lastUpdated: Date(timeIntervalSince1970: 1),
             vertices: polygon ? [
@@ -232,9 +287,6 @@ private final class EarlyDwellRig {
                 LocationData(latitude: 1, longitude: 0)
             ] : nil, dwellThresholdSeconds: 60
         )
-        provider.requestFreshFix = { [weak self] in
-            self?.deliverNextFix()
-        }
     }
 
     private func deliverNextFix() {

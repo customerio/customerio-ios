@@ -38,7 +38,8 @@ pass that requires one accepts only a fix delivered after its request and newer 
 resolver received. That does not guarantee a new measurement: Core Location may answer with a recent
 location it already held.
 
-If an inside measurement falls just before the dwell threshold, the SDK can spend one of its
+The short retry is normal SDK behavior for circles and polygons, regardless of these experiment
+flags. If an inside measurement falls just before the dwell threshold, the SDK can spend one of its
 existing retry attempts on a shorter wait based on that timing shortfall. The first check still
 runs at the threshold, and a circle's short retry requests a newer measurement. Later failures
 keep the normal backoff. This does not extend the collection cap or qualify a stay without proof.

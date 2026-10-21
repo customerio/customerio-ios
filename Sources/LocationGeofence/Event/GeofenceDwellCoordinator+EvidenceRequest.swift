@@ -26,6 +26,7 @@ extension GeofenceDwellCoordinator {
             geofenceId: geofenceId, visitId: visit.visitId, token: UUID(), minimumTimestamp: state.nextFixAfter
         )
         state.nextFixAfter = nil
+        state.activeFloor = request.minimumTimestamp
         state.earlyEvidence = nil
         state.activeRequest = request.token
         evidenceRetries[geofenceId] = state
@@ -37,6 +38,7 @@ extension GeofenceDwellCoordinator {
               state.visitId == request.visitId, state.activeRequest == request.token
         else { return }
         state.activeRequest = nil
+        state.activeFloor = nil
         state.earlyEvidence = nil
         evidenceRetries[request.geofenceId] = state
     }

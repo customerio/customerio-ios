@@ -20,6 +20,8 @@ extension GeofenceDwellCoordinator {
         var shortRetryUsed = false
         var nextFixAfter: Date?
         var activeRequest: UUID?
+        /// A re-arm must retain this floor while replacing a request still waiting for its fix.
+        var activeFloor: Date?
         var earlyEvidence: (timestamp: Date, shortfall: TimeInterval)?
     }
 
@@ -28,7 +30,8 @@ extension GeofenceDwellCoordinator {
         let previous = evidenceRetries[geofence.id].flatMap { $0.visitId == visit.visitId ? $0 : nil }
         evidenceRetries[geofence.id] = EvidenceRetryState(
             visitId: visit.visitId, attempts: 0, diagnosticToken: diagnosticToken(for: visit),
-            shortRetryUsed: previous?.shortRetryUsed ?? false, nextFixAfter: previous?.nextFixAfter
+            shortRetryUsed: previous?.shortRetryUsed ?? false,
+            nextFixAfter: previous?.nextFixAfter ?? previous?.activeFloor
         )
         guard geofence.dwellThresholdSeconds > 0, !visit.emitted else {
             cancelEvidence(for: geofence.id)
