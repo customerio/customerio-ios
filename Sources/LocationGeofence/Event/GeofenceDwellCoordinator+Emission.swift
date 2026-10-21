@@ -23,12 +23,23 @@ extension GeofenceDwellCoordinator {
         guard let proposed = Self.qualifiedReservation(
             for: visit, observedAt: observedAt, at: readClock(),
             thresholdSeconds: geofence.dwellThresholdSeconds, source: source
-        ) else { return }
+        ) else {
+            // Continuity held on this boot with no reservation, so the stay is still too short.
+            // Checked against the identity now: the caller's awaits may have spanned a sign-out.
+            recordDiagnostic(
+                .dwellRejected, capturedToken: diagnosticToken(for: visit),
+                fenceId: geofence.id, reason: .belowThreshold
+            )
+            return
+        }
         guard contextStore.currentUserId == userId,
               !knownExitRefusesFirstAdmission(of: visit, geofenceId: geofence.id)
         else { return }
         guard dwellEmissionsInFlight.insert(visit.visitId).inserted else { return }
         defer { dwellEmissionsInFlight.remove(visit.visitId) }
+        // Read before the first await. A reset during the reservation or the outbox write drops
+        // this record, even when the emitter still reports the write it finished.
+        let emissionToken = diagnosticToken(for: visit)
         guard let reservation = await reserve(proposed, for: visit, geofence: geofence) else { return }
         let persisted = await transitionEmitter.trackDwell(
             geofenceId: geofence.id,
@@ -43,6 +54,7 @@ extension GeofenceDwellCoordinator {
             expectedUserId: userId
         )
         guard persisted else { return }
+        recordDiagnostic(.dwellEmitted, capturedToken: emissionToken, fenceId: geofence.id)
         await finishDwellEmission(geofence: geofence, visit: visit)
     }
 
@@ -70,6 +82,8 @@ extension GeofenceDwellCoordinator {
         // `visit` may be a copy read before another attempt reserved; the stored reservation wins.
         switch await storage.reserveDwellEmission(proposed, for: visit, geofenceId: geofence.id) {
         case .reserved(let stored):
+            // Reserved, the visit only repeats its delivery and needs no location, even when withheld below.
+            releaseCollectionLease(geofenceId: geofence.id, ifVisit: visit.visitId)
             guard stored != proposed || !knownExitRefusesFirstAdmission(of: visit, geofenceId: geofence.id) else { return nil }
             return stored
         case .writeFailed:

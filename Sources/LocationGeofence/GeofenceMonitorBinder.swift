@@ -31,7 +31,7 @@ enum GeofenceMonitorBinder {
                 // that evidence requested meanwhile would admit across it.
                 noteExit(dwellCoordinator, geofenceId: identifier, occurredAt: occurredAt)
             }
-            rearmDwellEvidence(dwellCoordinator)
+            rearmDwellEvidence(dwellCoordinator, wake: .wakeRegion, fenceId: identifier)
             if identifier == GeofenceConstants.movementTriggerIdentifier {
                 guard transition == .exit else {
                     logger.geofenceCallbackDropped(identifier: identifier, transition: transition, reason: "movement_trigger_not_exit")
@@ -131,7 +131,7 @@ enum GeofenceMonitorBinder {
             guard let expectedUserId = contextStore.currentUserId else { return false }
             // A visit reports the device stayed somewhere, which is exactly when a circle dwell
             // that came due during suspension needs its evidence.
-            rearmDwellEvidence(dwellCoordinator)
+            rearmDwellEvidence(dwellCoordinator, wake: .wakeVisit)
             Task {
                 await backgroundTaskRunner.withBackgroundTime {
                     // Forced fresh: the cached fix predates the arrival. Also bypasses the
@@ -175,9 +175,18 @@ enum GeofenceMonitorBinder {
 
     /// A background wake is the only chance a circle deadline gets while the app is suspended;
     /// see `GeofenceDwellCoordinator.rearmPendingEvidence`. Polygons are left to the resolver's own
-    /// passes. Nonisolated because the OS callbacks calling it are.
-    private nonisolated static func rearmDwellEvidence(_ dwellCoordinator: GeofenceDwellCoordinator?) {
+    /// passes. Nonisolated because the OS callbacks calling it are; like `noteEnter`, it relies on the
+    /// OS invoking them on the main actor. The wake is recorded in the callback itself: recorded in
+    /// the task, it could land after an identity clear and take the next user's token.
+    private nonisolated static func rearmDwellEvidence(
+        _ dwellCoordinator: GeofenceDwellCoordinator?,
+        wake: DwellDiagnosticEvent,
+        fenceId: String? = nil
+    ) {
         guard let dwellCoordinator else { return }
+        MainActor.assumeIsolated {
+            dwellCoordinator.recordWake(wake, fenceId: fenceId)
+        }
         Task { await dwellCoordinator.rearmPendingEvidence(includePolygons: false) }
     }
 }

@@ -12,11 +12,18 @@ extension GeofenceDwellCoordinator {
     struct EvidenceRetryState {
         let visitId: String
         var attempts: Int
+        /// The due uptime of a wait not yet fired, for diagnostics only.
+        var pendingDueUptime: TimeInterval?
+        /// The journal generation this visit's records go to, read when the state was made and
+        /// before any wait. Nil records nothing. For diagnostics only.
+        var diagnosticToken: UInt64?
     }
 
     func scheduleDeadline(for geofence: Geofence, visit: GeofenceDwellVisit) {
         deadlineTasks.removeValue(forKey: geofence.id)?.cancel()
-        evidenceRetries[geofence.id] = EvidenceRetryState(visitId: visit.visitId, attempts: 0)
+        evidenceRetries[geofence.id] = EvidenceRetryState(
+            visitId: visit.visitId, attempts: 0, diagnosticToken: diagnosticToken(for: visit)
+        )
         guard geofence.dwellThresholdSeconds > 0, !visit.emitted else {
             cancelEvidence(for: geofence.id)
             return
@@ -34,11 +41,15 @@ extension GeofenceDwellCoordinator {
         )
         let delayNanoseconds = UInt64(delay * 1000000000)
         let wait = waitForEvidence
+        let due = now.uptime + delay
+        let token = scheduledDiagnosticDeadline(geofenceId: geofence.id, due: due)
         deadlineTasks[geofence.id] = Task { [weak self] in
             do { try await wait(delayNanoseconds) } catch { return }
             guard !Task.isCancelled, let self else { return }
+            self.diagnosticDeadlineFired(geofenceId: geofence.id, due: due, token: token)
             await self.requestQualifyingEvidence(geofenceId: geofence.id)
         }
+        armCollectionLease(for: geofence, visit: visit, at: now)
     }
 
     func requestQualifyingEvidence(geofenceId: String) async {
@@ -55,6 +66,8 @@ extension GeofenceDwellCoordinator {
             return
         }
         if visit.dwellReservation != nil {
+            // Delivering a reservation needs no location, so nothing here needs the process kept alive.
+            releaseCollectionLease(geofenceId: geofenceId, ifVisit: visit.visitId)
             // A reserved dwell whose delivery did not complete — a failed write, or a relaunch —
             // is repeated as reserved; fresh evidence would describe a different instant.
             await deliverReservedDwell(geofence: geofence, visit: visit, userId: expectedUserId)
@@ -95,18 +108,22 @@ extension GeofenceDwellCoordinator {
               !Task.isCancelled
         else { return }
         guard let fix else {
-            scheduleEvidenceRetry(for: geofence, visit: remaining)
+            scheduleEvidenceRetry(for: geofence, visit: remaining, reason: .noFix)
             return
         }
         switch circleVerdict(of: fix, for: geofence) {
         case .outside:
-            if await !endContinuity(of: remaining, geofence: geofence, observedOutsideAt: fix.timestamp) {
+            // Read before the removal's await, so a reset that lands during it drops the record.
+            let token = diagnosticToken(for: remaining)
+            if await endContinuity(of: remaining, geofence: geofence, observedOutsideAt: fix.timestamp) {
+                recordDiagnostic(.dwellRejected, capturedToken: token, fenceId: geofence.id, reason: .notInside)
+            } else {
                 scheduleEvidenceRetry(for: geofence, visit: remaining)
             }
             return
         case .undecided:
             // Teardown is left to Core Location's real EXIT.
-            scheduleEvidenceRetry(for: geofence, visit: remaining)
+            scheduleEvidenceRetry(for: geofence, visit: remaining, reason: .undecided)
             return
         case .inside:
             break
@@ -241,16 +258,30 @@ extension GeofenceDwellCoordinator {
         return visit
     }
 
-    func scheduleEvidenceRetry(for geofence: Geofence, visit: GeofenceDwellVisit) {
+    /// - Parameter reason: why the evidence just tried did not qualify, if known; recorded for diagnostics.
+    func scheduleEvidenceRetry(for geofence: Geofence, visit: GeofenceDwellVisit, reason: DwellDiagnosticReason? = nil) {
         var state = evidenceRetries[geofence.id]
         // A storage or delivery await may finish after the next visit armed its own deadline.
         // That deadline belongs to the next visit, even if this older attempt needs another retry.
         guard state?.visitId == nil || state?.visitId == visit.visitId else { return }
         if state?.visitId != visit.visitId {
-            state = EvidenceRetryState(visitId: visit.visitId, attempts: 0)
+            state = EvidenceRetryState(
+                visitId: visit.visitId, attempts: 0, diagnosticToken: diagnosticToken(for: visit)
+            )
+        }
+        // Read only once the state belongs to this visit. A superseded visit's rejection must
+        // borrow neither a newer visit's generation nor a later identity's.
+        let token = state?.diagnosticToken
+        if let reason {
+            recordDiagnostic(.dwellRejected, capturedToken: token, fenceId: geofence.id, reason: reason)
         }
         guard var state, state.attempts < maxEvidenceRetryAttempts else {
-            deadlineTasks.removeValue(forKey: geofence.id)?.cancel()
+            // Recorded once per chain: only when this ends the fence's pending request.
+            if let task = deadlineTasks.removeValue(forKey: geofence.id) {
+                task.cancel()
+                recordDiagnostic(.dwellRejected, capturedToken: token, fenceId: geofence.id, reason: .retriesExhausted)
+            }
+            releaseCollectionLease(geofenceId: geofence.id, ifVisit: visit.visitId)
             return
         }
         state.attempts += 1
@@ -258,16 +289,28 @@ extension GeofenceDwellCoordinator {
         deadlineTasks.removeValue(forKey: geofence.id)?.cancel()
         let delay = max(0, evidenceRetryDelay)
         let wait = waitForEvidence
+        let due = clock.read().uptime + delay
+        let waitToken = scheduledDiagnosticDeadline(geofenceId: geofence.id, due: due)
         deadlineTasks[geofence.id] = Task { [weak self] in
             do { try await wait(UInt64(delay * 1000000000)) } catch { return }
             guard !Task.isCancelled, let self else { return }
+            self.diagnosticDeadlineFired(geofenceId: geofence.id, due: due, token: waitToken)
             await self.requestQualifyingEvidence(geofenceId: geofence.id)
         }
     }
 
     func cancelEvidence(for geofenceId: String) {
+        let unfiredDue = unfiredDiagnosticDeadline(geofenceId: geofenceId)
         deadlineTasks.removeValue(forKey: geofenceId)?.cancel()
-        evidenceRetries.removeValue(forKey: geofenceId)
+        let removed = evidenceRetries.removeValue(forKey: geofenceId)
+        releaseCollectionLease(geofenceId: geofenceId)
+        // Under the generation the wait was armed in: a reset's removal can reach here after its clear.
+        if let unfiredDue {
+            recordDiagnostic(
+                .deadlineCancelled, capturedToken: removed?.diagnosticToken,
+                fenceId: geofenceId, deadlineUptime: unfiredDue
+            )
+        }
     }
 
     /// Cancels only while the pending evidence is `visitId`'s: an overlapping ENTER may already have
@@ -283,6 +326,7 @@ extension GeofenceDwellCoordinator {
             // First: a visit recorded in the background under foreground-only access ends here,
             // before the re-arm requests evidence for it.
             coordinator.foregroundChanged()
+            coordinator.recordWake(.wakeForeground)
             Task { await coordinator.rearmPendingEvidence(includePolygons: true) }
         }
         observeLifecycle(UIApplication.didEnterBackgroundNotification) { $0.foregroundChanged() }
@@ -302,6 +346,13 @@ extension GeofenceDwellCoordinator {
                 handle(self)
             }
         })
+    }
+
+    /// Records a wake as the OS delivers it, before any task: recorded later, it could follow an
+    /// identity clear and take the next user's token. Signed out, no visit is pending to wake.
+    func recordWake(_ wake: DwellDiagnosticEvent, fenceId: String? = nil) {
+        guard let userId = contextStore.currentUserId, !userId.isEmpty else { return }
+        recordDiagnostic(wake, fenceId: fenceId)
     }
 
     /// Re-arms every pending visit's deadline from its elapsed time, with a fresh retry budget.

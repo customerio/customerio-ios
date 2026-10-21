@@ -234,6 +234,13 @@ final class GeofenceSyncCoordinatorImpl: GeofenceSyncCoordinator, @unchecked Sen
             return .success(())
         }
 
+        // Before the storage await, so no lease outlives the user it served: signed out, no lease's
+        // user matches, so all are released and the session stops. A new user's leases are kept.
+        // Diagnostics too, rechecked on the main actor: fence ids with times are this user's history.
+        await MainActor.run {
+            dwellCoordinator?.reconcileCollection()
+            dwellCoordinator?.clearDiagnosticsIfSignedOut()
+        }
         // Clear BEFORE the OS stop, so a polygon pass resuming in between can't emit an enter for
         // a fence being torn down.
         await storage.clearUserScopedState()

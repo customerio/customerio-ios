@@ -37,6 +37,7 @@ extension GeofenceDwellCoordinator {
         } else {
             allContinuityLostUptime = reading.uptime
         }
+        reconcileCollection() // Now, not when the removal task runs: every leased visit spans this loss.
         return reading
     }
 
@@ -114,6 +115,7 @@ extension GeofenceDwellCoordinator {
             Task { await revalidateVisits() }
         }
         lastBackgroundRefreshAvailable = available
+        reconcileCollection()
     }
 
     /// The app moved between foreground and background. A visit recorded under access that
@@ -124,6 +126,7 @@ extension GeofenceDwellCoordinator {
     func foregroundChanged() {
         let reading = readClock()
         foregroundOnlyLostUptime = reading.uptime
+        reconcileCollection()
         Task { [weak self] in
             guard let self else { return }
             let removed = await self.storage.removeDwellVisits { _, visit in
@@ -138,6 +141,7 @@ extension GeofenceDwellCoordinator {
     /// Reads every stored visit through `currentVisit`, which removes those whose continuity no
     /// longer holds. For a change in access iOS reports outside any authorization callback.
     func revalidateVisits() async {
+        reconcileCollection()
         guard let userId = contextStore.currentUserId, !userId.isEmpty else { return }
         for geofence in await storage.getCachedGeofences() where tracksVisit(geofence) {
             _ = await currentVisit(geofence: geofence, userId: userId)
@@ -150,6 +154,9 @@ extension GeofenceDwellCoordinator {
     /// tracker already refuses them; this removes them. Judged by version alone, so a late or
     /// replayed event, or a shifted wall clock, cannot remove a visit recorded since.
     func identityChanged() async {
+        // First, before any await: nothing recorded under the previous identity is kept past here.
+        clearDiagnosticsIfIdentityChanged()
+        reconcileCollection()
         let tracker = identityTracker
         let removed = await storage.removeDwellVisits { _, visit in
             tracker.interrupted(visit)

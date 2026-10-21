@@ -145,6 +145,77 @@ struct ReplayDwellSchedulerTests {
         }
     }
 
+    @Test
+    func resumeExecution_whenDeadlinePassedWhileSuspended_thenRunsAtResumeTimeNotOldDeadline() async throws {
+        let scheduler = ReplayDwellScheduler()
+        defer { scheduler.cancelAll() }
+        var observedAt: TimeInterval?
+        let due = Task {
+            try await scheduler.sleep(nanoseconds: 60000000000)
+            observedAt = scheduler.now
+        }
+        Task { try await scheduler.sleep(nanoseconds: 300000000000) }
+        #expect(await settleOnMain { scheduler.pendingCount == 2 })
+        scheduler.advance(to: 10)
+        scheduler.suspendExecution()
+        // A frozen process advertises no deadline, so a boundary gate cannot spin toward one.
+        #expect(scheduler.nextDeadline == nil)
+        scheduler.advance(to: 200)
+        #expect(scheduler.now == 200)
+        // Still held means never resumed: the overdue deadline did not run while frozen.
+        try #require(scheduler.pendingCount == 2)
+        scheduler.resumeExecution()
+        // Required: awaiting a due waiter the scheduler still holds would hang instead of fail.
+        try #require(scheduler.pendingCount == 1)
+        try await due.value
+        #expect(observedAt == 200)
+        #expect(scheduler.nextDeadline == 300)
+    }
+
+    @Test
+    func sleep_whenCancelledWhileSuspended_thenWaiterRemovedWithoutResumingSuccessfully() async throws {
+        let scheduler = ReplayDwellScheduler()
+        let task = Task { try await scheduler.sleep(nanoseconds: 60000000000) }
+        #expect(await settleOnMain { scheduler.pendingCount == 1 })
+        scheduler.suspendExecution()
+        scheduler.advance(to: 200)
+        task.cancel()
+        // Required: a frozen scheduler that deferred cancellation would hang the await below.
+        try #require(await settleOnMain { scheduler.pendingCount == 0 })
+        do {
+            try await task.value
+            Issue.record("a cancelled overdue deadline returned successfully while suspended")
+        } catch {
+            #expect(error is CancellationError)
+        }
+    }
+
+    @Test
+    func resumeExecution_whenStoppedWhileSuspended_thenProcessStaysDead() async throws {
+        let scheduler = ReplayDwellScheduler()
+        let parked = Task { try await scheduler.sleep(nanoseconds: 60000000000) }
+        #expect(await settleOnMain { scheduler.pendingCount == 1 })
+        scheduler.suspendExecution()
+        scheduler.advance(to: 200)
+        scheduler.stop()
+        try #require(scheduler.pendingCount == 0)
+        scheduler.resumeExecution()
+        do {
+            try await parked.value
+            Issue.record("a stopped process's overdue waiter resumed successfully")
+        } catch {
+            #expect(error is CancellationError)
+        }
+        // A zero delay cannot park, so a revived process fails here instead of hanging.
+        do {
+            try await scheduler.sleep(nanoseconds: 0)
+            Issue.record("resuming execution revived a stopped process")
+        } catch {
+            #expect(error is CancellationError)
+        }
+        #expect(scheduler.pendingCount == 0)
+    }
+
     /// One `advance(to:)` and what it must leave: the waiters it resumed and the deadlines still held.
     private struct DueStep {
         let moment: TimeInterval

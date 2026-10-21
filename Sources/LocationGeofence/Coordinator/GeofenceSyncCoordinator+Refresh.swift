@@ -102,6 +102,9 @@ extension GeofenceSyncCoordinatorImpl {
         await storage.recordSync(timestamp: dateUtil.now, location: anchor)
         // Only what the OS accepted, or the resolver could emit an enter no exit can balance.
         await storage.recordRegistration(center: anchor, businessIds: registeredIds)
+        // Against what this refresh just wrote: a lease for a fence it unregistered or replaced must not
+        // keep the session running until its cap.
+        await MainActor.run { dwellCoordinator?.reconcileCollection(geofences: regions, registeredIds: registeredIds) }
     }
 
     /// No `lastSync` write: the refetch decision measures from the fetch anchor.

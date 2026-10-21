@@ -75,7 +75,8 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring {
         makeConditionMonitor: @escaping @Sendable (String) async -> GeofenceConditionMonitoring = { name in
             await CoreLocationConditionMonitor(monitor: CLMonitor(name))
         },
-        clock: GeofenceClock = SystemGeofenceClock()
+        clock: GeofenceClock = SystemGeofenceClock(),
+        diagnosticRecorder: DwellDiagnosticRecorder? = nil
     ) {
         self.logger = logger
         self.clock = clock
@@ -88,7 +89,8 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring {
         self.movementFixResolver = MovementFixResolver(
             logger: logger,
             backgroundTaskRunner: GeofenceBackgroundTime.runner(name: "io.customer.geofence.movement-fix"),
-            dateUtil: dateUtil
+            dateUtil: dateUtil,
+            diagnosticRecorder: diagnosticRecorder
         )
         super.init()
         self.lastObservedAccess = locationAccess

@@ -436,7 +436,7 @@ struct GeofenceLogTailTests {
         expectTokens(HandleMovementTier.self, ["localRerank", "remoteRefresh"])
         expectTokens(PolygonPassSkipReason.self, ["pass_in_flight"])
         expectTokens(PolygonEvaluationReason.self, ["new_polygon", "new_polygon_forced_request_failed", "movement", "foreground",
-                                                    "os_transition", "visit"])
+                                                    "os_transition", "visit", "dwell_evidence"])
         expectTokens(PolygonUndecidedReason.self, [
             "no_usable_fix", "user_changed", "ring_unbuildable", "unregistered", "circle_expired",
             "within_accuracy", "fix_too_old", "accuracy_too_low", "corroboration_unnecessary",

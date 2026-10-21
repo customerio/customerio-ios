@@ -2387,3 +2387,121 @@ struct PolygonMembershipResolverTests {
         #expect(await setup.resolver.corroborationFix(newerThan: clock.now, cache: PassCorroboration()) == .unavailable)
     }
 }
+
+extension PolygonMembershipResolverTests {
+    /// A pending dwell asks the real resolver for proof, which must not be logged as foreground activity.
+    @Test
+    func dwellVerifier_whenProofIsRequested_thenLogsDwellEvidenceRatherThanForeground() async throws {
+        let setup = await makeSetup(fix: fix(latitude: 0, longitude: 0), withDwellCoordinator: true)
+        await setup.storage.setCachedGeofences([polygonGeofence()])
+        let coordinator = try #require(setup.resolver.dwellCoordinator)
+        defer { coordinator.cancelEvidence(for: "1") }
+
+        await GeofenceDiagnostics.$overrideForTesting.withValue(true) {
+            await coordinator.polygonVerifier?("1")
+        }
+
+        let messages = setup.logger.debugReceivedInvocations.map(\.message).filter {
+            $0.contains("ev=polygon.pass.started ") || $0.contains("ev=polygon.evaluation.requested ")
+        }
+        #expect(messages.count == 2)
+        for message in messages {
+            #expect(GeofenceTail.parse(message)?["why"] == "dwell_evidence")
+            #expect(message.contains("(dwell evidence)"))
+        }
+    }
+}
+
+extension PolygonMembershipResolverTests {
+    /// Defensive recovery state: the visit exists but its membership is absent. This does not model
+    /// a known field occurrence, because normal pruning and reset remove both together.
+    @Test(arguments: [false, true])
+    func dwellEvidence_whenMembershipMissingAndArrivalIsMarginal_thenWaitsForStrictFix(corroborationAgrees: Bool) async throws {
+        let fixture = try await pendingVisitWithoutMembership()
+        let setup = fixture.setup, geofence = fixture.geofence, enteredAt = fixture.enteredAt, visitId = fixture.visitId
+        let coordinator = try #require(setup.resolver.dwellCoordinator)
+        defer { coordinator.cancelEvidence(for: geofence.id) }
+        let wallClock = clock
+        wallClock.givenNow = enteredAt.addingTimeInterval(70)
+        let marginal = fix(latitude: 0.00155, longitude: 0, accuracy: 20)
+        var requests = 0
+        setup.fixResolver.requestFreshFix = {
+            requests += 1
+            if requests == 1 {
+                setup.fixResolver.handleResolvedFix(marginal)
+            } else if corroborationAgrees {
+                wallClock.givenNow = enteredAt.addingTimeInterval(71)
+                setup.fixResolver.handleResolvedFix(self.fix(latitude: 0.00155, longitude: 0, accuracy: 20))
+            } else {
+                setup.fixResolver.handleRequestFailure()
+            }
+        }
+        await GeofenceDiagnostics.$overrideForTesting.withValue(true) { await coordinator.polygonVerifier?(geofence.id) }
+        try #require(await setup.storage.getPolygonMembership()[geofence.id]?.membership == .inside)
+        let verdicts = setup.logger.debugReceivedInvocations.compactMap { GeofenceTail.parse($0.message) }
+            .filter { $0["ev"] == "polygon.verdict" }
+        try #require(verdicts.last?["cor"] == (corroborationAgrees ? "true" : "false"))
+        try #require(await setup.emitter.snapshot().allSatisfy { $0.transition != .dwell })
+        #expect(await setup.emitter.snapshot().map(\.transition) == [.enter])
+        #expect(await setup.storage.getDwellVisit(geofenceId: geofence.id)?.visitId == visitId)
+        #expect(await setup.storage.getDwellVisit(geofenceId: geofence.id)?.enteredAt == enteredAt)
+
+        wallClock.givenNow = enteredAt.addingTimeInterval(80)
+        let strict = fix(latitude: 0, longitude: 0)
+        setup.fixResolver.requestFreshFix = { setup.fixResolver.handleResolvedFix(strict) }
+        await coordinator.polygonVerifier?(geofence.id)
+        let events = await setup.emitter.snapshot()
+        #expect(events.map(\.transition) == [.enter, .dwell])
+        #expect(events.last?.occurredAt == enteredAt.addingTimeInterval(80))
+        let dwell = try #require(await setup.emitter.dwellContextSnapshot().first)
+        #expect(dwell.visitId == visitId && dwell.enteredAt == enteredAt)
+        #expect(dwell.durationSeconds == 80 && dwell.thresholdSeconds == 60)
+        #expect(dwell.detectionSource == "location_evidence")
+    }
+
+    @Test
+    func dwellEvidence_whenMembershipMissingAndFixIsStrictlyInside_thenQualifiesExistingDueVisit() async throws {
+        let fixture = try await pendingVisitWithoutMembership()
+        let setup = fixture.setup, geofence = fixture.geofence, enteredAt = fixture.enteredAt, visitId = fixture.visitId
+        let coordinator = try #require(setup.resolver.dwellCoordinator)
+        defer { coordinator.cancelEvidence(for: geofence.id) }
+        clock.givenNow = enteredAt.addingTimeInterval(70)
+        let strict = fix(latitude: 0, longitude: 0)
+        setup.fixResolver.requestFreshFix = { setup.fixResolver.handleResolvedFix(strict) }
+        await coordinator.polygonVerifier?(geofence.id)
+        let events = await setup.emitter.snapshot()
+        #expect(events.filter { $0.transition == .enter }.count == 1)
+        #expect(events.filter { $0.transition == .dwell }.map(\.occurredAt) == [clock.now])
+        let dwell = try #require(await setup.emitter.dwellContextSnapshot().first)
+        #expect(dwell.visitId == visitId && dwell.enteredAt == enteredAt)
+        #expect(dwell.durationSeconds == 70 && dwell.thresholdSeconds == 60)
+    }
+
+    private struct PendingVisitFixture {
+        let setup: Setup
+        let geofence: Geofence
+        let enteredAt: Date
+        let visitId: String
+    }
+
+    private func pendingVisitWithoutMembership() async throws -> PendingVisitFixture {
+        clock.givenNow = Date(timeIntervalSince1970: 1000000)
+        let enteredAt = clock.now
+        let setup = await makeSetup(
+            fix: nil, withDwellCoordinator: true, dwellClock: DateUtilGeofenceClock(dateUtil: clock)
+        )
+        let geofence = polygonGeofence(dwellThresholdSeconds: 60)
+        await setup.storage.setCachedGeofences([geofence])
+        let coordinator = try #require(setup.resolver.dwellCoordinator)
+        // Seed strict presence through the real coordinator, without writing a polygon belief.
+        await coordinator.recordInsideEvidence(
+            geofence: geofence, at: enteredAt, source: "location_evidence", beginsNewVisit: true
+        )
+        let visit = try #require(await setup.storage.getDwellVisit(geofenceId: geofence.id))
+        try #require(!visit.emitted && visit.dwellReservation == nil && !visit.awaitsPresenceProof)
+        try #require(visit.enteredAt == enteredAt)
+        try #require(await setup.storage.getPolygonMembership()[geofence.id] == nil)
+        try #require(await setup.emitter.snapshot().isEmpty)
+        return PendingVisitFixture(setup: setup, geofence: geofence, enteredAt: enteredAt, visitId: visit.visitId)
+    }
+}

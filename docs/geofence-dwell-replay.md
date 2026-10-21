@@ -43,8 +43,28 @@ private converter preserves it as `dwellThresholdSeconds`; older captures omit t
 the legacy disabled behavior. The converter has separate synthetic CLI regression tests.
 
 The new dwell cases are synthetic. Existing corpus cases do not yet provide a recorded dwell drive.
-Replay still uses bounded asynchronous settling between boundary releases. Waiting for delayed
-requested answers and assigning simultaneous answers to multiple resolvers remain unmodeled.
-These tests do not
-establish physical device scheduling, suspension, live backend ingestion, reboot or wall-clock-step
+Replay still uses bounded asynchronous settling between boundary releases. Assigning simultaneous
+answers to multiple resolvers remains unmodeled. These tests do not
+establish physical device scheduling, live backend ingestion, reboot or wall-clock-step
 behavior. Existing coordinator tests cover several of those lifecycle rules separately.
+
+## Suspension inputs
+
+An authored scenario can freeze execution independently of backgrounding:
+
+```json
+{"k":"when","at":40,"ev":"app.suspend"}
+{"k":"when","at":200,"ev":"app.resume"}
+```
+
+Wall time and continuous uptime advance while frozen. Timers and pending external answers stay held
+until resume, when overdue work runs at the current time. A held location keeps its original
+timestamp, so releasing it does not make it fresh. `app.background` alone does not freeze execution.
+
+A scenario may end frozen; pending answers remain held. `process.start` and other SDK stimuli while
+frozen are reported as unsupported. The same test process cannot discard an SDK continuation that
+still awaits an answer. Resume before modeling a later process restart.
+
+The polygon cases load real vertices through the API decoder and compare precise inside and outside
+answers after resume. An outside answer inside the enclosing wake circle ends the visit without
+DWELL. A precise inside answer can qualify one event at the fix's time, with the existing visit ID.

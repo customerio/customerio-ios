@@ -40,7 +40,8 @@ final class CoreLocationGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @pr
         readLocationAccess: @escaping @MainActor (CLLocationManager) -> GeofenceLocationAccess = GeofenceLocationAccess.current(of:),
         monitoredRegion: @escaping @MainActor (CLLocationManager, String) -> CLCircularRegion? = { manager, identifier in
             manager.monitoredRegions.first { $0.identifier == identifier } as? CLCircularRegion
-        }
+        },
+        diagnosticRecorder: DwellDiagnosticRecorder? = nil
     ) {
         self.dateUtil = dateUtil
         self.readLocationAccess = readLocationAccess
@@ -50,7 +51,8 @@ final class CoreLocationGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @pr
         self.movementFixResolver = MovementFixResolver(
             logger: logger,
             backgroundTaskRunner: GeofenceBackgroundTime.runner(name: "io.customer.geofence.movement-fix"),
-            dateUtil: dateUtil
+            dateUtil: dateUtil,
+            diagnosticRecorder: diagnosticRecorder
         )
         super.init()
         self.lastObservedAccess = readLocationAccess(manager)
@@ -277,5 +279,8 @@ extension DIGraphShared {
 
 extension CoreLocationGeofenceMonitor: GeofenceFixSelecting {
     @MainActor
-    static let shared = CoreLocationGeofenceMonitor(logger: DIGraphShared.shared.logger)
+    static let shared = CoreLocationGeofenceMonitor(
+        logger: DIGraphShared.shared.logger,
+        diagnosticRecorder: DIGraphShared.shared.dwellDiagnosticRecorder
+    )
 }

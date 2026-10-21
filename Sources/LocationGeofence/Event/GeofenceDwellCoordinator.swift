@@ -49,6 +49,10 @@ final class GeofenceDwellCoordinator {
     let freshFixProvider: (() async -> CLLocation?)?
     let evidenceRetryDelay: TimeInterval
     let maxEvidenceRetryAttempts: Int
+    /// Waits out an evidence deadline or retry. Deadlines are computed on `clock`, continuous uptime in
+    /// production, so the default waits on continuous time where the OS has it; before iOS 16 it keeps
+    /// `Task.sleep(nanoseconds:)`, which may end late across device sleep. Either way it only resumes a
+    /// task, which runs while the app does: it is not an OS execution deadline.
     let waitForEvidence: @MainActor (UInt64) async throws -> Void
     /// The pending evidence request per geofence: the deadline, or a bounded retry after it.
     var deadlineTasks: [String: Task<Void, Never>] = [:]
@@ -60,6 +64,10 @@ final class GeofenceDwellCoordinator {
     /// access that observes nothing in the background cannot span it. Internal for `+Continuity`.
     var foregroundOnlyLostUptime: TimeInterval?
     var polygonVerifier: ((String) async -> Void)?
+    /// The opt-in pending-dwell session; nil unless the host opted in. See `+Collection`.
+    let pendingDwellCollection: PendingDwellCollectionOwner?
+    /// Opt-in dwell diagnostics, shared with the default fix resolver; nil records nothing.
+    let diagnosticRecorder: DwellDiagnosticRecorder?
     /// Every visit timing decision reads this clock.
     let clock: GeofenceClock
     /// The location access now in force; nil when unknown, which never invalidates a visit.
@@ -84,7 +92,11 @@ final class GeofenceDwellCoordinator {
         locationAccess: (@MainActor () -> GeofenceLocationAccess?)? = nil,
         backgroundRefreshAvailable: (@MainActor () -> Bool)? = nil,
         identityTracker: GeofenceIdentityTracker? = nil,
-        waitForEvidence: @escaping @MainActor (UInt64) async throws -> Void = { try await Task.sleep(nanoseconds: $0) }
+        pendingDwellCollection: PendingDwellCollectionOwner? = nil,
+        diagnosticRecorder: DwellDiagnosticRecorder? = nil,
+        waitForEvidence: @escaping @MainActor (UInt64) async throws -> Void = {
+            try await GeofenceContinuousWait.preferringContinuous(nanoseconds: $0)
+        }
     ) {
         self.identityTracker = identityTracker ?? GeofenceIdentityTracker()
         self.storage = storage
@@ -100,12 +112,18 @@ final class GeofenceDwellCoordinator {
         self.evidenceRetryDelay = evidenceRetryDelay
         self.maxEvidenceRetryAttempts = max(0, maxEvidenceRetryAttempts)
         self.waitForEvidence = waitForEvidence
+        self.pendingDwellCollection = pendingDwellCollection
+        self.diagnosticRecorder = diagnosticRecorder
         self.fixResolver = fixResolver ?? MovementFixResolver(
             logger: logger,
             backgroundTaskRunner: GeofenceBackgroundTime.runner(name: "io.customer.geofence.dwell-fix"),
-            desiredAccuracy: kCLLocationAccuracyNearestTenMeters
+            desiredAccuracy: kCLLocationAccuracyNearestTenMeters,
+            diagnosticRecorder: diagnosticRecorder
         )
+        // The recorder judges identity itself, so a change another writer already synced is not cleared again.
+        diagnosticRecorder?.syncIdentity()
         registerForegroundEvaluation()
+        bindPendingDwellCollection()
     }
 
     deinit {
@@ -184,7 +202,8 @@ final class GeofenceDwellCoordinator {
         source: String,
         expectedUserId: String? = nil,
         beginsNewVisit: Bool = false,
-        continuingVisitId: String? = nil
+        continuingVisitId: String? = nil,
+        qualifiesDwell: Bool = true
     ) async {
         await syncClockReference(readClock())
         guard tracksVisit(geofence),
@@ -195,6 +214,10 @@ final class GeofenceDwellCoordinator {
                   beginsNewVisit: beginsNewVisit, continuingVisitId: continuingVisitId
               )
         else { return }
+        // The bookkeeping above still runs, so a marginal arrival starts, proves or continues its
+        // visit at this time. Only a fix whose accuracy disk lies wholly inside proves the stay; a
+        // reservation proven earlier still repeats its delivery.
+        guard qualifiesDwell || visit.dwellReservation != nil else { return }
         await emitDwellIfQualified(
             geofence: geofence, visit: visit, observedAt: observedAt, source: source, userId: userId
         )
@@ -370,31 +393,4 @@ extension GeofenceDwellCoordinator {
             identityLineage: identity?.lineage
         )
     }
-}
-
-extension DIGraphShared {
-    @MainActor
-    var geofenceDwellCoordinator: GeofenceDwellCoordinator {
-        let overridden: GeofenceDwellCoordinator? = getOverriddenInstance()
-        return overridden ?? GeofenceDwellCoordinator.shared
-    }
-}
-
-extension GeofenceDwellCoordinator {
-    @MainActor
-    static let shared = GeofenceDwellCoordinator(
-        storage: DIGraphShared.shared.geofenceStorage,
-        transitionEmitter: DIGraphShared.shared.geofenceEventTracker,
-        contextStore: DIGraphShared.shared.backgroundDeliveryContextStore,
-        logger: DIGraphShared.shared.logger,
-        locationAccess: { DIGraphShared.shared.geofenceMonitor.locationAccess },
-        backgroundRefreshAvailable: {
-            #if canImport(UIKit)
-            UIApplication.shared.backgroundRefreshStatus == .available
-            #else
-            true
-            #endif
-        },
-        identityTracker: DIGraphShared.shared.geofenceIdentityTracker
-    )
 }

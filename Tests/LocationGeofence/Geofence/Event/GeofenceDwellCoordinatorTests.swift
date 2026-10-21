@@ -1643,6 +1643,251 @@ struct GeofenceDwellCoordinatorTests {
         #expect(dwell?.context.durationSeconds == Int(observedAt.timeIntervalSince1970) - enteredSeconds)
     }
 
+    /// Pulse-style one-hour polygon visit under the opt-in session. Collection must outlast the last
+    /// forced proof request the coordinator can make for the visit, and no re-arm or copied ENTER may
+    /// move its cap past the one fixed when the visit was recorded. Nothing here proves presence.
+    @Test
+    func pendingCollection_whenHourVisitRearms_thenCollectsThroughLastRequestAndStopsAtEntryCap() async throws {
+        let probe = PulseProbe()
+        let rig = try await makeCollectionRig(dwellThresholdSeconds: 3600, probe: probe)
+        defer { rig.cancelWaits() }
+        let setup = rig.setup, owner = rig.owner, manager = rig.manager
+        let coordinator = setup.coordinator, id = setup.geofence.id, enteredAt = rig.start
+        // Never proves presence: each forced request waits out its 10 s fix timeout.
+        coordinator.polygonVerifier = { @MainActor fenceId in
+            probe.verified.append(fenceId)
+            try? await rig.scheduler.sleep(nanoseconds: 10 * 1000000000)
+        }
+        // Recording uptime + 3600 s threshold + 3 retries of 60 s + 4 requests of 10 s.
+        let capNanos = UInt64(rig.clock.uptime + 3820) * 1000000000
+
+        await coordinator.handleBoundary(geofence: setup.geofence, transition: .enter, occurredAt: enteredAt)
+        try await rig.step(probe: probe, to: 0, waits: 1, verified: 0, next: 3600)
+        let visitId = try #require(await setup.storage.getDwellVisit(geofenceId: id)?.visitId)
+        #expect(owner.isRunning)
+        #expect(owner.leases[id]?.deadline == capNanos)
+        #expect(rig.collectionScheduler.nextDeadline == 3820)
+
+        // Half way: a foreground re-arm, then the OS redelivering the ENTER that began this visit.
+        rig.advance(to: 1800)
+        await coordinator.rearmPendingEvidence(includePolygons: true)
+        await coordinator.handleBoundary(geofence: setup.geofence, transition: .enter, occurredAt: enteredAt)
+        // Both re-arms wait the remaining 1800 s, keeping the original 3600 deadline.
+        try await rig.step(probe: probe, to: 1800, waits: 3, verified: 0, next: 3600)
+        #expect(await setup.storage.getDwellVisit(geofenceId: id)?.visitId == visitId)
+        #expect(owner.leases[id]?.visit.visitId == visitId)
+        #expect(owner.leases[id]?.deadline == capNanos)
+        #expect(rig.collectionScheduler.nextDeadline == 3820)
+        #expect(manager.starts == 1)
+
+        try await rig.step(probe: probe, to: 3600, waits: 3, verified: 1, next: 3610)
+        try await rig.step(probe: probe, to: 3610, waits: 4, verified: 1, next: 3670)
+        try await rig.step(probe: probe, to: 3670, waits: 4, verified: 2, next: 3680)
+        try await rig.step(probe: probe, to: 3680, waits: 5, verified: 2, next: 3740)
+        try await rig.step(probe: probe, to: 3740, waits: 5, verified: 3, next: 3750)
+        try await rig.step(probe: probe, to: 3750, waits: 6, verified: 3, next: 3810)
+        try await rig.step(probe: probe, to: 3810, waits: 6, verified: 4, next: 3820)
+        // The last request began at 3810 and may wait until 3820, so collection must still run.
+        #expect(owner.isRunning)
+        #expect(rig.collectionScheduler.nextDeadline == 3820)
+        #expect(manager.stops == 0)
+
+        rig.advance(to: 3820)
+        try #require(await settleOnMain {
+            coordinator.deadlineTasks[id] == nil && rig.scheduler.pendingCount == 0 &&
+                !owner.isRunning && rig.collectionSettled
+        }, "retries must exhaust and collection stop at the entry cap")
+        #expect(manager.starts == 1)
+        #expect(manager.stops == 1)
+        #expect(probe.verified == Array(repeating: id, count: 4))
+        #expect(probe.waits == [3600, 1800, 1800, 60, 60, 60].map { UInt64($0) * 1000000000 })
+        #expect(await setup.emitter.dwells().isEmpty)
+        #expect(await setup.storage.getDwellVisit(geofenceId: id)?.visitId == visitId)
+    }
+
+    /// Two pending polygon visits share one opted-in session. Each EXIT releases only its own visit's
+    /// lease: the first departure leaves the other visit collecting toward its own cap, the last stops it.
+    @Test
+    func pendingCollection_whenTwoPolygonVisitsExitInTurn_thenSessionRunsUntilTheLastEnds() async throws {
+        let rig = try await makeCollectionRig()
+        defer { rig.cancelWaits() }
+        let first = rig.setup.geofence, second = await addSecondPolygon(to: rig.setup)
+        let coordinator = rig.setup.coordinator
+        await coordinator.handleBoundary(geofence: first, transition: .enter, occurredAt: rig.at(0))
+        rig.advance(to: 10)
+        await coordinator.handleBoundary(geofence: second, transition: .enter, occurredAt: rig.at(10))
+        // One session; its expiry wait is the earlier cap: entry + 60 s threshold + 220 s grace.
+        try await rig.settle(running: true, nextExpiry: 280)
+        let secondVisit = try #require(await rig.setup.storage.getDwellVisit(geofenceId: second.id))
+        let secondLease = try #require(rig.owner.leases[second.id])
+        #expect(secondLease.visit.visitId == secondVisit.visitId)
+        #expect(rig.owner.leases[first.id] != nil)
+
+        rig.advance(to: 20)
+        await coordinator.handleBoundary(geofence: first, transition: .exit, occurredAt: rig.at(20))
+        // The other visit keeps its own lease and cap, which now sets the expiry.
+        try await rig.settle(running: true, nextExpiry: 290)
+        #expect(rig.owner.leases[first.id] == nil)
+        #expect(rig.owner.leases[second.id]?.visit.visitId == secondVisit.visitId)
+        #expect(rig.owner.leases[second.id]?.deadline == secondLease.deadline)
+        #expect(rig.manager.starts == 1)
+        #expect(rig.manager.stops == 0)
+
+        rig.advance(to: 30)
+        await coordinator.handleBoundary(geofence: second, transition: .exit, occurredAt: rig.at(30))
+        try await rig.settle(running: false)
+        #expect(rig.owner.leases.isEmpty)
+        #expect(rig.manager.starts == 1)
+        #expect(rig.manager.stops == 1)
+    }
+
+    /// The refresh's own reconcile drops a lease as soon as the catalog it persisted stops describing
+    /// the visit: replaced geometry, then an unregistered fence. A visit the catalog still describes
+    /// keeps the session; once no lease is left it stops.
+    @Test
+    func pendingCollection_whenRefreshRevisesThenUnregistersFences_thenDropsEachLeaseAtOnce() async throws {
+        let rig = try await makeCollectionRig()
+        defer { rig.cancelWaits() }
+        let first = rig.setup.geofence, second = await addSecondPolygon(to: rig.setup)
+        let coordinator = rig.setup.coordinator, storage = rig.setup.storage
+        let revisedFirst = Self.pendingPolygon(first.id, apex: LocationData(latitude: 1, longitude: 1))
+        try #require(revisedFirst.dwellRevision != first.dwellRevision)
+        await coordinator.handleBoundary(geofence: first, transition: .enter, occurredAt: rig.at(0))
+        rig.advance(to: 10)
+        await coordinator.handleBoundary(geofence: second, transition: .enter, occurredAt: rig.at(10))
+        try await rig.settle(running: true, nextExpiry: 280)
+        let secondVisitId = try #require(rig.owner.leases[second.id]?.visit.visitId)
+
+        await storage.setCachedGeofences([revisedFirst, second])
+        coordinator.reconcileCollection(geofences: [revisedFirst, second], registeredIds: [first.id, second.id])
+        // Read before any await, so no later storage read can be what dropped it.
+        #expect(rig.owner.leases[first.id] == nil)
+        #expect(rig.owner.leases[second.id]?.visit.visitId == secondVisitId)
+        #expect(rig.owner.isRunning)
+        try await rig.settle(running: true, nextExpiry: 290)
+        #expect(rig.manager.stops == 0)
+
+        await storage.setCachedGeofences([revisedFirst])
+        await storage.recordRegistration(
+            center: LocationData(latitude: 0.5, longitude: 0.5), businessIds: [first.id]
+        )
+        coordinator.reconcileCollection(geofences: [revisedFirst], registeredIds: [first.id])
+        #expect(rig.owner.leases.isEmpty)
+        #expect(!rig.owner.isRunning)
+        #expect(rig.manager.stops == 1)
+        try await rig.settle(running: false)
+        #expect(rig.manager.starts == 1)
+    }
+
+    /// A reserved dwell only repeats its delivery, so collection stops at the reservation: while the
+    /// outbox write is still suspended, and still after it fails and leaves the visit unemitted.
+    @Test
+    func pendingCollection_whenDwellReservedButDeliveryHangsThenFails_thenStopsAtReservation() async throws {
+        let suspending = SuspendingDwellEmitter()
+        let rig = try await makeCollectionRig(transitionEmitter: suspending)
+        defer { rig.cancelWaits() }
+        let geofence = rig.setup.geofence, coordinator = rig.setup.coordinator
+        await coordinator.handleBoundary(geofence: geofence, transition: .enter, occurredAt: rig.at(0))
+        try await rig.settle(running: true, nextExpiry: 280)
+
+        // Inside evidence a polygon pass already validated, past the 60 s threshold. Only the clock
+        // moves, so the deadline's own wait stays parked and adds no request.
+        let observedAt = rig.at(61)
+        rig.clock.advance(to: observedAt)
+        let emission = Task { @MainActor in
+            await coordinator.recordInsideEvidence(geofence: geofence, at: observedAt, source: "location_evidence")
+        }
+        await suspending.waitUntilSuspended()
+        #expect(!rig.owner.isRunning)
+        #expect(rig.owner.leases.isEmpty)
+        #expect(rig.manager.stops == 1)
+
+        await suspending.resume(returning: false)
+        await emission.value
+        let visit = try #require(await rig.setup.storage.getDwellVisit(geofenceId: geofence.id))
+        #expect(visit.dwellReservation != nil)
+        #expect(!visit.emitted)
+        try await rig.settle(running: false)
+        #expect(rig.manager.starts == 1)
+        #expect(rig.manager.stops == 1)
+    }
+
+    @Test
+    func diagnostics_whenIdentityCleanupCancelsDeadline_thenRetiredFenceDoesNotReappear() async throws {
+        let clock = ManualGeofenceClock(), scheduler = ReplayDwellScheduler()
+        let history = makeDiagnosticHistory(clock: clock)
+        defer {
+            scheduler.cancelAll()
+            try? FileManager.default.removeItem(at: history.directory)
+        }
+        let setup = await makeSetup(
+            clock: clock, diagnosticRecorder: history.recorder, observeIdentity: true,
+            waitForEvidence: { @MainActor delay in try await scheduler.sleep(nanoseconds: delay) }
+        )
+        history.identity.tracker = setup.coordinator.identityTracker
+        await setup.coordinator.handleBoundary(geofence: setup.geofence, transition: .enter, occurredAt: clock.wall)
+        await history.recorder.drain()
+        let scheduled = try #require(await history.journal.snapshot())
+        #expect(scheduled.contains { $0.event == .deadlineScheduled && $0.fenceId == setup.geofence.id })
+
+        setup.coordinator.contextStore.setUserId("user-2")
+        await setup.coordinator.identityChanged()
+        await history.recorder.drain()
+
+        #expect(await setup.storage.getDwellVisit(geofenceId: setup.geofence.id) == nil)
+        #expect(await history.journal.snapshot() == [], "cancelling the retired visit must not repopulate its erased history")
+    }
+
+    @Test
+    func diagnostics_whenOutboxCompletesAfterIdentityChange_thenOldEmissionStaysErased() async throws {
+        let clock = ManualGeofenceClock(), scheduler = ReplayDwellScheduler()
+        let history = makeDiagnosticHistory(clock: clock), emitter = SuspendingDwellEmitter()
+        defer {
+            scheduler.cancelAll()
+            try? FileManager.default.removeItem(at: history.directory)
+        }
+        let setup = await makeSetup(
+            transitionEmitter: emitter, clock: clock, diagnosticRecorder: history.recorder, observeIdentity: true,
+            waitForEvidence: { @MainActor delay in try await scheduler.sleep(nanoseconds: delay) }
+        )
+        history.identity.tracker = setup.coordinator.identityTracker
+        let coordinator = setup.coordinator
+        await coordinator.handleBoundary(geofence: setup.geofence, transition: .enter, occurredAt: clock.wall)
+        clock.advance(to: clock.wall.addingTimeInterval(61))
+        let emission = Task { @MainActor in
+            await coordinator.recordInsideEvidence(geofence: setup.geofence, at: clock.wall, source: "location_evidence")
+        }
+        await emitter.waitUntilSuspended()
+        coordinator.contextStore.setUserId("user-2")
+        await coordinator.identityChanged()
+        await history.recorder.drain()
+        #expect(await history.journal.snapshot() == [], "the retired deadline's cancellation must stay erased")
+
+        // The old outbox row committed before the switch, but its completion reaches the caller later.
+        await emitter.resume(returning: true)
+        await emission.value
+        await history.recorder.drain()
+        #expect(await history.journal.snapshot() == [], "the old delivery's completion must retain its original diagnostic generation")
+    }
+
+    private struct DiagnosticHistory {
+        let journal: DwellDiagnosticJournal
+        let recorder: DwellDiagnosticRecorder
+        let directory: URL
+        let identity: DiagnosticIdentityProbe
+    }
+
+    private func makeDiagnosticHistory(clock: GeofenceClock) -> DiagnosticHistory {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        let journal = DwellDiagnosticJournal(directory: directory, isEnabled: { true })
+        let identity = DiagnosticIdentityProbe()
+        let recorder = DwellDiagnosticRecorder(
+            journal: journal, isEnabled: true, now: { clock.read().uptime },
+            identityProvider: { identity.tracker?.currentIdentity }
+        )
+        return DiagnosticHistory(journal: journal, recorder: recorder, directory: directory, identity: identity)
+    }
+
     private func makeSetup(
         emitter: DwellEmitterSpy = DwellEmitterSpy(),
         transitionEmitter: GeofenceTransitionEmitting? = nil,
@@ -1660,7 +1905,11 @@ struct GeofenceDwellCoordinatorTests {
         directory: URL? = nil,
         clock: GeofenceClock = SystemGeofenceClock(),
         locationAccess: (@MainActor () -> GeofenceLocationAccess?)? = nil,
-        fileManager: FileManager = .default
+        fileManager: FileManager = .default,
+        pendingDwellCollection: PendingDwellCollectionOwner? = nil,
+        diagnosticRecorder: DwellDiagnosticRecorder? = nil,
+        observeIdentity: Bool = false,
+        waitForEvidence: @escaping @MainActor (UInt64) async throws -> Void = { try await Task.sleep(nanoseconds: $0) }
     ) async -> Setup {
         let directory = directory ?? FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         let storage = GeofenceStorage(fileManager: fileManager, directoryURL: directory)
@@ -1699,7 +1948,11 @@ struct GeofenceDwellCoordinatorTests {
             evidenceRetryDelay: evidenceRetryDelay,
             maxEvidenceRetryAttempts: maxEvidenceRetryAttempts,
             clock: clock,
-            locationAccess: locationAccess
+            locationAccess: locationAccess,
+            identityTracker: observeIdentity ? GeofenceIdentityTracker(contextStore: contextStore) : nil,
+            pendingDwellCollection: pendingDwellCollection,
+            diagnosticRecorder: diagnosticRecorder,
+            waitForEvidence: waitForEvidence
         )
         return Setup(
             storage: storage, emitter: emitter, coordinator: coordinator, geofence: geofence, directory: directory,
@@ -1714,6 +1967,110 @@ struct GeofenceDwellCoordinatorTests {
         let geofence: Geofence
         let directory: URL
         let clock: GeofenceClock
+    }
+
+    /// A coordinator whose opted-in pending-dwell session, evidence waits and clock the test drives.
+    /// No fix provider or polygon verifier is wired, so nothing here proves presence on its own.
+    private func makeCollectionRig(
+        transitionEmitter: GeofenceTransitionEmitting? = nil,
+        dwellThresholdSeconds: Int = 60,
+        probe: PulseProbe? = nil
+    ) async throws -> CollectionRig {
+        let clock = ManualGeofenceClock()
+        let scheduler = ReplayDwellScheduler(), collectionScheduler = ReplayDwellScheduler()
+        let manager = FakePendingDwellManager()
+        let optInInfo: [String: Any] = [PendingDwellCollectionOptIn.key: true, "UIBackgroundModes": ["location"]]
+        let owner = try #require(PendingDwellCollectionOwner.ifOptedIn(
+            PendingDwellCollectionOptIn(infoValue: { optInInfo[$0] }),
+            makeManager: { manager },
+            sleep: { @MainActor delay in try await collectionScheduler.sleep(nanoseconds: delay) }
+        ))
+        let setup = await makeSetup(
+            transitionEmitter: transitionEmitter,
+            dwellThresholdSeconds: dwellThresholdSeconds,
+            clock: clock,
+            locationAccess: { GeofenceLocationAccess(delivery: .background, fullAccuracy: true) },
+            pendingDwellCollection: owner,
+            waitForEvidence: { @MainActor delay in
+                probe?.waits.append(delay)
+                try await scheduler.sleep(nanoseconds: delay)
+            }
+        )
+        return CollectionRig(
+            setup: setup, owner: owner, manager: manager, clock: clock,
+            scheduler: scheduler, collectionScheduler: collectionScheduler, start: clock.wall
+        )
+    }
+
+    /// Caches and registers a second pending polygon beside `setup.geofence`, as a refresh would.
+    private func addSecondPolygon(to setup: Setup) async -> Geofence {
+        let second = Self.pendingPolygon("polygon-b")
+        await setup.storage.setCachedGeofences([setup.geofence, second])
+        await setup.storage.recordRegistration(
+            center: LocationData(latitude: 0.5, longitude: 0.5), businessIds: [setup.geofence.id, second.id]
+        )
+        return second
+    }
+
+    /// `makeSetup`'s polygon with another `id` and third vertex; only those can change its revision.
+    private static func pendingPolygon(
+        _ id: String, apex: LocationData = LocationData(latitude: 1, longitude: 0)
+    ) -> Geofence {
+        Geofence(
+            id: id, latitude: 0.5, longitude: 0.5, radius: 100, name: "Campus", transitionTypes: [.enter, .exit],
+            lastUpdated: Date(timeIntervalSince1970: 1),
+            vertices: [LocationData(latitude: 0, longitude: 0), LocationData(latitude: 0, longitude: 1), apex],
+            dwellThresholdSeconds: 60
+        )
+    }
+
+    /// What `makeCollectionRig` built. Moments are seconds after it was built, on every clock.
+    @MainActor
+    private struct CollectionRig {
+        let setup: Setup
+        let owner: PendingDwellCollectionOwner
+        let manager: FakePendingDwellManager
+        let clock: ManualGeofenceClock
+        let scheduler: ReplayDwellScheduler
+        let collectionScheduler: ReplayDwellScheduler
+        let start: Date
+
+        func at(_ moment: TimeInterval) -> Date {
+            start.addingTimeInterval(moment)
+        }
+
+        func advance(to moment: TimeInterval) {
+            clock.advance(to: at(moment))
+            scheduler.advance(to: moment)
+            collectionScheduler.advance(to: moment)
+        }
+
+        /// Running with its one expiry wait parked at `nextExpiry`, or stopped with none parked, so no
+        /// collection reconcile is still in flight.
+        func settle(running: Bool, nextExpiry: TimeInterval? = nil) async throws {
+            try #require(await settleOnMain {
+                owner.isRunning == running && collectionScheduler.pendingCount == (running ? 1 : 0)
+                    && (nextExpiry == nil || collectionScheduler.nextDeadline == nextExpiry)
+            }, "collection did not settle: running=\(running) nextExpiry=\(String(describing: nextExpiry))")
+        }
+
+        /// Running only while its one expiry wait is parked.
+        var collectionSettled: Bool {
+            owner.isRunning == (collectionScheduler.pendingCount == 1)
+        }
+
+        func step(probe: PulseProbe, to moment: TimeInterval, waits: Int, verified: Int, next: TimeInterval) async throws {
+            advance(to: moment)
+            try #require(await settleOnMain {
+                probe.waits.count == waits && probe.verified.count == verified &&
+                    scheduler.pendingCount == 1 && scheduler.nextDeadline == next && collectionSettled
+            }, "evidence chain stalled at t=\(moment)")
+        }
+
+        func cancelWaits() {
+            scheduler.cancelAll()
+            collectionScheduler.cancelAll()
+        }
     }
 
     private func makeOutbox() -> PendingGeofenceMetricStore {
@@ -1816,6 +2173,32 @@ private actor SuspendingDwellEmitter: GeofenceTransitionEmitting {
         pending?.resume(returning: persisted)
         pending = nil
     }
+}
+
+/// Stands in for the session's location manager: counts start and stop, delivers nothing.
+private final class FakePendingDwellManager: NSObject, PendingDwellLocationManaging {
+    var onActivity: (@MainActor (PendingDwellSessionCallback) -> Void)?
+    var desiredAccuracy: CLLocationAccuracy = kCLLocationAccuracyBest
+    var distanceFilter: CLLocationDistance = kCLDistanceFilterNone
+    var allowsBackgroundLocationUpdates = false
+    var pausesLocationUpdatesAutomatically = true
+    private(set) var starts = 0
+    private(set) var stops = 0
+
+    func startUpdatingLocation() {
+        starts += 1
+    }
+
+    func stopUpdatingLocation() {
+        stops += 1
+    }
+}
+
+/// What the coordinator's injected waits and polygon verifier saw.
+@MainActor
+private final class PulseProbe {
+    var waits: [UInt64] = []
+    var verified: [String] = []
 }
 
 private actor DwellEmitterSpy: GeofenceTransitionEmitting {
@@ -1965,4 +2348,9 @@ private final class BlockingDwellReadFileManager: FileManager, @unchecked Sendab
         }
         return super.fileExists(atPath: path)
     }
+}
+
+@MainActor
+private final class DiagnosticIdentityProbe {
+    var tracker: GeofenceIdentityTracker?
 }

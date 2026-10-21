@@ -48,9 +48,10 @@ final class ReplayBoundaryGate {
 
     // MARK: - Parking
 
-    /// A past moment answers immediately, which also keeps `advance` from looping.
+    /// A past moment answers immediately, which also keeps `advance` from looping. A frozen process
+    /// receives nothing: while suspended every answer is held, even an overdue one.
     func park(at: TimeInterval, what: String, answer: @escaping () async -> Void) async {
-        guard at > virtualNow else {
+        guard isSuspended || at > virtualNow else {
             await answer()
             return
         }
@@ -73,7 +74,8 @@ final class ReplayBoundaryGate {
         settle: () async -> Void
     ) async {
         var guardCount = 0
-        while true {
+        // Suspended: drive time still reaches `target`, but nothing is answered into a frozen process.
+        while !isSuspended {
             let next = parked.min(by: { ($0.at, $0.id) < ($1.at, $1.id) })
             guard let moment = [next?.at, nextWakeup()].compactMap({ $0 }).filter({ $0 <= target }).min() else { break }
             guard guardCount < Self.maxReleaseRounds else {
@@ -95,6 +97,11 @@ final class ReplayBoundaryGate {
         nextWakeup: () -> TimeInterval? = { nil },
         settle: () async throws -> Void
     ) async rethrows {
+        // Frozen: nothing wakes the process to receive these, so name them instead of answering.
+        guard !isSuspended else {
+            abandonedAtEnd = parked.map { "\($0.what) (held: process suspended)" }
+            return
+        }
         var abandoned: [String] = []
         var guardCount = 0
         while let next = parked.min(by: { ($0.at, $0.id) < ($1.at, $1.id) }) {
@@ -113,6 +120,24 @@ final class ReplayBoundaryGate {
     }
 
     var hasParked: Bool { !parked.isEmpty }
+    /// What `settleBoundaries` may answer now. Counting held answers would spin it to its round limit.
+    var hasReleasable: Bool { !isSuspended && !parked.isEmpty }
+
+    // MARK: - Suspension
+
+    /// The OS froze the process: drive time moves, no answer is delivered.
+    private(set) var isSuspended = false
+
+    func suspend() {
+        isSuspended = true
+    }
+
+    /// Answers that came due while frozen arrive now, in recorded order. The clock never rewinds, so
+    /// none is dated to its recorded moment; later answers stay parked for `advance`.
+    func resume(setClock: (TimeInterval) -> Void, settle: () async -> Void) async {
+        isSuspended = false
+        await advance(to: virtualNow, setClock: setClock, settle: settle)
+    }
 
     func reset() {
         parked.removeAll()
@@ -120,6 +145,7 @@ final class ReplayBoundaryGate {
         fetchAnswers.removeAll()
         abandonedAtEnd = []
         virtualNow = 0
+        isSuspended = false
     }
 
     // MARK: - Fallbacks

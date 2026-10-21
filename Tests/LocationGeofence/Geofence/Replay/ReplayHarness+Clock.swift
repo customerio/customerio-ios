@@ -43,6 +43,33 @@ extension ReplayHarness {
         await advance(to: at) { try? await ReplayHarness.letAsyncWorkRun() }
     }
 
+    // MARK: - Execution suspension
+
+    /// A deterministic freeze, not a model of when the OS wakes the app. `app.background` never
+    /// freezes: a recorded drive backgrounds without suspending.
+    var isExecutionSuspended: Bool { gate.isSuspended }
+
+    func suspendExecution() {
+        dwellScheduler.suspendExecution()
+        gate.suspend()
+    }
+
+    /// Replies that came due while frozen arrive first, at the thaw moment; overdue deadlines then run
+    /// and can see them. The scheduler stays frozen while the gate delivers, so the order is fixed.
+    /// Real OS ordering is not modelled.
+    func resumeExecution() async {
+        guard isExecutionSuspended else { return }
+        await gate.resume(setClock: { [weak self] moment in self?.setClock(moment) }) {
+            for _ in 0 ..< 3 {
+                try? await ReplayHarness.letAsyncWorkRun()
+            }
+        }
+        dwellScheduler.resumeExecution()
+        for _ in 0 ..< 3 {
+            try? await ReplayHarness.letAsyncWorkRun()
+        }
+    }
+
     /// `quietRounds` resets on every park, so without this bound a park chain would hang, not fail.
     static let maxSettleRounds = 256
 
@@ -60,7 +87,8 @@ extension ReplayHarness {
                 return
             }
             try await ReplayHarness.letAsyncWorkRun()
-            guard gate.hasParked else {
+            // Held answers count as quiet: a frozen process has nothing to settle.
+            guard gate.hasReleasable else {
                 quietRounds += 1
                 continue
             }

@@ -13,7 +13,13 @@ final class ReplayDwellScheduler {
     private var sequence = 0
     private var stopped = false
     private(set) var now: TimeInterval = 0
-    var nextDeadline: TimeInterval? { waiters.values.map(\.deadline).min() }
+    /// The OS froze the process. Drive time still moves; no deadline runs or is advertised.
+    private(set) var isExecutionSuspended = false
+    /// Nil while frozen, so a boundary gate cannot spin advancing toward a deadline that cannot run.
+    var nextDeadline: TimeInterval? {
+        isExecutionSuspended ? nil : waiters.values.map(\.deadline).min()
+    }
+
     var pendingCount: Int { waiters.count }
 
     func sleep(nanoseconds: UInt64) async throws {
@@ -38,6 +44,22 @@ final class ReplayDwellScheduler {
 
     func advance(to moment: TimeInterval) {
         now = max(now, moment)
+        releaseDue()
+    }
+
+    func suspendExecution() {
+        isExecutionSuspended = true
+    }
+
+    /// Deadlines that passed while frozen run now and observe the resume time, never their old
+    /// deadline. Resuming leaves a stopped process dead: `stop` cancelled its waiters for good.
+    func resumeExecution() {
+        isExecutionSuspended = false
+        releaseDue()
+    }
+
+    private func releaseDue() {
+        guard !isExecutionSuspended else { return }
         let due = waiters.filter { $0.value.deadline <= now }.sorted {
             ($0.value.deadline, $0.value.sequence) < ($1.value.deadline, $1.value.sequence)
         }

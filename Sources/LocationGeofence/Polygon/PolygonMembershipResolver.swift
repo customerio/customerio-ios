@@ -35,7 +35,8 @@ final class PolygonMembershipResolver {
         dateUtil: DateUtil = DIGraphShared.shared.dateUtil,
         fixResolver: MovementFixResolver? = nil,
         notificationCenter: NotificationCenter = .default,
-        dwellCoordinator: GeofenceDwellCoordinator? = nil
+        dwellCoordinator: GeofenceDwellCoordinator? = nil,
+        diagnosticRecorder: DwellDiagnosticRecorder? = nil
     ) {
         self.storage = storage
         self.transitionEmitter = transitionEmitter
@@ -49,13 +50,15 @@ final class PolygonMembershipResolver {
             logger: logger,
             backgroundTaskRunner: GeofenceBackgroundTime.runner(name: "io.customer.geofence.polygon-fix"),
             dateUtil: dateUtil,
-            desiredAccuracy: kCLLocationAccuracyNearestTenMeters
+            desiredAccuracy: kCLLocationAccuracyNearestTenMeters,
+            diagnosticRecorder: diagnosticRecorder
         )
         registerForegroundEvaluation()
+        // Its own reason, not `.foreground`: a dwell's evidence request can come from a deadline in any app state.
         dwellCoordinator?.polygonVerifier = { [weak self] geofenceId in
             guard let self else { return }
             _ = await self.evaluateMembership(
-                geofenceIds: [geofenceId], reason: .foreground, requiresFreshFix: true
+                geofenceIds: [geofenceId], reason: .dwellEvidence, requiresFreshFix: true
             )
         }
     }

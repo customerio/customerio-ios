@@ -386,6 +386,120 @@ struct DwellReplayTests {
         }
     }
 
+    @Test(arguments: [true, false])
+    @available(iOS 17.0, *)
+    func suspend_whenThresholdPassesWhileFrozen_thenThawNeedsFreshProof(inside: Bool) async throws {
+        try await withVisit(fixes: []) { harness in
+            // After the thaw: the provider drops an unrequested answer the clock has already passed.
+            harness.fixes.loadRequestedAnswers([
+                harness.pulledFix(latitude: inside ? 10 : 10.0151, longitude: 20, accuracy: 10, age: 0.2, at: 200.5)
+            ])
+            await harness.advance(to: 60)
+            let requests = harness.fixRequestCount
+            harness.suspendExecution()
+            await harness.advance(to: 200)
+            try await harness.settleBoundaries()
+            #expect(harness.now == harness.epoch.addingTimeInterval(200), "drive time must move while frozen")
+            #expect(harness.fixRequestCount == requests, "a frozen process ran its dwell deadline")
+            #expect(dwells(harness).isEmpty)
+            await harness.resumeExecution()
+            #expect(harness.fixRequestCount == requests + 1, "the overdue deadline must run at the thaw")
+            #expect(dwells(harness).isEmpty, "the thaw is not evidence; the reply has not arrived")
+            await harness.advance(to: 200.5)
+            if inside {
+                let dwell = try #require(dwells(harness).only)
+                #expect(abs(dwell.timestamp.timeIntervalSince(harness.epoch) - 200.3) < 0.001, "dated by the proof fix")
+                #expect(dwell.dwellDurationSeconds == 170)
+            } else {
+                #expect(dwells(harness).isEmpty)
+                #expect(await harness.storedVisit(fence: "A") == nil, "fresh outside proof ends the visit")
+            }
+        }
+    }
+
+    @Test
+    @available(iOS 17.0, *)
+    func suspend_whenReplyIsInFlight_thenHeldUntilThawAndTooOldToDwell() async throws {
+        try await withVisit(fixes: []) { harness in
+            harness.fixes.loadRequestedAnswers([
+                harness.pulledFix(latitude: 10, longitude: 20, accuracy: 10, age: 0, at: 95)
+            ])
+            await harness.advance(to: 92)
+            try #require(harness.fixRequestCount == 1, "the deadline's request must be in flight")
+            // Probes park on the same gate as fetch and requested-fix answers.
+            var answeredAt: [String: Date] = [:]
+            await harness.gate.park(at: 95, what: "in flight") { answeredAt["in flight"] = harness.now }
+            harness.suspendExecution()
+            await harness.advance(to: 300)
+            await harness.gate.park(at: 250, what: "overdue") { answeredAt["overdue"] = harness.now }
+            try await harness.settleBoundaries()
+            #expect(answeredAt.isEmpty, "a frozen process received a reply")
+            #expect(harness.dwellCoordinator.fixResolver.latestFix == nil, "the recorded reply reached a frozen process")
+            await harness.resumeExecution()
+            let thaw = harness.epoch.addingTimeInterval(300)
+            #expect(answeredAt == ["in flight": thaw, "overdue": thaw], "held replies arrive at the thaw, not their recorded moment")
+            #expect(harness.now == thaw, "the thaw rewound the clock")
+            #expect(dwells(harness).isEmpty, "a fix measured at 95 is not proof at 300")
+            #expect(harness.dwellScheduler.nextDeadline == 360, "the overdue timeout runs at the thaw, so the retry starts there")
+            await harness.advance(to: 400)
+            #expect(dwells(harness).isEmpty)
+            #expect(await harness.storedVisit(fence: "A") != nil, "old inside evidence must not end the visit")
+        }
+    }
+
+    /// The polygon twin of the frozen-threshold case. The outside answer is beyond the square but
+    /// inside its enclosing circle, so a circle check would dwell and only the real shape refuses it.
+    @Test(arguments: [true, false])
+    @available(iOS 17.0, *)
+    func suspend_whenPolygonThresholdPassesWhileFrozen_thenThawNeedsFreshShapeProof(inside: Bool) async throws {
+        try await withVisit(fixes: [], polygon: true) { harness in
+            let visit = try #require(await harness.storedVisit(fence: "A"))
+            let requests = harness.fixRequestCount
+            // Loaded after entry, so the entry pass kept its synthetic answer and this one is the thaw's.
+            harness.fixes.loadRequestedAnswers([
+                harness.pulledFix(latitude: inside ? 10 : 10.0015, longitude: 20, accuracy: 10, age: 0.2, at: 200.5)
+            ])
+            await harness.advance(to: 40)
+            try #require(harness.fixRequestCount == requests, "an earlier request would take the thaw's answer")
+            harness.suspendExecution()
+            await harness.advance(to: 200)
+            try await harness.settleBoundaries()
+            #expect(harness.now == harness.epoch.addingTimeInterval(200), "drive time must move while frozen")
+            #expect(harness.fixRequestCount == requests, "a frozen process ran its dwell deadline")
+            #expect(dwells(harness).isEmpty)
+            await harness.resumeExecution()
+            #expect(
+                await settleOnMain { harness.fixRequestCount == requests + 1 },
+                "the overdue deadline must request polygon proof at the thaw"
+            )
+            #expect(dwells(harness).isEmpty, "the thaw is not evidence; the reply has not arrived")
+            await harness.advance(to: 200.5)
+            try #require(await settleOnMain {
+                guard let fix = harness.resolver.fixResolver.latestFix else { return false }
+                return abs(fix.timestamp.timeIntervalSince(harness.epoch) - 200.3) < 0.001
+            }, "the thaw's proof must reach the polygon resolver")
+            if inside {
+                try #require(await settleOnMain { dwells(harness).count == 1 })
+                let dwell = try #require(dwells(harness).only)
+                #expect(dwell.visitId == visit.visitId)
+                #expect(dwell.enteredAt == harness.epoch.addingTimeInterval(30), "entry dated by the entry fix")
+                #expect(abs(dwell.timestamp.timeIntervalSince(harness.epoch) - 200.3) < 0.001, "dated by the proof fix")
+                #expect(dwell.dwellDurationSeconds == 170)
+            }
+            // Past every evidence retry: one DWELL for the visit, none from a fix outside the shape.
+            await harness.advance(to: 400)
+            #expect(dwells(harness).count == (inside ? 1 : 0))
+            if inside {
+                #expect(await harness.storedVisit(fence: "A")?.emitted == true, "the visit keeps its DWELL marker")
+            } else {
+                #expect(await harness.storedVisit(fence: "A") == nil, "fresh outside-polygon proof ends the visit")
+                let exits = harness.deliveredMetrics.filter { $0.transition == .exit }
+                #expect(exits.count <= 1, "an outside proof ends the visit at most once")
+                #expect(exits.allSatisfy { $0.visitId == visit.visitId })
+            }
+        }
+    }
+
     @available(iOS 17.0, *)
     private func dwells(_ harness: ReplayHarness) -> [PendingGeofenceMetric] {
         harness.deliveredMetrics.filter { $0.transition == .dwell }
@@ -403,12 +517,19 @@ struct DwellReplayTests {
         }
     }
 
+    /// Fence A as a square ~110 m from centre to each edge: one closed ring, longitude first, as the
+    /// API sends it. Latitude 10.0015 is ~56 m outside its north edge and ~167 m from the centre.
+    private static let polygonWireFields = #""shape":"polygon","geometry":{"type":"Polygon","coordinates":"#
+        + #"[[[19.999,9.999],[20.001,9.999],[20.001,10.001],[19.999,10.001],[19.999,9.999]]]},"#
+        + #""enclosingCircle":{"latitude":10,"longitude":20,"baseRadiusM":250}"#
+
     /// Reads are synthetic OS answers. Setup still uses the real API decoder, registration,
     /// monitor callback, visit store and tracker; it never writes a visit into storage.
     @available(iOS 17.0, *)
     private func withVisit(
         fixes: [Fix],
         threshold: Int? = 60,
+        polygon: Bool = false,
         run: (ReplayHarness) async throws -> Void
     ) async throws {
         try await ReplayHarness.withTail {
@@ -417,8 +538,10 @@ struct DwellReplayTests {
                 harness.dwellScheduler.cancelAll()
             }
             let dwell = threshold.map { ",\"dwellThresholdSeconds\":\($0)" } ?? ""
+            // One centre and 250 m circle either way; a polygon sends it as its enclosing circle.
+            let shape = polygon ? Self.polygonWireFields : #""latitude":10,"longitude":20,"radius":250"#
             try harness.enqueueFetch(bodyJSON: """
-            [{"id":"A","name":"Synthetic dwell","latitude":10,"longitude":20,"radius":250,"transitionTypes":["enter","exit"],"geosetIds":["7"]\(dwell)}]
+            [{"id":"A","name":"Synthetic dwell",\(shape),"transitionTypes":["enter","exit"],"geosetIds":["7"]\(dwell)}]
             """)
             let readings: [Fix] = [.init(0, 10.0151, 10), .init(30, 10.0, 10)] + fixes
             harness.loadPulledFixes(stimuli: readings.map(\.at), samples: readings.map {
@@ -429,6 +552,9 @@ struct DwellReplayTests {
             harness.feedFix(latitude: 10.0151, longitude: 20, accuracy: 10, age: 0, source: .bus)
             try await harness.settleBoundaries()
             #expect(harness.emitted(ev: "registration.applied").count == 1)
+            if polygon {
+                try #require(await harness.hasRegisteredPolygons(), "fence A must decode and register as a real polygon")
+            }
             await harness.advance(to: 30)
             harness.deliverCrossing(fence: "A", transition: .enter)
             try await harness.settleBoundaries()

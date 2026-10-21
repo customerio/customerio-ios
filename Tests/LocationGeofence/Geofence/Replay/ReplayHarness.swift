@@ -246,6 +246,9 @@ final class ReplayHarness {
     /// Drops what `composeSDK` builds; keeps disk stores, the condition mirror and the OS condition
     /// monitor, as a real relaunch does.
     func reenterProcess() {
+        // Replies held while frozen would reach the new process or be dropped mid-await; `ReplayRunner`
+        // reports such a relaunch unsupported instead.
+        precondition(!gate.isSuspended, "replay cannot relaunch a frozen process")
         // The old consume task stays parked; the new wrapper's subscription supersedes it.
         monitor.setOnTransition(nil)
         detachFromBootstrap()

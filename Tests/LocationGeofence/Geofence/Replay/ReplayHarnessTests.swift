@@ -190,6 +190,60 @@ struct ReplayHarnessTests {
         }
     }
 
+    /// Relaunched by the OS while frozen. The sync the bus fix starts still awaits its fetch, which is
+    /// answered only after the freeze.
+    private func relaunchWhileFrozen() -> Scenario {
+        func record(
+            _ kind: Scenario.Record.Kind, _ at: TimeInterval, _ ev: String, _ fields: [String: String] = [:]
+        ) -> Scenario.Record {
+            Scenario.Record(kind: kind, at: at, ev: ev, fields: fields)
+        }
+        let records = [
+            record(.given, 5, "fixture.api.fetch", ["ok": "true", "body": catalogue("A")]),
+            record(.when, 0, "process.start"),
+            record(.when, 0.5, "identity.changed", ["ok": "true"]),
+            record(.when, 1, "location.fix", [
+                "prov": GeofenceLog.FixSource.bus.rawValue, "lat": "\(Self.awayLatitude)", "lon": "\(Self.longitude)"
+            ]),
+            // The cache read under the bus fix finds no position.
+            record(.when, 1, "location.fix", ["prov": GeofenceLog.FixSource.none.rawValue]),
+            record(.when, 2, "app.suspend"),
+            record(.when, 3, "process.start")
+        ]
+        let header = Scenario.Header(
+            name: "relaunch-while-frozen", platform: "ios", sourceKind: "synthetic", startedAt: "", sdk: nil, device: nil
+        )
+        return Scenario(name: header.name, platform: header.platform, header: header, records: records)
+    }
+
+    /// A frozen process cannot be relaunched in replay: dropping the fetch reply its SDK still awaits
+    /// would leave that await suspended, and delivering it would hand the old process's answer to the
+    /// new one. So the relaunch is reported unsupported, and the run ends frozen with the reply held.
+    @Test
+    @available(iOS 17.0, *)
+    func run_givenProcessStartWhileSuspended_expectUnsupportedAndReplyStillHeld() async throws {
+        try await ReplayHarness.withTail {
+            let harness = ReplayHarness()
+            defer { harness.detachFromBootstrap() }
+            let frozenProcess = harness.dwellCoordinator
+
+            let result = try await ReplayRunner.run(relaunchWhileFrozen(), on: harness)
+
+            #expect(
+                harness.gate.abandonedAtEnd.contains { $0.hasSuffix("(held: process suspended)") },
+                "no reply still held: \(harness.gate.abandonedAtEnd); \(harness.emitted.map { $0["ev"] ?? "?" })"
+            )
+            #expect(result.unsupported.contains { $0.hasPrefix("when process.start@3.0") }, "\(result.unsupported)")
+            #expect(harness.isExecutionSuspended, "the relaunch thawed the frozen process")
+            #expect(harness.dwellCoordinator === frozenProcess, "a new process was composed while frozen")
+            #expect(harness.emitted(ev: "registration.applied").isEmpty, "the held fetch reply was delivered")
+            // Cleanup only, after the frozen contract was asserted: thaw this same process so the fetch it
+            // parked is answered and its continuation resumes, rather than outliving the test.
+            await harness.resumeExecution()
+            try await harness.settleBoundaries()
+        }
+    }
+
     /// When the device is next seen, well after it left the fence the OS entered it for.
     private static let leftAt: TimeInterval = 600
 

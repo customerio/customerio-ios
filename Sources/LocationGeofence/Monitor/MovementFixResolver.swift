@@ -67,6 +67,14 @@ final class MovementFixResolver: NSObject, @preconcurrency CLLocationManagerDele
     /// Settable because the monitors construct this resolver, so a caller can't reach `init`.
     var waitForTimeout: (TimeInterval) async -> Void
 
+    /// Opt-in dwell diagnostics; nil records nothing. It only observes: no fix qualification,
+    /// coalescing or timeout reads it.
+    private let diagnosticRecorder: DwellDiagnosticRecorder?
+    /// The diagnostics generation the latest request cycle began in, captured before it asked. Its
+    /// answers, late ones too, record under it, so after a reset they are dropped rather than joining
+    /// the next identity's history. Nil until a cycle has run: a fix nobody asked for records nothing.
+    private var cycleDiagnosticToken: UInt64?
+
     init(
         logger: Logger,
         maxAge: TimeInterval = GeofenceConstants.movementFixMaxAge,
@@ -74,6 +82,7 @@ final class MovementFixResolver: NSObject, @preconcurrency CLLocationManagerDele
         backgroundTaskRunner: BackgroundTaskRunner = NoBackgroundTaskRunner(),
         dateUtil: DateUtil = DIGraphShared.shared.dateUtil,
         desiredAccuracy: CLLocationAccuracy = kCLLocationAccuracyHundredMeters,
+        diagnosticRecorder: DwellDiagnosticRecorder? = nil,
         waitForTimeout: @escaping (TimeInterval) async -> Void = { seconds in
             try? await Task.sleep(nanoseconds: UInt64(seconds * 1000000000))
         }
@@ -85,6 +94,7 @@ final class MovementFixResolver: NSObject, @preconcurrency CLLocationManagerDele
         self.dateUtil = dateUtil
         self.waitForTimeout = waitForTimeout
         self.desiredAccuracy = desiredAccuracy
+        self.diagnosticRecorder = diagnosticRecorder
     }
 
     deinit {
@@ -98,6 +108,8 @@ final class MovementFixResolver: NSObject, @preconcurrency CLLocationManagerDele
         let age = cached.map { self.age(of: $0) }
         if let cached, let age, isCurrent(cached) {
             logger.geofenceMovementFixResolved(ageSeconds: age, requested: false, speed: cached.speed, purpose: purpose)
+            // Nothing was asked, so no requested accuracy: that is what tells it from an answer.
+            diagnosticRecorder?.record(.fixReceived, returnedAccuracy: cached.horizontalAccuracy, fixAge: age)
             completion(locationData(from: cached), true)
             return
         }
@@ -111,6 +123,9 @@ final class MovementFixResolver: NSObject, @preconcurrency CLLocationManagerDele
         requestStartedAt = GeofenceLog.monotonicNow()
         startTimeout()
         holdBackgroundTimeUntilCompletion()
+        // Before asking: the answer can arrive synchronously, or after a reset.
+        cycleDiagnosticToken = diagnosticRecorder?.token
+        diagnosticRecorder?.record(.fixRequested, token: cycleDiagnosticToken, requestedAccuracy: requestedAccuracyLabel)
         if let requestFreshFix {
             requestFreshFix()
         } else {
@@ -136,6 +151,8 @@ final class MovementFixResolver: NSObject, @preconcurrency CLLocationManagerDele
     /// Freshness not yet judged: a new manager can echo a stale cached location.
     func handleDeliveredFix(_ fix: CLLocation) {
         guard isCurrent(fix) else {
+            // A stale echo still answered; a future-dated one is recorded with no age.
+            recordAnswerDiagnostic(fix, reason: .staleFix)
             recordDeliveredFix(fix)
             return
         }
@@ -143,6 +160,7 @@ final class MovementFixResolver: NSObject, @preconcurrency CLLocationManagerDele
     }
 
     func handleResolvedFix(_ fix: CLLocation) {
+        recordAnswerDiagnostic(fix, reason: nil)
         recordDeliveredFix(fix)
         guard !pendingCompletions.isEmpty else { return }
         logger.geofenceMovementFixResolved(ageSeconds: age(of: fix), requested: true, speed: fix.speed, purpose: pendingPurpose)
@@ -151,6 +169,10 @@ final class MovementFixResolver: NSObject, @preconcurrency CLLocationManagerDele
 
     func handleRequestFailure() {
         guard !pendingCompletions.isEmpty else { return }
+        // The cycle ended unanswered, by error or timeout; a stale fallback is not its answer.
+        diagnosticRecorder?.record(
+            .fixReceived, token: cycleDiagnosticToken, reason: .noFix, requestedAccuracy: requestedAccuracyLabel
+        )
         logger.geofenceMovementFixRequestFailed(
             fallingBackToCached: fallbackFix != nil,
             elapsed: requestStartedAt.map { GeofenceLog.monotonicNow() - $0 }
@@ -175,6 +197,31 @@ final class MovementFixResolver: NSObject, @preconcurrency CLLocationManagerDele
     private func isFuture(_ fix: CLLocation) -> Bool {
         age(of: fix) < -GeofenceConstants.dwellWallClockStepTolerance
     }
+
+    /// An answer Core Location delivered, recorded under the cycle that asked for it.
+    private func recordAnswerDiagnostic(_ fix: CLLocation, reason: DwellDiagnosticReason?) {
+        guard let diagnosticRecorder, let cycleDiagnosticToken else { return }
+        diagnosticRecorder.record(
+            .fixReceived, token: cycleDiagnosticToken, reason: reason, requestedAccuracy: requestedAccuracyLabel,
+            returnedAccuracy: fix.horizontalAccuracy, fixAge: age(of: fix)
+        )
+    }
+
+    /// What this resolver asks Core Location for, by name. Read from the stored value, so the
+    /// `requestFreshFix` seam still never creates the manager.
+    private var requestedAccuracyLabel: String {
+        if #available(iOS 14.0, *), desiredAccuracy == kCLLocationAccuracyReduced { return "reduced" }
+        return Self.accuracyLabels[desiredAccuracy] ?? "custom"
+    }
+
+    private static let accuracyLabels: [CLLocationAccuracy: String] = [
+        kCLLocationAccuracyBestForNavigation: "best_for_navigation",
+        kCLLocationAccuracyBest: "best",
+        kCLLocationAccuracyNearestTenMeters: "nearest_ten_meters",
+        kCLLocationAccuracyHundredMeters: "hundred_meters",
+        kCLLocationAccuracyKilometer: "kilometer",
+        kCLLocationAccuracyThreeKilometers: "three_kilometers"
+    ]
 
     private func recordDeliveredFix(_ fix: CLLocation) {
         logger.geofenceFixReceived(fix, source: "movement_resolver", now: dateUtil.now)

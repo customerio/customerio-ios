@@ -20,7 +20,8 @@ extension PolygonMembershipResolver {
         evaluatedCircle: MonitoredCircle? = nil,
         crossingObserved: Bool = true,
         isStillCurrent: (@Sendable () -> Bool)? = nil,
-        receivedForUserId: String? = nil
+        receivedForUserId: String? = nil,
+        qualifiesDwell: Bool = true
     ) async {
         let outcome = await storage.recordPolygonMembership(
             membership,
@@ -37,7 +38,7 @@ extension PolygonMembershipResolver {
             let visitContext = await forwardDwellEvidence(
                 PolygonDwellEvidence(membership: membership, outcome: outcome),
                 geofence: geofence, at: evidence, confirmedByFix: confirmedByFix,
-                expectedUserId: expectedUserId
+                expectedUserId: expectedUserId, qualifiesDwell: qualifiesDwell
             )
             // The visit is closed either way; a discovered exit only withholds its duration.
             exitContext = crossingObserved ? visitContext : nil
@@ -213,7 +214,8 @@ extension PolygonMembershipResolver {
         geofence: Geofence,
         at evidence: Date,
         confirmedByFix: Bool,
-        expectedUserId: String?
+        expectedUserId: String?,
+        qualifiesDwell: Bool = true
     ) async -> GeofenceExitContext? {
         switch dwellEvidence {
         case .entered, .discoveredInside, .stillInside:
@@ -224,7 +226,8 @@ extension PolygonMembershipResolver {
                 at: evidence,
                 source: "location_evidence",
                 expectedUserId: expectedUserId,
-                beginsNewVisit: dwellEvidence == .entered
+                beginsNewVisit: dwellEvidence == .entered,
+                qualifiesDwell: qualifiesDwell
             )
             return nil
         case .exited:
