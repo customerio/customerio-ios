@@ -136,7 +136,7 @@ class CioProviderAgnosticAppDelegateTests: XCTestCase {
         XCTAssertEqual(mockAppDelegate.deviceTokenReceived, deviceToken)
     }
 
-    func testDidFailToRegisterForRemoteNotifications_whenCalled_thenWrappedDelegateAndMessagingPushAreCalled() {
+    func testDidFailToRegisterForRemoteNotifications_whenCalled_thenWrappedDelegateCalledAndTokenNotDeleted() {
         // Setup
         let application = UIApplication.shared
         let error = NSError(domain: "test", code: 123, userInfo: nil)
@@ -147,7 +147,7 @@ class CioProviderAgnosticAppDelegateTests: XCTestCase {
         // Verify behavior
         XCTAssertTrue(mockAppDelegate.didFailToRegisterForRemoteNotificationsCalled)
         XCTAssertEqual((mockAppDelegate.errorReceived as NSError?)?.domain, "test")
-        XCTAssertTrue(mockMessagingPush.deleteDeviceTokenCalled)
+        XCTAssertFalse(mockMessagingPush.deleteDeviceTokenCalled)
     }
 
     // MARK: - Tests for method forwarding
