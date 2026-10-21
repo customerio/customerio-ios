@@ -20,6 +20,13 @@ struct PolygonMembershipRecord: Codable, Equatable, Sendable {
     var ring: [LocationData]?
 }
 
+/// A membership write's outcome, with when the belief it found was last proven; see
+/// `GeofenceStorage.recordPolygonMembershipWrite`.
+struct PolygonMembershipWrite: Equatable {
+    let outcome: PolygonMembershipOutcome
+    var previousProvenAt: Date?
+}
+
 enum PolygonMembershipOutcome: Equatable {
     /// The caller still applies the geofence's transition-type filter.
     case deliver(GeofenceTransition)

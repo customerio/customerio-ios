@@ -23,13 +23,14 @@ extension PolygonMembershipResolver {
         receivedForUserId: String? = nil,
         qualifiesDwell: Bool = true
     ) async {
-        let outcome = await storage.recordPolygonMembership(
+        let write = await storage.recordPolygonMembershipWrite(
             membership,
             forIdentifier: geofence.id,
             onlyIfBeliefPredates: evidence,
             onlyIfRingMatches: evaluatedRing,
             onlyIfCircleMatches: evaluatedCircle
         )
+        let outcome = write.outcome
         var exitContext: GeofenceExitContext?
         // OS crossings retain their receiving identity through the storage await. Membership is
         // geometry and still advances when that user has since changed.
@@ -38,6 +39,7 @@ extension PolygonMembershipResolver {
             let visitContext = await forwardDwellEvidence(
                 PolygonDwellEvidence(membership: membership, outcome: outcome),
                 geofence: geofence, at: evidence, confirmedByFix: confirmedByFix,
+                insideProvenAt: write.previousProvenAt,
                 expectedUserId: expectedUserId, qualifiesDwell: qualifiesDwell
             )
             // The visit is closed either way; a discovered exit only withholds its duration.
@@ -208,12 +210,14 @@ extension PolygonMembershipResolver {
     }
 
     /// Hands a real-shape verdict to the dwell coordinator. Returns the visit an EXIT closed, to
-    /// travel with that EXIT; nil for every other verdict.
+    /// travel with that EXIT; nil for every other verdict. `insideProvenAt` is when the device was
+    /// last known inside before this write, from the membership record.
     private func forwardDwellEvidence(
         _ dwellEvidence: PolygonDwellEvidence,
         geofence: Geofence,
         at evidence: Date,
         confirmedByFix: Bool,
+        insideProvenAt: Date? = nil,
         expectedUserId: String?,
         qualifiesDwell: Bool = true
     ) async -> GeofenceExitContext? {
@@ -238,12 +242,27 @@ extension PolygonMembershipResolver {
                 expectedUserId: expectedUserId,
                 detectionSource: confirmedByFix ? "location_evidence" : "covering_circle",
                 // Leaving the covering circle proves outside now, but says nothing about when
-                // the device crossed the polygon boundary within it.
-                crossingObserved: confirmedByFix
+                // the device crossed the polygon boundary within it. Nor does an outside fix long
+                // after the last inside proof: the device left at some point in that gap, so the
+                // fix dates discovery, not departure, and the visit reports no duration — the
+                // same bound an ENTER's outside proof must meet (`observesEntry`).
+                crossingObserved: confirmedByFix && Self.departureObserved(insideProvenAt: insideProvenAt, outsideAt: evidence)
             )
+        case .stillOutside:
+            // Outside, and nothing to deliver: the belief was already outside. A visit the store
+            // still holds was left behind by an EXIT whose removal never ran, and must not resume.
+            await dwellCoordinator?.endVisitLeftOutside(geofence: geofence, expectedUserId: expectedUserId)
+            return nil
         case .none:
             return nil
         }
+    }
+
+    /// Whether a fix outside the polygon dates the departure: the device was proven inside no
+    /// longer than `polygonOutsideProofMaxAge` before it, so the crossing lies within that bound.
+    static func departureObserved(insideProvenAt: Date?, outsideAt: Date) -> Bool {
+        guard let insideProvenAt, insideProvenAt <= outsideAt else { return false }
+        return outsideAt.timeIntervalSince(insideProvenAt) <= GeofenceConstants.polygonOutsideProofMaxAge
     }
 
     private func emitPolygonTransition(
@@ -275,6 +294,8 @@ private enum PolygonDwellEvidence: Equatable {
     case discoveredInside
     case stillInside
     case exited
+    /// Outside, as the belief already was: nothing to deliver, and no visit should remain.
+    case stillOutside
     case none
 
     init(membership: PolygonMembership, outcome: PolygonMembershipOutcome) {
@@ -283,6 +304,7 @@ private enum PolygonDwellEvidence: Equatable {
         case (.inside, .discoveredInside): self = .discoveredInside
         case (.inside, .suppressedNoChange): self = .stillInside
         case (.outside, .deliver(.exit)): self = .exited
+        case (.outside, .suppressedNoChange): self = .stillOutside
         default: self = .none
         }
     }

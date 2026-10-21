@@ -957,7 +957,8 @@ struct PolygonMembershipResolverTests {
     }
 
     /// Control for the two above: seen outside first, the arrival is a real crossing and its EXIT
-    /// carries the observed entry and duration.
+    /// carries the observed entry and duration. The departure is dated by the same rule as the
+    /// arrival: the device was still proven inside shortly before the outside fix.
     @Test
     func apply_givenOutsideThenInside_expectExitCarriesObservedEntryAndDuration() async {
         let entry = Date(timeIntervalSince1970: 1000)
@@ -971,6 +972,10 @@ struct PolygonMembershipResolverTests {
         )
         dwellClock.advance(to: entry)
         await setup.resolver.apply(.inside, to: geofence, evidence: entry, confirmedByFix: true)
+        dwellClock.advance(to: entry.addingTimeInterval(540))
+        await setup.resolver.apply(
+            .inside, to: geofence, evidence: entry.addingTimeInterval(540), confirmedByFix: true, qualifiesDwell: false
+        )
         dwellClock.advance(to: entry.addingTimeInterval(600))
         await setup.resolver.apply(
             .outside, to: geofence, evidence: entry.addingTimeInterval(600), confirmedByFix: true

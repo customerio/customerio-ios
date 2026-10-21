@@ -17,6 +17,24 @@ extension GeofenceStorage {
         onlyIfCircleMatches evaluatedCircle: MonitoredCircle? = nil,
         now: Date = Date()
     ) -> PolygonMembershipOutcome {
+        recordPolygonMembershipWrite(
+            membership, forIdentifier: identifier, onlyIfBeliefPredates: evidenceTimestamp,
+            onlyIfRingMatches: evaluatedRing, onlyIfCircleMatches: evaluatedCircle, now: now
+        ).outcome
+    }
+
+    /// `recordPolygonMembership`, also returning when the belief it replaced or confirmed was last
+    /// proven (`PolygonMembershipRecord.lastChangedAt`, a future stamp read as `distantPast`). For
+    /// an EXIT that is the last inside proof: how recently the device was known inside, which
+    /// bounds how early it could have left. Nil when there was no belief or the write was refused.
+    func recordPolygonMembershipWrite(
+        _ membership: PolygonMembership,
+        forIdentifier identifier: String,
+        onlyIfBeliefPredates evidenceTimestamp: Date? = nil,
+        onlyIfRingMatches evaluatedRing: [LocationData]? = nil,
+        onlyIfCircleMatches evaluatedCircle: MonitoredCircle? = nil,
+        now: Date = Date()
+    ) -> PolygonMembershipWrite {
         // Clamped: a clock set backwards would stamp the belief in the future and refuse corrections.
         let evidenceTimestamp = evidenceTimestamp.map { min($0, now) }
         var state = loadFromDisk() ?? GeofenceState()
@@ -25,26 +43,26 @@ extension GeofenceStorage {
         guard Self.matchesEvaluatedGeometry(
             state: state, identifier: identifier,
             evaluatedRing: evaluatedRing, evaluatedCircle: evaluatedCircle
-        ) else { return .suppressedGeometryChanged }
+        ) else { return PolygonMembershipWrite(outcome: .suppressedGeometryChanged) }
         let currentRing = state.cachedGeofences?.first { $0.id == identifier }?.vertices
         var records = state.polygonMembership ?? [:]
         let existing = records[identifier]
         // A future stamp is discarded, not capped: capped at `now` it would outrank every real fix.
         let existingStamp = existing.map { $0.lastChangedAt > now ? Date.distantPast : $0.lastChangedAt }
         if let evidenceTimestamp, let existingStamp, existingStamp > evidenceTimestamp {
-            return .suppressedNewerDecision
+            return PolygonMembershipWrite(outcome: .suppressedNewerDecision)
         }
         guard let existing else {
             // An evaluation in flight when the polygon was pruned would enter an unregistered fence.
             guard state.monitoredGeofenceIds?.contains(identifier) == true else {
-                return .suppressedUnmonitored
+                return PolygonMembershipWrite(outcome: .suppressedUnmonitored)
             }
             records[identifier] = PolygonMembershipRecord(
                 membership: membership, lastChangedAt: evidenceTimestamp ?? now, ring: currentRing
             )
             state.polygonMembership = records
             saveToDisk(state)
-            return membership == .inside ? .discoveredInside : .suppressedInitialOutside
+            return PolygonMembershipWrite(outcome: membership == .inside ? .discoveredInside : .suppressedInitialOutside)
         }
         guard existing.membership != membership else {
             var confirmed = existing
@@ -59,18 +77,20 @@ extension GeofenceStorage {
                 state.polygonMembership = records
                 saveToDisk(state)
             }
-            return .suppressedNoChange
+            return PolygonMembershipWrite(outcome: .suppressedNoChange, previousProvenAt: existingStamp)
         }
         records[identifier] = PolygonMembershipRecord(
             membership: membership, lastChangedAt: evidenceTimestamp ?? now, ring: currentRing
         )
         state.polygonMembership = records
         saveToDisk(state)
-        guard membership == .inside else { return .deliver(.exit) }
+        guard membership == .inside else {
+            return PolygonMembershipWrite(outcome: .deliver(.exit), previousProvenAt: existingStamp)
+        }
         let observed = Self.observesEntry(
             from: existing, provenAt: existingStamp, insideAt: evidenceTimestamp, currentRing: currentRing
         )
-        return observed ? .deliver(.enter) : .discoveredInside
+        return PolygonMembershipWrite(outcome: observed ? .deliver(.enter) : .discoveredInside, previousProvenAt: existingStamp)
     }
 
     /// Whether `outside` → inside is an observed crossing: only when the outside belief was formed
