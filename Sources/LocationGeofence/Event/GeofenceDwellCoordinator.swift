@@ -356,14 +356,6 @@ final class GeofenceDwellCoordinator {
         return visit
     }
 
-    /// Whole seconds from `start` to `end`. A persisted date comes back up to one ulp (~1.2e-7 s)
-    /// off — `.secondsSince1970` rounds converting out of and back into the reference epoch — so a
-    /// span of exactly whole seconds can read a hair short and truncate a second low. A microsecond
-    /// of slack absorbs that and rounds up no fraction anyone could observe.
-    static func wholeSeconds(from start: Date, to end: Date) -> Int {
-        Int((end.timeIntervalSince(start) + 0.000_001).rounded(.down))
-    }
-
     /// Internal for the `+Continuity` extension.
     func tracksVisit(_ geofence: Geofence) -> Bool {
         geofence.dwellThresholdSeconds > 0 || geofence.transitionTypes.contains(.exit)

@@ -97,7 +97,10 @@ struct GeofenceVisitElapsed: Equatable, Sendable {
     /// entry nor a duration measured from it is reportable.
     let wallClockAgrees: Bool
 
-    /// A microsecond of slack, for the same reason as `GeofenceDwellCoordinator.wholeSeconds`.
+    /// A microsecond of slack: a persisted date comes back up to one ulp (~1.2e-7 s) off, as
+    /// `.secondsSince1970` rounds converting out of and back into the reference epoch, so a stay of
+    /// exactly the threshold can read a hair short. The slack absorbs that and admits no fraction
+    /// anyone could observe.
     func reaches(_ thresholdSeconds: Int) -> Bool {
         qualifyingSeconds + 0.000_001 >= TimeInterval(thresholdSeconds)
     }

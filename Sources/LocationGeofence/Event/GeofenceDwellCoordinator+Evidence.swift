@@ -317,6 +317,13 @@ extension GeofenceDwellCoordinator {
         }
     }
 
+    /// Every fence's pending evidence, on sign-out: the visits it would serve are gone.
+    func cancelAllEvidence() {
+        for geofenceId in Set(deadlineTasks.keys).union(evidenceRetries.keys) {
+            cancelEvidence(for: geofenceId)
+        }
+    }
+
     /// Cancels only while the pending evidence is `visitId`'s: an overlapping ENTER may already have
     /// scheduled the next visit's deadline, and that one must survive the old visit's EXIT.
     func cancelEvidence(for geofenceId: String, ifVisit visitId: String) {

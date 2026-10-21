@@ -149,8 +149,8 @@ extension GeofenceDwellCoordinator {
 
     /// The duration an EXIT reports: the difference of the two whole epoch seconds, so it equals
     /// the event's whole-second timestamp minus the `enteredAt` it carries, which is serialized by
-    /// truncation too. Can be a second more than `wholeSeconds` (100.9 s → 160.1 s reports 60, not
-    /// 59); qualifying stays on `wholeSeconds`, the elapsed time actually observed.
+    /// truncation too. Can be a second more than the elapsed time actually observed (100.9 s →
+    /// 160.1 s reports 60, not 59); qualifying stays on that elapsed time (`GeofenceVisitElapsed`).
     static func reportedSeconds(from start: Date, to end: Date) -> Int {
         max(0, Int(end.timeIntervalSince1970) - Int(start.timeIntervalSince1970))
     }

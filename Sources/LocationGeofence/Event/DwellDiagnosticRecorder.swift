@@ -22,7 +22,9 @@ final class DwellDiagnosticRecorder {
     }
 
     private let journal: DwellDiagnosticJournal
-    private let isEnabled: Bool
+    /// Whether the host opted in. Callers check it before building a record, so the hot path
+    /// allocates nothing while diagnostics are off.
+    let isEnabled: Bool
     private let now: @MainActor () -> TimeInterval
     private let state: State
     private let identityProvider: (@MainActor () -> GeofenceIdentity?)?

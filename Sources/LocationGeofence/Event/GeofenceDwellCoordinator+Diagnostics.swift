@@ -58,7 +58,8 @@ extension GeofenceDwellCoordinator {
         thresholdShortfall: TimeInterval? = nil,
         token: UInt64?
     ) {
-        guard let diagnosticRecorder,
+        // The opt-in is checked before anything is built: with it off, nothing is read or allocated.
+        guard let diagnosticRecorder, diagnosticRecorder.isEnabled,
               let record = DwellDiagnosticRecord(
                   event: event, atUptime: clock.read().uptime, fenceId: fenceId,
                   deadlineUptime: deadlineUptime, reason: reason, thresholdShortfall: thresholdShortfall

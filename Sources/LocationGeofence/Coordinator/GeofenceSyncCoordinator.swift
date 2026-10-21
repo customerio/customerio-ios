@@ -239,6 +239,9 @@ final class GeofenceSyncCoordinatorImpl: GeofenceSyncCoordinator, @unchecked Sen
         // Diagnostics too, rechecked on the main actor: fence ids with times are this user's history.
         await MainActor.run {
             dwellCoordinator?.reconcileCollection()
+            // The visits the waits serve are cleared below; a wait left running would only wake
+            // to find none, and under the next user's identity.
+            dwellCoordinator?.cancelAllEvidence()
             dwellCoordinator?.clearDiagnosticsIfSignedOut()
         }
         // Clear BEFORE the OS stop, so a polygon pass resuming in between can't emit an enter for
