@@ -69,7 +69,7 @@ let package = Package(
         // Test-only. Deterministic Swift Concurrency scheduling for unit tests
         // (withMainSerialExecutor). Linked into test targets only; never shipped
         // to customers, so it has no podspec counterpart.
-        .package(url: "https://github.com/pointfreeco/swift-concurrency-extras", from: "1.1.0")
+        .package(url: "https://github.com/pointfreeco/swift-concurrency-extras", .exact("1.4.1"))
     ],
     targets: [ 
         // Common - Code used by multiple modules in the SDK project.
