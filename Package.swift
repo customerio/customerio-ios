@@ -18,6 +18,9 @@ var products: [PackageDescription.Product] = [
     .library(name: "DataPipelines", targets: ["CioDataPipelines"]),
     .library(name: "MessagingPushAPN", targets: ["CioMessagingPushAPN"]),
     .library(name: "MessagingPushFCM", targets: ["CioMessagingPushFCM"]),
+    // Firebase adapter for MessagingPushFCM, previously the separate customerio-ios-fcm package. It declares no Firebase
+    // dependency: the app links FirebaseMessaging, and the adapter finds it at runtime.
+    .library(name: "CioFirebaseWrapper", targets: ["CioFirebaseWrapper"]),
     .library(name: "MessagingInApp", targets: ["CioMessagingInApp"]),
     .library(name: "MessagingInbox", targets: ["CioMessagingInbox"]),
     .library(name: "Location", targets: ["CioLocation"]),
@@ -161,6 +164,13 @@ let package = Package(
         .testTarget(name: "MessagingPushFCMTests",
                     dependencies: ["CioMessagingPushFCM", "SharedTests", "CioInternalCommonMocks", "CioMessagingPushMocks", "CioMessagingPushFCMMocks"],
                     path: "Tests/MessagingPushFCM"),
+        // FCM Firebase adapter. No package dependency on Firebase, so APN-only apps never resolve, fetch or build it.
+        .target(name: "CioFirebaseWrapper",
+                dependencies: ["CioMessagingPushFCM", "CioMessagingPush", "CioInternalCommon"],
+                path: "Sources/FirebaseWrapper"),
+        .testTarget(name: "FirebaseWrapperTests",
+                    dependencies: ["CioFirebaseWrapper", "CioMessagingPushFCM", "CioInternalCommon", "CioInternalCommonMocks"],
+                    path: "Tests/FirebaseWrapper"),
 
         // Messaging in-app
         .target(name: "CioMessagingInApp",
