@@ -238,6 +238,37 @@ struct GeofenceApiResponseTests {
     }
 
     @Test
+    func toDomainRegions_givenWholeNumberedDoubleDwellThreshold_expectPreserved() throws {
+        let response = try decode(
+            """
+            {"geofences":[{"id":"g1","latitude":1,"longitude":2,"radius":100,"dwell_threshold_seconds":300.0}]}
+            """
+        )
+
+        #expect(response.toDomainRegions().first?.dwellThresholdSeconds == 300)
+    }
+
+    /// A malformed threshold disables dwell for its fence and keeps the fence, as a malformed
+    /// polygon field does: its ENTER and EXIT still arrive.
+    @Test
+    func toDomainRegions_givenMalformedDwellThreshold_expectRegionKeptWithDwellDisabled() throws {
+        let response = try decode(
+            """
+            {"geofences":[
+              {"id":"fraction","latitude":1,"longitude":2,"radius":100,"dwell_threshold_seconds":300.5},
+              {"id":"text","latitude":1,"longitude":2,"radius":100,"dwell_threshold_seconds":"300"},
+              {"id":"object","latitude":1,"longitude":2,"radius":100,"dwell_threshold_seconds":{"seconds":300}}
+            ]}
+            """
+        )
+        let regions = response.toDomainRegions()
+
+        #expect(regions.map(\.id) == ["fraction", "text", "object"])
+        #expect(regions.map(\.dwellThresholdSeconds) == [0, 0, 0])
+        #expect(regions.map(\.transitionTypes) == [[.enter, .exit], [.enter, .exit], [.enter, .exit]])
+    }
+
+    @Test
     func toDomainRegions_givenEmptyTransitionTypes_expectDefaults() throws {
         let json = """
         {"geofences":[{"id":"g1","latitude":1,"longitude":2,"radius":100,"transition_types":[]}]}

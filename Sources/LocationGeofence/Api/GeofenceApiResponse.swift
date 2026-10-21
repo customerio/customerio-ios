@@ -114,7 +114,22 @@ extension GeofenceApiRegion {
         self.lastUpdated = try container.decodeIfPresent(Double.self, forKey: .lastUpdated)
         self.geosetIds = try container.decodeStringOrIntArrayIfPresent(forKey: .geosetIds)
         self.metadata = try container.decodeMetadataIfPresent(forKey: .metadata)
-        self.dwellThresholdSeconds = try container.decodeIfPresent(Int.self, forKey: .dwellThresholdSeconds)
+        self.dwellThresholdSeconds = Self.decodeDwellThreshold(from: container)
+    }
+
+    /// Lenient, like the polygon fields: a malformed threshold must not drop the region. An integer
+    /// is taken as is, a whole-numbered double too; anything else reads as absent, so dwell is off
+    /// for the fence and its ENTER and EXIT still arrive. Out-of-range values are left to
+    /// `validDwellThreshold`.
+    private static func decodeDwellThreshold(from container: KeyedDecodingContainer<CodingKeys>) -> Int? {
+        if let seconds = try? container.decodeIfPresent(Int.self, forKey: .dwellThresholdSeconds) {
+            return seconds
+        }
+        guard let seconds = try? container.decodeIfPresent(Double.self, forKey: .dwellThresholdSeconds),
+              seconds.isFinite, seconds.rounded(.towardZero) == seconds,
+              seconds.magnitude < Double(Int32.max)
+        else { return nil }
+        return Int(seconds)
     }
 }
 
