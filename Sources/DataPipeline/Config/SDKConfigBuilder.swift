@@ -226,6 +226,7 @@ public class SDKConfigBuilder {
         // create `DataPipelineConfigOptions` from given configurations
         let dataPipelineConfig = DataPipelineConfigOptions(
             cdpApiKey: cdpApiKey,
+            region: region,
             apiHost: apiHost ?? region.apiHost,
             cdnHost: cdnHost ?? region.cdnHost,
             flushAt: flushAt,

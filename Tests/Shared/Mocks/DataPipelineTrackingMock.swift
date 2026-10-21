@@ -11,6 +11,8 @@ public final class DataPipelineTrackingMock: DataPipelineTracking {
     }
 
     public var isUserIdentified: Bool
+    public var apiKey: String
+    public var region: Region
 
     public private(set) var trackCallsCount = 0
     public private(set) var trackInvocations: [(name: String, properties: [String: Any])] = []
@@ -18,8 +20,10 @@ public final class DataPipelineTrackingMock: DataPipelineTracking {
     public private(set) var trackDeliveryEventCallsCount = 0
     public private(set) var trackDeliveryEventInvocations: [DeliveryEventInvocation] = []
 
-    public init(isUserIdentified: Bool = true) {
+    public init(isUserIdentified: Bool = true, apiKey: String = "", region: Region = .US) {
         self.isUserIdentified = isUserIdentified
+        self.apiKey = apiKey
+        self.region = region
     }
 
     public func track(name: String, properties: [String: Any]) {
