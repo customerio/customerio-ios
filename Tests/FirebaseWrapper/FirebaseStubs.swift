@@ -39,9 +39,11 @@ class MessagingStubBase: NSObject {
 @objc(CioTestTokenOnlyMessaging)
 final class TokenOnlyMessagingStub: MessagingStubBase {
     static var current: TokenOnlyMessagingStub?
+    static var messagingCallCount = 0
 
     @objc class func messaging() -> TokenOnlyMessagingStub? {
-        current
+        messagingCallCount += 1
+        return current
     }
 }
 
@@ -137,5 +139,15 @@ final class ChainingMessagingDelegate: NSObject {
         if let previous = previous, previous.responds(to: selector) {
             _ = previous.perform(selector, with: messaging, with: token as NSString?)
         }
+    }
+}
+
+/// FirebaseCore's `FIRApp`, for its quiet `+isDefaultAppConfigured`.
+@objc(CioTestFirebaseApp)
+final class FirebaseAppStub: NSObject {
+    static var isConfigured = false
+
+    @objc class func isDefaultAppConfigured() -> Bool {
+        isConfigured
     }
 }

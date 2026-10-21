@@ -14,6 +14,12 @@ import ObjectiveC
     @objc(registerWithCompletion:) func register(completion: @escaping (Error?) -> Void)
 }
 
+// `+[FIRApp isDefaultAppConfigured]`, called on the class object. Unlike `+defaultApp`, it doesn't log when Firebase
+// isn't configured yet. Not in Firebase's public headers, but unchanged from 8.7.0 to 13.0.1.
+@objc protocol RuntimeFirebaseAppClass {
+    func isDefaultAppConfigured() -> Bool
+}
+
 // FirebaseInstallations' Objective-C API (FIRInstallations.h).
 @objc protocol RuntimeInstallations {
     @objc(installationIDWithCompletion:) func installationID(completion: @escaping (String?, Error?) -> Void)
@@ -46,6 +52,10 @@ final class FirebaseRuntime {
         ObjCMethodContract(NSSelectorFromString("registerWithCompletion:"), returns: .void, arguments: [.block])
     ]
 
+    static let firebaseAppContracts = [
+        ObjCMethodContract(NSSelectorFromString("isDefaultAppConfigured"), .class, returns: .bool)
+    ]
+
     static let installationsContracts = [
         ObjCMethodContract(NSSelectorFromString("installations"), .class, returns: .object),
         ObjCMethodContract(NSSelectorFromString("installationIDWithCompletion:"), returns: .void, arguments: [.block])
@@ -53,10 +63,16 @@ final class FirebaseRuntime {
 
     private let messagingClassName: String
     private let installationsClassName: String
+    private let firebaseAppClassName: String
 
-    init(messagingClassName: String = "FIRMessaging", installationsClassName: String = "FIRInstallations") {
+    init(
+        messagingClassName: String = "FIRMessaging",
+        installationsClassName: String = "FIRInstallations",
+        firebaseAppClassName: String = "FIRApp"
+    ) {
         self.messagingClassName = messagingClassName
         self.installationsClassName = installationsClassName
+        self.firebaseAppClassName = firebaseAppClassName
     }
 
     var availability: Availability {
@@ -85,12 +101,24 @@ final class FirebaseRuntime {
     /// `FirebaseApp.configure()` yet.
     func messaging() -> RuntimeMessaging? {
         guard availability == .available,
+              isDefaultAppConfigured != false,
               let messaging = sharedInstance(className: messagingClassName, selector: "messaging"),
               Self.messagingContracts.filter({ $0.kind == .instance }).unsatisfied(by: type(of: messaging)).isEmpty
         else {
             return nil
         }
         return unsafeBitCast(messaging, to: RuntimeMessaging.self)
+    }
+
+    /// Whether `FirebaseApp.configure()` has run, or nil when FirebaseCore can't tell quietly; callers then ask
+    /// `+[FIRMessaging messaging]`, which logs an error while Firebase isn't configured.
+    var isDefaultAppConfigured: Bool? {
+        guard let appClass = NSClassFromString(firebaseAppClassName),
+              Self.firebaseAppContracts.unsatisfied(by: appClass).isEmpty
+        else {
+            return nil
+        }
+        return unsafeBitCast(appClass as AnyObject, to: RuntimeFirebaseAppClass.self).isDefaultAppConfigured()
     }
 
     /// The FID registration API of `messaging`, or nil when the app's Firebase version has none.
