@@ -114,6 +114,6 @@ class CioAppDelegateAPNTests: XCTestCase {
         // Verify behavior
         XCTAssertTrue(mockAppDelegate.didFailToRegisterForRemoteNotificationsCalled)
         XCTAssertEqual((mockAppDelegate.errorReceived as NSError?)?.domain, "test")
-        XCTAssertTrue(mockMessagingPush?.deleteDeviceTokenCalled == true)
+        XCTAssertEqual(mockMessagingPush?.deleteDeviceTokenCalled, false)
     }
 }

@@ -9,6 +9,8 @@ make setup_sample_app app=CocoaPods-FCM
 
 2. Open project in Xcode and compile. 
 
+`CocoaPods-FCM` has two schemes: `test cocoapods` (default) registers the FCM token, and `test cocoapods FID` registers the Firebase Installation ID. For FID use FirebaseMessaging 12.19.0 or later (12.16.0 is the minimum, but 12.16 to 12.18 have known registration issues), so with an older `Podfile.lock` run `pod update FirebaseMessaging CioFirebaseWrapper` first.
+
 
 All of the sample apps should be able to open in Xcode to compile. 
 
