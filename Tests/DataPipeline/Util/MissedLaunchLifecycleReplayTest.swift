@@ -33,6 +33,16 @@ class MissedLaunchLifecycleReplayTest: UnitTest {
         blocks.forEach { $0() }
     }
 
+    private func startOnBackgroundThread(_ subject: MissedLaunchLifecycleReplay) {
+        let returned = expectation(description: "start() returned on a background thread")
+        DispatchQueue.global().async {
+            XCTAssertFalse(Thread.isMainThread)
+            subject.start()
+            returned.fulfill()
+        }
+        wait(for: [returned], timeout: 1)
+    }
+
     // MARK: - App already active
 
     func test_start_whenAppActive_thenReplaysLaunchAndBecomeActiveImmediately() {
@@ -110,6 +120,39 @@ class MissedLaunchLifecycleReplayTest: UnitTest {
         subject.start()
         runScheduledOnMainQueue()
         notificationCenter.post(name: UIApplication.didFinishLaunchingNotification, object: nil)
+        runScheduledOnMainQueue()
+
+        XCTAssertEqual(callbacksRecorder.callbacks, [.didFinishLaunching])
+    }
+
+    // MARK: - Initialized off the main thread
+
+    func test_start_whenCalledOffMainAndLaunchNotificationArrivesBeforeMainQueueRuns_thenReplaysNothing() {
+        let subject = createSubject(state: .active)
+
+        startOnBackgroundThread(subject)
+        notificationCenter.post(name: UIApplication.didFinishLaunchingNotification, object: nil)
+        runScheduledOnMainQueue()
+        runScheduledOnMainQueue()
+
+        XCTAssertEqual(callbacksRecorder.callbacks, [])
+    }
+
+    func test_start_whenCalledOffMainAfterAppBecameActive_thenReplaysLaunchAndBecomeActiveOnMainQueue() {
+        let subject = createSubject(state: .active)
+
+        startOnBackgroundThread(subject)
+        XCTAssertEqual(callbacksRecorder.callbacks, [])
+
+        runScheduledOnMainQueue()
+        XCTAssertEqual(callbacksRecorder.callbacks, [.didFinishLaunching, .didBecomeActive])
+    }
+
+    func test_start_whenCalledOffMainWhileInactiveAndLaunchAlreadyHappened_thenReplaysLaunch() {
+        let subject = createSubject(state: .inactive)
+
+        startOnBackgroundThread(subject)
+        runScheduledOnMainQueue()
         runScheduledOnMainQueue()
 
         XCTAssertEqual(callbacksRecorder.callbacks, [.didFinishLaunching])

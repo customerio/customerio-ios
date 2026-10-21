@@ -11,7 +11,7 @@ import UIKit
 /// initialized later never receives it, so those events were never tracked for such apps.
 ///
 /// Threading: `start()` reads `UIApplication` state, so it runs on the main thread. When called from another
-/// thread it moves itself to the main queue.
+/// thread it moves itself to the main queue, after it starts listening for the launch notification.
 ///
 /// Memory: callers don't need to keep a reference. A pending main queue check holds the instance until it runs.
 final class MissedLaunchLifecycleReplay {
@@ -41,15 +41,33 @@ final class MissedLaunchLifecycleReplay {
 
     /// Replays the launch callbacks the SDK missed, if any. Call once while the SDK initializes.
     func start() {
+        // Listens before moving to the main queue. The lifecycle plugins started listening while the SDK initialized,
+        // so a launch notification posted in the meantime reached them too and must not be replayed.
+        launchNotificationObserver = notificationCenter.addObserver(
+            forName: UIApplication.didFinishLaunchingNotification,
+            object: nil,
+            queue: nil
+        ) { [weak self] _ in
+            self?.receivedLaunchNotification = true
+        }
+
         guard Thread.isMainThread else {
-            runOnMainQueue { self.start() }
+            runOnMainQueue { self.replayMissedCallbacks() }
             return
         }
+        replayMissedCallbacks()
+    }
+
+    private func replayMissedCallbacks() {
         // No application state inside app extensions, so there is no app launch to replay
-        guard let state = applicationState() else { return }
+        guard !receivedLaunchNotification, let state = applicationState() else {
+            removeLaunchNotificationObserver()
+            return
+        }
 
         if state == .active {
             // The app finished launching and became active before the SDK existed
+            removeLaunchNotificationObserver()
             replayDidFinishLaunching()
             replayDidBecomeActive()
             return
@@ -58,13 +76,6 @@ final class MissedLaunchLifecycleReplay {
         // Inactive or in background, the SDK may be initializing inside application(_:didFinishLaunchingWithOptions:).
         // UIKit posts the launch notification as soon as that method returns and before the main queue runs again,
         // so the lifecycle plugins only missed it if it hasn't arrived by then.
-        launchNotificationObserver = notificationCenter.addObserver(
-            forName: UIApplication.didFinishLaunchingNotification,
-            object: nil,
-            queue: nil
-        ) { [weak self] _ in
-            self?.receivedLaunchNotification = true
-        }
         runOnMainQueue {
             self.removeLaunchNotificationObserver()
             if !self.receivedLaunchNotification {
