@@ -24,15 +24,18 @@ extension GeofenceStorage {
     }
 
     /// `recordPolygonMembership`, also returning when the belief it replaced or confirmed was last
-    /// proven (`PolygonMembershipRecord.lastChangedAt`, a future stamp read as `distantPast`). For
-    /// an EXIT that is the last inside proof: how recently the device was known inside, which
-    /// bounds how early it could have left. Nil when there was no belief or the write was refused.
+    /// proven: for an outside belief its `lastChangedAt`, for an inside belief the last decisive
+    /// inside proof (`lastDecisiveInsideAt`); a future stamp reads as `distantPast`, an absent one
+    /// as nil. For an EXIT that is how recently the device was really known inside, which bounds
+    /// how early it could have left. `decisiveInside` marks inside evidence that proved the stay on
+    /// its own, which stamps that proof; a marginal arrival or confirmation does not.
     func recordPolygonMembershipWrite(
         _ membership: PolygonMembership,
         forIdentifier identifier: String,
         onlyIfBeliefPredates evidenceTimestamp: Date? = nil,
         onlyIfRingMatches evaluatedRing: [LocationData]? = nil,
         onlyIfCircleMatches evaluatedCircle: MonitoredCircle? = nil,
+        decisiveInside: Bool = false,
         now: Date = Date()
     ) -> PolygonMembershipWrite {
         // Clamped: a clock set backwards would stamp the belief in the future and refuse corrections.
@@ -52,13 +55,15 @@ extension GeofenceStorage {
         if let evidenceTimestamp, let existingStamp, existingStamp > evidenceTimestamp {
             return PolygonMembershipWrite(outcome: .suppressedNewerDecision)
         }
+        let stamp = evidenceTimestamp ?? now
+        let decisiveStamp = membership == .inside && decisiveInside ? stamp : nil
         guard let existing else {
             // An evaluation in flight when the polygon was pruned would enter an unregistered fence.
             guard state.monitoredGeofenceIds?.contains(identifier) == true else {
                 return PolygonMembershipWrite(outcome: .suppressedUnmonitored)
             }
             records[identifier] = PolygonMembershipRecord(
-                membership: membership, lastChangedAt: evidenceTimestamp ?? now, ring: currentRing
+                membership: membership, lastChangedAt: stamp, ring: currentRing, lastDecisiveInsideAt: decisiveStamp
             )
             state.polygonMembership = records
             saveToDisk(state)
@@ -68,6 +73,9 @@ extension GeofenceStorage {
             var confirmed = existing
             if let evidenceTimestamp, let existingStamp, evidenceTimestamp > existingStamp {
                 confirmed.lastChangedAt = evidenceTimestamp
+            }
+            if let decisiveStamp, decisiveStamp > (existing.lastDecisiveInsideAt ?? .distantPast) {
+                confirmed.lastDecisiveInsideAt = decisiveStamp
             }
             // A confirmation under a replaced ring re-proves the belief against the new ring, so it
             // is re-stamped even when its evidence is no newer.
@@ -79,13 +87,15 @@ extension GeofenceStorage {
             }
             return PolygonMembershipWrite(outcome: .suppressedNoChange, previousProvenAt: existingStamp)
         }
+        // The last decisive inside proof, for the EXIT this write may deliver.
+        let decisiveInsideProvenAt = existing.lastDecisiveInsideAt.map { $0 > now ? Date.distantPast : $0 }
         records[identifier] = PolygonMembershipRecord(
-            membership: membership, lastChangedAt: evidenceTimestamp ?? now, ring: currentRing
+            membership: membership, lastChangedAt: stamp, ring: currentRing, lastDecisiveInsideAt: decisiveStamp
         )
         state.polygonMembership = records
         saveToDisk(state)
         guard membership == .inside else {
-            return PolygonMembershipWrite(outcome: .deliver(.exit), previousProvenAt: existingStamp)
+            return PolygonMembershipWrite(outcome: .deliver(.exit), previousProvenAt: decisiveInsideProvenAt)
         }
         let observed = Self.observesEntry(
             from: existing, provenAt: existingStamp, insideAt: evidenceTimestamp, currentRing: currentRing

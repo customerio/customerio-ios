@@ -75,6 +75,64 @@ struct PolygonVisitBoundaryTests {
         #expect(await setup.storage.getDwellVisit(geofenceId: Self.polygon.id) == nil)
     }
 
+    /// A marginal arrival — a corroborated fix whose accuracy disk crossed the edge — begins the
+    /// visit but is no proof of the stay, so an outside fix soon after it is not a dated departure:
+    /// the EXIT is untimed until a decisive inside fix has proven the device there.
+    @Test
+    func fixExitAfterOnlyAMarginalArrivalIsUntimed() async throws {
+        let setup = await makeSetup()
+        await setup.judge(.outside)
+        setup.advance(30)
+        await setup.judge(.inside, qualifiesDwell: false)
+        try #require(await setup.storage.getDwellVisit(geofenceId: Self.polygon.id)?.entryObserved == true)
+        setup.advance(60)
+
+        await setup.judge(.outside)
+
+        let rows = await setup.exitRows()
+        try #require(rows.count == 1)
+        #expect(rows[0].visitId == nil)
+        #expect(rows[0].visitDurationSeconds == nil)
+    }
+
+    /// The same stay, decisively confirmed inside before it is left, is timed from its entry.
+    @Test
+    func decisiveConfirmationAfterAMarginalArrivalTimesTheExit() async throws {
+        let setup = await makeSetup()
+        await setup.judge(.outside)
+        setup.advance(30)
+        await setup.judge(.inside, qualifiesDwell: false)
+        setup.advance(30)
+        await setup.judge(.inside)
+        setup.advance(30)
+
+        await setup.judge(.outside)
+
+        let rows = await setup.exitRows()
+        try #require(rows.count == 1)
+        #expect(rows[0].visitDurationSeconds == 60)
+    }
+
+    /// An outside confirmation that was suspended while a newer inside pass began a stay must not
+    /// end that stay: only a visit begun before the outside fix, while the belief is still
+    /// outside, is the one left behind.
+    @Test
+    func outsideConfirmationLeavesAVisitBegunAfterItsFix() async throws {
+        let setup = await makeSetup()
+        await setup.judge(.outside)
+        let outsideAt = setup.clock.wall
+        setup.advance(30)
+        await setup.judge(.inside)
+        let newer = try #require(await setup.storage.getDwellVisit(geofenceId: Self.polygon.id))
+
+        await setup.coordinator.endVisitLeftOutside(geofence: Self.polygon, outsideAt: outsideAt, expectedUserId: "user-1")
+
+        #expect(await setup.storage.getDwellVisit(geofenceId: Self.polygon.id)?.visitId == newer.visitId)
+        // Nor one begun before it while the belief has since turned inside.
+        #expect(await setup.storage.removeDwellVisitLeftOutside(geofenceId: Self.polygon.id, outsideAt: setup.clock.wall.addingTimeInterval(1)) == nil)
+        #expect(await setup.storage.getDwellVisit(geofenceId: Self.polygon.id)?.visitId == newer.visitId)
+    }
+
     /// A confirmation keeps the inside proof fresh: a stay confirmed inside an hour in and left
     /// a minute later is timed over the whole hour.
     @Test
@@ -158,11 +216,12 @@ struct PolygonVisitBoundaryTests {
             dateUtil.givenNow = clock.wall
         }
 
-        /// A pass's decisive verdict for the polygon, from a fix taken now.
-        func judge(_ membership: PolygonMembership) async {
+        /// A pass's verdict for the polygon, from a fix taken now: decisive unless `qualifiesDwell`
+        /// is false, which is a marginal arrival committed on corroboration.
+        func judge(_ membership: PolygonMembership, qualifiesDwell: Bool = true) async {
             await resolver.apply(
                 membership, to: PolygonVisitBoundaryTests.polygon, evidence: clock.wall, confirmedByFix: true,
-                evaluatedRing: PolygonVisitBoundaryTests.polygon.vertices
+                evaluatedRing: PolygonVisitBoundaryTests.polygon.vertices, qualifiesDwell: qualifiesDwell
             )
         }
 

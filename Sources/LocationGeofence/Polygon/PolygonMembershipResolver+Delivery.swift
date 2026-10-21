@@ -28,7 +28,8 @@ extension PolygonMembershipResolver {
             forIdentifier: geofence.id,
             onlyIfBeliefPredates: evidence,
             onlyIfRingMatches: evaluatedRing,
-            onlyIfCircleMatches: evaluatedCircle
+            onlyIfCircleMatches: evaluatedCircle,
+            decisiveInside: membership == .inside && qualifiesDwell
         )
         let outcome = write.outcome
         var exitContext: GeofenceExitContext?
@@ -251,15 +252,16 @@ extension PolygonMembershipResolver {
         case .stillOutside:
             // Outside, and nothing to deliver: the belief was already outside. A visit the store
             // still holds was left behind by an EXIT whose removal never ran, and must not resume.
-            await dwellCoordinator?.endVisitLeftOutside(geofence: geofence, expectedUserId: expectedUserId)
+            await dwellCoordinator?.endVisitLeftOutside(geofence: geofence, outsideAt: evidence, expectedUserId: expectedUserId)
             return nil
         case .none:
             return nil
         }
     }
 
-    /// Whether a fix outside the polygon dates the departure: the device was proven inside no
-    /// longer than `polygonOutsideProofMaxAge` before it, so the crossing lies within that bound.
+    /// Whether a fix outside the polygon dates the departure: the device was decisively proven
+    /// inside no longer than `polygonOutsideProofMaxAge` before it, so the crossing lies within
+    /// that bound. A marginal arrival is no such proof, so a stay it began is left untimed.
     static func departureObserved(insideProvenAt: Date?, outsideAt: Date) -> Bool {
         guard let insideProvenAt, insideProvenAt <= outsideAt else { return false }
         return outsideAt.timeIntervalSince(insideProvenAt) <= GeofenceConstants.polygonOutsideProofMaxAge

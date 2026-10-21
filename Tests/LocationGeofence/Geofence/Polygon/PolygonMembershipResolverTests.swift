@@ -973,9 +973,7 @@ struct PolygonMembershipResolverTests {
         dwellClock.advance(to: entry)
         await setup.resolver.apply(.inside, to: geofence, evidence: entry, confirmedByFix: true)
         dwellClock.advance(to: entry.addingTimeInterval(540))
-        await setup.resolver.apply(
-            .inside, to: geofence, evidence: entry.addingTimeInterval(540), confirmedByFix: true, qualifiesDwell: false
-        )
+        await setup.resolver.apply(.inside, to: geofence, evidence: entry.addingTimeInterval(540), confirmedByFix: true)
         dwellClock.advance(to: entry.addingTimeInterval(600))
         await setup.resolver.apply(
             .outside, to: geofence, evidence: entry.addingTimeInterval(600), confirmedByFix: true

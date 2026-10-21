@@ -18,6 +18,11 @@ struct PolygonMembershipRecord: Codable, Equatable, Sendable {
     /// when the device came to be inside the new one. Nil on records written before the field
     /// existed: nothing says which ring they were formed against, so they prove no entry.
     var ring: [LocationData]?
+    /// Newest inside evidence that proved the stay on its own: a fix whose accuracy disk lay wholly
+    /// inside the ring (`PolygonVerdict.qualifiesDwell`), by an entry or a confirmation alike. A
+    /// marginal arrival moves `lastChangedAt` but not this, so an EXIT is timed only from a stay
+    /// that was really proven. Nil on records written before the field, which then time no EXIT.
+    var lastDecisiveInsideAt: Date?
 }
 
 /// A membership write's outcome, with when the belief it found was last proven; see
