@@ -222,6 +222,68 @@ struct GeofenceSyncCoordinatorTests {
         #expect(relaunched.api.fetchNearbyGeofencesCallsCount == 0)
     }
 
+    /// The upgrade fetch enables dwell on a circle the OS already holds the device inside. No ENTER
+    /// will come for it, so the refresh starts a candidate from discovery: it reports no entry and
+    /// counts no time until its first fresh inside fix.
+    @Test
+    func refresh_givenDwellEnabledOnACircleHeldInside_expectCandidateVisitStarted() async throws {
+        let fixture = try makeLegacyFixture()
+        defer { try? FileManager.default.removeItem(at: fixture.dir) }
+        await fixture.storage.recordMonitorRegistration(
+            identifier: "legacy-1", transitionTypes: [.enter, .exit], initialState: .enter,
+            center: LocationData(latitude: 37.0, longitude: -122.0), radius: 100, initialStateObserved: true
+        )
+        let contextStore = makeContextStore()
+        let dwell = GeofenceDwellCoordinator(
+            storage: fixture.storage, transitionEmitter: TransitionEmitterSpy(), contextStore: contextStore,
+            logger: LoggerMock(), notificationCenter: NotificationCenter(), evidenceRetryDelay: 3600
+        )
+        let setup = makeCoordinator(
+            storage: fixture.storage, contextStore: contextStore, dwellCoordinator: dwell, dateUtil: fixture.dateUtil
+        )
+        let region = currentLegacyRegion(dwellThresholdSeconds: 60)
+        let response = makeApiResponse(regions: [region], config: legacyConfig)
+        setup.api.fetchNearbyGeofencesClosure = { _, _, completion in completion(.success(response)) }
+
+        _ = await setup.coordinator.refresh(latitude: 37.0, longitude: -122.0, anchorIsLiveFix: true)
+
+        for _ in 0 ..< 200 where await fixture.storage.getDwellVisit(geofenceId: "legacy-1") == nil {
+            try await Task.sleep(nanoseconds: 10000000)
+        }
+        let visit = try #require(await fixture.storage.getDwellVisit(geofenceId: "legacy-1"))
+        #expect(visit.entryObserved == false)
+        #expect(visit.awaitsPresenceProof == true)
+        #expect(visit.geometryRevision == region.dwellRevision)
+        #expect(setup.emitter.calls.wrappedValue.isEmpty)
+        dwell.cancelEvidence(for: "legacy-1")
+    }
+
+    /// Control: a circle the OS holds the device outside gets no candidate from the same refresh.
+    @Test
+    func refresh_givenDwellEnabledOnACircleHeldOutside_expectNoVisit() async throws {
+        let fixture = try makeLegacyFixture()
+        defer { try? FileManager.default.removeItem(at: fixture.dir) }
+        await fixture.storage.recordMonitorRegistration(
+            identifier: "legacy-1", transitionTypes: [.enter, .exit], initialState: .exit,
+            center: LocationData(latitude: 37.0, longitude: -122.0), radius: 100, initialStateObserved: true
+        )
+        let contextStore = makeContextStore()
+        let dwell = GeofenceDwellCoordinator(
+            storage: fixture.storage, transitionEmitter: TransitionEmitterSpy(), contextStore: contextStore,
+            logger: LoggerMock(), notificationCenter: NotificationCenter(), evidenceRetryDelay: 3600
+        )
+        let setup = makeCoordinator(
+            storage: fixture.storage, contextStore: contextStore, dwellCoordinator: dwell, dateUtil: fixture.dateUtil
+        )
+        let response = makeApiResponse(regions: [currentLegacyRegion(dwellThresholdSeconds: 60)], config: legacyConfig)
+        setup.api.fetchNearbyGeofencesClosure = { _, _, completion in completion(.success(response)) }
+
+        _ = await setup.coordinator.refresh(latitude: 37.0, longitude: -122.0, anchorIsLiveFix: true)
+        await settleQuietly(0.3)
+
+        #expect(await fixture.storage.getDwellVisit(geofenceId: "legacy-1") == nil)
+    }
+
     @Test
     func refresh_givenCatalogCachedBeforeDwellAndServerSendsNoDwell_expectAcknowledgedAsCurrent() async throws {
         let fixture = try makeLegacyFixture()
@@ -3893,6 +3955,10 @@ private actor SpyGeofenceSyncStorage: GeofenceSyncStorage {
         onClearUserScopedState?()
         operations.append(.clearUserScopedState)
         await underlying.clearUserScopedState()
+    }
+
+    func getMonitorRegionRecords() async -> [String: MonitorRegionRecord] {
+        await underlying.getMonitorRegionRecords()
     }
 }
 

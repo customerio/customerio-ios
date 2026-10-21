@@ -29,13 +29,33 @@ extension GeofenceSyncCoordinatorImpl {
         if !newPolygons.isEmpty {
             evaluateNewPolygons(newPolygons, expectedUserId: expectedUserId)
         }
-        guard !newInside.isEmpty else { return }
+        // Circles this refresh kept, with a dwell threshold: the OS reports no ENTER for a fence it
+        // already holds the device inside, and enabling or changing the threshold while inside
+        // prunes the visit (its revision changed), so nothing would restart one before the next
+        // crossing. A candidate is started from discovery wherever the monitor holds the circle
+        // entered; a visit that still exists is kept as it is.
+        let keptWithDwell = candidates.filter { region in
+            region.vertices == nil && region.dwellThresholdSeconds > 0
+                && osRegistration.registeredIds.contains(region.id)
+                && previouslyRegisteredIds.contains(region.id)
+        }
+        guard !newInside.isEmpty || !keptWithDwell.isEmpty else { return }
         // Read outside the Task: `DateUtil` isn't Sendable, and Swift 5 mode doesn't diagnose it.
         let discoveredAt = dateUtil.now
         // Off the gate: a slow send must not stall the next refresh. Not main-actor bound either, so
         // the ENTER can't queue behind a sign-out; only the visit bookkeeping hops, in a child run
         // alongside the emit — awaited after it, a stalled send left the visit unwritten past an EXIT.
-        Task { [transitionEmitter, contextStore, logger, dwellCoordinator] in
+        Task { [transitionEmitter, contextStore, logger, dwellCoordinator, storage] in
+            if !keptWithDwell.isEmpty, let dwellCoordinator {
+                let records = await storage.getMonitorRegionRecords()
+                for region in keptWithDwell where records[region.id]?.lastState == .enter {
+                    guard contextStore.currentUserId == expectedUserId else { return }
+                    await dwellCoordinator.handleBoundary(
+                        geofence: region, transition: .enter, occurredAt: discoveredAt,
+                        expectedUserId: expectedUserId, crossingObserved: false, presenceProven: false
+                    )
+                }
+            }
             for region in newInside {
                 // Per iteration: an awaited send can span a user switch.
                 guard contextStore.currentUserId == expectedUserId else { return }

@@ -15,6 +15,8 @@ protocol GeofenceSyncStorage: Sendable {
     func recordRegistration(center: LocationData, businessIds: Set<String>) async
     func recordRegistrationIntent(for geofences: [Geofence], pruningToCache: Bool) async
     func clearUserScopedState() async
+    /// The OS monitor's per-circle bookkeeping, for the state it holds a kept circle in.
+    func getMonitorRegionRecords() async -> [String: MonitorRegionRecord]
 }
 
 extension GeofenceStorage: GeofenceSyncStorage {}
