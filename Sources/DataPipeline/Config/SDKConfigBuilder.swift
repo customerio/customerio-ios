@@ -53,6 +53,8 @@ public class SDKConfigBuilder {
     /// Initializes new `SDKConfigBuilder` with required configuration options.
     /// - Parameters:
     ///   - cdpApiKey: Customer.io Data Pipeline API Key. Secret `sk_` keys are rejected and the SDK will not initialize.
+    ///     Switching to a public `pk_` key keeps the user's identity and queued events. Switching back to a
+    ///     legacy key does not undo this.
     public init(cdpApiKey: String) {
         self.cdpApiKey = cdpApiKey
         if ApiKey.isSecret(cdpApiKey) {
@@ -224,6 +226,7 @@ public class SDKConfigBuilder {
         // create `DataPipelineConfigOptions` from given configurations
         let dataPipelineConfig = DataPipelineConfigOptions(
             cdpApiKey: cdpApiKey,
+            region: region,
             apiHost: apiHost ?? region.apiHost,
             cdnHost: cdnHost ?? region.cdnHost,
             flushAt: flushAt,
