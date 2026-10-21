@@ -213,3 +213,15 @@ struct AnalyticsStorageMigration {
         (try? url.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate) ?? .distantPast
     }
 }
+
+extension AnalyticsStorageMigration {
+    /// Copies identity and moves queued events to `newKey`. Must run before analytics is created with `newKey`.
+    static func run(for newKey: String, diGraph: DIGraphShared) {
+        let store = diGraph.backgroundDeliveryContextStore
+        let savedApiKey = store.hasLiveCdpApiKeyProvider ? nil : store.currentCdpApiKey
+        let migration = AnalyticsStorageMigration(logger: diGraph.logger, savedApiKey: savedApiKey)
+        migration.copyIdentity(to: newKey)
+        // Every launch, so batches a cut short move left behind are still moved.
+        migration.moveQueuedEvents(to: newKey)
+    }
+}

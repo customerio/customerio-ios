@@ -29,11 +29,7 @@ class DataPipelineImplementation: DataPipelineInstance, DataPipelineTracking, Ba
         self.logger = diGraph.logger
         self.dataPipelinesLogger = diGraph.dataPipelinesLogger
         // Keep identity and queued events when the app switches to a `pk_` key.
-        let savedApiKey = diGraph.backgroundDeliveryContextStore.hasLiveCdpApiKeyProvider ? nil : diGraph.backgroundDeliveryContextStore.currentCdpApiKey
-        let storageMigration = AnalyticsStorageMigration(logger: diGraph.logger, savedApiKey: savedApiKey)
-        storageMigration.copyIdentity(to: moduleConfig.cdpApiKey)
-        // Every launch, so batches a cut short move left behind are still moved.
-        storageMigration.moveQueuedEvents(to: moduleConfig.cdpApiKey)
+        AnalyticsStorageMigration.run(for: moduleConfig.cdpApiKey, diGraph: diGraph)
         self.analytics = .init(configuration: moduleConfig.toSegmentConfiguration())
 
         self.eventBusHandler = diGraph.eventBusHandler
