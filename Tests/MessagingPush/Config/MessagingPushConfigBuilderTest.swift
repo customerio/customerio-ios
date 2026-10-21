@@ -45,6 +45,26 @@ class MessagingPushConfigBuilderTest: UnitTest {
         XCTAssertEqual(config.appGroupId, givenAppGroupId)
     }
 
+    func test_apiHost_whenNotSet_expectNil() {
+        let config = MessagingPushConfigBuilder().build()
+
+        XCTAssertNil(config.apiHost)
+    }
+
+    @available(iOS, unavailable)
+    @available(visionOS, unavailable)
+    @available(iOSApplicationExtension, introduced: 13.0)
+    @available(visionOSApplicationExtension, introduced: 1.0)
+    func test_apiHost_whenSet_expectValuePreserved() {
+        let givenApiHost = "proxy.example.com/v1"
+
+        let config = MessagingPushConfigBuilder(cdpApiKey: "placeholder")
+            .apiHost(givenApiHost)
+            .build()
+
+        XCTAssertEqual(config.apiHost, givenApiHost)
+    }
+
     func test_initializeFromEmptyDictionary_expectDefaultValues() {
         let givenDict: [String: Any] = [:]
 
@@ -116,5 +136,6 @@ extension MessagingPushConfigBuilderTest {
         XCTAssertTrue(config.showPushAppInForeground, file: file, line: line)
         XCTAssertEqual(config.region, Region.US, file: file, line: line)
         XCTAssertNil(config.appGroupId, file: file, line: line)
+        XCTAssertNil(config.apiHost, file: file, line: line)
     }
 }

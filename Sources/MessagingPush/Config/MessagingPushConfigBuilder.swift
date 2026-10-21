@@ -38,6 +38,7 @@ public class MessagingPushConfigBuilder {
     private var autoTrackPushEvents: Bool = true
     private var showPushAppInForeground: Bool = true
     private var appGroupId: String?
+    private var apiHost: String?
 
     // Need to be available for NotificationServiceExtension and AppDelegate
     // otherwise, it will throw an error when we add this module in the NotificationServiceExtension target in podfile
@@ -76,6 +77,19 @@ public class MessagingPushConfigBuilder {
     @available(visionOSApplicationExtension, introduced: 1.0)
     public func logLevel(_ logLevel: CioLogLevel) -> MessagingPushConfigBuilder {
         self.logLevel = logLevel
+        return self
+    }
+
+    /// Configures the host NotificationServiceExtension sends metrics to, so they can be routed through your own proxy.
+    /// Use the same value you pass to `SDKConfigBuilder.apiHost` in your app.
+    /// When not set, metrics are sent to the Customer.io host for the configured region.
+    @discardableResult
+    @available(iOS, unavailable)
+    @available(visionOS, unavailable)
+    @available(iOSApplicationExtension, introduced: 13.0)
+    @available(visionOSApplicationExtension, introduced: 1.0)
+    public func apiHost(_ apiHost: String) -> MessagingPushConfigBuilder {
+        self.apiHost = apiHost
         return self
     }
 
@@ -120,7 +134,8 @@ public class MessagingPushConfigBuilder {
             autoFetchDeviceToken: autoFetchDeviceToken,
             autoTrackPushEvents: autoTrackPushEvents,
             showPushAppInForeground: showPushAppInForeground,
-            appGroupId: appGroupId
+            appGroupId: appGroupId,
+            apiHost: apiHost
         )
 
         return configOptions

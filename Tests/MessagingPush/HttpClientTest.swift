@@ -235,9 +235,63 @@ class HttpClientTest: UnitTest {
         let containsAuthorizationHeader = actualSession.configuration.httpAdditionalHeaders?["Authorization"] != nil
         XCTAssertFalse(containsAuthorizationHeader)
     }
+
+    // MARK: custom apiHost
+
+    func test_getApiHost_givenNoApiHost_expectRegionDefaultHost() {
+        XCTAssertEqual(RichPushHttpClient.getApiHost(config: .withApiHost(nil)), "https://cdp.customer.io/v1")
+        XCTAssertEqual(RichPushHttpClient.getApiHost(config: .withApiHost(nil, region: .EU)), "https://cdp-eu.customer.io/v1")
+    }
+
+    func test_getApiHost_givenEmptyApiHost_expectRegionDefaultHost() {
+        XCTAssertEqual(RichPushHttpClient.getApiHost(config: .withApiHost("")), "https://cdp.customer.io/v1")
+    }
+
+    func test_getApiHost_givenApiHostWithoutScheme_expectHttpsPrepended() {
+        XCTAssertEqual(RichPushHttpClient.getApiHost(config: .withApiHost("proxy.example.com/v1")), "https://proxy.example.com/v1")
+    }
+
+    func test_getApiHost_givenApiHostWithScheme_expectSchemeKept() {
+        XCTAssertEqual(RichPushHttpClient.getApiHost(config: .withApiHost("http://localhost:8080/v1")), "http://localhost:8080/v1")
+    }
+
+    func test_getSessionForRequest_givenCustomApiHost_expectCIOApiSessionForCustomHost() {
+        setUpClient(moduleConfig: .withApiHost("proxy.example.com/v1"))
+
+        let actualSession = client.getSessionForRequest(url: URL(string: "https://proxy.example.com/v1/track")!)
+
+        XCTAssertNotNil(actualSession.configuration.httpAdditionalHeaders?["Authorization"])
+    }
+
+    func test_getSessionForRequest_givenCustomApiHost_expectPublicSessionForDefaultHost() {
+        setUpClient(moduleConfig: .withApiHost("proxy.example.com/v1"))
+
+        let actualSession = client.getSessionForRequest(url: URL(string: "https://cdp.customer.io/v1/track")!)
+
+        XCTAssertNil(actualSession.configuration.httpAdditionalHeaders?["Authorization"])
+    }
+
+    func test_getSessionForRequest_givenInvalidApiHost_expectPublicSession() {
+        setUpClient(moduleConfig: .withApiHost("proxy example.com/v1"))
+
+        let actualSession = client.getSessionForRequest(url: URL(string: "https://cdp.customer.io/v1/track")!)
+
+        XCTAssertNil(actualSession.configuration.httpAdditionalHeaders?["Authorization"])
+    }
 }
 
 extension HttpClientTest {
+    // The client reads the module config when it's created, so recreate it after changing the config.
+    private func setUpClient(moduleConfig: MessagingPushConfigOptions) {
+        setUp(moduleConfig: moduleConfig)
+        client = RichPushHttpClient(
+            jsonAdapter: jsonAdapter,
+            httpRequestRunner: requestRunnerMock,
+            logger: log,
+            userAgentUtil: diGraphShared.userAgentUtil
+        )
+    }
+
     // OK with a large tuple since this is just setting up a test. No need to make a custom data type just to setup test functions.
     // swiftlint:disable:next large_tuple
     private func mockRequestResponse(onComplete: @escaping () -> (body: Data?, response: HTTPURLResponse?, failure: Error?)) {
