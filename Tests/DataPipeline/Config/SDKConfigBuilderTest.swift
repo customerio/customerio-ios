@@ -123,6 +123,41 @@ class SDKConfigBuilderTest: UnitTest {
         XCTAssertEqual(result.dataPipelineConfig.cdnHost, givenCdnHost)
     }
 
+    func test_givenEuPublicKeyAndNoRegion_expectEuDefaults() {
+        let result = SDKConfigBuilder(cdpApiKey: "pk_eu_\(String.random)")
+            .build()
+
+        XCTAssertEqual(result.dataPipelineConfig.apiHost, "cdp-eu.customer.io/v1")
+        XCTAssertEqual(result.dataPipelineConfig.cdnHost, "cdp-eu.customer.io/v1")
+        // Modules such as in-app read the region from here.
+        XCTAssertEqual(result.dataPipelineConfig.region, .EU)
+    }
+
+    func test_givenUsPublicKeyAndNoRegion_expectUsDefaults() {
+        let result = SDKConfigBuilder(cdpApiKey: "pk_us_\(String.random)")
+            .build()
+
+        XCTAssertEqual(result.dataPipelineConfig.apiHost, "cdp.customer.io/v1")
+        XCTAssertEqual(result.dataPipelineConfig.cdnHost, "cdp.customer.io/v1")
+    }
+
+    func test_givenEuPublicKeyAndRegionUS_expectRegionWins() {
+        let result = SDKConfigBuilder(cdpApiKey: "pk_eu_\(String.random)")
+            .region(.US)
+            .build()
+
+        XCTAssertEqual(result.dataPipelineConfig.apiHost, "cdp.customer.io/v1")
+        XCTAssertEqual(result.dataPipelineConfig.cdnHost, "cdp.customer.io/v1")
+    }
+
+    func test_givenEuPublicKey_expectKeyPassedAsIs() {
+        let givenKey = "pk_eu_\(String.random)"
+
+        let result = SDKConfigBuilder(cdpApiKey: givenKey).build()
+
+        XCTAssertEqual(result.dataPipelineConfig.cdpApiKey, givenKey)
+    }
+
     func test_autoScreenTrackingEnabled_expectScreenPluginAttachedWithGivenHandlers() {
         let autoScreenViewBodyExpectation = expectation(description: "Waiting for autoScreenViewBody to be invoked")
         let givenAutoScreenViewBody: (() -> [String: Any]) = {

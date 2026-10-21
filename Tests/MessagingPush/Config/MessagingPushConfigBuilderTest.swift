@@ -45,6 +45,24 @@ class MessagingPushConfigBuilderTest: UnitTest {
         XCTAssertEqual(config.appGroupId, givenAppGroupId)
     }
 
+    func test_region_givenPublicKeyWithRegion_expectRegionFromKey() {
+        let config = MessagingPushConfigBuilder(cdpApiKey: "pk_eu_\(String.random)", region: nil).build()
+
+        XCTAssertEqual(config.region, Region.EU)
+    }
+
+    func test_region_givenExplicitRegion_expectExplicitRegionWins() {
+        let config = MessagingPushConfigBuilder(cdpApiKey: "pk_eu_\(String.random)", region: .US).build()
+
+        XCTAssertEqual(config.region, Region.US)
+    }
+
+    func test_region_givenLegacyKeyAndNoRegion_expectUS() {
+        let config = MessagingPushConfigBuilder(cdpApiKey: String.random, region: nil).build()
+
+        XCTAssertEqual(config.region, Region.US)
+    }
+
     func test_initializeFromEmptyDictionary_expectDefaultValues() {
         let givenDict: [String: Any] = [:]
 
