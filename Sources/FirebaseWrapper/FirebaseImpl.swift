@@ -27,11 +27,16 @@ class FirebaseImpl: FirebaseService {
         case replace(Data?)
     }
 
+    // Work that waits for `FirebaseApp.configure()`, taken in one piece so each item runs exactly once.
+    private struct PendingWork {
+        var apnsToken = PendingAPNsToken.unchanged
+        var tokenFetches: [(String?, Error?) -> Void] = []
+        var installationIdFetches: [(String?, Error?) -> Void] = []
+        var installInterposer = true
+    }
+
     private struct State {
-        var pendingAPNsToken = PendingAPNsToken.unchanged
-        var pendingTokenFetches: [(String?, Error?) -> Void] = []
-        var pendingInstallationIdFetches: [(String?, Error?) -> Void] = []
-        var isInterposerInstalled = false
+        var pending = PendingWork()
         var hasLoggedWaitingForFirebase = false
         // Firebase calls its delegate, then posts the refresh notification for the same value. Set when the interposer
         // delivers one, so the paired notification isn't forwarded twice; delegate identity can't tell, as delegates chain.
@@ -85,13 +90,13 @@ class FirebaseImpl: FirebaseService {
                 return messaging.apnsToken
             }
             return state.using { state in
-                if case .replace(let token) = state.pendingAPNsToken { return token }
+                if case .replace(let token) = state.pending.apnsToken { return token }
                 return nil
             }
         }
         set {
             guard runtime.availability == .available else { return }
-            state.mutating { $0.pendingAPNsToken = .replace(newValue) }
+            state.mutating { $0.pending.apnsToken = .replace(newValue) }
             flushIfFirebaseIsReady()
             logIfWaitingForFirebase()
         }
@@ -102,7 +107,7 @@ class FirebaseImpl: FirebaseService {
             completion(nil, error)
             return
         }
-        state.mutating { $0.pendingTokenFetches.append(completion) }
+        state.mutating { $0.pending.tokenFetches.append(completion) }
         flushIfFirebaseIsReady()
         logIfWaitingForFirebase()
     }
@@ -120,7 +125,7 @@ class FirebaseImpl: FirebaseService {
             completion(nil, nil)
             return
         }
-        state.mutating { $0.pendingInstallationIdFetches.append(completion) }
+        state.mutating { $0.pending.installationIdFetches.append(completion) }
         flushIfFirebaseIsReady()
         logIfWaitingForFirebase()
     }
@@ -156,24 +161,19 @@ class FirebaseImpl: FirebaseService {
         defer { flushLock.unlock() }
 
         guard let messaging = runtime.messaging() else { return }
-        let work = state.mutating { state -> (PendingAPNsToken, [(String?, Error?) -> Void], [(String?, Error?) -> Void], Bool) in
-            let work = (state.pendingAPNsToken, state.pendingTokenFetches, state.pendingInstallationIdFetches, !state.isInterposerInstalled)
-            state.pendingAPNsToken = .unchanged
-            state.pendingTokenFetches = []
-            state.pendingInstallationIdFetches = []
-            state.isInterposerInstalled = true
-            return work
+        let work = state.mutating { state -> PendingWork in
+            defer { state.pending = PendingWork(installInterposer: false) }
+            return state.pending
         }
-        let (pendingAPNsToken, tokenFetches, installationIdFetches, installInterposer) = work
 
-        if case .replace(let token) = pendingAPNsToken {
+        if case .replace(let token) = work.apnsToken {
             messaging.apnsToken = token
         }
-        if installInterposer {
+        if work.installInterposer {
             installDelegateInterposer(on: messaging)
         }
-        tokenFetches.forEach { messaging.token(completion: $0) }
-        installationIdFetches.forEach { fetchInstallationId(from: messaging, completion: $0) }
+        work.tokenFetches.forEach { messaging.token(completion: $0) }
+        work.installationIdFetches.forEach { fetchInstallationId(from: messaging, completion: $0) }
     }
 
     private func fetchInstallationId(from messaging: RuntimeMessaging, completion: @escaping (String?, Error?) -> Void) {
