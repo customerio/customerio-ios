@@ -94,7 +94,12 @@ extension GeofenceSyncCoordinatorImpl {
         anchor: LocationData,
         registeredIds: Set<String>
     ) async {
+        // Bracketed: the bump before the write retires every polygon-shape read begun on the old
+        // catalog, and `rememberCatalog` right after it retires any begun during the write, before
+        // anything else here awaits. See `GeofenceDwellCoordinator.polygonIds`.
+        await MainActor.run { dwellCoordinator?.beginCatalogReplacement() }
         await storage.setCachedGeofences(regions)
+        await MainActor.run { dwellCoordinator?.rememberCatalog(regions) }
         if let parsedConfig {
             await storage.setCachedConfig(parsedConfig)
             onConfigPersisted.wrappedValue?()

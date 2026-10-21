@@ -34,6 +34,11 @@ final class GeofenceDwellCoordinator {
     /// Bumped whenever a refresh replaces the catalog (`rememberCatalog`), so a catalog read begun
     /// before it cannot re-add a polygon the refresh dropped. Internal for `+Polygons`.
     var polygonCatalogGeneration: UInt64 = 0
+    /// Whether `polygonIds` has been read from the catalog at least once. Until then a correction
+    /// cannot be told apart from a covering circle's, so it waits in `pendingCorrections` and is
+    /// noted at the load, for circles only. Internal for `+Chronology` and `+Polygons`.
+    var polygonIdsLoaded = false
+    var pendingCorrections: [(geofenceId: String, mark: GeofenceExitMark)] = []
     var pendingExitCallbacks: [String: [Date: GeofencePendingExitCallback]] = [:] // `noteExitCallback`
     /// This coordinator's first clock reading, taken when it was built; the wall offset of its
     /// previous reading, and the uptime it last saw the wall clock step at. Internal for

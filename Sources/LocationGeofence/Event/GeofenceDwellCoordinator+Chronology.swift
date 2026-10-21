@@ -160,9 +160,15 @@ extension GeofenceDwellCoordinator {
     /// covering circle is what the OS watches: a crossing of it still means the device left and
     /// came back, but a correction of the state the OS assumed for it says nothing about the
     /// shape, and is not noted (`polygonIds`).
+    /// Until the shapes are loaded a correction waits (`pendingCorrections`), placed on the
+    /// timeline now, and is noted at the load only if its fence is a circle.
     func noteEnter(geofenceId: String, occurredAt: Date, crossing: Bool) {
         guard crossing || !polygonIds.contains(geofenceId) else { return }
         let mark = GeofenceExitMark(date: occurredAt, processedAt: readClock(), source: .enterEvent)
+        if !crossing, !polygonIdsLoaded {
+            pendingCorrections.append((geofenceId, mark))
+            return
+        }
         noteEnter(mark, geofenceId: geofenceId, crossing: crossing)
     }
 

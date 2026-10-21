@@ -159,6 +159,53 @@ struct GeofenceDwellCoordinatorTests {
         #expect(setup.coordinator.enterMarks[circle.id]?.correction != nil)
     }
 
+    /// A correction noted on a cold start, before the shapes are loaded, waits for them: for a
+    /// polygon's covering circle it is dropped and the unqualified visit it would have ended stays.
+    @Test
+    func correctionBeforeTheShapesLoadDoesNotEndAPolygonVisit() async throws {
+        let clock = ManualGeofenceClock(wall: Date(timeIntervalSince1970: 1000))
+        let setup = await makeSetup(isPolygon: true, clock: clock)
+        await setup.coordinator.recordInsideEvidence(
+            geofence: setup.geofence, at: clock.wall, source: "location_evidence", beginsNewVisit: true
+        )
+        let visit = try #require(await setup.storage.getDwellVisit(geofenceId: setup.geofence.id))
+        clock.advance(300)
+        // As at launch: nothing loaded yet when the OS corrects the covering circle it assumed outside.
+        setup.coordinator.polygonIdsLoaded = false
+        setup.coordinator.polygonIds = []
+        setup.coordinator.noteEnter(geofenceId: setup.geofence.id, occurredAt: clock.wall, crossing: false)
+        #expect(setup.coordinator.enterMarks[setup.geofence.id] == nil)
+        #expect(await setup.coordinator.currentVisit(geofence: setup.geofence, userId: "user-1")?.visitId == visit.visitId)
+
+        setup.coordinator.rememberCatalog([setup.geofence])
+
+        #expect(setup.coordinator.enterMarks[setup.geofence.id] == nil)
+        #expect(setup.coordinator.pendingCorrections.isEmpty)
+        #expect(await setup.coordinator.currentVisit(geofence: setup.geofence, userId: "user-1")?.visitId == visit.visitId)
+        setup.coordinator.cancelEvidence(for: setup.geofence.id)
+    }
+
+    /// The same correction for a circle is applied once the shapes are loaded, and ends the
+    /// unqualified stay it is later than, as it would have at once.
+    @Test
+    func correctionBeforeTheShapesLoadIsAppliedToACircle() async throws {
+        let clock = ManualGeofenceClock(wall: Date(timeIntervalSince1970: 1000))
+        let setup = await makeSetup(isPolygon: false, clock: clock)
+        await setup.coordinator.handleBoundary(geofence: setup.geofence, transition: .enter, occurredAt: clock.wall)
+        try #require(await setup.storage.getDwellVisit(geofenceId: setup.geofence.id) != nil)
+        clock.advance(300)
+        setup.coordinator.polygonIdsLoaded = false
+        setup.coordinator.noteEnter(geofenceId: setup.geofence.id, occurredAt: clock.wall, crossing: false)
+        // The ENTER that opened the visit is its crossing mark; the correction waits.
+        #expect(setup.coordinator.enterMarks[setup.geofence.id]?.correction == nil)
+
+        setup.coordinator.rememberCatalog([setup.geofence])
+
+        #expect(setup.coordinator.enterMarks[setup.geofence.id]?.correction != nil)
+        #expect(await setup.coordinator.currentVisit(geofence: setup.geofence, userId: "user-1") == nil)
+        setup.coordinator.cancelEvidence(for: setup.geofence.id)
+    }
+
     /// A correction racing the visit an earlier ENTER already opened — the same arrival, dated
     /// within the 1 s tolerance — keeps that visit as it is. Half a second, not exactly the
     /// tolerance: two clock reads microseconds apart would put a 1 s gap a hair either side of it.
