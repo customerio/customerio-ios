@@ -77,6 +77,12 @@ extension GeofenceDwellCoordinator {
     ///
     /// `ignoringLaterEnter` is only for a visit an EXIT already ended, judged up to that EXIT: the
     /// re-entry after it is a later stay, not a break in this one.
+    ///
+    /// A visit whose dwell is reserved and not yet delivered holds through every loss of
+    /// observation — monitoring interrupted, Background App Refresh or location access reduced, a
+    /// foreground-only process gone — because the reservation is a fact about the stay before the
+    /// loss, still owed to the outbox. It still ends with its identity, geometry or user
+    /// (`currentVisit`), a reboot, or a later crossing, which starts a stay of its own.
     func continuityHolds(for visit: GeofenceDwellVisit, geofenceId: String, ignoringLaterEnter: Bool = false) -> Bool {
         // No timing: recorded by a build that kept none, on a boot nothing identifies.
         guard let timing = visit.timing else { return false }
@@ -88,9 +94,13 @@ extension GeofenceDwellCoordinator {
         case .ambiguous, .knownOther:
             return false
         }
-        guard !lossOvertook(visit, geofenceId: geofenceId),
+        guard !identityTracker.interrupted(visit),
               ignoringLaterEnter || !enterSuperseded(visit, geofenceId: geofenceId)
         else { return false }
+        // Only while the reservation is still owed: once delivered, the visit is just the marker
+        // that the stay had its DWELL, and a loss ends it as any other.
+        if visit.dwellReservation != nil, !visit.emitted { return true }
+        guard !lossOvertook(visit, geofenceId: geofenceId) else { return false }
         // The app was not running for some time between processes, and under this access nothing
         // relaunches it for an EXIT.
         if Self.observesOnlyInForeground(visit), !visitsRecordedHere.contains(visit.visitId) { return false }

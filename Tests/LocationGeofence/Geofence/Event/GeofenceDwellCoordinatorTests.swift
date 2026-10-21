@@ -65,7 +65,8 @@ struct GeofenceDwellCoordinatorTests {
 
     /// A reservation is a fact about the stay: the dwell qualified when it was made. A continuity
     /// break since — here Always dropping to When In Use — refuses a first admission, never a
-    /// reservation, which is still delivered as reserved.
+    /// reservation, which the retry path (a deadline or relaunch requesting evidence) still reads
+    /// and delivers as reserved.
     @Test
     func reservedDwellIsDeliveredDespiteALaterAccessDowngrade() async throws {
         let granted = GeofenceLocationAccess(delivery: .background, fullAccuracy: true)
@@ -87,12 +88,15 @@ struct GeofenceDwellCoordinatorTests {
         access.value = GeofenceLocationAccess(delivery: .foregroundOnly, fullAccuracy: true)
         clock.advance(60)
 
-        await setup.coordinator.deliverReservedDwell(geofence: setup.geofence, visit: reserved, userId: "user-1")
+        await setup.coordinator.requestQualifyingEvidence(geofenceId: setup.geofence.id)
 
         let dwells = await setup.emitter.dwells()
         #expect(dwells.map(\.context.visitId) == [reserved.visitId])
         #expect(dwells.first?.context.durationSeconds == 60)
-        #expect(await setup.storage.getDwellVisit(geofenceId: setup.geofence.id)?.emitted == true)
+        // Delivered, the visit is an emitted stay like any other, which the downgrade may end.
+        let stored = await setup.storage.getDwellVisit(geofenceId: setup.geofence.id)
+        #expect(stored == nil || stored?.emitted == true)
+        setup.coordinator.cancelEvidence(for: setup.geofence.id)
     }
 
     /// A correction racing the visit an earlier ENTER already opened — the same arrival, dated
