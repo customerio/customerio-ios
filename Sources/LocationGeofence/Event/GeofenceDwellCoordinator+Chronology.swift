@@ -156,8 +156,12 @@ extension GeofenceDwellCoordinator {
         enterMarks[geofenceId] = marks
     }
 
-    /// Notes a native ENTER from the OS callback itself, before its routing task runs.
+    /// Notes a native ENTER from the OS callback itself, before its routing task runs. A polygon's
+    /// covering circle is what the OS watches: a crossing of it still means the device left and
+    /// came back, but a correction of the state the OS assumed for it says nothing about the
+    /// shape, and is not noted (`polygonIds`).
     func noteEnter(geofenceId: String, occurredAt: Date, crossing: Bool) {
+        guard crossing || !polygonIds.contains(geofenceId) else { return }
         let mark = GeofenceExitMark(date: occurredAt, processedAt: readClock(), source: .enterEvent)
         noteEnter(mark, geofenceId: geofenceId, crossing: crossing)
     }

@@ -94,6 +94,36 @@ struct GeofenceDwellCorrectionEnterTests {
         rig.dwell.cancelEvidence(for: Self.polygon.id)
     }
 
+    /// The field trip's sequence: a polygon visit begun by a fix, then the covering-circle ENTER
+    /// `CLMonitor` raises minutes later, correcting the outside it assumed. The circle says
+    /// nothing about the polygon, so the stay keeps its id and its entry, and qualifies once, from
+    /// that entry — not restarted at the correction with the minutes before it lost.
+    @Test
+    @available(iOS 17.0, *)
+    func correctionEnterOnAnUnqualifiedPolygonVisitKeepsItAndItsEntry() async throws {
+        let rig = await Rig.make()
+        await rig.register(Self.polygon, seenAt: nil)
+        await rig.resolver.evaluateMembership(geofenceIds: [Self.polygon.id], reason: .movement, requiresFreshFix: true)
+        let started = try #require(await rig.storage.getDwellVisit(geofenceId: Self.polygon.id))
+        try #require(!started.emitted)
+
+        rig.advance(330)
+        rig.os.deliver(identifier: Self.polygon.id, state: .satisfied, at: rig.clock.wall)
+        await rig.awaitMonitorState(.enter, for: Self.polygon.id)
+        await rig.resolver.evaluateMembership(geofenceIds: [Self.polygon.id], reason: .movement, requiresFreshFix: true)
+
+        let kept = try #require(await rig.storage.getDwellVisit(geofenceId: Self.polygon.id))
+        #expect(kept.visitId == started.visitId)
+        #expect(kept.enteredAt == started.enteredAt)
+        #expect(await rig.dwellRows().isEmpty)
+
+        rig.advance(270)
+        await rig.resolver.evaluateMembership(geofenceIds: [Self.polygon.id], reason: .movement, requiresFreshFix: true)
+
+        #expect(await rig.dwellRows().map(\.visitId) == [started.visitId])
+        rig.dwell.cancelEvidence(for: Self.polygon.id)
+    }
+
     /// A dwell reserved but not yet queued — its outbox write failed, or the process died first —
     /// is a fact about the stay. A correction ENTER leaves it, and it is delivered as reserved:
     /// its visit id, timestamp and entry.

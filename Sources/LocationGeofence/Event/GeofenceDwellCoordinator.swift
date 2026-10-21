@@ -23,6 +23,13 @@ final class GeofenceDwellCoordinator {
     /// noted as the OS delivers them, before the callback re-arms any evidence. A visit one ends is
     /// not the stay it reports. Internal for `+Chronology`.
     var enterMarks: [String: GeofenceEnterMarks] = [:]
+    /// Fences known to be polygons. The OS monitors only a polygon's covering circle: a correction
+    /// of the state it assumed for that circle proves nothing about the polygon and is never noted
+    /// as a mark, so it can neither end nor restart the polygon's visit; a crossing of the circle
+    /// still is. Learned from the cache at launch and from every fence that reaches the
+    /// coordinator, so a cold wake before the load is corrected by the resolver
+    /// (`forgetCoveringCircleEnter`). Internal for `+Chronology`.
+    var polygonIds: Set<String> = []
     var pendingExitCallbacks: [String: [Date: GeofencePendingExitCallback]] = [:] // `noteExitCallback`
     /// This coordinator's first clock reading, taken when it was built; the wall offset of its
     /// previous reading, and the uptime it last saw the wall clock step at. Internal for
@@ -124,6 +131,7 @@ final class GeofenceDwellCoordinator {
         diagnosticRecorder?.syncIdentity()
         registerForegroundEvaluation()
         bindPendingDwellCollection()
+        loadPolygonIds()
     }
 
     deinit {
@@ -149,6 +157,7 @@ final class GeofenceDwellCoordinator {
         crossingObserved: Bool = true,
         presenceProven: Bool = true
     ) async -> GeofenceExitContext? {
+        rememberShape(of: geofence)
         // Placed on the monotonic timeline as it is processed, before any await.
         let reading = readClock()
         let source: GeofenceExitMark.Source = transition == .enter ? .enterEvent : .exitEvent
@@ -205,6 +214,7 @@ final class GeofenceDwellCoordinator {
         continuingVisitId: String? = nil,
         qualifiesDwell: Bool = true
     ) async {
+        rememberShape(of: geofence)
         await syncClockReference(readClock())
         guard tracksVisit(geofence),
               let userId = contextStore.currentUserId, !userId.isEmpty,
@@ -327,6 +337,7 @@ final class GeofenceDwellCoordinator {
         geofence: Geofence,
         userId: String
     ) async -> GeofenceDwellVisit? {
+        rememberShape(of: geofence)
         guard let visit = await storage.getDwellVisit(geofenceId: geofence.id),
               contextStore.currentUserId == userId
         else { return nil }
