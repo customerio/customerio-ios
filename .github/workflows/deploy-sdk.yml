@@ -123,8 +123,6 @@ jobs:
           # Help on how to get the webhook URL: https://docs.slack.dev/tools/slack-github-action/sending-data-slack-incoming-webhook/
           webhook: ${{ secrets.SLACK_NOTIFY_RELEASES_WEBHOOK_URL }}
           webhook-type: incoming-webhook
-          # Fail the step when Slack rejects the message, as v1 of this action did.
-          errors: true
           # Use block kit for format of the JSON payloads: https://app.slack.com/block-kit-builder
           payload: |
             {
@@ -388,8 +386,6 @@ jobs:
           # Help on how to get the webhook URL: https://docs.slack.dev/tools/slack-github-action/sending-data-slack-incoming-webhook/
           webhook: ${{ secrets.SLACK_NOTIFY_RELEASES_WEBHOOK_URL }}
           webhook-type: incoming-webhook
-          # Fail the step when Slack rejects the message, as v1 of this action did.
-          errors: true
           # Use block kit for format of the JSON payloads: https://app.slack.com/block-kit-builder
           payload: |
             {
