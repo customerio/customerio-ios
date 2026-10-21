@@ -1,4 +1,5 @@
 import Dispatch
+import Foundation
 import Testing
 
 @testable import CioInternalCommon
@@ -237,27 +238,34 @@ struct SynchronizedEquatableTests {
         #expect(!(a != a))
     }
 
-    // Calls a == b and b == a concurrently. Without the ObjectIdentifier lock-ordering in ==,
-    // this reliably deadlocks. The timeout converts a hang into a test failure. 60s instead of
-    // 30s: busy CI runners can exceed 30s for the 2000 concurrent operations; a genuine deadlock
-    // still trips 60s.
+    // Calls a == b and b == a at the same time on two threads. Without the ObjectIdentifier
+    // lock-ordering in ==, this deadlocks. The test uses its own two threads instead of the
+    // shared GCD pool: 2000 blocks on DispatchQueue.global() could wait more than 60s for a
+    // worker thread on a busy CI runner, which looked like a deadlock when it wasn't one. The
+    // timeout only converts a real hang into a test failure.
     @Test func equalsConcurrentlyDoesNotDeadlock() {
         let a = Synchronized(1)
         let b = Synchronized(1)
-        let group = DispatchGroup()
+        let iterations = 100000
+        let finished = DispatchSemaphore(value: 0)
 
-        for _ in 0 ..< 1000 {
-            group.enter()
-            DispatchQueue.global().async { _ = a == b
-                group.leave()
+        let forward = Thread {
+            for _ in 0 ..< iterations {
+                _ = a == b
             }
-            group.enter()
-            DispatchQueue.global().async { _ = b == a
-                group.leave()
-            }
+            finished.signal()
         }
+        let backward = Thread {
+            for _ in 0 ..< iterations {
+                _ = b == a
+            }
+            finished.signal()
+        }
+        forward.start()
+        backward.start()
 
-        #expect(group.wait(timeout: .now() + 60) == .success)
+        #expect(finished.wait(timeout: .now() + 60) == .success)
+        #expect(finished.wait(timeout: .now() + 60) == .success)
     }
 }
 
