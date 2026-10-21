@@ -63,6 +63,38 @@ struct GeofenceDwellCoordinatorTests {
         #expect(dwells.first?.context.durationSeconds == nil)
     }
 
+    /// A reservation is a fact about the stay: the dwell qualified when it was made. A continuity
+    /// break since — here Always dropping to When In Use — refuses a first admission, never a
+    /// reservation, which is still delivered as reserved.
+    @Test
+    func reservedDwellIsDeliveredDespiteALaterAccessDowngrade() async throws {
+        let granted = GeofenceLocationAccess(delivery: .background, fullAccuracy: true)
+        let access = MutableAccess(granted)
+        let clock = ManualGeofenceClock(wall: Date(timeIntervalSince1970: 1000))
+        let setup = await makeSetup(isPolygon: false, clock: clock, locationAccess: { access.value })
+        let enteredAt = clock.wall
+        let reservation = GeofenceDwellReservation(
+            occurredAtEpochMilliseconds: Int64(enteredAt.timeIntervalSince1970 * 1000) + 60000,
+            enteredAtEpochMilliseconds: Int64(enteredAt.timeIntervalSince1970 * 1000), durationSeconds: 60,
+            thresholdSeconds: 60, detectionSource: "location_evidence"
+        )
+        let reserved = GeofenceDwellVisit(
+            visitId: UUID().uuidString, enteredAt: enteredAt, geometryRevision: setup.geofence.dwellRevision,
+            userId: "user-1", emitted: false, entryObserved: true, dwellReservation: reservation,
+            timing: GeofenceVisitTiming(enteredAt: enteredAt, recordedAt: clock.read()), locationAccess: granted
+        )
+        try #require(await setup.storage.saveDwellVisit(reserved, geofenceId: setup.geofence.id))
+        access.value = GeofenceLocationAccess(delivery: .foregroundOnly, fullAccuracy: true)
+        clock.advance(60)
+
+        await setup.coordinator.deliverReservedDwell(geofence: setup.geofence, visit: reserved, userId: "user-1")
+
+        let dwells = await setup.emitter.dwells()
+        #expect(dwells.map(\.context.visitId) == [reserved.visitId])
+        #expect(dwells.first?.context.durationSeconds == 60)
+        #expect(await setup.storage.getDwellVisit(geofenceId: setup.geofence.id)?.emitted == true)
+    }
+
     /// A correction racing the visit an earlier ENTER already opened — the same arrival, dated
     /// within the 1 s tolerance — keeps that visit as it is. Half a second, not exactly the
     /// tolerance: two clock reads microseconds apart would put a 1 s gap a hair either side of it.
@@ -2353,4 +2385,14 @@ private final class BlockingDwellReadFileManager: FileManager, @unchecked Sendab
 @MainActor
 private final class DiagnosticIdentityProbe {
     var tracker: GeofenceIdentityTracker?
+}
+
+/// Location access a test changes under a live coordinator.
+@MainActor
+private final class MutableAccess {
+    var value: GeofenceLocationAccess?
+
+    init(_ value: GeofenceLocationAccess?) {
+        self.value = value
+    }
 }

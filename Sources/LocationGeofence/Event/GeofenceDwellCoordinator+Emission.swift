@@ -18,8 +18,11 @@ extension GeofenceDwellCoordinator {
         guard geofence.dwellThresholdSeconds > 0, !visit.emitted else { return }
         // `visit` may be a copy read before a loss its removal has not yet reached. Admission is
         // judged now; a dwell already admitted goes on to its outbox row, a fact about the stay
-        // before the loss.
-        guard continuityHolds(for: visit, geofenceId: geofence.id), !visit.awaitsPresenceProof else { return }
+        // before the loss. So a reservation is never refused here: the stay qualified when it was
+        // made, and a continuity break since — an access downgrade, say — changes nothing about it.
+        if visit.dwellReservation == nil {
+            guard continuityHolds(for: visit, geofenceId: geofence.id), !visit.awaitsPresenceProof else { return }
+        }
         let reading = readClock()
         let elapsed = visit.timing?.elapsed(enteredAt: visit.enteredAt, until: observedAt, at: reading)
         guard let proposed = Self.qualifiedReservation(
