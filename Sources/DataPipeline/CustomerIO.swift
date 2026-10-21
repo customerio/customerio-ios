@@ -12,6 +12,11 @@ public extension CustomerIO {
         // can introduce an option to store and retrieve it.
         let (sdkConfig, cdpConfig, deepLinkCallback) = config.deconstruct()
 
+        // Secret keys must not ship in apps. `SDKConfigBuilder` already logged the error.
+        guard !ApiKey.isSecret(cdpConfig.cdpApiKey) else {
+            return
+        }
+
         // Sets deeplink callback, used by whole of SDK
         if let deepLinkCallback {
             DIGraphShared.shared.deepLinkUtil.setDeepLinkCallback(deepLinkCallback)

@@ -410,6 +410,46 @@ class CDPInteractionDefaultConfigTests: DataPipelineInteractionTests {
         XCTAssertEqual(outputReader.deviceUpdateEvents.first?.properties?["cio_token_type"]?.stringValue, "token")
     }
 
+    func test_tokenChanged_givenEventsHeldWhileSettingsLoad_expectDeviceDeletedCarriesPreviousToken() {
+        let givenToken = String.random
+        let givenFid = String.random
+        mockDeviceAttributes()
+        customerIO.identify(userId: String.random)
+        dataPipelineImplementation.registerDeviceToken(givenToken, tokenType: .token)
+        outputReader.resetPlugin()
+
+        setAnalyticsRunning(false)
+        dataPipelineImplementation.registerDeviceToken(givenFid, tokenType: .fid)
+        XCTAssertEqual(outputReader.events.count, 0)
+        setAnalyticsRunning(true)
+
+        XCTAssertEqual(outputReader.events.count, 2)
+        XCTAssertEqual(outputReader.deviceDeleteEvents.count, 1)
+        XCTAssertEqual(outputReader.deviceDeleteEvents.first?.deviceToken, givenToken)
+        XCTAssertEqual(outputReader.deviceUpdateEvents.count, 1)
+        XCTAssertEqual(outputReader.deviceUpdateEvents.first?.deviceToken, givenFid)
+    }
+
+    func test_tokenChanged_givenEventsHeldWhileSettingsLoad_expectEachDeviceUpdateCarriesItsOwnTokenAndType() {
+        let givenToken = String.random
+        let givenFid = String.random
+        mockDeviceAttributes()
+        customerIO.identify(userId: String.random)
+        outputReader.resetPlugin()
+
+        setAnalyticsRunning(false)
+        dataPipelineImplementation.registerDeviceToken(givenToken, tokenType: .token)
+        dataPipelineImplementation.registerDeviceToken(givenFid, tokenType: .fid)
+        setAnalyticsRunning(true)
+
+        let updatedEvents = outputReader.deviceUpdateEvents
+        XCTAssertEqual(updatedEvents.count, 2)
+        XCTAssertEqual(updatedEvents.first?.deviceToken, givenToken)
+        XCTAssertEqual(updatedEvents.first?.properties?["cio_token_type"]?.stringValue, "token")
+        XCTAssertEqual(updatedEvents.last?.deviceToken, givenFid)
+        XCTAssertEqual(updatedEvents.last?.properties?["cio_token_type"]?.stringValue, "fid")
+    }
+
     func test_registerToken_givenProfileIdentifiedBefore_expectRegisterDeviceToken() {
         let givenIdentifier = String.random
         let givenDeviceToken = String.random
@@ -749,6 +789,17 @@ class CDPInteractionDefaultConfigTests: DataPipelineInteractionTests {
         XCTAssertNotNil(globalDataStoreMock.pushDeviceToken)
     }
 
+    func test_deleteDeviceToken_givenStoredTokenNotRegisteredThisLaunch_expectDeviceDeletedCarriesStoredToken() {
+        let givenToken = String.random
+        globalDataStoreMock.pushDeviceToken = givenToken
+        outputReader.resetPlugin()
+
+        customerIO.deleteDeviceToken()
+
+        XCTAssertEqual(outputReader.deviceDeleteEvents.count, 1)
+        XCTAssertEqual(outputReader.deviceDeleteEvents.first?.deviceToken, givenToken)
+    }
+
     func test_deleteDeviceToken_givenProfileIdentified_givenExistingPushToken_expectDeleteDeviceEvent() {
         let givenDeviceToken = String.random
         let givenIdentifier = String.random
@@ -893,6 +944,20 @@ extension DataPipelineInteractionTests {
 
     var dataPipelineImplementation: DataPipelineImplementation {
         customerIO.implementation as! DataPipelineImplementation // swiftlint:disable:this force_cast
+    }
+
+    /// Analytics holds events while it is not running (e.g. while settings load) and processes them once it runs again.
+    func setAnalyticsRunning(_ running: Bool, file: StaticString = #filePath, line: UInt = #line) {
+        guard let startupQueue = analytics.find(pluginType: StartupQueue.self) else {
+            return XCTFail("StartupQueue plugin not found", file: file, line: line)
+        }
+        analytics.store.dispatch(action: System.ToggleRunningAction(running: running))
+        // StartupQueue observes the store on the main queue
+        let deadline = Date().addingTimeInterval(5)
+        while startupQueue.running != running, Date() < deadline {
+            RunLoop.current.run(until: Date().addingTimeInterval(0.01))
+        }
+        XCTAssertEqual(startupQueue.running, running, file: file, line: line)
     }
 }
 
