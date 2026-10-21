@@ -209,11 +209,13 @@ public struct RegisterDeviceTokenEvent: EventRepresentable {
     public let storageId: String
     public let params: [String: String]
     public let token: String
+    public let tokenType: DeviceTokenType?
     public let timestamp: Date
 
-    public init(storageId: String = UUID().uuidString, token: String, timestamp: Date = Date(), params: [String: String] = [:]) {
+    public init(storageId: String = UUID().uuidString, token: String, tokenType: DeviceTokenType? = nil, timestamp: Date = Date(), params: [String: String] = [:]) {
         self.storageId = storageId
         self.token = token
+        self.tokenType = tokenType
         self.timestamp = timestamp
         self.params = params
     }
