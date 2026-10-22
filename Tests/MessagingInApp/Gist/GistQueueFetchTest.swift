@@ -142,6 +142,35 @@ class GistQueueFetchTest: UnitTest {
         XCTAssertEqual(processMessageQueueDispatchCount, 0)
     }
 
+    func test_queueFetch_givenSameUserLogsBackIn_expectNewRequestAndOldResponseDiscarded() async {
+        let queueFetchHandler = await startedQueueFetchHandler()
+        let manager = inAppMessageManagerMock!
+        let reducer = inAppMessageReducer(logger: log)
+        manager.dispatchClosure = { action, completion in
+            manager.underlyingState = reducer(action, manager.underlyingState)
+            completion?()
+            return Task {}
+        }
+        queueFetchHandler(userA, false)
+
+        gist.resetState()
+        manager.underlyingState = reducer(.setUserIdentifier(user: "user-a"), manager.underlyingState)
+        let signedInAgain = manager.underlyingState!
+        queueFetchHandler(signedInAgain, false)
+
+        XCTAssertEqual(queueManagerSpy.pendingCompletions.count, 2)
+
+        queueManagerSpy.complete(0, with: .success([Message.random]))
+        XCTAssertEqual(processMessageQueueDispatchCount, 0)
+        // Finishing the old request must not free the new session's slot.
+        queueFetchHandler(signedInAgain, false)
+        XCTAssertEqual(queueManagerSpy.pendingCompletions.count, 2)
+
+        queueManagerSpy.complete(1, with: .success([Message.random]))
+        XCTAssertEqual(processMessageQueueDispatchCount, 1)
+        manager.dispatchClosure = nil
+    }
+
     func test_queueFetch_givenUserChangedWhileInFlight_expectNewUserNotShared() async {
         let queueFetchHandler = await startedQueueFetchHandler()
         queueFetchHandler(userA, false)

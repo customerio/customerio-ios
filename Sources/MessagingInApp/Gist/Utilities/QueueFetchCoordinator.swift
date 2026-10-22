@@ -2,12 +2,14 @@ import CioInternalCommon
 import Foundation
 
 /// The identity a queue request is made for, resolved the same way `GistQueueNetwork` picks the
-/// user token header.
+/// user token header, within the generation started by the most recent logout.
 struct QueueFetchKey: Equatable {
     let userToken: String
     let isAnonymous: Bool
+    let generation: Int
 
     init?(state: InAppMessageState) {
+        self.generation = state.queueFetchGeneration
         if let userId = state.userId, !userId.isBlankOrEmpty() {
             self.userToken = userId
             self.isAnonymous = false

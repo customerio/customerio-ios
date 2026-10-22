@@ -1,9 +1,7 @@
 import CioInternalCommon
 import Foundation
 
-/// Represents the state of InAppMessage store.
-/// It holds all the information required to manage and identify current state of in-app messaging.
-/// It is managed by reducer and should only be updated by dispatching appropriate actions to the store.
+/// In-app messaging state, updated by dispatching actions through the store's reducer.
 struct InAppMessageState: Equatable, CustomStringConvertible {
     let siteId: String
     let dataCenter: String
@@ -12,6 +10,8 @@ struct InAppMessageState: Equatable, CustomStringConvertible {
     let pollInterval: Double
     let userId: String?
     let anonymousId: String?
+    /// Separates queue requests made before and after logout, even for the same user.
+    let queueFetchGeneration: Int
     let currentRoute: String?
     let useSse: Bool
     let modalMessageState: ModalMessageState
@@ -19,12 +19,9 @@ struct InAppMessageState: Equatable, CustomStringConvertible {
     let messagesInQueue: Set<Message>
     let inboxMessages: [InboxMessage] // Array allows all-properties equality to work
     let shownMessageQueueIds: Set<String>
-    /// Client-side tombstones for inbox messages the user has deleted this session. A delete removes
-    /// the message locally AND on the server, but a subsequent poll's `/queue` response can still
-    /// contain the just-deleted message (eventual consistency / cached queue) — replaying it would
-    /// resurrect the row and keep the overlay chrome visible. We therefore exclude tombstoned ids from
-    /// any incoming `processInboxMessages`, and prune a tombstone once the server response no longer
-    /// contains it (the delete has propagated). Internal-only: not part of equality / public API.
+    /// Inbox deletion tombstones prevent stale polls from resurrecting deleted rows. Filter them
+    /// from incoming messages, and prune once the server no longer returns them.
+    /// Internal-only: not part of equality / public API.
     let deletedInboxMessageIds: Set<String>
 
     init(
@@ -42,7 +39,8 @@ struct InAppMessageState: Equatable, CustomStringConvertible {
         messagesInQueue: Set<Message> = [],
         inboxMessages: [InboxMessage] = [],
         shownMessageQueueIds: Set<String> = [],
-        deletedInboxMessageIds: Set<String> = []
+        deletedInboxMessageIds: Set<String> = [],
+        queueFetchGeneration: Int = 0
     ) {
         self.siteId = siteId
         self.dataCenter = dataCenter
@@ -51,6 +49,7 @@ struct InAppMessageState: Equatable, CustomStringConvertible {
         self.pollInterval = pollInterval
         self.userId = userId
         self.anonymousId = anonymousId
+        self.queueFetchGeneration = queueFetchGeneration
         self.currentRoute = currentRoute
         self.useSse = useSse
         self.modalMessageState = modalMessageState
@@ -61,8 +60,7 @@ struct InAppMessageState: Equatable, CustomStringConvertible {
         self.deletedInboxMessageIds = deletedInboxMessageIds
     }
 
-    /// Copies the current state and replaces the given properties with the new values.
-    /// It is useful when updating state with only a few properties and keeping the rest as is.
+    /// Copies the state, replacing the supplied properties.
     func copy(
         colorScheme: ColorScheme? = nil,
         pollInterval: Double? = nil,
@@ -92,7 +90,8 @@ struct InAppMessageState: Equatable, CustomStringConvertible {
             messagesInQueue: messagesInQueue ?? self.messagesInQueue,
             inboxMessages: inboxMessages ?? self.inboxMessages,
             shownMessageQueueIds: shownMessageQueueIds ?? self.shownMessageQueueIds,
-            deletedInboxMessageIds: deletedInboxMessageIds ?? self.deletedInboxMessageIds
+            deletedInboxMessageIds: deletedInboxMessageIds ?? self.deletedInboxMessageIds,
+            queueFetchGeneration: queueFetchGeneration
         )
     }
 
@@ -104,6 +103,7 @@ struct InAppMessageState: Equatable, CustomStringConvertible {
             lhs.pollInterval == rhs.pollInterval &&
             lhs.userId == rhs.userId &&
             lhs.anonymousId == rhs.anonymousId &&
+            lhs.queueFetchGeneration == rhs.queueFetchGeneration &&
             lhs.currentRoute == rhs.currentRoute &&
             lhs.useSse == rhs.useSse &&
             lhs.modalMessageState == rhs.modalMessageState &&
@@ -122,6 +122,7 @@ struct InAppMessageState: Equatable, CustomStringConvertible {
             pollInterval: \(pollInterval),
             userId: \(String(describing: userId)),
             anonymousId: \(String(describing: anonymousId)),
+            queueFetchGeneration: \(queueFetchGeneration),
             currentRoute: \(String(describing: currentRoute)),
             useSse: \(String(describing: useSse)),
             modalMessageState: \(modalMessageState),
@@ -172,6 +173,7 @@ extension InAppMessageState {
         putIfDifferent(\.pollInterval, as: "pollInterval")
         putIfDifferent(\.userId, as: "userId")
         putIfDifferent(\.anonymousId, as: "anonymousId")
+        putIfDifferent(\.queueFetchGeneration, as: "queueFetchGeneration")
         putIfDifferent(\.currentRoute, as: "currentRoute")
         putIfDifferent(\.useSse, as: "useSse")
         putIfDifferent(\.modalMessageState, as: "currentMessageState")
@@ -200,8 +202,7 @@ extension InAppMessageState {
     }
 }
 
-/// Represents various states an in-app message can be in.
-/// The states are derived from lifecycle of an in-app message, from loading to displaying to dismissing.
+/// Modal message lifecycle from loading through display and dismissal.
 enum ModalMessageState: Equatable, CustomStringConvertible {
     case initial
     case loading(message: Message)
@@ -235,8 +236,7 @@ enum ModalMessageState: Equatable, CustomStringConvertible {
     }
 }
 
-/// Represents various states an in-app message can be in.
-/// The states are derived from lifecycle of an in-app message, from loading to displaying to dismissing.
+/// Inline message lifecycle from readiness to embedding and dismissal.
 enum InlineMessageState: Equatable, CustomStringConvertible, Hashable {
     case readyToEmbed(message: Message, elementId: String)
     case embedded(message: Message, elementId: String)

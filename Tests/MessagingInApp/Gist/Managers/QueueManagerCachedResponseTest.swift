@@ -133,6 +133,20 @@ class QueueManagerCachedResponseTest: UnitTest {
         XCTAssertNil(keyValueStore.string(.inAppUserQueueFetchCachedResponseOwner))
     }
 
+    func test_fetchUserQueue_givenSameUserLogsBackInWhileInFlight_expectNothingCachedOrPublished() async {
+        let user = InAppMessageState(userId: "user-a")
+        let reducer = inAppMessageReducer(logger: log)
+        let signedOut = reducer(.resetState, user)
+        let signedInAgain = reducer(.setUserIdentifier(user: "user-a"), signedOut)
+        stubResponse(statusCode: 200, body: body, switchingTo: signedInAgain)
+
+        let result = await fetchUserQueue(state: user)
+
+        assertDiscarded(result)
+        XCTAssertTrue(dispatchedInboxMessageCounts.isEmpty)
+        XCTAssertNil(keyValueStore.data(.inAppUserQueueFetchCachedResponse))
+    }
+
     // MARK: - Helpers
 
     /// A 304 that could not reuse a cached body reports success with no queue.
