@@ -26,8 +26,8 @@ open class UnitTest: SharedTests.UnitTestBase<MessagingPushInstance> {
         super.setUp(enableLogs: enableLogs, sdkConfig: nil)
     }
 
-    /// Sets up the module with `moduleConfig` as given, for options that `MessagingPushConfigBuilder`
-    /// only exposes to app extensions and so can't be set from this test target.
+    /// Sets up the module with `moduleConfig` as given, so a test can use options that `MessagingPushConfigBuilder`
+    /// only sets from app extensions without marking the test itself `@available(iOS, unavailable)`.
     open func setUp(enableLogs: Bool = false, moduleConfig: MessagingPushConfigOptions) {
         messagingPushConfigOptions = moduleConfig
 
@@ -48,7 +48,7 @@ open class UnitTest: SharedTests.UnitTestBase<MessagingPushInstance> {
 }
 
 public extension MessagingPushConfigOptions {
-    /// Builder defaults with `apiHost` and `region` set, since the builder only sets those from app extensions.
+    /// Builder defaults with `apiHost` and `region` set, for tests that don't call the extension-only builder methods.
     static func withApiHost(_ apiHost: String?, region: Region = .US) -> MessagingPushConfigOptions {
         let defaults = MessagingPushConfigBuilder().build()
         return MessagingPushConfigOptions(
