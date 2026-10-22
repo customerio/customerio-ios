@@ -146,9 +146,12 @@ struct GeofenceDwellVisit: Codable, Equatable, Sendable {
     }
 
     /// Whether a dwell was reserved on this visit and not yet delivered: a fact about the stay
-    /// still owed to the outbox, which no loss of observation since may discard.
+    /// still owed to the outbox, which no loss of observation since may discard. Not one evidenced
+    /// after the observed boundary that closed the visit: its fix may be a return's, so it is no
+    /// dwell of this stay and is never delivered.
     var owesDwell: Bool {
-        dwellReservation != nil && !emitted
+        guard let dwellReservation, !emitted else { return false }
+        return closedByObservedBoundary.map { !dwellReservation.isEvidenced(after: $0) } ?? true
     }
 }
 
@@ -170,6 +173,11 @@ struct GeofenceDwellReservation: Codable, Equatable, Sendable {
 
     var enteredAt: Date? {
         enteredAtEpochMilliseconds.map { Date(timeIntervalSince1970: TimeInterval($0) / 1000) }
+    }
+
+    /// Whether the evidence that qualified the dwell is dated after `date`, to the millisecond.
+    func isEvidenced(after date: Date) -> Bool {
+        occurredAtEpochMilliseconds > Int64((date.timeIntervalSince1970 * 1000).rounded())
     }
 }
 

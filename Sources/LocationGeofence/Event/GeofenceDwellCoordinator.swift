@@ -244,8 +244,8 @@ final class GeofenceDwellCoordinator {
             cancelEvidence(for: geofence.id, ifVisit: endedVisitId)
             // A DWELL the stay qualified but never got into the outbox goes first; if it still
             // cannot, the removal keeps it as an orphan for the launch sweep.
-            await flushOwedDwell(geofence: geofence, visitId: endedVisitId)
-            await storage.removeDwellVisit(geofenceId: geofence.id, ifStill: endedVisitId)
+            await flushOwedDwell(geofence: geofence, visitId: endedVisitId, exitedAt: mark.date)
+            await storage.removeDwellVisit(geofenceId: geofence.id, ifStill: endedVisitId, endedAt: mark.date)
             return context
         case .dwell:
             return nil

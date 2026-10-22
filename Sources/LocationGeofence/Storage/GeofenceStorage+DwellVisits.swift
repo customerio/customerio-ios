@@ -90,7 +90,7 @@ extension GeofenceStorage {
     ) async -> DwellReservationResult {
         let result = await stageDwellReservation(proposed, for: visit, geofenceId: geofenceId)
         guard case .staged(let staged) = result else { return result }
-        return admitStagedDwellReservation(staged, for: visit, geofenceId: geofenceId)
+        return await admitStagedDwellReservation(staged, for: visit, geofenceId: geofenceId)
     }
 
     /// Compare-and-set with the same guards as `markDwellVisitEmitted`: stages `proposed` on `visit`
@@ -120,7 +120,8 @@ extension GeofenceStorage {
         _ staged: GeofenceDwellReservation,
         for visit: GeofenceDwellVisit,
         geofenceId: String
-    ) -> DwellReservationResult {
+    ) async -> DwellReservationResult {
+        await runBeforeAdmission()
         var state = loadFromDisk() ?? GeofenceState()
         guard var stored = Self.reservable(visit, geofenceId: geofenceId, in: state) else { return .superseded }
         if let existing = stored.dwellReservation { return .reserved(existing) }
@@ -220,6 +221,20 @@ extension GeofenceStorage {
     func removeDwellVisit(geofenceId: String) {
         var state = loadFromDisk() ?? GeofenceState()
         guard state.dwellVisits?.removeValue(forKey: geofenceId) != nil else { return }
+        saveToDisk(state)
+    }
+
+    /// `removeDwellVisit(geofenceId:ifStill:)` for the visit an EXIT dated `endedAt` ends: in the
+    /// same write, a reservation evidenced after that EXIT is dropped with the visit rather than
+    /// kept as an orphan. It is no dwell of this stay — its fix may be a return's — so no path
+    /// delivers it.
+    func removeDwellVisit(geofenceId: String, ifStill visitId: String, endedAt: Date) {
+        var state = loadFromDisk() ?? GeofenceState()
+        guard let stored = state.dwellVisits?[geofenceId], stored.visitId == visitId else { return }
+        if stored.dwellReservation?.isEvidenced(after: endedAt) == true {
+            state.dwellVisits?[geofenceId]?.dwellReservation = nil
+        }
+        state.dwellVisits?.removeValue(forKey: geofenceId)
         saveToDisk(state)
     }
 

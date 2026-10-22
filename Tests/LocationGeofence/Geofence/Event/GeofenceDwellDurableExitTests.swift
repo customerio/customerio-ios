@@ -311,6 +311,33 @@ struct GeofenceDwellDurableExitTests {
         second.end()
     }
 
+    /// The same, but the recorded EXIT is dated 5 s before the reservation's evidence: that fix may
+    /// be a return's, so the next process delivers nothing for the closed stay, now or once a later
+    /// ENTER replaces it (no orphan is kept).
+    @Test
+    @available(iOS 17.0, *)
+    func dwellEvidencedAfterADurableExit_expectNeverDelivered() async throws {
+        let device = DurableExitDevice()
+        let first = await DurableExitProcess(device: device)
+        await first.register(seenAt: device.fix())
+        let reserved = try await Self.qualifiedStay(first, device: device, reserved: true)
+        try #require(reserved.dwellReservation != nil)
+        await first.deliver(.unsatisfied, at: device.clock.wall.addingTimeInterval(-5))
+        try #require(await first.visit()?.closedByObservedBoundary != nil)
+        first.end()
+        device.advance(60)
+
+        let second = await DurableExitProcess(device: device)
+        await second.dwell.resumePendingVisits(geofences: [Self.circle])
+        await second.dwell.requestQualifyingEvidence(geofenceId: Self.circle.id)
+        await second.dwell.handleBoundary(geofence: Self.circle, transition: .enter, occurredAt: device.clock.wall)
+        await second.dwell.resumePendingVisits(geofences: [Self.circle])
+
+        #expect(await second.dwellRows().isEmpty)
+        #expect(await second.storage.getOrphanedDwells().isEmpty)
+        second.end()
+    }
+
     // MARK: - Helpers
 
     @available(iOS 17.0, *)

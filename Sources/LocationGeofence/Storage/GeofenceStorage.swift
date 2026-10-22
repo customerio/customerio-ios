@@ -27,6 +27,18 @@ actor GeofenceStorage {
         await beforeReservationWrite?()
     }
 
+    /// Test seam, as `beforeReservationWrite`: runs inside `admitStagedDwellReservation` before its
+    /// load.
+    private var beforeAdmission: (@Sendable () async -> Void)?
+
+    func setBeforeAdmission(_ hook: (@Sendable () async -> Void)?) {
+        beforeAdmission = hook
+    }
+
+    func runBeforeAdmission() async {
+        await beforeAdmission?()
+    }
+
     /// Test seam, as `beforeReservationWrite`: runs inside `isPolygon(id:)` before its load.
     private var beforeShapeRead: (@Sendable () async -> Void)?
 

@@ -610,6 +610,39 @@ struct GeofenceDwellCoordinatorTests {
         setup.coordinator.cancelEvidence(for: geofenceId)
     }
 
+    /// An EXIT callback dated before the qualifying fix lands while the staged DWELL is being
+    /// promoted, after the check before promotion. The reservation then stands on disk, but it is
+    /// evidenced after the EXIT that ends its visit: the EXIT neither queues it nor leaves it as an
+    /// orphan, and the next launch delivers nothing.
+    @Test
+    func exitNotedDuringPromotion_deliversNothingOnAnyPath() async throws {
+        let enteredAt = Date(timeIntervalSince1970: 1000)
+        let clock = ManualGeofenceClock(wall: enteredAt)
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        let first = await makeSetup(isPolygon: false, directory: directory, clock: clock)
+        await first.coordinator.handleBoundary(geofence: first.geofence, transition: .enter, occurredAt: enteredAt)
+        clock.advance(60)
+        let coordinator = first.coordinator
+        let geofenceId = first.geofence.id
+        let exitedAt = clock.wall.addingTimeInterval(-5)
+        await first.storage.setBeforeAdmission {
+            await MainActor.run { coordinator.noteExitCallback(geofenceId: geofenceId, occurredAt: exitedAt) }
+        }
+        await first.coordinator.recordInsideEvidence(geofence: first.geofence, at: clock.wall, source: "location_evidence")
+        await first.storage.setBeforeAdmission(nil)
+        try #require(await first.storage.getDwellVisit(geofenceId: geofenceId)?.dwellReservation != nil)
+        #expect(await first.emitter.dwells().isEmpty)
+
+        await first.coordinator.handleBoundary(geofence: first.geofence, transition: .exit, occurredAt: exitedAt)
+        #expect(await first.emitter.dwells().isEmpty, "the EXIT queues no DWELL evidenced after it")
+        #expect(await first.storage.getDwellVisit(geofenceId: geofenceId) == nil)
+        #expect(await first.storage.getOrphanedDwells().isEmpty)
+
+        let second = await makeSetup(isPolygon: false, directory: directory, clock: clock)
+        await second.coordinator.resumePendingVisits(geofences: [second.geofence])
+        #expect(await second.emitter.dwells().isEmpty, "nor does the launch sweep")
+    }
+
     /// The same refused, un-retracted reservation, then the process dies: the correction that refused
     /// it dies with it. The next process does not replay the leftover as a fact; with no fresh
     /// proof, nothing is delivered.

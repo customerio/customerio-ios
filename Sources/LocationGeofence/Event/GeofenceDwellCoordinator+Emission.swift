@@ -15,7 +15,10 @@ extension GeofenceDwellCoordinator {
         source: String,
         userId: String
     ) async {
-        guard geofence.dwellThresholdSeconds > 0, !visit.emitted else { return }
+        guard geofence.dwellThresholdSeconds > 0, !visit.emitted,
+              // A reservation evidenced after the boundary that closed the visit is never delivered.
+              visit.dwellReservation == nil || visit.owesDwell
+        else { return }
         // `visit` may be a copy read before a loss its removal has not yet reached. Admission is
         // judged now; a dwell already admitted goes on to its outbox row, a fact about the stay
         // before the loss. So a reservation is never refused here: the stay qualified when it was
@@ -92,11 +95,14 @@ extension GeofenceDwellCoordinator {
     /// outbox could not take stays owed: removing the visit then leaves it in
     /// `GeofenceState.orphanedDwells`, offered again at launch (`deliverOrphanedDwells`).
     /// An emission already in flight for the visit owns the delivery: it is not repeated here, and
-    /// if it lands after the removal it forgets the orphan the removal left.
-    func flushOwedDwell(geofence: Geofence, visitId: String) async {
+    /// if it lands after the removal it forgets the orphan the removal left. A reservation evidenced
+    /// after `exitedAt` is no dwell of the stay this EXIT ends — an EXIT noted while it was being
+    /// admitted can date the departure before its fix — and is not queued; the EXIT's removal
+    /// drops it (`removeDwellVisit(geofenceId:ifStill:endedAt:)`).
+    func flushOwedDwell(geofence: Geofence, visitId: String, exitedAt: Date) async {
         guard !dwellEmissionsInFlight.contains(visitId),
               let visit = await storage.getDwellVisit(geofenceId: geofence.id), visit.visitId == visitId,
-              visit.owesDwell, let reservation = visit.dwellReservation
+              visit.owesDwell, let reservation = visit.dwellReservation, !reservation.isEvidenced(after: exitedAt)
         else { return }
         let token = diagnosticToken(for: visit)
         // Queued only: the EXIT the caller persists next must not wait on the network. The EXIT's
