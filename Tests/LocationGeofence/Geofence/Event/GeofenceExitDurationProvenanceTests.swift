@@ -987,9 +987,9 @@ struct GeofenceExitDurationProvenanceTests {
     }
 
     /// Control: a restart on the same boot, with nothing interrupting the stay, still times its
-    /// EXIT — here zero whole seconds, which is a measured duration.
+    /// EXIT — here half a second, which rounds up to one.
     @Test
-    func sameBootRestartStillTimesAZeroSecondStay() async throws {
+    func sameBootRestartStillTimesASubSecondStay() async throws {
         let files = Files()
         var process = await Process(files: files)
         files.advance(0.2)
@@ -1004,7 +1004,7 @@ struct GeofenceExitDurationProvenanceTests {
         let row = try #require(await process.exitRows().last)
         #expect(row.visitId == visit.visitId)
         #expect(row.enteredAt.map { Int($0.timeIntervalSince1970) } == Int(entry.timeIntervalSince1970))
-        #expect(row.visitDurationSeconds == 0)
+        #expect(row.visitDurationSeconds == 1)
     }
 
     /// A known reboot — uptime behind the record — ends even an emitted stay; its EXIT is untimed,

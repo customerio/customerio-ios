@@ -17,9 +17,10 @@ import UIKit
 struct GeofenceExitDurationContinuityTests {
     // MARK: - Trustworthy visits
 
-    /// Zero is a measured duration, not a missing one: it is reported, and the payload carries it.
+    /// A stay within the entry's second is a measured duration, not a missing one: rounded up so
+    /// the stay is never longer than reported, it reports 1, and the payload carries it.
     @Test
-    func exitInTheSameSecondAsTheEntryReportsZero() async throws {
+    func exitInTheSameSecondAsTheEntryReportsOneSecond() async throws {
         let clock = ManualGeofenceClock(wall: Date(timeIntervalSince1970: 1000000.2))
         let setup = await makeSetup(clock: clock)
         await setup.coordinator.handleBoundary(geofence: setup.geofence, transition: .enter, occurredAt: clock.wall)
@@ -29,9 +30,9 @@ struct GeofenceExitDurationContinuityTests {
             geofence: setup.geofence, transition: .exit, occurredAt: clock.wall
         ))
 
-        #expect(context.durationSeconds == 0)
+        #expect(context.durationSeconds == 1)
         let properties = try Self.payload(exitedAt: clock.wall, context: context)
-        #expect(properties["visitDurationSeconds"] as? Int == 0)
+        #expect(properties["visitDurationSeconds"] as? Int == 1)
         #expect(properties["enteredAt"] as? Int == 1000000)
     }
 

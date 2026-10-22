@@ -264,7 +264,7 @@ extension GeofenceDwellCoordinator {
         return dwellReservation(
             for: visit, observedAt: observedAt,
             thresholdSeconds: thresholdSeconds, source: source,
-            reportsEntry: visit.entryObserved && elapsed.wallClockAgrees
+            reportedSinceEntry: visit.entryObserved && elapsed.wallClockAgrees ? elapsed.sinceEntrySeconds : nil
         )
     }
 
@@ -277,19 +277,15 @@ extension GeofenceDwellCoordinator {
         observedAt: Date,
         thresholdSeconds: Int,
         source: String,
-        reportsEntry: Bool
+        reportedSinceEntry: TimeInterval?
     ) -> GeofenceDwellReservation {
-        let occurredAtMilliseconds = Self.epochMilliseconds(observedAt)
-        let enteredAtMilliseconds = Self.epochMilliseconds(visit.enteredAt)
-        return GeofenceDwellReservation(
-            occurredAtEpochMilliseconds: occurredAtMilliseconds,
-            enteredAtEpochMilliseconds: reportsEntry ? enteredAtMilliseconds : nil,
-            // The difference of the two whole epoch seconds the event carries, so the three agree.
-            // Can be a second more than the elapsed time qualifying used (100.9 s → 160.1 s reports
-            // 60, not 59).
-            durationSeconds: reportsEntry
-                ? Int(max(0, occurredAtMilliseconds / 1000 - enteredAtMilliseconds / 1000))
-                : nil,
+        GeofenceDwellReservation(
+            occurredAtEpochMilliseconds: epochMilliseconds(observedAt),
+            enteredAtEpochMilliseconds: reportedSinceEntry == nil ? nil : epochMilliseconds(visit.enteredAt),
+            // From the entry to the evidence fix on the monotonic timeline, rounded up to whole
+            // seconds as an EXIT's duration is, so the stay is never longer than reported (60.8 s
+            // reports 61). Qualifying stays on the elapsed time it measured.
+            durationSeconds: reportedSinceEntry.map { Self.wholeSecondsRoundedUp(milliseconds: Int64(($0 * 1000).rounded())) },
             thresholdSeconds: thresholdSeconds,
             detectionSource: source
         )

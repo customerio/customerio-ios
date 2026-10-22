@@ -75,7 +75,7 @@ extension GeofenceDwellCoordinator {
                 visit.enteredAt, exit.insideProvenAt ?? .distantPast, visit.lastDecisiveInsideAt ?? .distantPast,
                 visit.dwellReservation?.occurredAt ?? .distantPast
             )
-        let durationSeconds = Self.reportedSeconds(from: visit.enteredAt, to: exit.mark.date)
+        let durationSeconds = Self.durationSeconds(of: visit, exitedAt: exit.mark)
         return GeofenceExitContext(
             visitId: visit.visitId,
             enteredAt: visit.enteredAt,
@@ -184,12 +184,21 @@ extension GeofenceDwellCoordinator {
             && exitedAt.timeIntervalSince(reading.wall) <= tolerance
     }
 
-    /// The duration an EXIT reports: the difference of the two whole epoch seconds, so it equals
-    /// the event's whole-second timestamp minus the `enteredAt` it carries, which is serialized by
-    /// truncation too. Can be a second more than the elapsed time actually observed (100.9 s →
-    /// 160.1 s reports 60, not 59); qualifying stays on that elapsed time (`GeofenceVisitElapsed`).
-    static func reportedSeconds(from start: Date, to end: Date) -> Int {
-        max(0, Int(end.timeIntervalSince1970) - Int(start.timeIntervalSince1970))
+    /// The duration an EXIT reports: from the entry to the moment the EXIT was dated, measured on
+    /// the monotonic timeline both were placed on, rounded up to whole seconds, so the stay is never
+    /// longer than reported (entry 1000.1 s, EXIT 1020.9 s is a 20.8 s stay: 21, not 20). On the
+    /// wall clock only when the visit has no timing; the span is reported at all only while the
+    /// wall clock agrees with it (`spanIsTimeable`).
+    private static func durationSeconds(of visit: GeofenceDwellVisit, exitedAt exit: GeofenceExitMark) -> Int {
+        guard let timing = visit.timing else {
+            return wholeSecondsRoundedUp(milliseconds: epochMilliseconds(exit.date) - epochMilliseconds(visit.enteredAt))
+        }
+        return wholeSecondsRoundedUp(milliseconds: Int64(((exit.mappedUptime - timing.enteredUptime) * 1000).rounded()))
+    }
+
+    /// Whole seconds, rounded up, of a millisecond span; 0 for none.
+    static func wholeSecondsRoundedUp(milliseconds: Int64) -> Int {
+        milliseconds > 0 ? Int((milliseconds + 999) / 1000) : 0
     }
 
     /// The uncertainty an EXIT reports with `durationSeconds`, so that every stay the departure
@@ -201,8 +210,7 @@ extension GeofenceDwellCoordinator {
     /// `provenInsideAt` rounded up, and within [0, duration].
     static func uncertaintySeconds(enteredAt: Date, provenInsideAt: Date, exitedAt: Date, durationSeconds: Int) -> Int {
         let shortestStay = max(0, epochMilliseconds(provenInsideAt) - epochMilliseconds(enteredAt)) / 1000
-        let gap = max(0, epochMilliseconds(exitedAt) - epochMilliseconds(provenInsideAt))
-        let gapRoundedUp = Int((gap + 999) / 1000)
+        let gapRoundedUp = wholeSecondsRoundedUp(milliseconds: epochMilliseconds(exitedAt) - epochMilliseconds(provenInsideAt))
         return min(durationSeconds, max(0, gapRoundedUp, durationSeconds - Int(shortestStay)))
     }
 

@@ -283,7 +283,8 @@ struct GeofenceDwellCoordinatorTests {
 
     /// The uncertainty is the millisecond gap rounded up, never down: 61.8 s since the last inside
     /// fix reports 62, though the whole epoch seconds of the two dates are 61 apart. Rounded down,
-    /// a departure early in the gap would fall outside what the EXIT reports.
+    /// a departure early in the gap would fall outside what the EXIT reports. The 661.9 s stay
+    /// reports 662.
     @Test
     func exitUncertainty_roundsTheGapUp() async throws {
         let clock = ManualGeofenceClock(wall: Date(timeIntervalSince1970: 1000))
@@ -297,7 +298,7 @@ struct GeofenceDwellCoordinatorTests {
 
         let context = await setup.coordinator.handleBoundary(geofence: setup.geofence, transition: .exit, occurredAt: clock.wall)
 
-        #expect(context?.durationSeconds == 661)
+        #expect(context?.durationSeconds == 662)
         #expect(context?.visitDurationUncertaintySeconds == 62)
         setup.coordinator.cancelEvidence(for: setup.geofence.id)
     }
@@ -327,6 +328,36 @@ struct GeofenceDwellCoordinatorTests {
         #expect(context?.enteredAt == nil)
         #expect(context?.durationSeconds == nil)
         #expect(context?.visitDurationUncertaintySeconds == nil)
+    }
+
+    /// The duration rounds up, so the stay is never longer than reported: entry 1000.1 s, EXIT
+    /// 1020.9 s is a 20.8 s stay and reports 21, not the 20 the whole epoch seconds differ by.
+    @Test
+    func exitDuration_roundsUp() async throws {
+        let clock = ManualGeofenceClock(wall: Date(timeIntervalSince1970: 1000.1))
+        let setup = await makeSetup(isPolygon: false, clock: clock)
+        await setup.coordinator.handleBoundary(geofence: setup.geofence, transition: .enter, occurredAt: clock.wall)
+        clock.advance(20.8)
+
+        let context = await setup.coordinator.handleBoundary(geofence: setup.geofence, transition: .exit, occurredAt: clock.wall)
+
+        #expect(context?.durationSeconds == 21)
+        #expect(context?.visitDurationUncertaintySeconds == 21)
+    }
+
+    /// A DWELL's duration to its evidence fix rounds up the same way: entry 1000.1 s, evidence
+    /// 1060.9 s reports 61.
+    @Test
+    func dwellDuration_roundsUp() async throws {
+        let emitter = DwellEmitterSpy()
+        let clock = ManualGeofenceClock(wall: Date(timeIntervalSince1970: 1000.1))
+        let setup = await makeSetup(emitter: emitter, isPolygon: false, clock: clock)
+        await setup.coordinator.handleBoundary(geofence: setup.geofence, transition: .enter, occurredAt: clock.wall)
+        clock.advance(60.8)
+        await setup.coordinator.recordInsideEvidence(geofence: setup.geofence, at: clock.wall, source: "location_evidence")
+
+        #expect(await emitter.dwells().first?.context.durationSeconds == 61)
+        setup.coordinator.cancelEvidence(for: setup.geofence.id)
     }
 
     /// The uncertainty also covers the duration's whole-second rounding: entry 0.9 s, last inside
@@ -1045,7 +1076,7 @@ struct GeofenceDwellCoordinatorTests {
         for attempt in attempts.dropFirst() {
             #expect(attempt.occurredAt == attempts[0].occurredAt)
             #expect(attempt.context.enteredAt == attempts[0].context.enteredAt)
-            #expect(attempt.context.durationSeconds == 60)
+            #expect(attempt.context.durationSeconds == 61)
             #expect(attempt.context.detectionSource == attempts[0].context.detectionSource)
         }
         #expect(await Self.rows(in: outbox).count == 1, "the retry must dedup against the row already queued")
@@ -1093,7 +1124,7 @@ struct GeofenceDwellCoordinatorTests {
 
         let rows = await Self.rows(in: outbox)
         #expect(rows == [original])
-        #expect(rows.first?.dwellDurationSeconds == 61)
+        #expect(rows.first?.dwellDurationSeconds == 62, "61.5 s to the evidence, rounded up")
         #expect(await relaunched.storage.getDwellVisit(geofenceId: relaunched.geofence.id)?.emitted == true)
         await dying.resume(returning: false)
         await emission.value
@@ -1507,9 +1538,9 @@ struct GeofenceDwellCoordinatorTests {
         #expect(context?.durationSeconds == 60)
     }
 
-    /// The slack is for representation error only: a real fraction short of a second still truncates.
+    /// The slack is for representation error only: a real fraction short of a second rounds up.
     @Test
-    func visitJustShortOfAWholeSecondStillTruncates() async {
+    func visitJustShortOfAWholeSecondRoundsUp() async {
         let enteredAt = Date(timeIntervalSince1970: 5000)
         let clock = ManualGeofenceClock(wall: enteredAt)
         let setup = await makeSetup(dwellThresholdSeconds: 0, transitionTypes: [.exit], isPolygon: false, clock: clock)
@@ -1520,7 +1551,7 @@ struct GeofenceDwellCoordinatorTests {
             geofence: setup.geofence, transition: .exit, occurredAt: enteredAt.addingTimeInterval(59.999)
         )
 
-        #expect(context?.durationSeconds == 59)
+        #expect(context?.durationSeconds == 60)
     }
 
     @Test

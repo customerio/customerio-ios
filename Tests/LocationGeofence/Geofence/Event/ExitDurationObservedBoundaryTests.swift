@@ -47,7 +47,7 @@ struct ExitDurationObservedBoundaryTests {
         let row = try #require(await Self.exitRows(process).last)
         #expect(row.visitId == stay.visitId)
         #expect(row.enteredAt.map { Int($0.timeIntervalSince1970) } == Int(stay.enteredAt.timeIntervalSince1970))
-        #expect(row.visitDurationSeconds == Int(exitedAt.timeIntervalSince1970) - Int(stay.enteredAt.timeIntervalSince1970))
+        #expect(row.visitDurationSeconds == Self.secondsRoundedUp(from: stay.enteredAt, to: exitedAt))
         #expect(await process.dwellRows().isEmpty)
         process.end()
     }
@@ -82,7 +82,7 @@ struct ExitDurationObservedBoundaryTests {
 
         let row = try #require(await Self.exitRows(process).last)
         #expect(row.visitId == stay.visitId)
-        #expect(row.visitDurationSeconds == Int(exitedAt.timeIntervalSince1970) - Int(stay.enteredAt.timeIntervalSince1970))
+        #expect(row.visitDurationSeconds == Self.secondsRoundedUp(from: stay.enteredAt, to: exitedAt))
         process.end()
     }
 
@@ -150,8 +150,8 @@ struct ExitDurationObservedBoundaryTests {
         let row = try #require(await Self.exitRows(process).last)
         // Only the EXIT whose exact date closed the stay is its end; another names no visit.
         #expect(row.visitId == (ownDate ? stay.visitId : nil))
-        #expect(row.visitDurationSeconds == (ownDate ? 0 : nil))
-        #expect(row.visitDurationUncertaintySeconds == (ownDate ? 0 : nil))
+        #expect(row.visitDurationSeconds == (ownDate ? 1 : nil))
+        #expect(row.visitDurationUncertaintySeconds == (ownDate ? 1 : nil))
         process.end()
     }
 
@@ -268,7 +268,7 @@ struct ExitDurationObservedBoundaryTests {
         let row = try #require(rows.last)
         #expect(row.visitId == stay.visitId)
         #expect(row.enteredAt.map { Int($0.timeIntervalSince1970) } == Int(stay.enteredAt.timeIntervalSince1970))
-        #expect(row.visitDurationSeconds == Int(exitedAt.timeIntervalSince1970) - Int(stay.enteredAt.timeIntervalSince1970))
+        #expect(row.visitDurationSeconds == Self.secondsRoundedUp(from: stay.enteredAt, to: exitedAt))
         #expect(await process.visit()?.visitId == replacement.visitId)
         #expect(await process.dwellRows().count == dwellRowsBefore)
         process.end()
@@ -307,6 +307,11 @@ struct ExitDurationObservedBoundaryTests {
     }
 
     // MARK: - Helpers
+
+    /// The EXIT's duration as reported: the stay rounded up to whole seconds.
+    private static func secondsRoundedUp(from start: Date, to end: Date) -> Int {
+        (Int((end.timeIntervalSince(start) * 1000).rounded()) + 999) / 1000
+    }
 
     @available(iOS 17.0, *)
     static func process(on device: DurableExitDevice, fileManager: FileManager = .default) async -> DurableExitProcess {

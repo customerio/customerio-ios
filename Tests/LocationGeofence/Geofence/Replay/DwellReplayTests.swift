@@ -80,7 +80,7 @@ struct DwellReplayTests {
             await harness.advance(to: 90.6)
             let dwell = try #require(dwells(harness).only)
             #expect(abs(dwell.timestamp.timeIntervalSince(harness.epoch) - 90.28) < 0.001)
-            #expect(dwell.dwellDurationSeconds == 60)
+            #expect(dwell.dwellDurationSeconds == 61, "60.28 s, rounded up")
         }
     }
 
@@ -433,7 +433,7 @@ struct DwellReplayTests {
             if inside {
                 let dwell = try #require(dwells(harness).only)
                 #expect(abs(dwell.timestamp.timeIntervalSince(harness.epoch) - 200.3) < 0.001, "dated by the proof fix")
-                #expect(dwell.dwellDurationSeconds == 170)
+                #expect(dwell.dwellDurationSeconds == 171, "170.3 s, rounded up")
             } else {
                 #expect(dwells(harness).isEmpty)
                 #expect(await harness.storedVisit(fence: "A") == nil, "fresh outside proof ends the visit")
@@ -508,7 +508,7 @@ struct DwellReplayTests {
                 #expect(dwell.visitId == visit.visitId)
                 #expect(dwell.enteredAt == harness.epoch.addingTimeInterval(30), "entry dated by the entry fix")
                 #expect(abs(dwell.timestamp.timeIntervalSince(harness.epoch) - 200.3) < 0.001, "dated by the proof fix")
-                #expect(dwell.dwellDurationSeconds == 170)
+                #expect(dwell.dwellDurationSeconds == 171, "170.3 s, rounded up")
             }
             // Past every evidence retry: one DWELL for the visit, none from a fix outside the shape.
             await harness.advance(to: 400)
@@ -519,11 +519,12 @@ struct DwellReplayTests {
                 #expect(await harness.storedVisit(fence: "A") == nil, "fresh outside-polygon proof ends the visit")
                 let exits = harness.deliveredMetrics.filter { $0.transition == .exit }
                 #expect(exits.count == 1, "an outside proof ends the visit exactly once")
-                // Found outside 170 s after the entry: the EXIT is timed to the fix, and the gap
-                // since the device was last proven inside travels with it as the uncertainty.
+                // Found outside 170.3 s after the entry: the EXIT is timed to the fix, rounded up,
+                // and the gap since the device was last proven inside travels with it as the
+                // uncertainty.
                 #expect(exits.first?.visitId == visit.visitId)
-                #expect(exits.first?.visitDurationSeconds == 170)
-                #expect(exits.first?.visitDurationUncertaintySeconds == 170)
+                #expect(exits.first?.visitDurationSeconds == 171)
+                #expect(exits.first?.visitDurationUncertaintySeconds == 171)
             }
         }
     }

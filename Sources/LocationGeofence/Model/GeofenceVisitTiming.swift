@@ -98,7 +98,8 @@ struct GeofenceVisitTiming: Codable, Equatable, Sendable {
         let agrees = wallClockAgrees(at: reading)
         return GeofenceVisitElapsed(
             qualifyingSeconds: agrees ? min(date.timeIntervalSince(enteredAt), monotonic) : monotonic,
-            wallClockAgrees: agrees
+            wallClockAgrees: agrees,
+            sinceEntrySeconds: Self.uptime(of: date, at: reading) - enteredUptime
         )
     }
 }
@@ -124,6 +125,9 @@ struct GeofenceVisitElapsed: Equatable, Sendable {
     /// The entry date and the event date are on one wall-clock timeline. When false, neither the
     /// entry nor a duration measured from it is reportable.
     let wallClockAgrees: Bool
+    /// From the entry to the event on the monotonic timeline, the span a reported duration is
+    /// measured on.
+    let sinceEntrySeconds: TimeInterval
 
     /// A microsecond of slack: a persisted date comes back up to one ulp (~1.2e-7 s) off, as
     /// `.secondsSince1970` rounds converting out of and back into the reference epoch, so a stay of
