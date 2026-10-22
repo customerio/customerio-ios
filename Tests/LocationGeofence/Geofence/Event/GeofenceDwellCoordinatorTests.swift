@@ -302,6 +302,33 @@ struct GeofenceDwellCoordinatorTests {
         setup.coordinator.cancelEvidence(for: setup.geofence.id)
     }
 
+    /// Inside proof dated after a delayed EXIT may belong to a return: entry at 0, a decisive inside
+    /// fix at 700, an EXIT dated 600 routed after it. The EXIT keeps the visit's id but reports no
+    /// entry, duration or uncertainty, rather than 600 s certain to the second.
+    @Test
+    func exitDatedBeforeTheLastInsideProof_isUntimed() async throws {
+        let entry = Date(timeIntervalSince1970: 1000)
+        let clock = ManualGeofenceClock(wall: entry)
+        let setup = await makeSetup(isPolygon: false, clock: clock)
+        await setup.coordinator.handleBoundary(geofence: setup.geofence, transition: .enter, occurredAt: entry)
+        let visit = try #require(await setup.storage.getDwellVisit(geofenceId: setup.geofence.id))
+        clock.advance(700)
+        await setup.coordinator.recordInsideEvidence(
+            geofence: setup.geofence, at: clock.wall, source: "location_evidence", qualifiesDwell: true
+        )
+        setup.coordinator.cancelEvidence(for: setup.geofence.id)
+        clock.advance(10)
+
+        let context = await setup.coordinator.handleBoundary(
+            geofence: setup.geofence, transition: .exit, occurredAt: entry.addingTimeInterval(600)
+        )
+
+        #expect(context?.visitId == visit.visitId)
+        #expect(context?.enteredAt == nil)
+        #expect(context?.durationSeconds == nil)
+        #expect(context?.visitDurationUncertaintySeconds == nil)
+    }
+
     /// The uncertainty also covers the duration's whole-second rounding: entry 0.9 s, last inside
     /// 10.1 s, EXIT 20.1 s report a 20 s duration, and the departure allows a stay as short as
     /// 9.2 s, so the uncertainty is 11, not the 10 s gap since the inside fix.

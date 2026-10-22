@@ -43,7 +43,9 @@ extension GeofenceDwellCoordinator {
     /// of started a later stay — since naming the visit would attribute it to the wrong departure.
     /// Otherwise its id, and the entry and duration too unless the visit's start was not an
     /// observed entry, nothing has yet proved the device there, the customer did not configure
-    /// EXIT, outside evidence ended the stay, or the span is not on one timeline. A closed visit is
+    /// EXIT, outside evidence ended the stay, the span is not on one timeline, or inside evidence the
+    /// visit holds is dated after the EXIT — proof that may belong to a return, which contradicts
+    /// the EXIT's chronology, so nothing is measured across it. A closed visit is
     /// timed only by the EXIT whose exact original date closed it: any other EXIT, however close,
     /// came after the stay had already ended. With the duration, how uncertain its end is: the
     /// whole seconds from the latest inside evidence the visit holds — a polygon's membership
@@ -59,6 +61,7 @@ extension GeofenceDwellCoordinator {
         let timed = visit.entryObserved && !visit.awaitsPresenceProof && geofence.transitionTypes.contains(.exit)
             && !outsideEvidenceOvertook(visit, geofenceId: geofence.id)
             && Self.spanIsTimeable(visit, exitedAt: exit.mark.date, processedAt: exit.reading)
+            && !Self.insideEvidenceFollows(exit, visit: visit)
         guard timed else {
             return GeofenceExitContext(
                 visitId: visit.visitId, enteredAt: nil, durationSeconds: nil,
@@ -82,6 +85,15 @@ extension GeofenceDwellCoordinator {
             ),
             detectionSource: exit.source
         )
+    }
+
+    /// Whether any inside evidence the visit holds — a polygon's membership proof, the decisive
+    /// inside stamp, or the DWELL's evidence — is dated after `exit`, to the millisecond the dates
+    /// are stored at.
+    private static func insideEvidenceFollows(_ exit: RoutedExit, visit: GeofenceDwellVisit) -> Bool {
+        let exitedAt = epochMilliseconds(exit.mark.date)
+        return [exit.insideProvenAt, visit.lastDecisiveInsideAt, visit.dwellReservation?.occurredAt]
+            .contains { $0.map { epochMilliseconds($0) > exitedAt } ?? false }
     }
 
     /// The EXIT `exitContext` describes a visit for, as `exitContext(geofence:exit:…)` received it.
