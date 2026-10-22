@@ -932,7 +932,14 @@ struct GeofenceExitDurationProvenanceTests {
                 )
             }
         }
-        await settleQuietly(0.5)
+        // Until every routing task has finished, however loaded the run.
+        _ = await settleOnMain(timeout: 5) {
+            [Self.polygon.id, "uncached-fence"].allSatisfy { identifier in
+                (process.dwell.exitDuration.entersKnownAtExit[identifier]?.isEmpty ?? true)
+                    && (process.dwell.pendingExitCallbacks[identifier]?.isEmpty ?? true)
+            }
+        }
+        await settleQuietly(0.2)
 
         for identifier in [Self.polygon.id, "uncached-fence"] {
             #expect(process.dwell.exitMarks[identifier]?.isEmpty ?? true)

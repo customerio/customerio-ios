@@ -238,4 +238,9 @@ struct MonitorRegionRecord: Codable, Equatable, Sendable {
     /// neither is a crossing a visit can be timed by. Optional for records persisted before the
     /// field; `nil` counts as assumed.
     var lastStateObserved: Bool?
+    /// When the circle was last observed outside, kept when an ENTER replaces that state: the
+    /// `lastStateChangedAt` of the observed EXIT a crossing ENTER left. For a polygon's covering
+    /// circle it is departure evidence the polygon's late crossing is judged by, though the EXIT's
+    /// routing was lost. Nil until a crossing has been recorded.
+    var lastObservedOutsideAt: Date?
 }

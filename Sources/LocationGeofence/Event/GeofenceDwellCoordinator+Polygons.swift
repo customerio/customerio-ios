@@ -44,6 +44,7 @@ extension GeofenceDwellCoordinator {
         catalogReplacementInProgress = false
         polygonIds = Set(geofences.filter { $0.vertices != nil }.map(\.id))
         polygonIds.forEach(withdrawUnjudgedCrossing)
+        releaseHeldCrossings(catalog: Set(geofences.map(\.id)))
         polygonIdsLoaded = true
         drainPendingCorrections()
         // The shape checks that waited for this catalog, or read the old one while it was written;
@@ -107,9 +108,21 @@ extension GeofenceDwellCoordinator {
         }
     }
 
+    /// The crossings held for fences this catalog no longer has as polygons, whose routed ENTER will
+    /// not judge them: circle routing never reads the shape. A fence now a circle has its crossing
+    /// noted as that circle's; one the catalog dropped has no visit for it to end.
+    private func releaseHeldCrossings(catalog: Set<String>) {
+        for (geofenceId, mark) in heldCoveringCrossings where !polygonIds.contains(geofenceId) {
+            heldCoveringCrossings[geofenceId] = nil
+            if catalog.contains(geofenceId) { noteEnter(mark, geofenceId: geofenceId, crossing: true) }
+        }
+    }
+
     /// A polygon's held covering-circle crossing ends or restarts its visit only if the polygon was
-    /// observed outside since that visit began: its membership belief is outside, proven after the
-    /// visit's entry (`provenAfterEntry`). Otherwise it is the OS reporting late the arrival a fix
+    /// observed outside since that visit began: outside evidence for it, polygon membership or its
+    /// covering circle's observed state (`GeofenceStorage.polygonDepartureEvidence`), proven after
+    /// the visit's entry (`provenAfterEntry`). That evidence is kept through later inside writes,
+    /// so a pass that found the device back inside before this read does not hide the departure. Otherwise it is the OS reporting late the arrival a fix
     /// already began the visit with, and is dropped, leaving the visit, its id, entry and timing
     /// untouched; the polygon's own passes still end the stay.
     func judgeCoveringCrossing(geofenceId: String) async {

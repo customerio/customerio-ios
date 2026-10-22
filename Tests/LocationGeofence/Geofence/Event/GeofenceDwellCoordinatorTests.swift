@@ -2130,6 +2130,34 @@ struct GeofenceDwellCoordinatorTests {
         #expect(await setup.storage.getDwellVisit(geofenceId: id)?.visitId == visitId)
     }
 
+    /// A crossing held for a polygon is released when a refresh replaces that fence: circle routing
+    /// never judges a held crossing, so kept it would refuse every later first DWELL for the id. It is
+    /// noted as the circle's crossing, or dropped with a fence the refresh removed.
+    @Test(arguments: [true, false])
+    func heldPolygonCrossing_whenARefreshReplacesTheFence_isReleased(keptAsCircle: Bool) async throws {
+        let setup = await makeSetup()
+        try #require(await settleOnMain { setup.coordinator.polygonIdsLoaded })
+        let id = setup.geofence.id
+        setup.coordinator.noteEnter(geofenceId: id, occurredAt: Date().addingTimeInterval(-60), crossing: true)
+        try #require(setup.coordinator.heldCoveringCrossings[id] != nil)
+        let later = GeofenceDwellVisit(
+            visitId: "later", enteredAt: Date(), geometryRevision: setup.geofence.dwellRevision, userId: "user-1",
+            emitted: false, timing: .recorded(secondsAgo: 0, on: setup.clock)
+        )
+        try #require(setup.coordinator.correctionRefusesAdmission(of: later, geofenceId: id))
+        let circle = Geofence(
+            id: id, latitude: 0.5, longitude: 0.5, radius: 100, name: "Campus", transitionTypes: [.enter, .exit],
+            lastUpdated: Date(timeIntervalSince1970: 2), dwellThresholdSeconds: 60
+        )
+
+        setup.coordinator.beginCatalogReplacement()
+        setup.coordinator.rememberCatalog(keptAsCircle ? [circle] : [])
+
+        #expect(setup.coordinator.heldCoveringCrossings[id] == nil)
+        #expect((setup.coordinator.enterMarks[id]?.crossing != nil) == keptAsCircle)
+        #expect(!setup.coordinator.correctionRefusesAdmission(of: later, geofenceId: id))
+    }
+
     /// The lease's grace past the threshold is fixed at 220 s: the 120 s production retry spacing
     /// does not lengthen it, and neither a re-arm nor a copied ENTER extends it.
     @Test

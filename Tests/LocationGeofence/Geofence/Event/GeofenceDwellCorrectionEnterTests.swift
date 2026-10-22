@@ -319,6 +319,64 @@ struct GeofenceDwellCorrectionEnterTests {
         rig.dwell.cancelEvidence(for: Self.polygon.id)
     }
 
+    /// A pass finds the device back inside after the lost EXIT, before the late crossing is
+    /// judged: the outside proof that pass replaced is kept, so the crossing still sees the
+    /// departure and restarts the stay. The inside write lands through the shape-read seam, the
+    /// judge's first storage read.
+    @Test
+    @available(iOS 17.0, *)
+    func lateCrossingJudgedAfterAnInsidePass_stillSeesTheDeparture() async throws {
+        let rig = await Rig.make()
+        let first = try await rig.fixDetectedPolygonVisit()
+        rig.advance(30)
+        await rig.recordPolygonOutsideWithLostExit()
+
+        rig.advance(300)
+        let storage = rig.storage, insideAt = rig.clock.wall
+        await storage.setBeforeShapeRead {
+            await storage.setBeforeShapeRead(nil)
+            _ = await storage.recordPolygonMembership(.inside, forIdentifier: Self.polygon.id, now: insideAt)
+        }
+        rig.os.deliver(identifier: Self.polygon.id, state: .satisfied, at: rig.clock.wall)
+        await rig.awaitMonitorState(.enter, for: Self.polygon.id)
+        await rig.resolver.evaluateMembership(geofenceIds: [Self.polygon.id], reason: .movement, requiresFreshFix: true)
+
+        #expect(await storage.getPolygonMembership()[Self.polygon.id]?.membership == .inside)
+        let after = try #require(await storage.getDwellVisit(geofenceId: Self.polygon.id))
+        #expect(after.visitId != first.visitId)
+        rig.dwell.cancelEvidence(for: Self.polygon.id)
+    }
+
+    /// The covering circle's EXIT is recorded after the visit began, but its routing is lost — the
+    /// process dies first — so the polygon itself never saw the device outside. The late crossing
+    /// ENTER still restarts the stay: the circle's observed outside state is kept through the ENTER
+    /// that replaced it.
+    @Test
+    @available(iOS 17.0, *)
+    func lateCrossingAfterACircleExitWhoseRoutingWasLost_restartsTheVisit() async throws {
+        let rig = await Rig.make()
+        await rig.register(Self.polygon, seenAt: rig.fix(at: Self.polygon, latitudeOffset: 0.01))
+        rig.advance(30)
+        rig.os.deliver(identifier: Self.polygon.id, state: .satisfied, at: rig.clock.wall)
+        await rig.awaitMonitorState(.enter, for: Self.polygon.id)
+        let first = try #require(await rig.storage.getDwellVisit(geofenceId: Self.polygon.id))
+        rig.dwell.cancelEvidence(for: Self.polygon.id)
+
+        rig.advance(30)
+        let exitedAt = rig.clock.wall
+        _ = await rig.storage.recordMonitorTransition(.exit, forIdentifier: Self.polygon.id, now: exitedAt)
+
+        rig.advance(300)
+        rig.os.deliver(identifier: Self.polygon.id, state: .satisfied, at: rig.clock.wall)
+        await rig.awaitMonitorState(.enter, for: Self.polygon.id)
+        await rig.resolver.evaluateMembership(geofenceIds: [Self.polygon.id], reason: .movement, requiresFreshFix: true)
+
+        #expect(await rig.storage.getMonitorRegionRecords()[Self.polygon.id]?.lastObservedOutsideAt == exitedAt)
+        let after = try #require(await rig.storage.getDwellVisit(geofenceId: Self.polygon.id))
+        #expect(after.visitId != first.visitId)
+        rig.dwell.cancelEvidence(for: Self.polygon.id)
+    }
+
     // MARK: - Rig
 
     @available(iOS 17.0, *)
@@ -456,6 +514,21 @@ struct GeofenceDwellCorrectionEnterTests {
                 coordinate: CLLocationCoordinate2D(latitude: geofence.latitude + latitudeOffset, longitude: geofence.longitude),
                 altitude: 0, horizontalAccuracy: 10, verticalAccuracy: 10, timestamp: clock.wall
             )
+        }
+
+        /// The field sequence's start: `CLMonitor` observes the covering circle outside at
+        /// registration, then a fix begins the polygon visit 30 s later.
+        func fixDetectedPolygonVisit() async throws -> GeofenceDwellVisit {
+            let polygon = GeofenceDwellCorrectionEnterTests.polygon
+            await register(polygon, seenAt: fix(at: polygon, latitudeOffset: 0.01))
+            polygonFixOffset = 0.01
+            await resolver.evaluateMembership(geofenceIds: [polygon.id], reason: .movement, requiresFreshFix: true)
+            advance(30)
+            polygonFixOffset = 0
+            await resolver.evaluateMembership(geofenceIds: [polygon.id], reason: .movement, requiresFreshFix: true)
+            let visit = try #require(await storage.getDwellVisit(geofenceId: polygon.id))
+            dwell.cancelEvidence(for: polygon.id)
+            return visit
         }
 
         /// What a pass that found the polygon outside leaves when the process dies after its

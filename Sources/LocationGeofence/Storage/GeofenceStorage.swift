@@ -87,7 +87,9 @@ actor GeofenceStorage {
             registeredAt: preserved ? existing?.registeredAt : stamp,
             // The trigger keeps its identity across radius changes, so its OS event dedup survives.
             lastEventDate: (preserved || identifier == GeofenceConstants.movementTriggerIdentifier) ? existing?.lastEventDate : nil,
-            lastStateObserved: preserved ? existing?.lastStateObserved : initialStateObserved
+            lastStateObserved: preserved ? existing?.lastStateObserved : initialStateObserved,
+            // Of the same circle only: a changed one's outside says nothing about the new one.
+            lastObservedOutsideAt: preserved ? existing?.lastObservedOutsideAt : nil
         )
         state.monitorRegionRecords = records
         saveToDisk(state)
@@ -170,6 +172,9 @@ actor GeofenceStorage {
             return (.suppressedNoChange, false)
         }
         let leftObservedState = record.lastStateObserved ?? false
+        if transition == .enter, leftObservedState, record.lastState == .exit {
+            record.lastObservedOutsideAt = record.lastStateChangedAt
+        }
         record.lastState = transition
         record.lastStateChangedAt = now ?? dateUtil.now
         record.lastStateObserved = true
