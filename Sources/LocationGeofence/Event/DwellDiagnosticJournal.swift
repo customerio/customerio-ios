@@ -22,6 +22,11 @@ enum DwellDiagnosticReason: String, CaseIterable, Sendable {
     case notInside, undecided, noFix, staleFix, belowThreshold
     case visitEnded, identityChanged, revisionChanged, permissionLost
     case capReached, retriesExhausted, optedOut
+    /// A dwell-proof request was refused: the visit has spent its requests or checks
+    /// (`proofBudgetSpent`), it came too soon after the visit's last (`tooSoon`), or the last
+    /// request's charge is not yet saved (`chargeUnsaved`). Each differs from `noFix`, a request
+    /// that was issued and came back empty.
+    case proofBudgetSpent, tooSoon, chargeUnsaved
 }
 
 /// Timing and fix-quality metadata only: no coordinate, location object, user or device identity,

@@ -299,6 +299,40 @@ struct GeofenceDwellProofBudgetTests {
         #expect(rig.coordinator.unsavedProofCharges.isEmpty)
     }
 
+    /// Each refused request is recorded with its own reason, apart from a request that came back
+    /// empty: a charge not yet saved, a request too soon after the last, and a spent budget.
+    @Test
+    func refusals_recordTheirOwnReasons() async throws {
+        let unsaved = await BudgetRig.make(polygon: false, diagnostics: true)
+        defer { unsaved.close() }
+        await unsaved.enterCircle()
+        await unsaved.storage.setLedgerSaveFails(true)
+        await unsaved.drive(to: 180)
+        try #require(unsaved.requestTimes == [60])
+        #expect(try await unsaved.rejectionReasons() == ["noFix", "chargeUnsaved"])
+
+        let early = await BudgetRig.make(polygon: false, diagnostics: true)
+        defer { early.close() }
+        await early.enterCircle()
+        await early.drive(to: 60)
+        await early.drive(to: 100)
+        await early.coordinator.rearmPendingEvidence(includePolygons: false)
+        // The retry it replaced was due at 180 too: wait for the re-armed check to have been refused.
+        try #require(await settleOnMain {
+            let state = early.coordinator.evidenceRetries[BudgetRig.circle.id]
+            return state?.refusal == .tooSoon && state?.activeRequest == nil
+        })
+        try #require(early.requestTimes == [60])
+        #expect(try await early.rejectionReasons() == ["noFix", "tooSoon"])
+
+        let spent = await BudgetRig.make(polygon: false, diagnostics: true)
+        defer { spent.close() }
+        await spent.enterCircle()
+        await spent.drive(to: 2000)
+        try #require(spent.requestTimes == [60, 180, 300, 420])
+        #expect(try await spent.rejectionReasons().last == "proofBudgetSpent")
+    }
+
     /// The stored state cannot be read when the unsaved charge is confirmed. That is not a visit
     /// gone: the charge stays unconfirmed, so admission keeps refusing until a save goes through.
     @Test
@@ -426,18 +460,25 @@ private final class BudgetRig {
     private(set) var requestTimes: [TimeInterval] = []
     private var now: TimeInterval = 0
     private var exhaustionLogsBeforeRelaunch = 0
+    /// Records dwell diagnostics to `root` when the rig was made with them on.
+    let diagnostics: DwellDiagnosticRecorder
 
-    private init(polygon: Bool) {
+    private init(polygon: Bool, diagnostics: Bool) {
         self.polygon = polygon
-        self.clock = ManualGeofenceClock(wall: start)
+        let clock = ManualGeofenceClock(wall: start)
+        self.clock = clock
+        self.diagnostics = DwellDiagnosticRecorder(
+            journal: DwellDiagnosticJournal(directory: root, isEnabled: { diagnostics }),
+            isEnabled: diagnostics, now: { clock.read().uptime }
+        )
         dateUtil.givenNow = start
         self.storage = GeofenceStorage(fileManager: .default, directoryURL: root, dateUtil: dateUtil)
         self.context = BackgroundDeliveryContextStore(fileManager: .default, directoryURL: root)
         context.setUserId("budget-user")
     }
 
-    static func make(polygon: Bool, threshold: Int = 60) async -> BudgetRig {
-        let rig = BudgetRig(polygon: polygon)
+    static func make(polygon: Bool, threshold: Int = 60, diagnostics: Bool = false) async -> BudgetRig {
+        let rig = BudgetRig(polygon: polygon, diagnostics: diagnostics)
         let base = polygon ? Self.polygon : Self.circle
         let fence = Geofence(
             id: base.id, latitude: base.latitude, longitude: base.longitude, radius: base.radius, name: base.name,
@@ -467,7 +508,7 @@ private final class BudgetRig {
         }
         let coordinator = GeofenceDwellCoordinator(
             storage: storage, transitionEmitter: emitter, contextStore: context, logger: logger,
-            fixResolver: provider, notificationCenter: notificationCenter, clock: clock,
+            fixResolver: provider, notificationCenter: notificationCenter, clock: clock, diagnosticRecorder: diagnostics,
             waitForEvidence: { delay in try await scheduler.sleep(nanoseconds: delay) }
         )
         resolver = PolygonMembershipResolver(
@@ -558,6 +599,15 @@ private final class BudgetRig {
 
     func exhaustionLogs() -> Int {
         exhaustionLogsBeforeRelaunch + logger.infoReceivedInvocations.filter { $0.message.contains("dwell proof budget exhausted") }.count
+    }
+
+    /// The reasons of the rejections the journal holds, oldest first.
+    func rejectionReasons() async throws -> [String] {
+        await diagnostics.drain()
+        let data = try Data(contentsOf: DwellDiagnosticJournal.fileURL(in: root))
+        let document = try #require(JSONSerialization.jsonObject(with: data) as? [String: Any])
+        let rows = try #require(document["records"] as? [[String: Any]])
+        return rows.filter { $0["event"] as? String == "dwellRejected" }.compactMap { $0["reason"] as? String }
     }
 
     func close() {

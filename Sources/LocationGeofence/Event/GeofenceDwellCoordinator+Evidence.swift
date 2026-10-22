@@ -21,6 +21,8 @@ extension GeofenceDwellCoordinator {
         var earlyEvidence: (timestamp: Date, shortfall: TimeInterval)?
         /// What is left of the spacing when the active request was held back by it.
         var spacingWait: TimeInterval?
+        /// Why the active request's admission was refused, if it was; for diagnostics.
+        var refusal: DwellDiagnosticReason?
         /// Retries of a reserved dwell's delivery in this chain, bounded by `maxEvidenceRetryAttempts`:
         /// it needs no location and spends no budget, and a later wake re-arms it.
         var deliveryRetries = 0
@@ -133,7 +135,10 @@ extension GeofenceDwellCoordinator {
             return
         }
         await polygonVerifier(geofence.id)
-        await retryIfStillPending(geofence: geofence, visitId: visit.visitId, expectedUserId: expectedUserId)
+        await retryIfStillPending(
+            geofence: geofence, visitId: visit.visitId, expectedUserId: expectedUserId,
+            reason: evidenceRetries[geofence.id]?.refusal
+        )
     }
 
     private func requestCircleEvidence(
@@ -151,9 +156,8 @@ extension GeofenceDwellCoordinator {
               !Task.isCancelled
         else { return }
         guard let fix else {
-            // Held back by the spacing, nothing was asked: no rejection to record.
-            let deferred = evidenceRetries[geofence.id]?.spacingWait != nil
-            scheduleEvidenceRetry(for: geofence, visit: remaining, reason: deferred ? nil : .noFix)
+            // A refused request records why it was refused; one asked that came back empty, no fix.
+            scheduleEvidenceRetry(for: geofence, visit: remaining, reason: evidenceRetries[geofence.id]?.refusal ?? .noFix)
             return
         }
         switch circleVerdict(of: fix, for: geofence) {
@@ -249,8 +253,10 @@ extension GeofenceDwellCoordinator {
     }
 
     /// After evidence was applied: stop when the visit ended or emitted, retry while it is the
-    /// same visit and still pending.
-    private func retryIfStillPending(geofence: Geofence, visitId: String, expectedUserId: String) async {
+    /// same visit and still pending. `reason`: why the request was refused, if it was.
+    private func retryIfStillPending(
+        geofence: Geofence, visitId: String, expectedUserId: String, reason: DwellDiagnosticReason? = nil
+    ) async {
         guard !Task.isCancelled, contextStore.currentUserId == expectedUserId else { return }
         guard let remaining = await currentVisit(
             geofence: geofence,
@@ -268,7 +274,7 @@ extension GeofenceDwellCoordinator {
         // visit) and schedule the new visit's own deadline. The old request must not cancel or
         // replace that new visit's task.
         if remaining.visitId == visitId {
-            scheduleEvidenceRetry(for: geofence, visit: remaining)
+            scheduleEvidenceRetry(for: geofence, visit: remaining, reason: reason)
         }
     }
 
@@ -313,7 +319,10 @@ extension GeofenceDwellCoordinator {
             // Recorded once per chain: only when this ends the fence's pending request.
             if let task = deadlineTasks.removeValue(forKey: geofence.id) {
                 task.cancel()
-                recordDiagnostic(.dwellRejected, capturedToken: token, fenceId: geofence.id, reason: .retriesExhausted)
+                recordDiagnostic(
+                    .dwellRejected, capturedToken: token, fenceId: geofence.id,
+                    reason: deliveryExhausted ? .retriesExhausted : .proofBudgetSpent
+                )
             }
             if !deliveryExhausted { proofBudgetExhausted(geofenceId: geofence.id, visit: visit) }
             return

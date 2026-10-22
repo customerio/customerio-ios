@@ -55,6 +55,7 @@ extension GeofenceDwellCoordinator {
         state.activeFloor = request.minimumTimestamp
         state.earlyEvidence = nil
         state.spacingWait = nil
+        state.refusal = nil
         state.activeRequest = request.token
         evidenceRetries[geofenceId] = state
         return request
@@ -168,15 +169,26 @@ extension GeofenceDwellCoordinator {
     func admitDwellProofRequest(_ request: GeofenceDwellEvidenceRequest) -> Bool {
         guard !Task.isCancelled, var state = evidenceRetries[request.geofenceId],
               state.visitId == request.visitId, state.activeRequest == request.token,
-              var ledger = proofLedgers[request.visitId], ledger.attempts < dwellProofBudget,
-              // The previous charge must be on disk first: never one admitted on top of an unsaved one.
-              !unsavedProofCharges.contains(request.visitId)
+              var ledger = proofLedgers[request.visitId]
         else { return false }
+        // Each refusal is noted with its own reason, for the rejection the request's check records.
+        guard ledger.attempts < dwellProofBudget else {
+            state.refusal = .proofBudgetSpent
+            evidenceRetries[request.geofenceId] = state
+            return false
+        }
+        // The previous charge must be on disk first: never one admitted on top of an unsaved one.
+        guard !unsavedProofCharges.contains(request.visitId) else {
+            state.refusal = .chargeUnsaved
+            evidenceRetries[request.geofenceId] = state
+            return false
+        }
         let reading = readClock()
         let spacing = min(dwellProofSpacing, request.minimumTimestamp != nil ? Self.shortRetryDelayRange.lowerBound : .infinity)
         if let last = ledger.lastRequest, last.boot.isSameBoot(as: reading.boot), reading.uptime >= last.uptime,
            reading.uptime - last.uptime < spacing {
             state.spacingWait = spacing - (reading.uptime - last.uptime)
+            state.refusal = .tooSoon
             evidenceRetries[request.geofenceId] = state
             return false
         }
