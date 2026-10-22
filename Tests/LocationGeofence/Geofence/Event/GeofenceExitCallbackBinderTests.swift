@@ -62,7 +62,7 @@ struct GeofenceExitCallbackBinderTests {
         monitor.simulateTransition(identifier: identifier, transition: .exit, location: nil, occurredAt: rig.clock.wall)
         #expect(rig.dwell.pendingExitCallbacks[identifier]?.count == 1)
         if route == "userChanged" { rig.contextStore.setUserId("user-2") }
-        await routed.reached(1)
+        try #require(await routed.reached(1, within: 60), "the routing task must finish")
 
         #expect(rig.dwell.pendingExitCallbacks.isEmpty)
         withExtendedLifetime(resolver) {}
@@ -102,7 +102,7 @@ struct GeofenceExitCallbackBinderTests {
             identifier: polygon.id, transition: .exit, location: nil, occurredAt: device.clock.wall, eventCircle: .expired
         )
         #expect(process.dwell.pendingExitCallbacks[polygon.id]?.count == 1)
-        await process.routed.reached(1)
+        try #require(await process.routed.reached(1, within: 60), "the routing task must finish")
 
         #expect(process.dwell.pendingExitCallbacks.isEmpty)
         #expect(process.dwell.exitMarks[polygon.id] == nil)
@@ -127,7 +127,7 @@ struct GeofenceExitCallbackBinderTests {
         sync.handleMovementReturnValue = .success(())
         GeofenceMonitorBinder.bind(
             monitor: monitor, resolver: resolver, coordinator: sync, logger: LoggerMock(), dwellCoordinator: rig.dwell,
-            onRouted: { routed.record() }
+            routingActivity: { began in if !began { routed.record() } }
         )
         return resolver
     }

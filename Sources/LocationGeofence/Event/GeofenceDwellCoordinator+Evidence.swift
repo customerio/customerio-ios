@@ -60,9 +60,17 @@ extension GeofenceDwellCoordinator {
             do { try await wait(delayNanoseconds) } catch { return }
             guard !Task.isCancelled, let self else { return }
             self.diagnosticDeadlineFired(geofenceId: geofence.id, due: due, token: token)
-            await self.requestQualifyingEvidence(geofenceId: geofence.id)
+            await self.runEvidenceCheck(geofenceId: geofence.id)
         }
         armCollectionLease(for: geofence, visit: visit, at: now)
+    }
+
+    /// The check a deadline or retry runs once its wait is over, reported to
+    /// `evidenceCheckActivity` as it starts and ends.
+    func runEvidenceCheck(geofenceId: String) async {
+        evidenceCheckActivity?(true)
+        defer { evidenceCheckActivity?(false) }
+        await requestQualifyingEvidence(geofenceId: geofenceId)
     }
 
     func requestQualifyingEvidence(geofenceId: String) async {
@@ -335,7 +343,7 @@ extension GeofenceDwellCoordinator {
             do { try await wait(UInt64(delay * 1000000000)) } catch { return }
             guard !Task.isCancelled, let self else { return }
             self.diagnosticDeadlineFired(geofenceId: geofence.id, due: due, token: waitToken)
-            await self.requestQualifyingEvidence(geofenceId: geofence.id)
+            await self.runEvidenceCheck(geofenceId: geofence.id)
         }
     }
 

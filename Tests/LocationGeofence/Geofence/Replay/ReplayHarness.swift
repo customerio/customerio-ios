@@ -21,6 +21,15 @@ final class ReplayHarness {
     let authority = FakeLocationAuthority()
     let api: GeofenceApiServiceMock
     private(set) var fixRequestCount = 0
+    /// Transitions this harness's binder has finished routing, across relaunches. Not those the
+    /// bootstrap's own binding routes after `wireMonitor()`.
+    let routed = EventCounter()
+    /// This process's work that `advance` waits for (`awaitQuiescence`): evidence checks its
+    /// deadlines and retries started, routing tasks its binder started, and OS events delivered
+    /// to its monitor, none yet ended or handled.
+    private(set) var evidenceChecksInFlight = 0
+    private(set) var routingsInFlight = 0
+    var eventsUnhandled = 0
     /// Read through `authority`, never directly.
     let fixes: ReplayFixProvider
     let clock: DateUtilStub
@@ -130,6 +139,11 @@ final class ReplayHarness {
             makeConditionMonitor: { [conditionMonitor] _ in conditionMonitor }
         )
         monitor.movementFixResolver.requestFreshFix = { [weak self] in self?.fixRequestCount += 1 }
+        let generation = processGeneration
+        monitor.onEventHandled = { [weak self] in
+            guard let self, self.processGeneration == generation else { return }
+            self.eventsUnhandled = max(0, self.eventsUnhandled - 1)
+        }
         // Known limitation: the timeout always wins, so every fresh-fix request falls back to the
         // cache. Parking it on the gate instead re-parked endlessly.
         monitor.movementFixResolver.waitForTimeout = { _ in await Task.yield() }
@@ -176,6 +190,8 @@ final class ReplayHarness {
             waitForEvidence: { [dwellScheduler] in try await dwellScheduler.sleep(nanoseconds: $0) }
         )
 
+        countEvidenceChecks(of: dwellCoordinator)
+
         resolver = makePolygonResolver()
 
         monitor = makeMonitor()
@@ -197,13 +213,7 @@ final class ReplayHarness {
         trigger = makeRefreshTrigger()
 
         // Kept though `wireMonitor()` binds too: a hand-driven test never sends `module.init`.
-        GeofenceMonitorBinder.bind(
-            monitor: monitor,
-            resolver: resolver,
-            coordinator: coordinator,
-            logger: logger,
-            dwellCoordinator: dwellCoordinator
-        )
+        bindMonitor()
         // Also rebinds visits to the fresh resolver on `reenterProcess()`.
         GeofenceMonitorBinder.bindVisits(
             visitMonitor: visitMonitor,
@@ -215,8 +225,46 @@ final class ReplayHarness {
         overrideBootstrapDependencies()
     }
 
+    private func countEvidenceChecks(of dwellCoordinator: GeofenceDwellCoordinator) {
+        let generation = processGeneration
+        dwellCoordinator.evidenceCheckActivity = { [weak self] began in
+            guard let self, self.processGeneration == generation else { return }
+            self.evidenceChecksInFlight += began ? 1 : -1
+        }
+    }
+
+    /// Binds this composition's monitor, counting the routing tasks its transitions start.
+    private func bindMonitor() {
+        let routed = routed
+        let routingGeneration = processGeneration
+        GeofenceMonitorBinder.bind(
+            monitor: monitor,
+            resolver: resolver,
+            coordinator: coordinator,
+            logger: logger,
+            dwellCoordinator: dwellCoordinator,
+            routingActivity: { [weak self] began in
+                // Started in the OS callback, on the main actor, before the event counts as
+                // handled; ended on the routing task, so counted down after a hop.
+                guard !began else {
+                    return MainActor.assumeIsolated { self?.countRouting(+1, generation: routingGeneration) }
+                }
+                routed.record()
+                Task { @MainActor [weak self] in self?.countRouting(-1, generation: routingGeneration) }
+            }
+        )
+    }
+
+    private func countRouting(_ change: Int, generation: UUID) {
+        guard processGeneration == generation else { return }
+        routingsInFlight = max(0, routingsInFlight + change)
+    }
+
     private func resetProcessRuntime() {
         processGeneration = UUID()
+        evidenceChecksInFlight = 0
+        routingsInFlight = 0
+        eventsUnhandled = 0
         notificationCenter = NotificationCenter()
         dwellScheduler = ReplayDwellScheduler()
         dwellScheduler.advance(to: clock.givenNow.timeIntervalSince(epoch))

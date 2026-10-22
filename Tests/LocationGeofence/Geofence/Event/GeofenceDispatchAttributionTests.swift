@@ -106,7 +106,7 @@ struct GeofenceDispatchAttributionTests {
         let routedBefore = process.routed.count
         process.monitor.onTransition?(Self.polygon.id, .enter, nil, raisedAt, false, dispatched, true)
         // Its routing runs a resolver pass; a later pass meeting it mid-emission leaves the DWELL to it.
-        await process.routed.reached(routedBefore + 1)
+        try #require(await process.routed.reached(routedBefore + 1, within: 60), "the routing task must finish")
 
         let kept = try #require(await process.visit(Self.polygon))
         #expect(kept.visitId == stay.visitId)

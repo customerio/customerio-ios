@@ -117,11 +117,17 @@ struct GeofenceDwellEarlyEvidenceTests {
         try await rig.enter()
         rig.answers = [rig.fix(at: 56.6), rig.fix(at: 90)]
         let retry = try await rig.firstShortRetry()
+        let replaced = rig.coordinator.deadlineTasks[rig.geofence.id]
 
         await rig.coordinator.rearmPendingEvidence(includePolygons: true)
-        // The replaced wait is withdrawn, and the re-armed one registered, asynchronously.
-        await settleQuietly(0.2)
-        try #require(rig.scheduler.pendingCount == 1 && rig.scheduler.nextDeadline == retry, "a re-arm keeps the short retry's floor")
+        // The replaced wait is withdrawn, and the re-armed one registered, asynchronously: the
+        // replaced task ends once its wait is withdrawn, and only the re-armed wait is left.
+        await replaced?.value
+        try #require(
+            await settleOnMain(timeout: 30) { rig.scheduler.pendingCount == 1 },
+            "the re-armed wait must register"
+        )
+        try #require(rig.scheduler.nextDeadline == retry, "a re-arm keeps the short retry's floor")
         rig.advance(to: retry)
 
         try #require(await settleOnMain { rig.emitter.dwells.count == 1 })

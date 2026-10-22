@@ -22,6 +22,7 @@ extension ReplayHarness {
     ) {
         let date = identity.map { epoch.addingTimeInterval($0) }
             ?? clock.givenNow.addingTimeInterval(-evage)
+        if conditionMonitor.hasSubscriber { eventsUnhandled += 1 }
         conditionMonitor.deliver(
             identifier: fence,
             state: transition == .enter ? .satisfied : .unsatisfied,
@@ -30,6 +31,7 @@ extension ReplayHarness {
     }
 
     func deliverMonitorStopped(fence: String) {
+        if conditionMonitor.hasSubscriber { eventsUnhandled += 1 }
         conditionMonitor.deliver(identifier: fence, state: .unmonitored, at: clock.givenNow)
     }
 

@@ -118,6 +118,9 @@ final class GeofenceDwellCoordinator {
     /// access that observes nothing in the background cannot span it. Internal for `+Continuity`.
     var foregroundOnlyLostUptime: TimeInterval?
     var polygonVerifier: ((String) async -> Void)?
+    /// Test seam, nil in production: told true as a deadline or retry starts its evidence check and
+    /// false as it ends, so a test driving virtual time can wait for the checks it released.
+    var evidenceCheckActivity: (@MainActor (Bool) -> Void)?
     /// The opt-in pending-dwell session; nil unless the host opted in. See `+Collection`.
     let pendingDwellCollection: PendingDwellCollectionOwner?
     /// Opt-in dwell diagnostics, shared with the default fix resolver; nil records nothing.

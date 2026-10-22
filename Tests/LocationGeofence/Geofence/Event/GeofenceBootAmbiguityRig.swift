@@ -149,7 +149,7 @@ final class BootAmbiguityProcess {
         let routed = routed
         GeofenceMonitorBinder.bind(
             monitor: monitor, resolver: resolver, coordinator: sync, logger: LoggerMock(), dwellCoordinator: dwell,
-            onRouted: { routed.record() }
+            routingActivity: { began in if !began { routed.record() } }
         )
     }
 

@@ -584,7 +584,10 @@ struct DwellReplayTests {
                 try #require(await harness.hasRegisteredPolygons(), "fence A must decode and register as a real polygon")
             }
             await harness.advance(to: 30)
+            let routedBefore = harness.routed.count
             harness.deliverCrossing(fence: "A", transition: .enter)
+            // The ENTER records its visit on the binder's routing task, which nothing else awaits.
+            try #require(await harness.routed.reached(routedBefore + 1, within: 60), "the routing task must finish")
             try await harness.settleBoundaries()
             let visit = try #require(await harness.storedVisit(fence: "A"))
             #expect(visit.entryObserved, "the fixture must describe an observed arrival")

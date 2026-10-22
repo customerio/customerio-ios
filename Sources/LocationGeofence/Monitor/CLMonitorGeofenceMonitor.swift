@@ -57,6 +57,9 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring {
     /// conditions untouched.
     var lastRearmAt: Date
     var foregroundObserverToken: NSObjectProtocol?
+    /// Test seam, nil in production: runs as each event the OS delivered has been handled
+    /// (dispatched, refused, or queued until a handler binds).
+    var onEventHandled: (() -> Void)?
 
     /// Every timing decision reads this clock, never `Date()`.
     let dateUtil: DateUtil
@@ -162,6 +165,7 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring {
                 do {
                     for try await event in await monitor.events {
                         await self.handle(event: event)
+                        self.onEventHandled?()
                         backoffNanos = 1000000000
                     }
                 } catch {

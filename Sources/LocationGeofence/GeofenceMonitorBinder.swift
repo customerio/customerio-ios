@@ -4,8 +4,9 @@ import Foundation
 /// `bind` must run before any `startMonitoring`, so cold-wake callbacks find a handler.
 @MainActor
 enum GeofenceMonitorBinder {
-    /// - Parameter onRouted: test seam, nil in production: runs once a fence transition's routing
-    ///   task has finished, follow-up included, so a test can await the routing it delivered.
+    /// - Parameter routingActivity: test seam, nil in production: told true as a fence transition's
+    ///   routing task is created, in the OS callback, and false once it has finished, follow-up
+    ///   included, so a test can await the routing it delivered.
     static func bind(
         monitor: GeofenceRegionMonitoring,
         resolver: PolygonMembershipResolver,
@@ -13,7 +14,7 @@ enum GeofenceMonitorBinder {
         logger: Logger,
         dwellCoordinator: GeofenceDwellCoordinator? = nil,
         backgroundTaskRunner: BackgroundTaskRunner = GeofenceBackgroundTime.runner(name: "io.customer.geofence.movement-pass"),
-        onRouted: (@Sendable () -> Void)? = nil
+        routingActivity: (@Sendable (Bool) -> Void)? = nil
     ) {
         // Dated here, synchronously: a visit entered before the removal task runs is not one the
         // loss interrupted.
@@ -42,26 +43,15 @@ enum GeofenceMonitorBinder {
                     logger.geofenceCallbackDropped(identifier: identifier, transition: transition, reason: "movement_trigger_not_exit")
                     return
                 }
-                guard let location else {
-                    logger.geofenceCallbackDropped(identifier: identifier, transition: transition, reason: "movement_trigger_no_location")
-                    return
-                }
-                // Background time: the EXIT is consumed once dispatched and never retried.
-                Task {
-                    await backgroundTaskRunner.withBackgroundTime {
-                        _ = await coordinator?.handleMovement(
-                            latitude: location.latitude,
-                            longitude: location.longitude,
-                            anchorIsLiveFix: locationIsFresh,
-                            heldFix: nil
-                        )
-                    }
-                }
-                return
+                return routeMovementTriggerExit(
+                    location: location, locationIsFresh: locationIsFresh,
+                    coordinator: coordinator, logger: logger, backgroundTaskRunner: backgroundTaskRunner
+                )
             }
             // Before the Task hop: a sign-in switch can run before the task does, and the crossing
             // belongs to whoever was identified when the OS delivered it.
             let receivedForUserId = resolver?.identifiedUserId ?? ""
+            routingActivity?(true)
             // One Task: parallel dispatch would lose the coordinator's gate.
             Task { [dwellCoordinator] in
                 let outcome = await resolver?.handleTransition(
@@ -77,7 +67,34 @@ enum GeofenceMonitorBinder {
                     location: location, locationIsFresh: locationIsFresh,
                     backgroundTaskRunner: backgroundTaskRunner
                 )
-                onRouted?()
+                routingActivity?(false)
+            }
+        }
+    }
+
+    /// The movement trigger's EXIT re-plans the catalog around where the device went.
+    private nonisolated static func routeMovementTriggerExit(
+        location: LocationData?,
+        locationIsFresh: Bool,
+        coordinator: GeofenceSyncCoordinator?,
+        logger: Logger,
+        backgroundTaskRunner: BackgroundTaskRunner
+    ) {
+        guard let location else {
+            logger.geofenceCallbackDropped(
+                identifier: GeofenceConstants.movementTriggerIdentifier, transition: .exit, reason: "movement_trigger_no_location"
+            )
+            return
+        }
+        // Background time: the EXIT is consumed once dispatched and never retried.
+        Task {
+            await backgroundTaskRunner.withBackgroundTime {
+                _ = await coordinator?.handleMovement(
+                    latitude: location.latitude,
+                    longitude: location.longitude,
+                    anchorIsLiveFix: locationIsFresh,
+                    heldFix: nil
+                )
             }
         }
     }

@@ -14,6 +14,8 @@ import UIKit
 @MainActor
 extension ReplayHarness {
     func advance(to at: TimeInterval, settle: () async -> Void) async {
+        // A check already running must park its retry before the first scan, or the scan misses it.
+        await awaitQuiescence()
         // Re-scan after every boundary and deadline: a fetch answer can schedule a timer before
         // the next stimulus, and evidence can schedule a retry before the target is reached.
         await gate.advance(
@@ -24,8 +26,29 @@ extension ReplayHarness {
             for _ in 0 ..< 3 {
                 await settle()
             }
+            await awaitQuiescence()
         }
     }
+
+    /// Until the work `advance` cannot see has ended or waits on drive time: an OS event not yet
+    /// handled, a routing task, or an evidence check, each started by this process. Waiting on
+    /// drive time means a reply parked on the gate or a wait on the scheduler (a request's timeout,
+    /// or a retry). The real-time grace in `settle` cannot tell slow work from finished work; this
+    /// can. Real time only bounds work that never ends.
+    func awaitQuiescence() async {
+        let limit = Date().addingTimeInterval(Self.quiescenceLimit)
+        while evidenceChecksInFlight > 0 || routingsInFlight > 0 || eventsUnhandled > 0,
+              !gate.hasParked, dwellScheduler.pendingCount == 0 {
+            guard Date() < limit else {
+                Issue.record("work neither ended nor waited on drive time within \(Self.quiescenceLimit) s")
+                return
+            }
+            await Task.yield()
+            try? await Task.sleep(nanoseconds: 1000000)
+        }
+    }
+
+    static let quiescenceLimit: TimeInterval = 60
 
     func releaseRemainingBoundaries(settle: () async throws -> Void) async rethrows {
         try await gate.releaseAll(

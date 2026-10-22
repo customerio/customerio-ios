@@ -225,18 +225,22 @@ struct GeofenceDwellEnterRenoteTests {
         sync.refreshReturnValue = .success(())
         sync.handleMovementReturnValue = .success(())
         let monitor = MockGeofenceRegionMonitor()
-        GeofenceMonitorBinder.bind(monitor: monitor, resolver: resolver, coordinator: sync, logger: LoggerMock(), dwellCoordinator: dwell)
+        let routed = EventCounter()
+        GeofenceMonitorBinder.bind(
+            monitor: monitor, resolver: resolver, coordinator: sync, logger: LoggerMock(), dwellCoordinator: dwell,
+            routingActivity: { began in if !began { routed.record() } }
+        )
 
         let start = rig.clock.wall
         monitor.simulateTransition(identifier: Self.circle.id, transition: .enter, location: nil, occurredAt: start)
-        await settleQuietly(0.3)
+        try #require(await routed.reached(1, within: 60), "the routing task must finish")
         let first = try #require(await rig.storage.getDwellVisit(geofenceId: Self.circle.id))
         dwell.cancelEvidence(for: Self.circle.id)
         rig.advance(0.2)
         monitor.simulateTransition(identifier: Self.circle.id, transition: .enter, location: nil, occurredAt: rig.clock.wall)
         rig.advance(599.8)
         monitor.simulateTransition(identifier: Self.circle.id, transition: .enter, location: nil, occurredAt: rig.clock.wall)
-        await settleQuietly(0.5)
+        try #require(await routed.reached(3, within: 60), "both routing tasks must finish")
         await dwell.requestQualifyingEvidence(geofenceId: Self.circle.id)
 
         #expect(await rig.dwellRows().filter { $0.visitId == first.visitId }.isEmpty)
