@@ -159,6 +159,10 @@ struct PolygonMembershipResolverTests {
         let contextStore: BackgroundDeliveryContextStore
         let notificationCenter: NotificationCenter
         let logger: LoggerMock
+        let timeouts: VirtualTimeouts
+        /// Each pass first stops at one of two points: queued on the fix request, or skipped. Counting
+        /// both lets a wait end either way, so a regression fails an assertion instead of hanging.
+        let passesQueuedOrSkipped: EventCounter
     }
 
     private func makeSetup(
@@ -183,8 +187,17 @@ struct PolygonMembershipResolverTests {
         // `.suppressedUnmonitored`.
         await storage.recordRegistration(center: LocationData(latitude: 0, longitude: 0), businessIds: ["1"])
         let emitter = EmitterSpy()
-        let fixResolver = MovementFixResolver(logger: LoggerMock(), dateUtil: clock)
-        fixResolver.systemCachedFix = { nil } // never touch CoreLocation from a unit test
+        let timeouts = VirtualTimeouts(clock: clock)
+        let passesQueuedOrSkipped = EventCounter()
+        logger.debugClosure = { message, _ in
+            if message.contains("Skipped polygon evaluation pass") { passesQueuedOrSkipped.record() }
+        }
+        let fixLogger = LoggerMock()
+        // Logged by `resolve` in the same main-actor turn that queues the caller.
+        fixLogger.infoClosure = { message, _ in
+            if message.contains("requesting a fresh fix") { passesQueuedOrSkipped.record() }
+        }
+        let fixResolver = makeFixResolver(logger: fixLogger, timeouts: timeouts)
         fixResolver.requestFreshFix = { [weak fixResolver] in
             guard let fix else { return fixResolver?.handleRequestFailure() ?? () }
             fixResolver?.handleResolvedFix(fix)
@@ -205,8 +218,81 @@ struct PolygonMembershipResolverTests {
             fixResolver: fixResolver,
             contextStore: contextStore,
             notificationCenter: notificationCenter,
-            logger: logger
+            logger: logger,
+            timeouts: timeouts,
+            passesQueuedOrSkipped: passesQueuedOrSkipped
         )
+    }
+
+    private func makeFixResolver(logger: LoggerMock = LoggerMock(), timeouts: VirtualTimeouts) -> MovementFixResolver {
+        let fixResolver = MovementFixResolver(
+            logger: logger,
+            dateUtil: clock,
+            waitForTimeout: { await timeouts.wait($0) }
+        )
+        fixResolver.systemCachedFix = { nil } // never touch CoreLocation from a unit test
+        return fixResolver
+    }
+
+    /// The fix-request timeout on `clock` instead of the wall clock: it fires only when a test advances
+    /// `clock` past it, so a stalled runner can't fail a request a test is holding.
+    @MainActor
+    private final class VirtualTimeouts {
+        private let clock: DateUtilStub
+        private var pending: [(deadline: Date, continuation: AsyncStream<Void>.Continuation)] = []
+        /// One per timeout started: `advance` fires only what has started.
+        let armed = EventCounter()
+
+        init(clock: DateUtilStub) {
+            self.clock = clock
+        }
+
+        /// Also returns when the resolver cancels it, which it does on every completion.
+        func wait(_ seconds: TimeInterval) async {
+            let (stream, continuation) = AsyncStream<Void>.makeStream()
+            pending.append((clock.now.addingTimeInterval(seconds), continuation))
+            armed.record()
+            for await _ in stream {}
+        }
+
+        func advance(by seconds: TimeInterval) {
+            clock.givenNow = clock.now.addingTimeInterval(seconds)
+            let now = clock.now
+            pending.filter { $0.deadline <= now }.forEach { $0.continuation.finish() }
+            pending.removeAll { $0.deadline <= now }
+        }
+    }
+
+    /// Lets a test await the nth occurrence of an event, including one that already happened.
+    private final class EventCounter: Sendable {
+        private struct State {
+            var count = 0
+            var waiters: [(count: Int, continuation: CheckedContinuation<Void, Never>)] = []
+        }
+
+        private let state = Synchronized<State>(State())
+
+        func record() {
+            let ready = state.mutating { state -> [CheckedContinuation<Void, Never>] in
+                state.count += 1
+                let count = state.count
+                let ready = state.waiters.filter { $0.count <= count }.map(\.continuation)
+                state.waiters.removeAll { $0.count <= count }
+                return ready
+            }
+            ready.forEach { $0.resume() }
+        }
+
+        func reached(_ count: Int) async {
+            await withCheckedContinuation { continuation in
+                let resumeNow = state.mutating { state -> Bool in
+                    if state.count >= count { return true }
+                    state.waiters.append((count, continuation))
+                    return false
+                }
+                if resumeNow { continuation.resume() }
+            }
+        }
     }
 
     private func fix(
@@ -299,9 +385,9 @@ struct PolygonMembershipResolverTests {
         let gate = gatingRequests(setup)
 
         async let foreground: Void = setup.resolver.evaluateAllPolygons(reason: .foreground)
-        await yieldUntil { !gate.releases.isEmpty }
+        await gate.requested.reached(1)
         async let wake: Void = setup.resolver.evaluateAllPolygons(reason: .foreground, requiresFreshFix: true)
-        await settle()
+        await setup.passesQueuedOrSkipped.reached(2)
         gate.releaseAll()
         _ = await(foreground, wake)
 
@@ -316,9 +402,9 @@ struct PolygonMembershipResolverTests {
         let gate = gatingRequests(setup)
 
         async let firstWake: Void = setup.resolver.evaluateAllPolygons(reason: .foreground, requiresFreshFix: true)
-        await yieldUntil { !gate.releases.isEmpty }
+        await gate.requested.reached(1)
         async let secondWake: Void = setup.resolver.evaluateAllPolygons(reason: .foreground, requiresFreshFix: true)
-        await settle()
+        await setup.passesQueuedOrSkipped.reached(2)
         #expect(gate.releases.count == 1, "expected the second wake to coalesce, got \(gate.releases.count) requests")
         gate.releaseAll()
         _ = await(firstWake, secondWake)
@@ -334,9 +420,9 @@ struct PolygonMembershipResolverTests {
         let gate = gatingRequests(setup)
 
         async let wake: Void = setup.resolver.evaluateAllPolygons(reason: .foreground, requiresFreshFix: true)
-        await yieldUntil { !gate.releases.isEmpty }
+        await gate.requested.reached(1)
         async let foreground: Void = setup.resolver.evaluateAllPolygons(reason: .foreground)
-        await settle()
+        await setup.passesQueuedOrSkipped.reached(2)
         gate.releaseAll()
         _ = await(wake, foreground)
 
@@ -344,6 +430,7 @@ struct PolygonMembershipResolverTests {
     }
 
     private final class RequestGate {
+        let requested = EventCounter()
         var releases: [() -> Void] = []
         func releaseAll() {
             let pending = releases
@@ -356,19 +443,20 @@ struct PolygonMembershipResolverTests {
         let gate = RequestGate()
         setup.fixResolver.requestFreshFix = { [weak fixResolver = setup.fixResolver] in
             gate.releases.append { fixResolver?.handleRequestFailure() }
+            gate.requested.record()
         }
         return gate
     }
 
-    private func yieldUntil(_ condition: () -> Bool) async {
-        for _ in 0 ..< 1000 where !condition() {
-            await Task.yield()
-        }
+    /// Leaves every request unanswered; the test answers it through `fixResolver`.
+    private func holdingRequests(_ setup: Setup) -> EventCounter {
+        let requested = EventCounter()
+        setup.fixResolver.requestFreshFix = { requested.record() }
+        return requested
     }
 
-    /// Lets a just-started task reach its first suspension point.
-    private func settle() async {
-        for _ in 0 ..< 20 {
+    private func yieldUntil(_ condition: () -> Bool) async {
+        for _ in 0 ..< 1000 where !condition() {
             await Task.yield()
         }
     }
@@ -649,11 +737,10 @@ struct PolygonMembershipResolverTests {
     func evaluateMembership_givenPolygonReplacedWhileFixPending_expectVerdictFromTheCurrentRing() async {
         let setup = await makeSetup(fix: nil)
         await registerPolygons(setup, ids: ["1"])
-        let requested = Flag()
-        setup.fixResolver.requestFreshFix = { requested.value = true }
+        let requested = holdingRequests(setup)
 
         async let pass: Bool = setup.resolver.evaluateMembership(geofenceIds: ["1"], reason: .foreground)
-        await yieldUntil { requested.value }
+        await requested.reached(1)
         await setup.storage.setCachedGeofences([movedPolygonGeofence()])
         setup.fixResolver.handleResolvedFix(fix(latitude: 0, longitude: 0))
         _ = await pass
@@ -667,11 +754,10 @@ struct PolygonMembershipResolverTests {
     func evaluateMembership_givenCatalogUnchangedWhileFixPending_expectEnterDelivered() async {
         let setup = await makeSetup(fix: nil)
         await registerPolygons(setup, ids: ["1"])
-        let requested = Flag()
-        setup.fixResolver.requestFreshFix = { requested.value = true }
+        let requested = holdingRequests(setup)
 
         async let pass: Bool = setup.resolver.evaluateMembership(geofenceIds: ["1"], reason: .foreground)
-        await yieldUntil { requested.value }
+        await requested.reached(1)
         setup.fixResolver.handleResolvedFix(fix(latitude: 0, longitude: 0))
         _ = await pass
 
@@ -852,11 +938,10 @@ struct PolygonMembershipResolverTests {
         let setup = await makeSetup(fix: nil)
         await registerPolygons(setup, ids: ["1"])
         // Hold the pass inside its request so the swap lands strictly between the read and the verdict.
-        let requested = Flag()
-        setup.fixResolver.requestFreshFix = { requested.value = true }
+        let requested = holdingRequests(setup)
 
         async let pass: Void = setup.resolver.evaluateAllPolygons(reason: .foreground)
-        await yieldUntil { requested.value }
+        await requested.reached(1)
         await setup.storage.setCachedGeofences([movedPolygonGeofence()])
         setup.fixResolver.handleResolvedFix(fix(latitude: 0, longitude: 0))
         await pass
@@ -871,11 +956,10 @@ struct PolygonMembershipResolverTests {
     func evaluateAllPolygons_givenCatalogUnchangedWhileFixPending_expectEnterDelivered() async {
         let setup = await makeSetup(fix: nil)
         await registerPolygons(setup, ids: ["1"])
-        let requested = Flag()
-        setup.fixResolver.requestFreshFix = { requested.value = true }
+        let requested = holdingRequests(setup)
 
         async let pass: Void = setup.resolver.evaluateAllPolygons(reason: .foreground)
-        await yieldUntil { requested.value }
+        await requested.reached(1)
         setup.fixResolver.handleResolvedFix(fix(latitude: 0, longitude: 0))
         await pass
 
@@ -889,11 +973,10 @@ struct PolygonMembershipResolverTests {
     func evaluateAllPolygons_givenPolygonUnregisteredWhileFixPending_expectNoVerdict() async {
         let setup = await makeSetup(fix: nil)
         await registerPolygons(setup, ids: ["1"])
-        let requested = Flag()
-        setup.fixResolver.requestFreshFix = { requested.value = true }
+        let requested = holdingRequests(setup)
 
         async let pass: Void = setup.resolver.evaluateAllPolygons(reason: .foreground)
-        await yieldUntil { requested.value }
+        await requested.reached(1)
         await setup.storage.recordRegistration(center: LocationData(latitude: 0, longitude: 0), businessIds: [])
         setup.fixResolver.handleResolvedFix(fix(latitude: 0, longitude: 0))
         await pass
@@ -906,16 +989,31 @@ struct PolygonMembershipResolverTests {
     func evaluateAllPolygons_givenPolygonDroppedWhileFixPending_expectNoVerdict() async {
         let setup = await makeSetup(fix: nil)
         await registerPolygons(setup, ids: ["1"])
-        let requested = Flag()
-        setup.fixResolver.requestFreshFix = { requested.value = true }
+        let requested = holdingRequests(setup)
 
         async let pass: Void = setup.resolver.evaluateAllPolygons(reason: .foreground)
-        await yieldUntil { requested.value }
+        await requested.reached(1)
         await setup.storage.setCachedGeofences([])
         setup.fixResolver.handleResolvedFix(fix(latitude: 0, longitude: 0))
         await pass
 
         #expect(await setup.emitter.snapshot().isEmpty)
+        #expect(await setup.storage.getPolygonMembership()["1"] == nil)
+    }
+
+    /// The request timeout runs on `clock`: it fires when the test moves time, never on its own.
+    @Test
+    func evaluateAllPolygons_givenNoAnswerBeforeTheTimeout_expectNoVerdict() async {
+        let setup = await makeSetup(fix: nil)
+        await registerPolygons(setup, ids: ["1"])
+        _ = holdingRequests(setup)
+
+        async let pass: Void = setup.resolver.evaluateAllPolygons(reason: .foreground)
+        await setup.timeouts.armed.reached(1)
+        setup.timeouts.advance(by: GeofenceConstants.movementFixRequestTimeout)
+        await pass
+
+        #expect(logged(setup.logger, "undecided for region 1: no usable fix"))
         #expect(await setup.storage.getPolygonMembership()["1"] == nil)
     }
 
@@ -1025,8 +1123,7 @@ struct PolygonMembershipResolverTests {
         )
         contextStore.setUserId("user-1")
         let emitter = EmitterSpy()
-        let fixResolver = MovementFixResolver(logger: LoggerMock(), dateUtil: clock)
-        fixResolver.systemCachedFix = { nil }
+        let fixResolver = makeFixResolver(timeouts: VirtualTimeouts(clock: clock))
         fixResolver.requestFreshFix = { [weak fixResolver] in
             fixResolver?.handleResolvedFix(CLLocation(
                 coordinate: CLLocationCoordinate2D(latitude: 0, longitude: 0),
