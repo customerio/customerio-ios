@@ -50,6 +50,11 @@ protocol GeofenceTransitionEmitting: Sendable {
     func deliverDwell(
         geofenceId: String, occurredAt: Date, context: GeofenceDwellContext, expectedUserId: String?
     ) async -> GeofenceDwellDelivery
+    /// `deliverDwell`, but only as far as the outbox: returns once the rows are durable, before any
+    /// network wait, and leaves sending them to the next flush.
+    func queueDwell(
+        geofenceId: String, occurredAt: Date, context: GeofenceDwellContext, expectedUserId: String?
+    ) async -> GeofenceDwellDelivery
     /// Delivers an exit with its optional visit context. Dropped when `expectedUserId` is set and
     /// is no longer the identified user.
     func trackExit(
@@ -64,6 +69,13 @@ extension GeofenceTransitionEmitting {
     ) async -> GeofenceDwellDelivery {
         await trackDwell(geofenceId: geofenceId, occurredAt: occurredAt, context: context, expectedUserId: expectedUserId)
             ? .persisted : .writeFailed
+    }
+
+    /// For an emitter with no network of its own: queuing is delivering.
+    func queueDwell(
+        geofenceId: String, occurredAt: Date, context: GeofenceDwellContext, expectedUserId: String?
+    ) async -> GeofenceDwellDelivery {
+        await deliverDwell(geofenceId: geofenceId, occurredAt: occurredAt, context: context, expectedUserId: expectedUserId)
     }
 }
 

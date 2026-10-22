@@ -313,6 +313,40 @@ struct GeofenceExitDurationProvenanceTests {
         process.dwell.cancelEvidence(for: Self.dwellCircle.id)
     }
 
+    /// A stay owing its reserved DWELL ends with an EXIT while the network hangs (the trip saw
+    /// ~16 s transport failures). The owed DWELL is only queued and the EXIT persisted before any
+    /// send is awaited: both rows are on disk by the time the first send starts, which is the
+    /// EXIT's own, and a process killed while it hangs loses neither.
+    @Test
+    func exitOfAStayOwingItsDwell_persistsBothBeforeAnyNetworkWait() async throws {
+        let files = Files()
+        let sends = HangingSends()
+        let process = await Process(files: files) { metric, onComplete in sends.hold(metric, onComplete) }
+        let entry = files.clock.wall
+        await process.crossing(.enter, Self.dwellCircle)
+        let visit = try #require(await process.storage.getDwellVisit(geofenceId: Self.dwellCircle.id))
+        files.advance(600)
+        let reservation = GeofenceDwellReservation(
+            occurredAtEpochMilliseconds: Int64(files.clock.wall.timeIntervalSince1970 * 1000),
+            enteredAtEpochMilliseconds: Int64(entry.timeIntervalSince1970 * 1000), durationSeconds: 600,
+            thresholdSeconds: 600, detectionSource: "location_evidence"
+        )
+        try #require(await process.storage.reserveDwellEmission(reservation, for: visit, geofenceId: Self.dwellCircle.id) == .reserved(reservation))
+        let sentBefore = sends.count
+        sends.stall()
+        files.advance(60)
+
+        let exit = Task { await process.crossing(.exit, Self.dwellCircle) }
+        try #require(await sends.started.reached(sentBefore + 1, within: 60), "the EXIT's routing must reach a send")
+
+        #expect(sends.transitions.dropFirst(sentBefore).first == .exit, "the first send is the EXIT's, after both rows are written")
+        #expect(await process.rows(.dwell).map(\.visitId) == [visit.visitId])
+        #expect(await process.rows(.exit).map(\.visitId) == [visit.visitId])
+        sends.releaseAll()
+        await exit.value
+        process.dwell.cancelEvidence(for: Self.dwellCircle.id)
+    }
+
     /// A stay whose dwell was reserved but never queued — an outbox write that failed — gets a
     /// correction ENTER. The reservation stays exactly as it was, and the EXIT times the same
     /// physical stay from its original entry.
@@ -1254,7 +1288,11 @@ struct GeofenceExitDurationProvenanceTests {
 
         /// - Parameter beforeExitDelivery: runs as each EXIT reaches the tracker, after the
         ///   coordinator has fixed its facts.
-        init(files: Files, beforeExitDelivery: ((BackgroundDeliveryContextStore) -> Void)? = nil) async {
+        /// - Parameter send: stands for each HTTP send of a written row; by default it fails at once.
+        init(
+            files: Files, beforeExitDelivery: ((BackgroundDeliveryContextStore) -> Void)? = nil,
+            send: ((PendingGeofenceMetric, @escaping (Result<Void, BackgroundDeliveryHttpError>) -> Void) -> Void)? = nil
+        ) async {
             self.files = files
             self.contextStore = BackgroundDeliveryContextStore(fileManager: .default, directoryURL: files.contextDirectory)
             self.storage = GeofenceStorage(fileManager: .default, directoryURL: files.geofenceDirectory)
@@ -1274,7 +1312,10 @@ struct GeofenceExitDurationProvenanceTests {
                 logger: LoggerMock(), directoryURL: files.geofenceDirectory.appendingPathComponent("outbox")
             )
             let delivery = GeofenceDeliveryTrackerMock()
-            delivery.trackMetricClosure = { _, _, onComplete in onComplete(.failure(.transport)) }
+            delivery.trackMetricClosure = { metric, _, onComplete in
+                guard let send else { return onComplete(.failure(.transport)) }
+                send(metric, onComplete)
+            }
             let tracker = GeofenceEventTracker(
                 storage: storage, pendingStore: outbox, deliveryTracker: delivery, contextStore: contextStore,
                 eventBusHandler: EventBusHandlerMock(), dateUtil: files.dateUtil, logger: LoggerMock(),
@@ -1434,5 +1475,42 @@ struct GeofenceExitDurationProvenanceTests {
             hook(contextStore)
             await tracker.trackExit(geofenceId: geofenceId, occurredAt: occurredAt, context: context, expectedUserId: expectedUserId)
         }
+    }
+}
+
+/// HTTP sends that, once `stall()` is called, hang until released, as a stalled network leaves
+/// them; before it, each fails at once.
+private final class HangingSends: @unchecked Sendable {
+    private let lock = NSLock()
+    private var stalled = false
+    private var held: [(Result<Void, BackgroundDeliveryHttpError>) -> Void] = []
+    private var sent: [GeofenceTransition] = []
+    let started = EventCounter()
+
+    var count: Int { lock.withLock { sent.count } }
+    var transitions: [GeofenceTransition] { lock.withLock { sent } }
+
+    func stall() {
+        lock.withLock { stalled = true }
+    }
+
+    func hold(_ metric: PendingGeofenceMetric, _ onComplete: @escaping (Result<Void, BackgroundDeliveryHttpError>) -> Void) {
+        let holds = lock.withLock { () -> Bool in
+            sent.append(metric.transition)
+            if stalled { held.append(onComplete) }
+            return stalled
+        }
+        started.record()
+        if !holds { onComplete(.failure(.transport)) }
+    }
+
+    /// Fails every held send, and every later one at once.
+    func releaseAll() {
+        let waiting = lock.withLock { () -> [(Result<Void, BackgroundDeliveryHttpError>) -> Void] in
+            stalled = false
+            defer { held.removeAll() }
+            return held
+        }
+        waiting.forEach { $0(.failure(.transport)) }
     }
 }

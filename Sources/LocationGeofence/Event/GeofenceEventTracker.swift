@@ -79,17 +79,31 @@ final class GeofenceEventTracker: @unchecked Sendable {
         ))
     }
 
+    func queueDwell(
+        geofenceId: String, occurredAt: Date, context: GeofenceDwellContext, expectedUserId: String?
+    ) async -> GeofenceDwellDelivery {
+        await track(GeofenceCrossing(
+            geofenceId: geofenceId, transition: .dwell, occurredAt: occurredAt,
+            dwell: context, exit: nil, expectedUserId: expectedUserId
+        ), sends: false)
+    }
+
+    /// With `sends` false, the crossing's rows are only written to the outbox: nothing is sent and
+    /// the backlog is not flushed, so the caller never waits on the network. The next flush sends
+    /// them.
     @discardableResult
-    private func track(_ crossing: GeofenceCrossing) async -> GeofenceDwellDelivery {
+    private func track(_ crossing: GeofenceCrossing, sends: Bool = true) async -> GeofenceDwellDelivery {
         // Current crossing before the backlog: the dedup baseline has advanced, so an un-persisted
         // crossing can never re-emit.
-        let fresh = await deliverCurrentCrossing(crossing)
+        let fresh = await deliverCurrentCrossing(crossing, sends: sends)
         // Excluding the rows just written keeps a failed fresh send on disk for the next trigger.
-        await flushPending(excluding: fresh.keys)
+        if sends { await flushPending(excluding: fresh.keys) }
         return fresh.delivery
     }
 
-    private func deliverCurrentCrossing(_ crossing: GeofenceCrossing) async -> (keys: Set<String>, delivery: GeofenceDwellDelivery) {
+    private func deliverCurrentCrossing(
+        _ crossing: GeofenceCrossing, sends: Bool
+    ) async -> (keys: Set<String>, delivery: GeofenceDwellDelivery) {
         let geofenceId = crossing.geofenceId
         let transition = crossing.transition
         // Snapshot the userId so a later sign-out/sign-in can't reattribute the row.
@@ -130,10 +144,12 @@ final class GeofenceEventTracker: @unchecked Sendable {
         logger.geofenceTransitionAccepted(geofenceId: geofenceId, transition: transition, rows: metrics.count)
 
         // Concurrent is safe: keys are distinct, and unfinished rows are already persisted.
-        await backgroundTaskRunner.withBackgroundTime { [self] in
-            await withTaskGroup(of: Void.self) { group in
-                for metric in metrics {
-                    group.addTask { await self.deliverFresh(metric: metric) }
+        if sends {
+            await backgroundTaskRunner.withBackgroundTime { [self] in
+                await withTaskGroup(of: Void.self) { group in
+                    for metric in metrics {
+                        group.addTask { await self.deliverFresh(metric: metric) }
+                    }
                 }
             }
         }

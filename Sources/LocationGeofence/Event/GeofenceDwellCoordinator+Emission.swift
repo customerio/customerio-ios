@@ -87,7 +87,7 @@ extension GeofenceDwellCoordinator {
     /// its evidence. After it, the delivery is given up rather than retried on every wake for good.
     static let reservedDwellLifetime: TimeInterval = 24 * 60 * 60
 
-    /// Delivers the dwell `visitId` still owes before its EXIT ends it, so an EXIT routed first does
+    /// Queues the dwell `visitId` still owes before its EXIT ends it, so an EXIT routed first does
     /// not lose a qualified DWELL. Delivered, or refused for good, it is owed no more. One the
     /// outbox could not take stays owed: removing the visit then leaves it in
     /// `GeofenceState.orphanedDwells`, offered again at launch (`deliverOrphanedDwells`).
@@ -99,8 +99,10 @@ extension GeofenceDwellCoordinator {
               visit.owesDwell, let reservation = visit.dwellReservation
         else { return }
         let token = diagnosticToken(for: visit)
+        // Queued only: the EXIT the caller persists next must not wait on the network. The EXIT's
+        // own send flushes the queue, this row first.
         guard let delivery = await offerReservedDwell(
-            reservation, geofenceId: geofence.id, visitId: visitId, userId: visit.userId
+            reservation, geofenceId: geofence.id, visitId: visitId, userId: visit.userId, queueOnly: true
         ) else {
             await abandonReservedDwell(geofence: geofence, visit: visit)
             return
@@ -127,14 +129,20 @@ extension GeofenceDwellCoordinator {
     /// The one way a reserved dwell is handed to the outbox — a live visit's emission or retry, an
     /// EXIT's flush, an orphan at launch — so none skips the expiry: nil, offering nothing, once it
     /// is `reservedDwellLifetime` old, for the caller to give it up.
+    /// With `queueOnly`, the dwell only reaches the outbox (`queueDwell`), before any network wait.
     private func offerReservedDwell(
-        _ reservation: GeofenceDwellReservation, geofenceId: String, visitId: String, userId: String
+        _ reservation: GeofenceDwellReservation, geofenceId: String, visitId: String, userId: String,
+        queueOnly: Bool = false
     ) async -> GeofenceDwellDelivery? {
         guard !reservationExpired(reservation) else { return nil }
-        return await transitionEmitter.deliverDwell(
-            geofenceId: geofenceId, occurredAt: reservation.occurredAt,
-            context: reservation.context(visitId: visitId), expectedUserId: userId
-        )
+        let context = reservation.context(visitId: visitId)
+        return queueOnly
+            ? await transitionEmitter.queueDwell(
+                geofenceId: geofenceId, occurredAt: reservation.occurredAt, context: context, expectedUserId: userId
+            )
+            : await transitionEmitter.deliverDwell(
+                geofenceId: geofenceId, occurredAt: reservation.occurredAt, context: context, expectedUserId: userId
+            )
     }
 
     /// Whether `reservation` was made `reservedDwellLifetime` or more ago on the wall clock. A clock
