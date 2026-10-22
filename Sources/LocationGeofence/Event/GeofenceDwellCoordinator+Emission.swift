@@ -23,13 +23,6 @@ extension GeofenceDwellCoordinator {
         // made, and a continuity break since — an access downgrade, say — changes nothing about it.
         if visit.dwellReservation == nil {
             guard continuityHolds(for: visit, geofenceId: geofence.id), !visit.awaitsPresenceProof else { return }
-            // A correction noted before the shapes were loaded may end this stay once they are
-            // (`pendingCorrections`); reserved now, the dwell would be a fact the drain cannot
-            // undo. Left to the deadline or the next evidence, after the load.
-            if correctionRefusesAdmission(of: visit, geofenceId: geofence.id) {
-                scheduleEvidenceRetry(for: geofence, visit: visit)
-                return
-            }
         }
         let reading = readClock()
         let elapsed = visit.timing?.elapsed(enteredAt: visit.enteredAt, until: observedAt, at: reading)
@@ -50,6 +43,15 @@ extension GeofenceDwellCoordinator {
                 .dwellRejected, capturedToken: diagnosticToken(for: visit),
                 fenceId: geofence.id, reason: .belowThreshold, thresholdShortfall: shortfall
             )
+            return
+        }
+        // A correction noted before the shapes were loaded (`pendingCorrections`), or a crossing
+        // held for the polygon's evidence (`heldCoveringCrossings`), may end this stay once applied;
+        // reserved now, the dwell would be a fact they cannot undo. Left to the deadline or the next
+        // evidence. Judged only once the stay qualifies: evidence before the threshold schedules no
+        // retry that would replace its deadline.
+        if visit.dwellReservation == nil, correctionRefusesAdmission(of: visit, geofenceId: geofence.id) {
+            scheduleEvidenceRetry(for: geofence, visit: visit)
             return
         }
         guard contextStore.currentUserId == userId,

@@ -267,6 +267,55 @@ struct GeofenceDwellProofBudgetTests {
         #expect(rig.exhaustionLogs() == 1)
     }
 
+    /// The first request's charge could not be saved. No second request is admitted on top of it,
+    /// so a process dying now would lose only that one; once the save goes through, the next is.
+    @Test
+    func unsavedCharge_holdsBackTheNextRequestUntilItIsSaved() async throws {
+        let rig = await BudgetRig.make(polygon: false)
+        defer { rig.close() }
+        await rig.enterCircle()
+        await rig.storage.setLedgerSaveFails(true)
+        await rig.drive(to: 60)
+        try #require(rig.requestTimes == [60])
+        #expect(rig.coordinator.unsavedProofCharges.count == 1)
+
+        await rig.drive(to: 180)
+        #expect(rig.requestTimes == [60], "no request is admitted on top of an unsaved charge")
+        #expect(await rig.visit()?.dwellProofAttempts == 0)
+
+        await rig.storage.setLedgerSaveFails(false)
+        await rig.drive(to: 300)
+        #expect(rig.requestTimes == [60, 300])
+        #expect(await rig.visit()?.dwellProofAttempts == 2)
+        #expect(rig.coordinator.unsavedProofCharges.isEmpty)
+    }
+
+    /// A covering crossing is held for a long-threshold polygon visit while membership passes keep
+    /// finding the device inside. None of them can qualify the stay before its threshold, so none
+    /// replaces the threshold deadline with an earlier retry, and no check is counted until then.
+    @Test
+    func heldCrossingBeforeTheThreshold_neitherMovesTheDeadlineNorCountsChecks() async throws {
+        let rig = await BudgetRig.make(polygon: true, threshold: 600)
+        defer { rig.close() }
+        rig.answers = [rig.insideFix(at: 0)]
+        _ = await rig.resolver.evaluateMembership(geofenceIds: [BudgetRig.polygon.id], reason: .foreground, requiresFreshFix: true)
+        try #require(await settleOnMain { rig.scheduler.nextDeadline == 600 })
+        try #require(await settleOnMain { rig.coordinator.polygonIdsLoaded })
+        rig.coordinator.noteEnter(geofenceId: BudgetRig.polygon.id, occurredAt: rig.at(0), crossing: true)
+        try #require(rig.coordinator.heldCoveringCrossings[BudgetRig.polygon.id] != nil)
+
+        for moment in stride(from: 60.0, through: 540, by: 60) {
+            rig.advance(to: moment)
+            rig.answers = [rig.insideFix(at: moment)]
+            _ = await rig.resolver.evaluateMembership(geofenceIds: [BudgetRig.polygon.id], reason: .movement, requiresFreshFix: true)
+            await settleQuietly(0.05)
+            #expect(rig.scheduler.nextDeadline == 600, "an inside pass at \(moment) s moved the deadline")
+        }
+        #expect(rig.coordinator.proofLedgers.values.allSatisfy { $0.checks == 0 })
+        #expect(await rig.visit()?.dwellProofChecks == 0)
+        #expect(rig.emitter.dwells.isEmpty)
+    }
+
     /// On its timeout, the resolver tells Core Location to stop the request, rather than only
     /// answering its callers; a request answered in time is not cancelled.
     @Test
@@ -353,9 +402,14 @@ private final class BudgetRig {
         context.setUserId("budget-user")
     }
 
-    static func make(polygon: Bool) async -> BudgetRig {
+    static func make(polygon: Bool, threshold: Int = 60) async -> BudgetRig {
         let rig = BudgetRig(polygon: polygon)
-        let fence = polygon ? Self.polygon : Self.circle
+        let base = polygon ? Self.polygon : Self.circle
+        let fence = Geofence(
+            id: base.id, latitude: base.latitude, longitude: base.longitude, radius: base.radius, name: base.name,
+            transitionTypes: base.transitionTypes, lastUpdated: base.lastUpdated, vertices: base.vertices,
+            dwellThresholdSeconds: threshold
+        )
         await rig.storage.setCachedGeofences([fence])
         await rig.storage.recordRegistration(center: LocationData(latitude: 0.25, longitude: 0.25), businessIds: [fence.id])
         rig.launch()

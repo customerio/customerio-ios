@@ -45,6 +45,14 @@ actor GeofenceStorage {
     }
 
     var retractionFailsForTesting: Bool { retractionFails }
+
+    /// Test seam: makes `recordDwellProofLedger` report a failed persist without writing.
+    private(set) var ledgerSaveFails = false
+
+    func setLedgerSaveFails(_ fails: Bool) {
+        ledgerSaveFails = fails
+    }
+
     init(
         fileManager: FileManager = .default,
         directoryURL: URL? = nil,

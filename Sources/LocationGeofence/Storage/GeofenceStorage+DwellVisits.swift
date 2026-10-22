@@ -104,18 +104,22 @@ extension GeofenceStorage {
     /// Persists what `visitId` has spent proving its dwell, as the coordinator counted it in memory:
     /// only while that is still the stored visit, and never lowering a count or moving the last
     /// request back, so writes landing out of order keep the most spent.
-    func recordDwellProofLedger(geofenceId: String, visitId: String, ledger: GeofenceDwellProofLedger) {
+    /// - Returns: whether the store now holds at least `ledger`'s spending for that visit, or no
+    ///   longer holds the visit at all; false when the write failed.
+    @discardableResult
+    func recordDwellProofLedger(geofenceId: String, visitId: String, ledger: GeofenceDwellProofLedger) -> Bool {
         var state = loadFromDisk() ?? GeofenceState()
-        guard var stored = state.dwellVisits?[geofenceId], stored.visitId == visitId else { return }
+        guard var stored = state.dwellVisits?[geofenceId], stored.visitId == visitId else { return true }
         let merged = ledger.merged(with: stored)
         guard merged.attempts != stored.dwellProofAttempts || merged.checks != stored.dwellProofChecks
             || merged.lastRequest != stored.lastDwellProofRequest
-        else { return }
+        else { return true }
+        guard !ledgerSaveFails else { return false }
         stored.dwellProofAttempts = merged.attempts
         stored.dwellProofChecks = merged.checks
         stored.lastDwellProofRequest = merged.lastRequest
         state.dwellVisits?[geofenceId] = stored
-        saveToDisk(state)
+        return saveToDisk(state)
     }
 
     /// Records that `visitId` was decisively proven inside at `provenAt`, keeping the latest; only

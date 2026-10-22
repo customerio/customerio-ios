@@ -98,6 +98,9 @@ final class GeofenceDwellCoordinator {
     /// What each visit has spent proving its dwell, by visit id: authoritative in this process,
     /// merged with what was persisted, so admission reads it without awaiting storage.
     var proofLedgers: [String: GeofenceDwellProofLedger] = [:]
+    /// Visits whose last admitted dwell-proof request is counted in memory but not yet confirmed
+    /// saved. None of them is admitted another until it is, so a process dying loses at most one.
+    var unsavedProofCharges: Set<String> = []
     /// Waits out an evidence deadline or retry. Deadlines are computed on `clock`, continuous uptime in
     /// production, so the default waits on continuous time where the OS has it; before iOS 16 it keeps
     /// `Task.sleep(nanoseconds:)`, which may end late across device sleep. Either way it only resumes a

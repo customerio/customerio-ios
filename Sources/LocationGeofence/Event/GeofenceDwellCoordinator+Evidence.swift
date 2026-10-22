@@ -54,11 +54,7 @@ extension GeofenceDwellCoordinator {
         // time is known to count down from. A request it would issue still waits out the spacing
         // since the visit's last one (`admitDwellProofRequest`).
         let now = readClock()
-        let elapsed = visit.timing?.elapsed(enteredAt: visit.enteredAt, until: now.wall, at: now)?.qualifyingSeconds ?? 0
-        let delay = visit.awaitsPresenceProof || visit.dwellReservation != nil ? 0 : min(
-            TimeInterval(GeofenceDwellLimits.maxThresholdSeconds),
-            max(0, TimeInterval(geofence.dwellThresholdSeconds) - elapsed)
-        )
+        let delay = thresholdRemaining(for: visit, geofence: geofence, at: now)
         let delayNanoseconds = UInt64(delay * 1000000000)
         let wait = waitForEvidence
         let due = now.uptime + delay
@@ -88,12 +84,16 @@ extension GeofenceDwellCoordinator {
         // A refused reservation on disk is no fact to deliver: the stay is judged unreserved and
         // asks for evidence as any other, which takes the orphan back before reserving anew.
         let visit = standing(storedVisit)
-        // A check that needs a location is counted, answered by a request or not; with none left
-        // the chain stops. A reserved dwell's delivery is never held back.
-        if visit.dwellReservation == nil, !countDwellProofCheck(geofenceId: geofence.id, visit: visit) {
+        // A check that needs a location, at or after the threshold, is counted, answered by a
+        // request or not; with none left the chain stops. One before the threshold cannot qualify
+        // and is not counted. A reserved dwell's delivery is never held back.
+        if visit.dwellReservation == nil, thresholdRemaining(for: visit, geofence: geofence, at: readClock()) == 0,
+           !countDwellProofCheck(geofenceId: geofence.id, visit: visit) {
             proofBudgetExhausted(geofenceId: geofence.id, visit: visit)
             return
         }
+        await confirmProofCharge(geofenceId: geofence.id, visitId: visit.visitId)
+        guard !Task.isCancelled else { return }
         guard let request = beginEvidenceRequest(geofenceId: geofence.id, visit: visit) else { return }
         defer { finishEvidenceRequest(request) }
         await GeofenceDwellEvidenceScope.$request.withValue(request) {
@@ -321,7 +321,12 @@ extension GeofenceDwellCoordinator {
             state.spacingWait = nil
             state.nextFixAfter = state.nextFixAfter ?? state.activeFloor
         } else {
-            delay = shortEvidenceRetryDelay(geofenceId: geofence.id, state: &state) ?? max(0, evidenceRetryDelay)
+            // Never sooner than the threshold: a retry before it would replace the deadline with a
+            // check that cannot qualify.
+            delay = max(
+                shortEvidenceRetryDelay(geofenceId: geofence.id, state: &state) ?? max(0, evidenceRetryDelay),
+                thresholdRemaining(for: visit, geofence: geofence, at: clock.read())
+            )
         }
         evidenceRetries[geofence.id] = state
         deadlineTasks.removeValue(forKey: geofence.id)?.cancel()

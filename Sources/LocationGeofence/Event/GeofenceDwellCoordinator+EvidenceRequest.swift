@@ -130,6 +130,16 @@ extension GeofenceDwellCoordinator {
         return ledger.attempts >= dwellProofBudget || ledger.checks >= maxDwellProofChecks
     }
 
+    /// What is left of `geofence`'s threshold for `visit` at `reading`, by elapsed time as qualifying
+    /// measures it. None for a candidate awaiting proof, whose time has not started, or a reserved
+    /// dwell, which only repeats its delivery; across an ambiguous boot no elapsed time is known
+    /// to count down from, and the whole threshold remains.
+    func thresholdRemaining(for visit: GeofenceDwellVisit, geofence: Geofence, at reading: GeofenceClockReading) -> TimeInterval {
+        guard !visit.awaitsPresenceProof, visit.dwellReservation == nil else { return 0 }
+        let elapsed = visit.timing?.elapsed(enteredAt: visit.enteredAt, until: reading.wall, at: reading)?.qualifyingSeconds ?? 0
+        return min(TimeInterval(GeofenceDwellLimits.maxThresholdSeconds), max(0, TimeInterval(geofence.dwellThresholdSeconds) - elapsed))
+    }
+
     /// Counts one evidence check for `visit`. False, counting nothing, when it has none left.
     func countDwellProofCheck(geofenceId: String, visit: GeofenceDwellVisit) -> Bool {
         guard !proofSpent(visit) else { return false }
@@ -158,7 +168,9 @@ extension GeofenceDwellCoordinator {
     func admitDwellProofRequest(_ request: GeofenceDwellEvidenceRequest) -> Bool {
         guard !Task.isCancelled, var state = evidenceRetries[request.geofenceId],
               state.visitId == request.visitId, state.activeRequest == request.token,
-              var ledger = proofLedgers[request.visitId], ledger.attempts < dwellProofBudget
+              var ledger = proofLedgers[request.visitId], ledger.attempts < dwellProofBudget,
+              // The previous charge must be on disk first: never one admitted on top of an unsaved one.
+              !unsavedProofCharges.contains(request.visitId)
         else { return false }
         let reading = readClock()
         let spacing = min(dwellProofSpacing, request.minimumTimestamp != nil ? Self.shortRetryDelayRange.lowerBound : .infinity)
@@ -170,6 +182,7 @@ extension GeofenceDwellCoordinator {
         }
         ledger.attempts += 1
         ledger.lastRequest = reading
+        unsavedProofCharges.insert(request.visitId)
         updateProofLedger(ledger, geofenceId: request.geofenceId, visitId: request.visitId)
         return true
     }
@@ -178,7 +191,23 @@ extension GeofenceDwellCoordinator {
     /// grows, so writes landing out of order are harmless.
     private func updateProofLedger(_ ledger: GeofenceDwellProofLedger, geofenceId: String, visitId: String) {
         proofLedgers[visitId] = ledger
-        Task { [storage] in await storage.recordDwellProofLedger(geofenceId: geofenceId, visitId: visitId, ledger: ledger) }
+        Task { [weak self] in await self?.saveProofLedger(ledger, geofenceId: geofenceId, visitId: visitId) }
+    }
+
+    /// Saves `ledger`, and once the store holds every charge counted so far, clears the visit's
+    /// unsaved charge. A failed save leaves it set.
+    @discardableResult
+    private func saveProofLedger(_ ledger: GeofenceDwellProofLedger, geofenceId: String, visitId: String) async -> Bool {
+        guard await storage.recordDwellProofLedger(geofenceId: geofenceId, visitId: visitId, ledger: ledger) else { return false }
+        if ledger.attempts >= (proofLedgers[visitId]?.attempts ?? 0) { unsavedProofCharges.remove(visitId) }
+        return true
+    }
+
+    /// Before a check that may ask for a location: retries the save of a charge that has not been
+    /// confirmed, so the check can be admitted once it is. Still unsaved, admission refuses.
+    func confirmProofCharge(geofenceId: String, visitId: String) async {
+        guard unsavedProofCharges.contains(visitId), let ledger = proofLedgers[visitId] else { return }
+        await saveProofLedger(ledger, geofenceId: geofenceId, visitId: visitId)
     }
 
     /// `visit` has spent its dwell-proof requests or checks: no deadline or retry asks for another
