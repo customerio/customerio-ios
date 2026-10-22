@@ -1,3 +1,9 @@
+## [4.12.3](https://github.com/customerio/customerio-ios/compare/4.12.2...4.12.3) (2026-10-22)
+
+### Bug Fixes
+
+* **MBL-2604:** refuse sk_ keys in the notification service extension ([#1362](https://github.com/customerio/customerio-ios/issues/1362)) ([d98314e](https://github.com/customerio/customerio-ios/commit/d98314e3192a66809097b36128a24c88f5bfbc96))
+
 ## [4.12.2](https://github.com/customerio/customerio-ios/compare/4.12.1...4.12.2) (2026-10-22)
 
 ### Bug Fixes
