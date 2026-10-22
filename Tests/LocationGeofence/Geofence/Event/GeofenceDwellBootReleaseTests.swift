@@ -13,13 +13,19 @@ import Testing
 struct GeofenceDwellBootReleaseTests {
     private static let polygon = BootAmbiguityDevice.polygon
 
-    /// After the step, an ENTER on the covering circle. A crossing the OS observed ends the old
-    /// stay, and the stay it begins qualifies on its own; a correction of an assumed state keeps
-    /// it, with no second DWELL. Through the binder and the real resolver.
+    /// After the step, an ENTER on the covering circle. A crossing the OS observed, of a device
+    /// that left — a pass found it outside, and the process died before that EXIT ended the
+    /// visit — ends the old stay, and the stay it begins qualifies on its own; a correction of an
+    /// assumed state keeps it, with no second DWELL. Through the binder and the real resolver.
     @Test(arguments: [true, false])
     func enterAfterAStep_expectOnlyACrossingToEndTheStay(crossing: Bool) async throws {
         let device = BootAmbiguityDevice()
         let (first, emitted) = try await BootAmbiguityProcess.emitted(on: device)
+        if crossing {
+            device.advance(30)
+            _ = await first.storage.recordPolygonMembership(.outside, forIdentifier: Self.polygon.id, now: device.clock.wall)
+            try #require(await first.visit() != nil)
+        }
         first.end()
         device.advance(60)
         device.stepWallAndBoot(3600)

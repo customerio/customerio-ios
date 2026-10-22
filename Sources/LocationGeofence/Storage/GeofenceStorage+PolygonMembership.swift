@@ -155,6 +155,17 @@ extension GeofenceStorage {
     func getPolygonMembership() -> [String: PolygonMembershipRecord] {
         loadFromDisk()?.polygonMembership ?? [:]
     }
+
+    /// What a polygon's covering-circle crossing is judged by, in one read: the polygon's stored
+    /// dwell visit and, while its membership belief is outside, when that was last proven. A stamp
+    /// later than `now` proves nothing and reads as nil.
+    func polygonDepartureEvidence(geofenceId: String, now: Date) -> (visit: GeofenceDwellVisit?, outsideAt: Date?) {
+        let state = loadFromDisk()
+        let outsideAt = state?.polygonMembership?[geofenceId].flatMap { record in
+            record.membership == .outside && record.lastChangedAt <= now ? record.lastChangedAt : nil
+        }
+        return (state?.dwellVisits?[geofenceId], outsideAt)
+    }
 }
 
 extension GeofenceState {

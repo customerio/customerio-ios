@@ -43,6 +43,7 @@ extension GeofenceDwellCoordinator {
         polygonCatalogGeneration &+= 1
         catalogReplacementInProgress = false
         polygonIds = Set(geofences.filter { $0.vertices != nil }.map(\.id))
+        polygonIds.forEach(withdrawUnjudgedCrossing)
         polygonIdsLoaded = true
         drainPendingCorrections()
         // The shape checks that waited for this catalog, or read the old one while it was written;
@@ -73,10 +74,12 @@ extension GeofenceDwellCoordinator {
 
     /// A polygon's covering-circle ENTER reached the resolver: a correction its callback noted
     /// before the shape was known is withdrawn, so no evidence re-armed by that wake can end the
-    /// visit. A crossing stays noted: the device left the circle, so the polygon too. The shape is
-    /// read from the persisted catalog here, never from the caller's copy. While a refresh is
-    /// replacing the catalog the read waits for it (`pendingShapeChecks`), as it does again if a
-    /// replacement begins during the read: an answer from a catalog on its way out proves nothing.
+    /// visit, and a crossing is judged by the polygon's own evidence (`judgeCoveringCrossing`). A
+    /// crossing held for a fence the catalog now says is a circle is noted as that circle's. The
+    /// shape is read from the persisted catalog here, never from the caller's copy. While a
+    /// refresh is replacing the catalog the read waits for it (`pendingShapeChecks`), as it does
+    /// again if a replacement begins during the read: an answer from a catalog on its way out
+    /// proves nothing.
     func forgetCoveringCircleEnter(geofenceId: String) async {
         // Until a read spans no replacement. A replacement still in progress when the read would
         // run, or begin again, hands the check to `rememberCatalog`; one that began and ended
@@ -90,16 +93,51 @@ extension GeofenceDwellCoordinator {
             let generation = polygonCatalogGeneration
             let isPolygon = await storage.isPolygon(id: geofenceId)
             guard polygonCatalogGeneration == generation else { continue }
-            guard isPolygon else { return }
+            guard isPolygon else {
+                unjudgedCrossings[geofenceId] = nil
+                if let held = heldCoveringCrossings.removeValue(forKey: geofenceId) {
+                    noteEnter(held, geofenceId: geofenceId, crossing: true)
+                }
+                return
+            }
             pendingCorrections.removeAll { $0.geofenceId == geofenceId }
             rememberPolygons([geofenceId])
+            await judgeCoveringCrossing(geofenceId: geofenceId)
             return
         }
+    }
+
+    /// A polygon's held covering-circle crossing ends or restarts its visit only if the polygon was
+    /// observed outside since that visit began: its membership belief is outside, proven after the
+    /// visit's entry (`provenAfterEntry`). Otherwise it is the OS reporting late the arrival a fix
+    /// already began the visit with, and is dropped, leaving the visit, its id, entry and timing
+    /// untouched; the polygon's own passes still end the stay.
+    func judgeCoveringCrossing(geofenceId: String) async {
+        guard let crossing = heldCoveringCrossings[geofenceId] else { return }
+        let evidence = await storage.polygonDepartureEvidence(geofenceId: geofenceId, now: readClock().wall)
+        // A later crossing held during the read waits for its own routed ENTER.
+        if heldCoveringCrossings[geofenceId] == crossing { heldCoveringCrossings[geofenceId] = nil }
+        guard let visit = evidence.visit, let outsideAt = evidence.outsideAt,
+              Self.provenAfterEntry(outsideAt, of: visit, at: readClock())
+        else { return }
+        noteEnter(crossing, geofenceId: geofenceId, crossing: true)
+    }
+
+    /// Whether evidence stamped `stamp` came after `visit` began: on the monotonic timeline while
+    /// the visit is of this boot and the wall clock has kept step since it was recorded, else by
+    /// wall dates, as `GeofenceExitMark.overtakes` falls back. A visit with no timing has no
+    /// continuity to keep.
+    static func provenAfterEntry(_ stamp: Date, of visit: GeofenceDwellVisit, at reading: GeofenceClockReading) -> Bool {
+        guard let timing = visit.timing else { return true }
+        guard timing.isCurrent(at: reading), timing.wallClockAgrees(at: reading) else { return stamp > visit.enteredAt }
+        return GeofenceVisitTiming.uptime(of: stamp, at: reading) > timing.enteredUptime
     }
 
     /// Notes the corrections that arrived before the shapes were known, for the fences the catalog
     /// now says are circles; a polygon's covering-circle correction is dropped (`polygonIds`).
     private func drainPendingCorrections() {
+        // The polygons' were withdrawn by `rememberPolygons`; the rest are circles', noted as such.
+        unjudgedCrossings.removeAll()
         let waiting = pendingCorrections
         pendingCorrections.removeAll()
         for (geofenceId, mark) in waiting where !polygonIds.contains(geofenceId) {
@@ -111,6 +149,15 @@ extension GeofenceDwellCoordinator {
         for id in ids {
             polygonIds.insert(id)
             enterMarks[id]?.correction = nil
+            withdrawUnjudgedCrossing(id)
         }
+    }
+
+    /// A crossing noted before the shapes were known, for a fence now known to be a polygon: no
+    /// longer a mark, but held for the routed ENTER to judge.
+    private func withdrawUnjudgedCrossing(_ geofenceId: String) {
+        guard let noted = unjudgedCrossings.removeValue(forKey: geofenceId) else { return }
+        if enterMarks[geofenceId]?.crossing == noted { enterMarks[geofenceId]?.crossing = nil }
+        holdCoveringCrossing(noted, geofenceId: geofenceId)
     }
 }

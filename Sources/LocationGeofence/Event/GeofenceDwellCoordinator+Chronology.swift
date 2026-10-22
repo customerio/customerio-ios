@@ -157,19 +157,34 @@ extension GeofenceDwellCoordinator {
     }
 
     /// Notes a native ENTER from the OS callback itself, before its routing task runs. A polygon's
-    /// covering circle is what the OS watches: a crossing of it still means the device left and
-    /// came back, but a correction of the state the OS assumed for it says nothing about the
-    /// shape, and is not noted (`polygonIds`).
+    /// covering circle is what the OS watches: a correction of the state the OS assumed for it
+    /// says nothing about the shape, and is not noted (`polygonIds`); a crossing of it is held
+    /// until the routed ENTER judges it by the polygon's own evidence (`heldCoveringCrossings`).
     /// Until the shapes are loaded a correction waits (`pendingCorrections`), placed on the
-    /// timeline now, and is noted at the load only if its fence is a circle.
+    /// timeline now, and is noted at the load only if its fence is a circle; a crossing is noted
+    /// at once, as a circle's, and withdrawn if its fence turns out to be a polygon.
     func noteEnter(geofenceId: String, occurredAt: Date, crossing: Bool) {
         guard crossing || !polygonIds.contains(geofenceId) else { return }
         let mark = GeofenceExitMark(date: occurredAt, processedAt: readClock(), source: .enterEvent)
-        if !crossing, !polygonIdsLoaded {
-            pendingCorrections.append((geofenceId, mark))
+        if crossing, polygonIds.contains(geofenceId) {
+            holdCoveringCrossing(mark, geofenceId: geofenceId)
             return
         }
+        if !polygonIdsLoaded {
+            guard crossing else {
+                pendingCorrections.append((geofenceId, mark))
+                return
+            }
+            unjudgedCrossings[geofenceId] = mark
+        }
         noteEnter(mark, geofenceId: geofenceId, crossing: crossing)
+    }
+
+    /// Holds a polygon's covering-circle crossing for `judgeCoveringCrossing`, keeping the later
+    /// of two as `noteEnter` keeps a crossing.
+    func holdCoveringCrossing(_ mark: GeofenceExitMark, geofenceId: String) {
+        if let held = heldCoveringCrossings[geofenceId], held.outranksEnter(mark) { return }
+        heldCoveringCrossings[geofenceId] = mark
     }
 
     /// Whether a native ENTER this process has seen ends `visit` (`GeofenceEnterMarks.supersede`).

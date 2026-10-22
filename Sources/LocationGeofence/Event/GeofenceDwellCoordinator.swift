@@ -26,7 +26,7 @@ final class GeofenceDwellCoordinator {
     /// Fences known to be polygons. The OS monitors only a polygon's covering circle: a correction
     /// of the state it assumed for that circle proves nothing about the polygon and is never noted
     /// as a mark, so it can neither end nor restart the polygon's visit; a crossing of the circle
-    /// still is. Learned from the persisted catalog only — at launch, on every refresh, and when a
+    /// is held until the polygon's own evidence judges it (`heldCoveringCrossings`). Learned from the persisted catalog only — at launch, on every refresh, and when a
     /// covering-circle ENTER is routed (`forgetCoveringCircleEnter`, which reads the shape from
     /// storage, so a cold wake before the load is corrected there) — never from a fence a caller
     /// holds, which may predate a refresh. Internal for `+Chronology`.
@@ -43,6 +43,14 @@ final class GeofenceDwellCoordinator {
     /// read whichever catalog the write has reached, so it waits in `pendingShapeChecks` instead.
     var catalogReplacementInProgress = false
     var pendingShapeChecks: [String] = []
+    /// A polygon's covering-circle crossings, from the callback until the routed ENTER reads the
+    /// polygon's own evidence (`judgeCoveringCrossing`): the OS often reports the circle late, for
+    /// an arrival a fix already began the visit with. Each refuses a first DWELL meanwhile, as a
+    /// noted crossing would, but ends no visit. Internal for `+Chronology` and `+Polygons`.
+    var heldCoveringCrossings: [String: GeofenceExitMark] = [:]
+    /// Crossings noted before the shapes were loaded, by fence, so one that turns out to be a
+    /// polygon's covering circle is withdrawn and held (`rememberPolygons`). Internal for the same.
+    var unjudgedCrossings: [String: GeofenceExitMark] = [:]
     /// Reservations an admission wrote and then refused, whose retraction failed to persist, by
     /// visit id. Such a visit is judged as unreserved everywhere (`standing`) until the retraction
     /// succeeds, so the orphan is never delivered and a correction can still end the stay. In
