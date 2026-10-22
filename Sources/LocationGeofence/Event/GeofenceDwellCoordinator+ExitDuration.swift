@@ -10,22 +10,17 @@ import Foundation
 extension GeofenceDwellCoordinator {
     /// What an EXIT does to the visit. `endedVisitId` is the visit it read and ends; nil when it
     /// found none, or found one it must leave — a visit that began after this EXIT. `reading` is
-    /// the one `exit` was marked at, before any await. `crossingObserved` is whether `exit` dates
-    /// the departure itself (a circle EXIT the OS decided) rather than its discovery;
-    /// `insideProvenAt` is a polygon's last decisive inside proof, for the uncertainty.
+    /// the one `exit` was marked at, before any await. `insideProvenAt` is a polygon's last
+    /// decisive inside proof, for the uncertainty.
     func exitContext(
         geofence: Geofence,
         exit: GeofenceExitMark,
         processedAt reading: GeofenceClockReading,
         detectionSource: String,
         expectedUserId: String?,
-        crossingObserved: Bool = true,
         insideProvenAt: Date? = nil
     ) async -> (context: GeofenceExitContext?, endedVisitId: String?) {
-        let routed = RoutedExit(
-            mark: exit, reading: reading, source: detectionSource,
-            crossingObserved: crossingObserved, insideProvenAt: insideProvenAt
-        )
+        let routed = RoutedExit(mark: exit, reading: reading, source: detectionSource, insideProvenAt: insideProvenAt)
         let describe = { (visit: GeofenceDwellVisit) -> GeofenceExitContext? in
             self.exitContext(for: visit, geofence: geofence, exit: routed)
         }
@@ -50,11 +45,13 @@ extension GeofenceDwellCoordinator {
     /// observed entry, nothing has yet proved the device there, the customer did not configure
     /// EXIT, outside evidence ended the stay, or the span is not on one timeline. A closed visit is
     /// timed only by the EXIT whose exact original date closed it: any other EXIT, however close,
-    /// came after the stay had already ended. With the duration, how uncertain its end is: 0 when
-    /// the OS decided a circle's EXIT and dated it, else the whole seconds since the device was last
-    /// decisively proven inside — a polygon's membership proof or the visit's own stamp, after its
-    /// entry — or since the entry when nothing was; the whole stay for a circle EXIT the classic
-    /// monitor could only date at receipt.
+    /// came after the stay had already ended. With the duration, how uncertain its end is: the
+    /// whole seconds from the latest inside evidence the visit holds — a polygon's membership
+    /// proof, the visit's own decisive inside stamp, or its DWELL's evidence, after its entry — or
+    /// from the entry when it holds none, to the EXIT, at most the duration. An EXIT the OS decided
+    /// is no exception: the OS samples location sparsely, so the device may have left at any point
+    /// since it was last known inside. A circle EXIT the classic monitor could only date at receipt
+    /// is uncertain by the whole stay.
     private func exitContext(for visit: GeofenceDwellVisit, geofence: Geofence, exit: RoutedExit) -> GeofenceExitContext? {
         guard visit.closedByObservedBoundary.map({ $0 == exit.mark.date }) ?? true,
               !enterKnownAtExitEnded(visit, exit: exit.mark, geofenceId: geofence.id)
@@ -68,17 +65,19 @@ extension GeofenceDwellCoordinator {
                 visitDurationUncertaintySeconds: nil, detectionSource: exit.source
             )
         }
-        let isCircle = geofence.vertices == nil
-        let decidedByOs = exit.crossingObserved && isCircle && !osExitDatesAreReceipts
-        let receiptDated = isCircle && osExitDatesAreReceipts
+        let receiptDated = geofence.vertices == nil && osExitDatesAreReceipts
         let provenInsideAt = receiptDated
             ? visit.enteredAt
-            : max(visit.enteredAt, exit.insideProvenAt ?? .distantPast, visit.lastDecisiveInsideAt ?? .distantPast)
+            : max(
+                visit.enteredAt, exit.insideProvenAt ?? .distantPast, visit.lastDecisiveInsideAt ?? .distantPast,
+                visit.dwellReservation?.occurredAt ?? .distantPast
+            )
+        let durationSeconds = Self.reportedSeconds(from: visit.enteredAt, to: exit.mark.date)
         return GeofenceExitContext(
             visitId: visit.visitId,
             enteredAt: visit.enteredAt,
-            durationSeconds: Self.reportedSeconds(from: visit.enteredAt, to: exit.mark.date),
-            visitDurationUncertaintySeconds: decidedByOs ? 0 : Self.reportedSeconds(from: provenInsideAt, to: exit.mark.date),
+            durationSeconds: durationSeconds,
+            visitDurationUncertaintySeconds: min(durationSeconds, Self.reportedSeconds(from: provenInsideAt, to: exit.mark.date)),
             detectionSource: exit.source
         )
     }
@@ -88,7 +87,6 @@ extension GeofenceDwellCoordinator {
         let mark: GeofenceExitMark
         let reading: GeofenceClockReading
         let source: String
-        let crossingObserved: Bool
         let insideProvenAt: Date?
     }
 

@@ -245,8 +245,9 @@ struct PolygonMembershipResolverTests {
     /// A circle EXIT the OS only discovered — a heal of a crossing it missed, or its correction of an
     /// assumed inside — is dated when it was noticed, not when the device left. The EXIT is still
     /// delivered, closes the visit and is timed to that date; the uncertainty says how much of the
-    /// stay the departure may fall in: nothing for a crossing the OS decided, all of it for one it
-    /// discovered.
+    /// stay the departure may fall in: with nothing proving the device inside since its entry, all
+    /// of it, whether the OS decided the crossing or discovered it, since the OS samples location
+    /// sparsely.
     @Test(arguments: [true, false])
     func circleExit_givenObservedVisit_expectUncertaintyByExitObservation(crossingObserved: Bool) async {
         // Whole seconds, so the persisted `enteredAt` round-trips exactly.
@@ -270,7 +271,7 @@ struct PolygonMembershipResolverTests {
         let exits = await setup.emitter.exitSnapshot()
         #expect(exits.count == 1)
         #expect(exits.first?.context?.durationSeconds == 7200)
-        #expect(exits.first?.context?.visitDurationUncertaintySeconds == (crossingObserved ? 0 : 7200))
+        #expect(exits.first?.context?.visitDurationUncertaintySeconds == 7200)
         #expect(exits.first?.context?.detectionSource == "native")
         #expect(await setup.storage.getDwellVisit(geofenceId: circle.id) == nil)
     }

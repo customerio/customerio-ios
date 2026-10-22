@@ -15,9 +15,10 @@ struct GeofenceDwellContext: Sendable {
 /// `durationSeconds` together, when the entry was observed and the span is on one monotonic
 /// timeline, else both nil. `visitDurationUncertaintySeconds` goes with the duration: the whole
 /// seconds between the last moment the device was proven inside and the moment the departure was
-/// observed — 0 for a circle EXIT the OS decided and dated, the whole stay for one the monitor could
-/// only date at receipt, the gap since the last decisive inside fix (or the entry) for a polygon
-/// left by a fix or its covering circle.
+/// observed, at most the duration — the gap since the latest inside evidence (or the entry) for a
+/// circle EXIT the OS decided and dated, as for a polygon left by a fix or its covering circle,
+/// since the OS samples location sparsely; the whole stay for one the monitor could only date at
+/// receipt.
 struct GeofenceExitContext: Sendable, Equatable {
     let visitId: String
     let enteredAt: Date?

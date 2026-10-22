@@ -258,6 +258,45 @@ struct GeofenceDwellCoordinatorTests {
         setup.coordinator.cancelEvidence(for: setup.geofence.id)
     }
 
+    /// A circle EXIT the OS decided and dated, long after the last inside evidence, bounds its
+    /// departure by that evidence, not by the EXIT itself: the OS samples location sparsely, so the
+    /// device may have left at any point since it was last known inside. Here the DWELL's
+    /// qualifying fix, 30 min before the EXIT.
+    @Test
+    func osDecidedCircleExitLongAfterTheLastInsideEvidenceReportsThatGap() async throws {
+        let clock = ManualGeofenceClock(wall: Date(timeIntervalSince1970: 1000))
+        let setup = await makeSetup(isPolygon: false, clock: clock)
+        try #require(!setup.coordinator.osExitDatesAreReceipts)
+        await setup.coordinator.handleBoundary(geofence: setup.geofence, transition: .enter, occurredAt: clock.wall)
+        clock.advance(600)
+        await setup.coordinator.recordInsideEvidence(
+            geofence: setup.geofence, at: clock.wall, source: "location_evidence", qualifiesDwell: true
+        )
+        clock.advance(1800)
+
+        let context = await setup.coordinator.handleBoundary(geofence: setup.geofence, transition: .exit, occurredAt: clock.wall)
+
+        #expect(context?.durationSeconds == 2400)
+        #expect(context?.visitDurationUncertaintySeconds == 1800)
+        setup.coordinator.cancelEvidence(for: setup.geofence.id)
+    }
+
+    /// An OS-decided circle EXIT of a stay nothing proved inside since its entry is uncertain by the
+    /// whole stay, never by more.
+    @Test
+    func osDecidedCircleExitWithoutInsideEvidenceReportsTheWholeStay() async throws {
+        let clock = ManualGeofenceClock(wall: Date(timeIntervalSince1970: 1000))
+        let setup = await makeSetup(isPolygon: false, clock: clock)
+        await setup.coordinator.handleBoundary(geofence: setup.geofence, transition: .enter, occurredAt: clock.wall)
+        clock.advance(300)
+
+        let context = await setup.coordinator.handleBoundary(geofence: setup.geofence, transition: .exit, occurredAt: clock.wall)
+
+        #expect(context?.durationSeconds == 300)
+        #expect(context?.visitDurationUncertaintySeconds == 300)
+        setup.coordinator.cancelEvidence(for: setup.geofence.id)
+    }
+
     /// A circle EXIT the classic monitor could only date at receipt bounds its departure by the
     /// whole stay: the OS decided it at some unknown earlier moment.
     @Test

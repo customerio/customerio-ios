@@ -25,7 +25,7 @@ public protocol GeofenceMetric {
     var dwellDurationSeconds: Int? { get }
     var visitDurationSeconds: Int? { get }
     /// With `visitDurationSeconds` only: whole seconds between the last moment the device was
-    /// proven inside and the moment the departure was observed; 0 when the OS decided the EXIT.
+    /// proven inside and the moment the departure was observed, at most `visitDurationSeconds`.
     var visitDurationUncertaintySeconds: Int? { get }
     var detectionSource: String? { get }
 }
