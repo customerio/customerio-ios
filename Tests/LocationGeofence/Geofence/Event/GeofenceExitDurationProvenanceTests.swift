@@ -227,7 +227,8 @@ struct GeofenceExitDurationProvenanceTests {
     }
 
     /// A legacy visit whose dwell was already emitted, or reserved, keeps its id and facts: it is
-    /// never qualified again and no DWELL row is added. Its EXIT is untimed.
+    /// never qualified again. A reserved one's DWELL is delivered as reserved by its EXIT before
+    /// the visit ends; an emitted one adds no row. Its EXIT is untimed.
     @Test(arguments: [true, false])
     func legacyEmittedOrReservedVisitKeepsItsFactsAndItsExitIsUntimed(emitted: Bool) async throws {
         let files = Files()
@@ -252,7 +253,8 @@ struct GeofenceExitDurationProvenanceTests {
         let row = try #require(await process.exitRows().last)
         #expect(row.visitDurationSeconds == nil)
         #expect(row.visitId != nil)
-        #expect(await process.rows(.dwell).isEmpty)
+        let dwells = await process.rows(.dwell)
+        #expect(dwells.map(\.visitId) == (emitted ? [] : [legacy.visitId]))
         process.dwell.cancelEvidence(for: Self.dwellCircle.id)
     }
 

@@ -16,7 +16,16 @@ struct GeofenceState: Codable, Equatable, Sendable {
     /// CLMonitor (iOS 18+) only; `nil` on the classic path, which needs no dedup or filtering.
     var monitorRegionRecords: [String: MonitorRegionRecord]?
     /// One durable continuous visit per fence. Cleared on exit, user change, or geometry change.
-    var dwellVisits: [String: GeofenceDwellVisit]?
+    /// A visit dropped while it still owes its reserved dwell, by any write, leaves that dwell in
+    /// `orphanedDwells`.
+    var dwellVisits: [String: GeofenceDwellVisit]? {
+        didSet { orphanDwellsOwed(by: oldValue) }
+    }
+
+    /// Dwells their visits still owed when they were dropped — by an EXIT whose flush the outbox
+    /// refused, a replacement, a pruned fence — oldest first, at most `maxOrphanedDwells`. Offered
+    /// again at launch (`GeofenceDwellCoordinator.deliverOrphanedDwells`).
+    var orphanedDwells: [GeofenceOrphanedDwell]?
     /// Per circle, the OS edges registered only for visit bookkeeping (see
     /// `Geofence.unconfiguredOsTransitions`). Outlives the fence's cache entry, which is the point:
     /// an OS callback for a fence the cache has dropped carries no configuration of its own.
@@ -33,6 +42,32 @@ struct GeofenceState: Codable, Equatable, Sendable {
 extension GeofenceState {
     /// 1: regions carry `dwellThresholdSeconds`.
     static let currentCatalogVersion = 1
+
+    static let maxOrphanedDwells = 16
+
+    /// Keeps the reserved dwell of every visit `old` held that owed one and is gone from
+    /// `dwellVisits` now, or replaced by another visit. The oldest go first past the bound.
+    private mutating func orphanDwellsOwed(by old: [String: GeofenceDwellVisit]?) {
+        guard let old else { return }
+        let dropped = old.sorted { $0.key < $1.key }.compactMap { geofenceId, visit -> GeofenceOrphanedDwell? in
+            guard visit.owesDwell, let reservation = visit.dwellReservation,
+                  dwellVisits?[geofenceId]?.visitId != visit.visitId
+            else { return nil }
+            return GeofenceOrphanedDwell(geofenceId: geofenceId, visitId: visit.visitId, userId: visit.userId, reservation: reservation)
+        }
+        guard !dropped.isEmpty else { return }
+        let kept = (orphanedDwells ?? []).filter { orphan in !dropped.contains { $0.visitId == orphan.visitId } }
+        orphanedDwells = Array((kept + dropped).suffix(Self.maxOrphanedDwells))
+    }
+}
+
+/// A reserved dwell whose visit was dropped before it was delivered: enough to deliver it exactly
+/// as reserved, for the user it was reserved under.
+struct GeofenceOrphanedDwell: Codable, Equatable, Sendable {
+    let geofenceId: String
+    let visitId: String
+    let userId: String
+    let reservation: GeofenceDwellReservation
 }
 
 struct GeofenceDwellVisit: Codable, Equatable, Sendable {

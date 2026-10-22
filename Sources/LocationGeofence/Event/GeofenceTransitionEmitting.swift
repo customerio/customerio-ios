@@ -27,6 +27,16 @@ struct GeofenceExitContext: Sendable, Equatable {
     let detectionSource: String
 }
 
+/// What became of a dwell handed to the outbox.
+enum GeofenceDwellDelivery: Equatable, Sendable {
+    /// Its rows are in the outbox.
+    case persisted
+    /// The outbox could not be written, or read to append to: asking again may succeed.
+    case writeFailed
+    /// Refused for good: no user is identified, or not the one the dwell was for.
+    case refused
+}
+
 /// Delivers a transition through the tracked path (cooldown, per-geoset fan-out, persistence).
 protocol GeofenceTransitionEmitting: Sendable {
     /// See `GeofenceEventTracker.trackTransition(geofenceId:transition:occurredAt:)`.
@@ -36,9 +46,33 @@ protocol GeofenceTransitionEmitting: Sendable {
     func trackDwell(
         geofenceId: String, occurredAt: Date, context: GeofenceDwellContext, expectedUserId: String?
     ) async -> Bool
+    /// `trackDwell`, telling a refusal for good from a write that may succeed if asked again.
+    func deliverDwell(
+        geofenceId: String, occurredAt: Date, context: GeofenceDwellContext, expectedUserId: String?
+    ) async -> GeofenceDwellDelivery
     /// Delivers an exit with its optional visit context. Dropped when `expectedUserId` is set and
     /// is no longer the identified user.
     func trackExit(
         geofenceId: String, occurredAt: Date, context: GeofenceExitContext?, expectedUserId: String?
     ) async
+}
+
+extension GeofenceTransitionEmitting {
+    /// For an emitter that cannot tell the two apart: a dwell not persisted may be asked again.
+    func deliverDwell(
+        geofenceId: String, occurredAt: Date, context: GeofenceDwellContext, expectedUserId: String?
+    ) async -> GeofenceDwellDelivery {
+        await trackDwell(geofenceId: geofenceId, occurredAt: occurredAt, context: context, expectedUserId: expectedUserId)
+            ? .persisted : .writeFailed
+    }
+}
+
+extension GeofenceDwellReservation {
+    /// The context a dwell is delivered with for `visitId`, exactly as reserved.
+    func context(visitId: String) -> GeofenceDwellContext {
+        GeofenceDwellContext(
+            visitId: visitId, enteredAt: enteredAt, thresholdSeconds: thresholdSeconds,
+            durationSeconds: durationSeconds, detectionSource: detectionSource
+        )
+    }
 }

@@ -48,7 +48,7 @@ final class GeofenceEventTracker: @unchecked Sendable {
         transition: GeofenceTransition,
         occurredAt: Date
     ) async {
-        _ = await track(GeofenceCrossing(
+        await track(GeofenceCrossing(
             geofenceId: geofenceId, transition: transition, occurredAt: occurredAt,
             dwell: nil, exit: nil, expectedUserId: nil
         ))
@@ -57,6 +57,13 @@ final class GeofenceEventTracker: @unchecked Sendable {
     func trackDwell(
         geofenceId: String, occurredAt: Date, context: GeofenceDwellContext, expectedUserId: String?
     ) async -> Bool {
+        await deliverDwell(geofenceId: geofenceId, occurredAt: occurredAt, context: context, expectedUserId: expectedUserId)
+            == .persisted
+    }
+
+    func deliverDwell(
+        geofenceId: String, occurredAt: Date, context: GeofenceDwellContext, expectedUserId: String?
+    ) async -> GeofenceDwellDelivery {
         await track(GeofenceCrossing(
             geofenceId: geofenceId, transition: .dwell, occurredAt: occurredAt,
             dwell: context, exit: nil, expectedUserId: expectedUserId
@@ -66,35 +73,36 @@ final class GeofenceEventTracker: @unchecked Sendable {
     func trackExit(
         geofenceId: String, occurredAt: Date, context: GeofenceExitContext?, expectedUserId: String?
     ) async {
-        _ = await track(GeofenceCrossing(
+        await track(GeofenceCrossing(
             geofenceId: geofenceId, transition: .exit, occurredAt: occurredAt,
             dwell: nil, exit: context, expectedUserId: expectedUserId
         ))
     }
 
-    private func track(_ crossing: GeofenceCrossing) async -> Bool {
+    @discardableResult
+    private func track(_ crossing: GeofenceCrossing) async -> GeofenceDwellDelivery {
         // Current crossing before the backlog: the dedup baseline has advanced, so an un-persisted
         // crossing can never re-emit.
-        let freshKeys = await deliverCurrentCrossing(crossing)
+        let fresh = await deliverCurrentCrossing(crossing)
         // Excluding the rows just written keeps a failed fresh send on disk for the next trigger.
-        await flushPending(excluding: freshKeys)
-        return !freshKeys.isEmpty
+        await flushPending(excluding: fresh.keys)
+        return fresh.delivery
     }
 
-    private func deliverCurrentCrossing(_ crossing: GeofenceCrossing) async -> Set<String> {
+    private func deliverCurrentCrossing(_ crossing: GeofenceCrossing) async -> (keys: Set<String>, delivery: GeofenceDwellDelivery) {
         let geofenceId = crossing.geofenceId
         let transition = crossing.transition
         // Snapshot the userId so a later sign-out/sign-in can't reattribute the row.
         guard let stampedUserId = contextStore.currentUserId, !stampedUserId.isEmpty else {
             logger.geofenceTransitionDroppedAnonymous(geofenceId: geofenceId, transition: transition)
-            return []
+            return ([], .refused)
         }
         // Checked against the same snapshot the row is stamped with. A caller that observed the
         // crossing, or built its visit context, for one user must not have it delivered as the
         // next user's after a switch landed during its awaits.
         if let expectedUserId = crossing.expectedUserId, expectedUserId != stampedUserId {
             logger.geofenceTransitionDroppedUserChanged(geofenceId: geofenceId, transition: transition)
-            return []
+            return ([], .refused)
         }
 
         // Per user: a fast re-login must not be suppressed by the previous user's transition.
@@ -107,7 +115,7 @@ final class GeofenceEventTracker: @unchecked Sendable {
         if transition != .dwell,
            let remaining = await storage.tryAcquireCooldown(key: cooldownKey, now: now, interval: interval) {
             logger.geofenceEventSuppressed(geofenceId: geofenceId, transition: transition, cooldownRemaining: remaining)
-            return []
+            return ([], .refused)
         }
         let cachedGeofence = await storage.getCachedGeofences().first { $0.id == geofenceId }
         let metrics = crossing.pendingMetrics(userId: stampedUserId, cachedGeofence: cachedGeofence)
@@ -116,7 +124,7 @@ final class GeofenceEventTracker: @unchecked Sendable {
         let write = await pendingStore.append(metrics)
         guard write == .persisted else {
             await abandonUnpersisted(write, geofenceId: geofenceId, transition: transition, cooldownKey: cooldownKey)
-            return []
+            return ([], .writeFailed)
         }
         // Accepted means persisted; delivery outcomes are the `delivery.*` records.
         logger.geofenceTransitionAccepted(geofenceId: geofenceId, transition: transition, rows: metrics.count)
@@ -130,7 +138,8 @@ final class GeofenceEventTracker: @unchecked Sendable {
             }
         }
         await storage.purgeExpiredCooldowns(now: now, interval: interval)
-        return Set(metrics.map(\.key))
+        let keys = Set(metrics.map(\.key))
+        return (keys, keys.isEmpty ? .refused : .persisted)
     }
 
     /// DataPipeline live → EventBus; else a persisted key → direct HTTP (cold wake); neither →

@@ -191,6 +191,20 @@ extension GeofenceStorage {
         return saveToDisk(state)
     }
 
+    func getOrphanedDwells() -> [GeofenceOrphanedDwell] {
+        loadFromDisk()?.orphanedDwells ?? []
+    }
+
+    /// Forgets the orphaned dwell of `visitId`: delivered, refused for good, or given up.
+    func removeOrphanedDwell(visitId: String) {
+        guard var state = loadFromDisk(), let orphans = state.orphanedDwells,
+              orphans.contains(where: { $0.visitId == visitId })
+        else { return }
+        let kept = orphans.filter { $0.visitId != visitId }
+        state.orphanedDwells = kept.isEmpty ? nil : kept
+        saveToDisk(state)
+    }
+
     func removeDwellVisit(geofenceId: String) {
         var state = loadFromDisk() ?? GeofenceState()
         guard state.dwellVisits?.removeValue(forKey: geofenceId) != nil else { return }

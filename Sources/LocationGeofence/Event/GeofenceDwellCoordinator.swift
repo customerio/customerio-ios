@@ -242,6 +242,9 @@ final class GeofenceDwellCoordinator {
             // one since, and a delayed EXIT that found none has nothing to end.
             guard let endedVisitId = result.endedVisitId else { return context }
             cancelEvidence(for: geofence.id, ifVisit: endedVisitId)
+            // A DWELL the stay qualified but never got into the outbox goes first; if it still
+            // cannot, the removal keeps it as an orphan for the launch sweep.
+            await flushOwedDwell(geofence: geofence, visitId: endedVisitId)
             await storage.removeDwellVisit(geofenceId: geofence.id, ifStill: endedVisitId)
             return context
         case .dwell:

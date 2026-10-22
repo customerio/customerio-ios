@@ -57,16 +57,8 @@ extension GeofenceDwellCoordinator {
         let emissionToken = diagnosticToken(for: visit)
         guard let reservation = await reserve(proposed, for: visit, geofence: geofence) else { return }
         let persisted = await transitionEmitter.trackDwell(
-            geofenceId: geofence.id,
-            occurredAt: reservation.occurredAt,
-            context: GeofenceDwellContext(
-                visitId: visit.visitId,
-                enteredAt: reservation.enteredAt,
-                thresholdSeconds: reservation.thresholdSeconds,
-                durationSeconds: reservation.durationSeconds,
-                detectionSource: reservation.detectionSource
-            ),
-            expectedUserId: userId
+            geofenceId: geofence.id, occurredAt: reservation.occurredAt,
+            context: reservation.context(visitId: visit.visitId), expectedUserId: userId
         )
         guard persisted else { return }
         recordDiagnostic(.dwellEmitted, capturedToken: emissionToken, fenceId: geofence.id)
@@ -96,6 +88,44 @@ extension GeofenceDwellCoordinator {
     /// How long a reserved dwell the outbox keeps refusing is offered again, by the wall clock since
     /// its evidence. After it, the delivery is given up rather than retried on every wake for good.
     static let reservedDwellLifetime: TimeInterval = 24 * 60 * 60
+
+    /// Delivers the dwell `visitId` still owes before its EXIT ends it, so an EXIT routed first does
+    /// not lose a qualified DWELL. Delivered, or refused for good, it is owed no more. One the
+    /// outbox could not take stays owed: removing the visit then leaves it in
+    /// `GeofenceState.orphanedDwells`, offered again at launch (`deliverOrphanedDwells`).
+    /// An emission already in flight for the visit owns the delivery: it is not repeated here, and
+    /// if it lands after the removal it forgets the orphan the removal left.
+    func flushOwedDwell(geofence: Geofence, visitId: String) async {
+        guard !dwellEmissionsInFlight.contains(visitId),
+              let visit = await storage.getDwellVisit(geofenceId: geofence.id), visit.visitId == visitId,
+              visit.owesDwell, let reservation = visit.dwellReservation
+        else { return }
+        let token = diagnosticToken(for: visit)
+        let delivery = await transitionEmitter.deliverDwell(
+            geofenceId: geofence.id, occurredAt: reservation.occurredAt,
+            context: reservation.context(visitId: visitId), expectedUserId: visit.userId
+        )
+        guard delivery != .writeFailed else { return }
+        if delivery == .persisted { recordDiagnostic(.dwellEmitted, capturedToken: token, fenceId: geofence.id) }
+        _ = await storage.markDwellVisitEmitted(visit, geofenceId: geofence.id)
+    }
+
+    /// At launch, offers again each dwell a visit still owed when it was dropped
+    /// (`GeofenceState.orphanedDwells`), for the user it was reserved under. Each is forgotten once
+    /// delivered, refused for good, or `reservedDwellLifetime` old by the wall clock; one the outbox
+    /// could not take is kept for the next launch.
+    func deliverOrphanedDwells() async {
+        for orphan in await storage.getOrphanedDwells() {
+            if !reservationExpired(orphan.reservation) {
+                let delivery = await transitionEmitter.deliverDwell(
+                    geofenceId: orphan.geofenceId, occurredAt: orphan.reservation.occurredAt,
+                    context: orphan.reservation.context(visitId: orphan.visitId), expectedUserId: orphan.userId
+                )
+                guard delivery != .writeFailed else { continue }
+            }
+            await storage.removeOrphanedDwell(visitId: orphan.visitId)
+        }
+    }
 
     /// Whether `reservation` was made `reservedDwellLifetime` or more ago on the wall clock. A clock
     /// set back reads it as younger, which only delays giving up.
@@ -192,8 +222,9 @@ extension GeofenceDwellCoordinator {
         case .writeFailed:
             scheduleEvidenceRetry(for: geofence, visit: visit)
         case .superseded:
-            // Evidence scheduling now belongs to whatever visit replaced this one.
-            break
+            // Evidence scheduling now belongs to whatever visit replaced this one. A removal while
+            // this was in flight left the dwell as an orphan; it is in the outbox now.
+            await storage.removeOrphanedDwell(visitId: visit.visitId)
         }
     }
 

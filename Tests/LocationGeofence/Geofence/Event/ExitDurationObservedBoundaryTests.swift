@@ -159,7 +159,8 @@ struct ExitDurationObservedBoundaryTests {
 
     /// A stay whose dwell is emitted, or reserved and never queued, is closed on disk by its own
     /// EXIT while the process dies before routing it. Its id, flags and reservation are as they
-    /// were; that exact EXIT, routed afterwards as the binder's task would, still times it.
+    /// were; that exact EXIT, routed afterwards as the binder's task would, still times it, and
+    /// delivers a reserved DWELL before ending the stay.
     /// Internal chronology for the routing; the closure is the real monitor write.
     @Test(arguments: [true, false])
     @available(iOS 17.0, *)
@@ -186,7 +187,7 @@ struct ExitDurationObservedBoundaryTests {
         let row = try #require(await Self.exitRows(process).last)
         #expect(row.visitId == stay.visitId)
         #expect(row.visitDurationSeconds == 660)
-        #expect(await process.dwellRows().count == (emitted ? 1 : 0))
+        #expect(await process.dwellRows().map(\.visitId) == [stay.visitId])
         process.end()
     }
 

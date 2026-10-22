@@ -801,6 +801,8 @@ struct GeofenceDwellCoordinatorTests {
         #expect(current?.visitId != firstVisit?.visitId)
         #expect(current?.enteredAt == reentry)
         #expect(current?.emitted == false)
+        // The EXIT left the dwell its in-flight emission owned; persisted since, it is no orphan.
+        #expect(await setup.storage.getOrphanedDwells().isEmpty)
     }
 
     @Test
@@ -874,6 +876,95 @@ struct GeofenceDwellCoordinatorTests {
         await setup.coordinator.recordInsideEvidence(geofence: setup.geofence, at: clock.wall, source: "location_evidence")
         #expect(await emitter.dwells().count == 2, "the abandoned stay cannot qualify again")
         setup.coordinator.cancelEvidence(for: setup.geofence.id)
+    }
+
+    /// A stay whose DWELL qualified but never reached the outbox (its write failed) is left: its
+    /// EXIT delivers that DWELL, exactly as reserved, before ending the stay.
+    @Test
+    func exitOfAStayOwingItsDwell_deliversItFirst() async throws {
+        let emitter = DwellEmitterSpy(results: [false, true])
+        let clock = ManualGeofenceClock(wall: Date(timeIntervalSince1970: 1000))
+        let setup = await makeSetup(emitter: emitter, clock: clock)
+        try await owe(setup, clock: clock)
+        clock.advance(30)
+
+        await setup.coordinator.handleBoundary(geofence: setup.geofence, transition: .exit, occurredAt: clock.wall)
+
+        let attempts = await emitter.dwells()
+        try #require(attempts.count == 2)
+        #expect(attempts[1].occurredAt == attempts[0].occurredAt)
+        #expect(attempts[1].context.visitId == attempts[0].context.visitId)
+        #expect(await setup.storage.getDwellVisit(geofenceId: setup.geofence.id) == nil)
+        #expect(await setup.storage.getOrphanedDwells().isEmpty)
+    }
+
+    /// The EXIT's delivery fails too: the stay still ends, and its DWELL is kept as an orphan,
+    /// which the next launch delivers.
+    @Test
+    func exitWhoseDeliveryFails_leavesAnOrphanTheNextLaunchDelivers() async throws {
+        let clock = ManualGeofenceClock(wall: Date(timeIntervalSince1970: 1000))
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        let first = await makeSetup(emitter: DwellEmitterSpy(results: [false, false]), directory: directory, clock: clock)
+        let visit = try await owe(first, clock: clock)
+        clock.advance(30)
+        await first.coordinator.handleBoundary(geofence: first.geofence, transition: .exit, occurredAt: clock.wall)
+        #expect(await first.storage.getDwellVisit(geofenceId: first.geofence.id) == nil)
+        try #require(await first.storage.getOrphanedDwells().map(\.visitId) == [visit.visitId])
+
+        let second = await makeSetup(emitter: DwellEmitterSpy(results: [true]), directory: directory, clock: clock)
+        await second.coordinator.resumePendingVisits(geofences: [second.geofence])
+
+        let delivered = await second.emitter.dwells()
+        #expect(delivered.map(\.context.visitId) == [visit.visitId])
+        #expect(delivered.first?.occurredAt == visit.dwellReservation?.occurredAt)
+        #expect(await second.storage.getOrphanedDwells().isEmpty)
+    }
+
+    /// At launch an orphan the outbox cannot take is kept for the next launch; one refused for good
+    /// is dropped; one 24 h old is given up without being offered.
+    @Test(arguments: [GeofenceDwellDelivery.writeFailed, .refused])
+    func orphanedDwellAtLaunch_isKeptOnlyWhileTheOutboxCannotTakeIt(delivery: GeofenceDwellDelivery) async throws {
+        let clock = ManualGeofenceClock(wall: Date(timeIntervalSince1970: 1000))
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        let first = await makeSetup(emitter: DwellEmitterSpy(results: [false]), directory: directory, clock: clock)
+        let visit = try await owe(first, clock: clock)
+        await first.storage.removeDwellVisit(geofenceId: first.geofence.id, ifStill: visit.visitId)
+        try #require(await first.storage.getOrphanedDwells().count == 1)
+
+        let second = await makeSetup(emitter: DwellEmitterSpy(deliveries: [delivery]), directory: directory, clock: clock)
+        await second.coordinator.resumePendingVisits(geofences: [second.geofence])
+        #expect(await second.emitter.dwells().count == 1)
+        #expect(await second.storage.getOrphanedDwells().count == (delivery == .writeFailed ? 1 : 0))
+
+        guard delivery == .writeFailed else { return }
+        clock.advance(24 * 60 * 60)
+        let third = await makeSetup(emitter: DwellEmitterSpy(results: [true]), directory: directory, clock: clock)
+        await third.coordinator.resumePendingVisits(geofences: [third.geofence])
+        #expect(await third.emitter.dwells().isEmpty, "a day old, it is given up, not offered")
+        #expect(await third.storage.getOrphanedDwells().isEmpty)
+    }
+
+    /// The orphan list is bounded: past 16, the oldest go first.
+    @Test
+    func orphanedDwells_keepTheNewestSixteen() throws {
+        var state = GeofenceState()
+        let reservation = GeofenceDwellReservation(
+            occurredAtEpochMilliseconds: 1000000, enteredAtEpochMilliseconds: nil, durationSeconds: nil,
+            thresholdSeconds: 60, detectionSource: "location_evidence"
+        )
+        for index in 0 ..< 17 {
+            let visit = GeofenceDwellVisit(
+                visitId: "visit-\(index)", enteredAt: Date(timeIntervalSince1970: 1000), geometryRevision: "r",
+                userId: "user-1", emitted: false, entryObserved: true, dwellReservation: reservation, timing: nil
+            )
+            state.dwellVisits = ["fence": visit]
+        }
+        state.dwellVisits = nil
+
+        let orphans = try #require(state.orphanedDwells)
+        #expect(orphans.count == 16)
+        #expect(orphans.first?.visitId == "visit-1")
+        #expect(orphans.last?.visitId == "visit-16")
     }
 
     @Test
@@ -2583,6 +2674,19 @@ struct GeofenceDwellCoordinatorTests {
         )
     }
 
+    /// Enters a circle stay and qualifies its DWELL 60 s later, whose first delivery the emitter
+    /// is scripted to refuse: the stay is left owing it.
+    @discardableResult
+    private func owe(_ setup: Setup, clock: ManualGeofenceClock) async throws -> GeofenceDwellVisit {
+        await setup.coordinator.handleBoundary(geofence: setup.geofence, transition: .enter, occurredAt: clock.wall)
+        clock.advance(60)
+        await setup.coordinator.recordInsideEvidence(geofence: setup.geofence, at: clock.wall, source: "location_evidence")
+        setup.coordinator.cancelEvidence(for: setup.geofence.id)
+        let visit = try #require(await setup.storage.getDwellVisit(geofenceId: setup.geofence.id))
+        try #require(visit.owesDwell)
+        return visit
+    }
+
     private struct Setup {
         let storage: GeofenceStorage
         let emitter: DwellEmitterSpy
@@ -2835,11 +2939,22 @@ private actor DwellEmitterSpy: GeofenceTransitionEmitting {
     }
 
     private var results: [Bool]
+    /// Outcomes for the next deliveries, before `results`: a refusal for good is only told here.
+    private var deliveries: [GeofenceDwellDelivery]
     private var invocations: [Invocation] = []
     private var exits = 0
 
-    init(results: [Bool] = [true]) {
+    init(results: [Bool] = [true], deliveries: [GeofenceDwellDelivery] = []) {
         self.results = results
+        self.deliveries = deliveries
+    }
+
+    func deliverDwell(
+        geofenceId: String, occurredAt: Date, context: GeofenceDwellContext, expectedUserId: String?
+    ) async -> GeofenceDwellDelivery {
+        invocations.append(Invocation(geofenceId: geofenceId, occurredAt: occurredAt, context: context))
+        if !deliveries.isEmpty { return deliveries.removeFirst() }
+        return results.isEmpty || results.removeFirst() ? .persisted : .writeFailed
     }
 
     func trackTransition(geofenceId: String, transition: GeofenceTransition, occurredAt: Date) async {
@@ -2855,8 +2970,8 @@ private actor DwellEmitterSpy: GeofenceTransitionEmitting {
     func trackDwell(
         geofenceId: String, occurredAt: Date, context: GeofenceDwellContext, expectedUserId: String?
     ) async -> Bool {
-        invocations.append(Invocation(geofenceId: geofenceId, occurredAt: occurredAt, context: context))
-        return results.isEmpty ? true : results.removeFirst()
+        await deliverDwell(geofenceId: geofenceId, occurredAt: occurredAt, context: context, expectedUserId: expectedUserId)
+            == .persisted
     }
 
     func dwells() -> [Invocation] {

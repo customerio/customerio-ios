@@ -286,6 +286,31 @@ struct GeofenceEventTrackerTests {
         #expect(await pending.rows().count == 1)
     }
 
+    /// A dwell for a user no longer identified is refused for good; one whose outbox write fails
+    /// may be asked again. The two are told apart, so an orphaned dwell is dropped only on the first.
+    @Test
+    func deliverDwell_tellsARefusalFromAFailedWrite() async {
+        let context = GeofenceDwellContext(
+            visitId: "visit-of-A", enteredAt: nil, thresholdSeconds: 60, durationSeconds: nil, detectionSource: "location_evidence"
+        )
+        let dir = makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let switched = makeTracker(
+            storage: makeStorage(directory: dir), pendingStore: makePendingStore(directory: dir),
+            deliveryTracker: GeofenceDeliveryTrackerMock(), contextStore: makeContextStore(userId: "user_B")
+        )
+        #expect(await switched.deliverDwell(geofenceId: "geo_1", occurredAt: crossedAt, context: context, expectedUserId: "user_A") == .refused)
+
+        let blocker = makeTempDirectory()
+        FileManager.default.createFile(atPath: blocker.path, contents: Data())
+        defer { try? FileManager.default.removeItem(at: blocker) }
+        let unwritable = makeTracker(
+            storage: makeStorage(directory: dir), pendingStore: makePendingStore(directory: blocker.appendingPathComponent("nested")),
+            deliveryTracker: GeofenceDeliveryTrackerMock(), contextStore: makeContextStore(userId: "user_A")
+        )
+        #expect(await unwritable.deliverDwell(geofenceId: "geo_1", occurredAt: crossedAt, context: context, expectedUserId: "user_A") == .writeFailed)
+    }
+
     @Test
     func trackTransition_givenPersistFails_expectDeliverySkippedAndCooldownReleased() async {
         // A file where the pending store's parent directory should be makes the write fail.

@@ -76,6 +76,8 @@ actor GeofenceStorage {
         state.monitorRegionRecords = nil
         state.polygonMembership = nil
         state.dwellVisits = nil
+        // User-scoped like the visits: another user's dwell is never delivered.
+        state.orphanedDwells = nil
         state.unconfiguredOsTransitions = nil
         saveToDisk(state)
     }
