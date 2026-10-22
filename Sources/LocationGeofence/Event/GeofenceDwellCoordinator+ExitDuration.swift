@@ -77,7 +77,9 @@ extension GeofenceDwellCoordinator {
             visitId: visit.visitId,
             enteredAt: visit.enteredAt,
             durationSeconds: durationSeconds,
-            visitDurationUncertaintySeconds: min(durationSeconds, Self.uncertaintySeconds(from: provenInsideAt, to: exit.mark.date)),
+            visitDurationUncertaintySeconds: Self.uncertaintySeconds(
+                enteredAt: visit.enteredAt, provenInsideAt: provenInsideAt, exitedAt: exit.mark.date, durationSeconds: durationSeconds
+            ),
             detectionSource: exit.source
         )
     }
@@ -178,13 +180,18 @@ extension GeofenceDwellCoordinator {
         max(0, Int(end.timeIntervalSince1970) - Int(start.timeIntervalSince1970))
     }
 
-    /// The uncertainty an EXIT reports: the millisecond gap, rounded up to whole seconds, never
-    /// down, so a departure anywhere in the gap stays within it. Whole epoch seconds truncated
-    /// apart would under-report it (100.1 s → 161.9 s is 61.8 s, but 61 by truncation).
-    static func uncertaintySeconds(from start: Date, to end: Date) -> Int {
-        let gapMilliseconds = epochMilliseconds(end) - epochMilliseconds(start)
-        guard gapMilliseconds > 0 else { return 0 }
-        return Int((gapMilliseconds + 999) / 1000)
+    /// The uncertainty an EXIT reports with `durationSeconds`, so that every stay the departure
+    /// allows lies in [duration − uncertainty, duration]. The departure fell between
+    /// `provenInsideAt` and the EXIT, so the shortest possible stay is the time from the entry to
+    /// `provenInsideAt`, whole seconds rounded down; the uncertainty is the duration less that,
+    /// which also covers the duration's own whole-second rounding (entry 0.9 s, inside 10.1 s, EXIT
+    /// 20.1 s reports 20 and allows a 9.2 s stay, so 11, not 10). Never less than the gap since
+    /// `provenInsideAt` rounded up, and within [0, duration].
+    static func uncertaintySeconds(enteredAt: Date, provenInsideAt: Date, exitedAt: Date, durationSeconds: Int) -> Int {
+        let shortestStay = max(0, epochMilliseconds(provenInsideAt) - epochMilliseconds(enteredAt)) / 1000
+        let gap = max(0, epochMilliseconds(exitedAt) - epochMilliseconds(provenInsideAt))
+        let gapRoundedUp = Int((gap + 999) / 1000)
+        return min(durationSeconds, max(0, gapRoundedUp, durationSeconds - Int(shortestStay)))
     }
 
     /// Remembers `visit`, which a re-ENTER replaced because an EXIT overtook it, under the exact
