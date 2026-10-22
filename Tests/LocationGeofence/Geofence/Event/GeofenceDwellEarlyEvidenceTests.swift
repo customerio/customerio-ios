@@ -29,6 +29,8 @@ struct GeofenceDwellEarlyEvidenceTests {
         try #require(await settleOnMain { rig.emitter.dwells.count == 1 })
         #expect(rig.requests == initialRequests + 2, "the retry must request a newer measurement")
         #expect(rig.emitter.dwells.first?.occurredAt == rig.at(90))
+        // The emitter has the row; `emitted` is written after it returns, and the chain then ends.
+        try #require(await settleOnMain { rig.coordinator.deadlineTasks[rig.geofence.id] == nil })
         #expect(await rig.storage.getDwellVisit(geofenceId: rig.geofence.id)?.emitted == true)
     }
 
