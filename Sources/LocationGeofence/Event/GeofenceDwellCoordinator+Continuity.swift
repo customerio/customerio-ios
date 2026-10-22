@@ -85,7 +85,6 @@ extension GeofenceDwellCoordinator {
     /// loss, still owed to the outbox. It still ends with its identity, geometry or user
     /// (`currentVisit`), a reboot, or a later crossing, which starts a stay of its own.
     func continuityHolds(for visit: GeofenceDwellVisit, geofenceId: String, ignoringLaterEnter: Bool = false) -> Bool {
-        let visit = standing(visit)
         // No timing: recorded by a build that kept none, on a boot nothing identifies.
         guard let timing = visit.timing else { return false }
         switch timing.bootRelation(at: readClock()) {

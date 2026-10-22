@@ -189,7 +189,7 @@ extension GeofenceDwellCoordinator {
 
     /// Whether a native ENTER this process has seen ends `visit` (`GeofenceEnterMarks.supersede`).
     func enterSuperseded(_ visit: GeofenceDwellVisit, geofenceId: String) -> Bool {
-        enterMarks[geofenceId]?.supersede(standing(visit)) ?? false
+        enterMarks[geofenceId]?.supersede(visit) ?? false
     }
 
     /// Whether an EXIT this process has seen for the fence ends `visit`.

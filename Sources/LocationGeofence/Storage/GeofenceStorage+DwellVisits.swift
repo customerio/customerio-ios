@@ -75,30 +75,69 @@ extension GeofenceStorage {
         /// already marked emitted. Nothing was written and nothing should be delivered.
         case superseded
         case writeFailed
+        /// Written as the visit's staged reservation: no fact yet, until it is admitted.
+        case staged(GeofenceDwellReservation)
     }
 
-    /// Compare-and-set with the same guards as `markDwellVisitEmitted`: stores `proposed` on `visit`
-    /// only while it is still the stored, un-emitted visit for this fence and holds no reservation.
+    /// Stages and admits `proposed` in one go, for a caller that has already decided the admission.
     func reserveDwellEmission(
+        _ proposed: GeofenceDwellReservation,
+        for visit: GeofenceDwellVisit,
+        geofenceId: String
+    ) async -> DwellReservationResult {
+        let result = await stageDwellReservation(proposed, for: visit, geofenceId: geofenceId)
+        guard case .staged(let staged) = result else { return result }
+        return admitStagedDwellReservation(staged, for: visit, geofenceId: geofenceId)
+    }
+
+    /// Compare-and-set with the same guards as `markDwellVisitEmitted`: stages `proposed` on `visit`
+    /// (`GeofenceDwellVisit.stagedDwellReservation`, replacing any staged before) only while it is
+    /// still the stored, un-emitted visit for this fence and holds no reservation. One it already
+    /// holds is returned as `.reserved`: it always wins.
+    func stageDwellReservation(
         _ proposed: GeofenceDwellReservation,
         for visit: GeofenceDwellVisit,
         geofenceId: String
     ) async -> DwellReservationResult {
         await runBeforeReservationWrite()
         var state = loadFromDisk() ?? GeofenceState()
-        guard var stored = state.dwellVisits?[geofenceId],
+        guard var stored = Self.reservable(visit, geofenceId: geofenceId, in: state) else { return .superseded }
+        if let existing = stored.dwellReservation { return .reserved(existing) }
+        stored.stagedDwellReservation = proposed
+        state.dwellVisits?[geofenceId] = stored
+        return saveToDisk(state) ? .staged(proposed) : .writeFailed
+    }
+
+    /// Makes `staged` the visit's reservation, a fact from now on, once its admission stands: only
+    /// while the visit still holds exactly that staged reservation under the same guards.
+    func admitStagedDwellReservation(
+        _ staged: GeofenceDwellReservation,
+        for visit: GeofenceDwellVisit,
+        geofenceId: String
+    ) -> DwellReservationResult {
+        var state = loadFromDisk() ?? GeofenceState()
+        guard var stored = Self.reservable(visit, geofenceId: geofenceId, in: state) else { return .superseded }
+        if let existing = stored.dwellReservation { return .reserved(existing) }
+        guard stored.stagedDwellReservation == staged else { return .superseded }
+        stored.dwellReservation = staged
+        stored.stagedDwellReservation = nil
+        state.dwellVisits?[geofenceId] = stored
+        return saveToDisk(state) ? .reserved(staged) : .writeFailed
+    }
+
+    /// The stored visit a reservation may be written on: still `visit`, its user and geometry, not
+    /// emitted, and not closed by an observed boundary — such a visit qualifies no first dwell, as
+    /// it would span the departure — unless it already holds a reservation.
+    private static func reservable(_ visit: GeofenceDwellVisit, geofenceId: String, in state: GeofenceState) -> GeofenceDwellVisit? {
+        guard let stored = state.dwellVisits?[geofenceId],
               stored.visitId == visit.visitId,
               stored.userId == visit.userId,
               stored.geometryRevision == visit.geometryRevision,
               state.cachedGeofences?.first(where: { $0.id == geofenceId })?.dwellRevision == visit.geometryRevision,
-              !stored.emitted
-        else { return .superseded }
-        if let existing = stored.dwellReservation { return .reserved(existing) }
-        // A visit an observed boundary closed qualifies no first dwell: it would span the departure.
-        guard stored.closedByObservedBoundary == nil else { return .superseded }
-        stored.dwellReservation = proposed
-        state.dwellVisits?[geofenceId] = stored
-        return saveToDisk(state) ? .reserved(proposed) : .writeFailed
+              !stored.emitted,
+              stored.dwellReservation != nil || stored.closedByObservedBoundary == nil
+        else { return nil }
+        return stored
     }
 
     /// Persists what `visitId` has spent proving its dwell, as the coordinator counted it in memory:
@@ -136,17 +175,18 @@ extension GeofenceStorage {
         saveToDisk(state)
     }
 
-    /// Takes back a reservation this process just wrote and has not delivered — only while the
-    /// stored visit is still `visit` holding exactly `reservation`, unemitted — so an admission
-    /// abandoned after its write leaves no fact behind.
-    /// - Returns: whether the reservation was removed.
+    /// Takes back a staged reservation an admission refused — only while the stored visit is still
+    /// `visit` staging exactly `reservation` — so nothing of it is left on disk. Tidying only: a
+    /// staged reservation is never a fact, so one left behind delivers nothing.
+    /// - Returns: whether the staged reservation was removed.
+    @discardableResult
     func retractDwellReservation(_ reservation: GeofenceDwellReservation, from visit: GeofenceDwellVisit, geofenceId: String) -> Bool {
         var state = loadFromDisk() ?? GeofenceState()
         guard var stored = state.dwellVisits?[geofenceId], stored.visitId == visit.visitId,
-              stored.dwellReservation == reservation, !stored.emitted
+              stored.stagedDwellReservation == reservation
         else { return false }
         guard !retractionFailsForTesting else { return false }
-        stored.dwellReservation = nil
+        stored.stagedDwellReservation = nil
         state.dwellVisits?[geofenceId] = stored
         return saveToDisk(state)
     }

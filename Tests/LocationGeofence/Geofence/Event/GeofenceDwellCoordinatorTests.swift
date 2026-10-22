@@ -458,8 +458,8 @@ struct GeofenceDwellCoordinatorTests {
     }
 
     /// A retraction that fails to persist still delivers nothing, now or on a later retry: the
-    /// reservation left on disk is remembered as refused, so the visit is judged unreserved and
-    /// the correction, once applied, ends it with the orphan.
+    /// reservation left on disk is only staged, never the visit's, so the visit is judged
+    /// unreserved and the correction, once applied, ends it with the leftover.
     @Test
     func failedRetractionUnderAQueuedCorrectionDeliversNothing() async throws {
         let fix = CLLocation(
@@ -482,7 +482,9 @@ struct GeofenceDwellCoordinatorTests {
         await setup.coordinator.requestQualifyingEvidence(geofenceId: setup.geofence.id)
 
         #expect(await setup.emitter.dwells().isEmpty)
-        #expect(await setup.storage.getDwellVisit(geofenceId: setup.geofence.id)?.dwellReservation != nil)
+        let left = await setup.storage.getDwellVisit(geofenceId: setup.geofence.id)
+        #expect(left?.dwellReservation == nil)
+        #expect(left?.stagedDwellReservation != nil)
         await setup.storage.setBeforeReservationWrite(nil)
         // A retry while the correction still waits delivers nothing either.
         await setup.coordinator.requestQualifyingEvidence(geofenceId: setup.geofence.id)
@@ -493,6 +495,40 @@ struct GeofenceDwellCoordinatorTests {
         #expect(await setup.coordinator.currentVisit(geofence: setup.geofence, userId: "user-1") == nil)
         #expect(await setup.storage.getDwellVisit(geofenceId: setup.geofence.id) == nil)
         setup.coordinator.cancelEvidence(for: setup.geofence.id)
+    }
+
+    /// The same refused, un-retracted reservation, then the process dies: the correction that refused
+    /// it dies with it. The next process does not replay the leftover as a fact; with no fresh
+    /// proof, nothing is delivered.
+    @Test
+    func failedRetractionThenRelaunch_replaysNothingWithoutFreshProof() async throws {
+        let fix = CLLocation(
+            coordinate: CLLocationCoordinate2D(latitude: 0.5, longitude: 0.5), altitude: 0,
+            horizontalAccuracy: 5, verticalAccuracy: 10, timestamp: Date()
+        )
+        let clock = ManualGeofenceClock(wall: fix.timestamp.addingTimeInterval(-300))
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        let first = await makeSetup(isPolygon: false, freshFixProvider: { fix }, directory: directory, clock: clock)
+        await first.coordinator.handleBoundary(geofence: first.geofence, transition: .enter, occurredAt: clock.wall)
+        clock.advance(to: fix.timestamp)
+        first.coordinator.polygonIdsLoaded = false
+        let coordinator = first.coordinator
+        let geofenceId = first.geofence.id
+        let correctedAt = clock.wall
+        await first.storage.setRetractionFails(true)
+        await first.storage.setBeforeReservationWrite {
+            await MainActor.run { coordinator.noteEnter(geofenceId: geofenceId, occurredAt: correctedAt, crossing: false) }
+        }
+        await first.coordinator.requestQualifyingEvidence(geofenceId: geofenceId)
+        try #require(await first.emitter.dwells().isEmpty)
+        first.coordinator.cancelEvidence(for: geofenceId)
+
+        let second = await makeSetup(isPolygon: false, freshFixProvider: { nil }, directory: directory, clock: clock)
+        await second.coordinator.requestQualifyingEvidence(geofenceId: geofenceId)
+
+        #expect(await second.emitter.dwells().isEmpty)
+        #expect(await second.storage.getDwellVisit(geofenceId: geofenceId)?.emitted == false)
+        second.coordinator.cancelEvidence(for: geofenceId)
     }
 
     /// A replacement that begins and ends while a shape check reads the catalog, after the drain

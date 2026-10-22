@@ -15,7 +15,6 @@ extension GeofenceDwellCoordinator {
         source: String,
         userId: String
     ) async {
-        let visit = standing(visit)
         guard geofence.dwellThresholdSeconds > 0, !visit.emitted else { return }
         if let reservation = visit.dwellReservation, reservationExpired(reservation) {
             await abandonReservedDwell(geofence: geofence, visit: visit)
@@ -115,15 +114,6 @@ extension GeofenceDwellCoordinator {
         recordDiagnostic(.dwellRejected, capturedToken: token, fenceId: geofence.id, reason: .retriesExhausted)
     }
 
-    /// `visit` as it stands: without a reservation an admission refused and could not take back
-    /// (`refusedReservations`), which is no fact about the stay.
-    func standing(_ visit: GeofenceDwellVisit) -> GeofenceDwellVisit {
-        guard let reservation = visit.dwellReservation, refusedReservations[visit.visitId] == reservation else { return visit }
-        var unreserved = visit
-        unreserved.dwellReservation = nil
-        return unreserved
-    }
-
     /// Whether a first admission of `visit` — one with no reservation yet — is refused by a native
     /// ENTER: a correction for its fence still waiting for the shapes to load
     /// (`pendingCorrections`), or a covering-circle crossing still waiting for the polygon's
@@ -160,34 +150,26 @@ extension GeofenceDwellCoordinator {
         geofence: Geofence
     ) async -> GeofenceDwellReservation? {
         // Rechecked at the write itself, after the awaits that led here, and once more after it:
-        // a correction queued while the write was in flight is not seen by the check before it,
-        // so a reservation it overtook is taken back before anything is delivered.
+        // a correction queued while the write was in flight is not seen by the check before it.
+        // So the write only stages the reservation, which is no fact, and the admission is decided
+        // after it: a refused one is taken back, and one that cannot be is left staged, delivering
+        // nothing here, on a retry, or after a relaunch, which asks for fresh proof instead.
         if correctionRefusesAdmission(of: visit, geofenceId: geofence.id) {
             scheduleEvidenceRetry(for: geofence, visit: visit)
             return nil
         }
-        // An earlier attempt's refused reservation still on disk goes first; while it cannot be
-        // taken back nothing is written over it, and nothing is delivered.
-        if let refused = refusedReservations[visit.visitId] {
-            guard await storage.retractDwellReservation(refused, from: visit, geofenceId: geofence.id) else {
-                scheduleEvidenceRetry(for: geofence, visit: visit)
-                return nil
-            }
-            refusedReservations.removeValue(forKey: visit.visitId)
-        }
         // `visit` may be a copy read before another attempt reserved; the stored reservation wins.
-        switch await storage.reserveDwellEmission(proposed, for: visit, geofenceId: geofence.id) {
-        case .reserved(let stored):
-            if stored == proposed, correctionRefusesAdmission(of: visit, geofenceId: geofence.id) {
-                // Taken back before anything is delivered. A retraction that failed to persist
-                // leaves the reservation on disk; it is remembered as refused, so the visit is
-                // judged as unreserved until it is taken back, and the correction can end it.
-                if await !storage.retractDwellReservation(stored, from: visit, geofenceId: geofence.id) {
-                    refusedReservations[visit.visitId] = stored
-                }
+        var result = await storage.stageDwellReservation(proposed, for: visit, geofenceId: geofence.id)
+        if case .staged(let staged) = result {
+            guard !correctionRefusesAdmission(of: visit, geofenceId: geofence.id) else {
+                await storage.retractDwellReservation(staged, from: visit, geofenceId: geofence.id)
                 scheduleEvidenceRetry(for: geofence, visit: visit)
                 return nil
             }
+            result = await storage.admitStagedDwellReservation(staged, for: visit, geofenceId: geofence.id)
+        }
+        switch result {
+        case .reserved(let stored):
             // Reserved, the visit only repeats its delivery and needs no location, even when withheld below.
             releaseCollectionLease(geofenceId: geofence.id, ifVisit: visit.visitId)
             guard stored != proposed || !knownExitRefusesFirstAdmission(of: visit, geofenceId: geofence.id) else { return nil }
@@ -196,7 +178,7 @@ extension GeofenceDwellCoordinator {
             // Nothing was delivered, so nothing is lost by asking again.
             scheduleEvidenceRetry(for: geofence, visit: visit)
             return nil
-        case .superseded:
+        case .superseded, .staged:
             return nil
         }
     }

@@ -15,7 +15,7 @@ actor GeofenceStorage {
     /// `lastStateChangedAt` is weighed against fix timestamps, so it must come from the same clock.
     /// Internal for the `+MonitorRegionRecords` extension.
     let dateUtil: DateUtil
-    /// Test seam: runs inside `reserveDwellEmission` before its load, so a test can interleave
+    /// Test seam: runs inside `stageDwellReservation` before its load, so a test can interleave
     /// main-actor work with the reservation write. Nil in production.
     private var beforeReservationWrite: (@Sendable () async -> Void)?
 

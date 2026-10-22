@@ -80,7 +80,7 @@ extension GeofenceDwellCoordinator {
               let geofence = await storage.getRegisteredGeofence(id: geofenceId),
               !Task.isCancelled,
               let expectedUserId = contextStore.currentUserId, !expectedUserId.isEmpty,
-              let storedVisit = await activeVisit(geofence: geofence, userId: expectedUserId),
+              let visit = await activeVisit(geofence: geofence, userId: expectedUserId),
               !Task.isCancelled
         else {
             // A re-arm can replace this task while its storage read is suspended.
@@ -88,9 +88,6 @@ extension GeofenceDwellCoordinator {
             cancelEvidence(for: geofenceId)
             return
         }
-        // A refused reservation on disk is no fact to deliver: the stay is judged unreserved and
-        // asks for evidence as any other, which takes the orphan back before reserving anew.
-        let visit = standing(storedVisit)
         // A check that needs a location, at or after the threshold, is counted, answered by a
         // request or not; with none left the chain stops. One before the threshold cannot qualify
         // and is not counted. A reserved dwell's delivery is never held back.

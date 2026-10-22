@@ -51,11 +51,6 @@ final class GeofenceDwellCoordinator {
     /// Crossings noted before the shapes were loaded, by fence, so one that turns out to be a
     /// polygon's covering circle is withdrawn and held (`rememberPolygons`). Internal for the same.
     var unjudgedCrossings: [String: GeofenceExitMark] = [:]
-    /// Reservations an admission wrote and then refused, whose retraction failed to persist, by
-    /// visit id. Such a visit is judged as unreserved everywhere (`standing`) until the retraction
-    /// succeeds, so the orphan is never delivered and a correction can still end the stay. In
-    /// memory only: a relaunch reads the orphan as a fact. Internal for `+Emission`.
-    var refusedReservations: [String: GeofenceDwellReservation] = [:]
     /// Whether the OS monitor dates its events at receipt rather than by the event itself
     /// (`GeofenceRegionMonitoring.datesEventsAtReceipt`); set by the binder. A circle EXIT dated at
     /// receipt bounds its departure only by the whole stay. Internal for `+ExitDuration`.

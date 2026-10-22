@@ -49,6 +49,12 @@ struct GeofenceDwellVisit: Codable, Equatable, Sendable {
     /// dwell sends exactly this, so a retry after a failed `emitted` write or a relaunch repeats
     /// the first attempt's row rather than describing a later instant under the same visit id.
     var dwellReservation: GeofenceDwellReservation?
+    /// A dwell written ahead of its admission, which becomes `dwellReservation` only once the
+    /// admission, judged after the write, stands (`GeofenceStorage.admitStagedDwellReservation`).
+    /// Never a fact about the stay: one an admission refused and could not take back, or that a
+    /// process dying left, is replaced by the next attempt's and delivers nothing, so a relaunch
+    /// asks for fresh proof rather than replaying it.
+    var stagedDwellReservation: GeofenceDwellReservation?
     /// The monotonic timeline and boot the entry was recorded on. Nil on visits persisted before
     /// the field: nothing says which boot they began on, so they support no dwell.
     let timing: GeofenceVisitTiming?
@@ -92,9 +98,9 @@ struct GeofenceDwellVisit: Codable, Equatable, Sendable {
     /// visits persisted before the field.
     var dwellProofChecks = 0
 
-    /// Equal when they are the same stay with the same facts. `lastDecisiveInsideAt` and the
-    /// dwell-proof bookkeeping are left out: they record the evidence sought and seen, refreshed as
-    /// it is, not a fact of the stay.
+    /// Equal when they are the same stay with the same facts. `lastDecisiveInsideAt`, the
+    /// dwell-proof bookkeeping and a staged reservation are left out: they record evidence sought
+    /// and seen, or an admission not yet decided, not a fact of the stay.
     static func == (lhs: GeofenceDwellVisit, rhs: GeofenceDwellVisit) -> Bool {
         lhs.visitId == rhs.visitId && lhs.enteredAt == rhs.enteredAt && lhs.geometryRevision == rhs.geometryRevision
             && lhs.userId == rhs.userId && lhs.emitted == rhs.emitted && lhs.entryObserved == rhs.entryObserved
@@ -134,7 +140,7 @@ struct GeofenceDwellReservation: Codable, Equatable, Sendable {
 
 extension GeofenceDwellVisit {
     enum CodingKeys: String, CodingKey {
-        case visitId, enteredAt, geometryRevision, userId, emitted, entryObserved, dwellReservation
+        case visitId, enteredAt, geometryRevision, userId, emitted, entryObserved, dwellReservation, stagedDwellReservation
         case timing, locationAccess, awaitsPresenceProof, identityVersion, identityLineage
         /// `closedByObservedBoundary`, as the decimal bit pattern of its `timeIntervalSinceReferenceDate`.
         case closedByObservedBoundaryReferenceBits
@@ -154,6 +160,7 @@ extension GeofenceDwellVisit {
         self.emitted = try container.decode(Bool.self, forKey: .emitted)
         self.entryObserved = try container.decodeIfPresent(Bool.self, forKey: .entryObserved) ?? true
         self.dwellReservation = try container.decodeIfPresent(GeofenceDwellReservation.self, forKey: .dwellReservation)
+        self.stagedDwellReservation = try container.decodeIfPresent(GeofenceDwellReservation.self, forKey: .stagedDwellReservation)
         self.timing = try container.decodeIfPresent(GeofenceVisitTiming.self, forKey: .timing)
         self.locationAccess = try container.decodeIfPresent(GeofenceLocationAccess.self, forKey: .locationAccess)
         self.identityVersion = try container.decodeIfPresent(UInt64.self, forKey: .identityVersion)
@@ -188,6 +195,7 @@ extension GeofenceDwellVisit {
         try container.encode(emitted, forKey: .emitted)
         try container.encode(entryObserved, forKey: .entryObserved)
         try container.encodeIfPresent(dwellReservation, forKey: .dwellReservation)
+        try container.encodeIfPresent(stagedDwellReservation, forKey: .stagedDwellReservation)
         try container.encodeIfPresent(timing, forKey: .timing)
         try container.encodeIfPresent(locationAccess, forKey: .locationAccess)
         try container.encode(awaitsPresenceProof, forKey: .awaitsPresenceProof)
