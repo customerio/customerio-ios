@@ -9,12 +9,12 @@ protocol RichPushDeliveryTracker: AutoMockable {
 class RichPushDeliveryTrackerImpl: RichPushDeliveryTracker {
     let httpClient: HttpClient
     let logger: Logger
-    let region: Region
+    let apiHost: String
 
     init(httpClient: HttpClient, logger: Logger) {
         self.httpClient = httpClient
         self.logger = logger
-        self.region = MessagingPush.moduleConfig.region
+        self.apiHost = RichPushHttpClient.getApiHost(config: MessagingPush.moduleConfig)
     }
 
     func trackMetric(token: String, event: Metric, deliveryId: String, timestamp: String? = nil, onComplete: @escaping (Result<Void, HttpRequestError>) -> Void) {
@@ -31,7 +31,7 @@ class RichPushDeliveryTrackerImpl: RichPushDeliveryTracker {
         let endpoint: CIOApiEndpoint = .trackPushMetricsCdp
         guard let httpParams = HttpRequestParams(
             endpoint: endpoint,
-            baseUrl: RichPushHttpClient.getDefaultApiHost(region: region),
+            baseUrl: apiHost,
             headers: nil,
             body: try? JSONSerialization.data(withJSONObject: properties)
         ) else {
