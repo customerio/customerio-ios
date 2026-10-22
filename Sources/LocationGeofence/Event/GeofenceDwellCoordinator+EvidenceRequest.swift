@@ -187,27 +187,30 @@ extension GeofenceDwellCoordinator {
         return true
     }
 
-    /// Keeps `ledger` as `visitId`'s and persists it in the background; the persisted copy only
-    /// grows, so writes landing out of order are harmless.
+    /// Keeps `ledger` as `visitId`'s and starts saving it at once, off the main actor, so a request
+    /// in flight when the process dies is normally already on disk. Only the confirming save
+    /// before the next admission (`persistProofLedger`) clears the visit's unsaved charge.
     private func updateProofLedger(_ ledger: GeofenceDwellProofLedger, geofenceId: String, visitId: String) {
         proofLedgers[visitId] = ledger
-        Task { [weak self] in await self?.saveProofLedger(ledger, geofenceId: geofenceId, visitId: visitId) }
+        dirtyProofLedgers.insert(visitId)
+        Task.detached { [storage] in
+            await storage.recordDwellProofLedger(geofenceId: geofenceId, visitId: visitId, ledger: ledger)
+        }
     }
 
-    /// Saves `ledger`, and once the store holds every charge counted so far, clears the visit's
-    /// unsaved charge. A failed save leaves it set.
-    @discardableResult
-    private func saveProofLedger(_ ledger: GeofenceDwellProofLedger, geofenceId: String, visitId: String) async -> Bool {
-        guard await storage.recordDwellProofLedger(geofenceId: geofenceId, visitId: visitId, ledger: ledger) else { return false }
-        if ledger.attempts >= (proofLedgers[visitId]?.attempts ?? 0) { unsavedProofCharges.remove(visitId) }
-        return true
-    }
-
-    /// Before a check that may ask for a location: retries the save of a charge that has not been
-    /// confirmed, so the check can be admitted once it is. Still unsaved, admission refuses.
-    func confirmProofCharge(geofenceId: String, visitId: String) async {
-        guard unsavedProofCharges.contains(visitId), let ledger = proofLedgers[visitId] else { return }
-        await saveProofLedger(ledger, geofenceId: geofenceId, visitId: visitId)
+    /// Before each evidence request, while the visit has a charge not yet confirmed saved: saves
+    /// its ledger, a background save notwithstanding, so a failed save is retried before anything
+    /// else is admitted. Once the store holds every charge counted so far, the unsaved charge
+    /// clears; a failed save leaves it, and admission refuses. With no unsaved charge it does
+    /// nothing and does not suspend, so concurrent checks keep their order. The persisted copy only
+    /// grows.
+    func persistProofLedger(geofenceId: String, visitId: String) async {
+        guard unsavedProofCharges.contains(visitId), dirtyProofLedgers.contains(visitId), let ledger = proofLedgers[visitId],
+              await storage.recordDwellProofLedger(geofenceId: geofenceId, visitId: visitId, ledger: ledger),
+              let current = proofLedgers[visitId]
+        else { return }
+        if current == ledger { dirtyProofLedgers.remove(visitId) }
+        if ledger.attempts >= current.attempts { unsavedProofCharges.remove(visitId) }
     }
 
     /// `visit` has spent its dwell-proof requests or checks: no deadline or retry asks for another

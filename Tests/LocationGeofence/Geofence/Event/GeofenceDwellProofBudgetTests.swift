@@ -287,6 +287,9 @@ struct GeofenceDwellProofBudgetTests {
         await rig.drive(to: 300)
         #expect(rig.requestTimes == [60, 300])
         #expect(await rig.visit()?.dwellProofAttempts == 2)
+        // The new charge stays unconfirmed until the save before the next admission.
+        let visitId = try #require(await rig.visit()?.visitId)
+        await rig.coordinator.persistProofLedger(geofenceId: BudgetRig.circle.id, visitId: visitId)
         #expect(rig.coordinator.unsavedProofCharges.isEmpty)
     }
 

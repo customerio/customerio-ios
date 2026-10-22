@@ -92,7 +92,8 @@ extension GeofenceDwellCoordinator {
             proofBudgetExhausted(geofenceId: geofence.id, visit: visit)
             return
         }
-        await confirmProofCharge(geofenceId: geofence.id, visitId: visit.visitId)
+        // The previous request's charge, if its save failed, before another can be admitted.
+        await persistProofLedger(geofenceId: geofence.id, visitId: visit.visitId)
         guard !Task.isCancelled else { return }
         guard let request = beginEvidenceRequest(geofenceId: geofence.id, visit: visit) else { return }
         defer { finishEvidenceRequest(request) }
