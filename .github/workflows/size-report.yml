@@ -1,0 +1,106 @@
+name: SDK size report
+
+on:
+  pull_request:
+    # `edited` re-runs the report when a PR is retargeted (the baseline is the
+    # base commit); other edits are skipped by the job condition below.
+    types: [opened, synchronize, reopened, edited]
+    paths:
+      - 'Sources/**'
+      - 'Package.swift'
+      - 'Package.resolved'
+      - '**/*.podspec'
+      # The measured app and the tools that build it
+      - 'Apps/APN-UIKit/**'
+      - 'Apps/Common/**'
+      - 'Apps/fastlane/**'
+      - 'Gemfile'
+      - 'Gemfile.lock'
+      # The size tooling itself; deploy-sdk.yml needs it to tag a release
+      - '.github/actions/generate-sdk-size-report/**'
+      - '.github/actions/build-sample-app/**'
+      - '.github/actions/main-sample-app-build/**'
+      - '.github/actions/install-bloaty-from-source/**'
+      - '.github/workflows/size-report.yml'
+      - '!**/*.md'
+  push:
+    branches: [main]
+  workflow_dispatch: # allow manual run
+
+concurrency:
+  # A superseded PR run is cancelled so it doesn't hold a macOS slot; main runs
+  # finish so every main commit warms its baseline. An edit that doesn't change
+  # the base gets its own group, so it can't cancel an in-flight size run; its
+  # job is skipped below.
+  group: >-
+    ${{ github.workflow }}-${{ github.ref }}-${{
+      github.event.action == 'edited' && github.event.changes.base == null &&
+      'metadata' || 'validation'
+    }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  # Size is a release guardrail. The `paths:` filter above scopes PR runs to the
+  # changes that can move binary size; main keeps warming the exact-SHA baseline
+  # cache to avoid rebuilding it.
+  generate-sdk-size-reports:
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
+      (github.event_name == 'pull_request' &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.event.pull_request.user.login != 'dependabot[bot]' &&
+      (github.event.action != 'edited' || github.event.changes.base != null))
+    runs-on: xcode-27
+    timeout-minutes: 60
+    permissions:
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: ./.github/actions/generate-sdk-size-report
+        id: generate-sdk-size-report
+        with:
+          GOOGLE_CLOUD_MATCH_READONLY_SERVICE_ACCOUNT_B64: ${{ secrets.GOOGLE_CLOUD_MATCH_READONLY_SERVICE_ACCOUNT_B64 }}
+          # Same Xcode as the other regular jobs. PR and main runs both pass it, so the main baseline
+          # cache (keyed by Xcode version) still matches. The release report in deploy-sdk.yml stays on 26.6.
+          xcode-version: '27.0'
+          baseline-ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event_name == 'push' && github.sha || '' }}
+
+      - name: Find existing "SDK size reports" comment
+        if: github.event_name == 'pull_request'
+        uses: peter-evans/find-comment@b30e6a3c0ed37e7c023ccd3f1db5c6c0b0c23aad # v4.0.0
+        id: find-sdk-size-report-comment
+        with:
+          issue-number: ${{ github.event.pull_request.number }}
+          comment-author: 'github-actions[bot]'
+          body-includes: <!-- sdk size reports -->
+
+      - name: Send SDK size reports to the PR
+        if: github.event_name == 'pull_request'
+        uses: peter-evans/create-or-update-comment@e8674b075228eee787fea43ef493e45ece1004c9 # v5.0.0
+        with:
+          comment-id: ${{ steps.find-sdk-size-report-comment.outputs.comment-id }}
+          issue-number: ${{ github.event.pull_request.number }}
+          edit-mode: replace
+          body: |
+            <!-- sdk size reports -->
+            # SDK binary size reports 📊
+
+            <details>
+            <summary>SDK binary size of this PR</summary>
+
+            ```
+            ${{ steps.generate-sdk-size-report.outputs.sdk-size-report }}
+            ```
+
+            </details>
+
+            <details>
+            <summary>SDK binary size diff report vs. main branch</summary>
+
+            ```
+            ${{ steps.generate-sdk-size-report.outputs.sdk-size-diff-report }}
+            ```
+
+            </details>
