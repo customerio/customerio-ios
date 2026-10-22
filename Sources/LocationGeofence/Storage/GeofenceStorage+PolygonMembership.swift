@@ -165,14 +165,19 @@ extension GeofenceStorage {
     /// timeline it was recorded on — the membership's latest outside proof, kept through any inside
     /// pass since (`PolygonMembershipRecord.lastOutside`), and the covering circle's last observed
     /// outside state, kept through the ENTER that replaced it (`MonitorRegionRecord.lastObservedOutside`)
-    /// while that record is still this fence's circle.
-    func polygonDepartureEvidence(geofenceId: String) -> (visit: GeofenceDwellVisit?, outside: [GeofenceClockStamp]) {
+    /// while that record is still this fence's circle. With `wholeCircleOnly`, only a circle
+    /// registered at the fence's full covering radius counts: one clamped by the monitoring cap may
+    /// not cover the shape, so leaving it does not prove the shape was left.
+    func polygonDepartureEvidence(
+        geofenceId: String, wholeCircleOnly: Bool = false
+    ) -> (visit: GeofenceDwellVisit?, outside: [GeofenceClockStamp]) {
         let state = loadFromDisk()
         var outside = [state?.polygonMembership?[geofenceId]?.lastOutside].compactMap { $0 }
         if let record = state?.monitorRegionRecords?[geofenceId], let center = record.center, let radius = record.radius,
            let geofence = state?.cachedGeofences?.first(where: { $0.id == geofenceId }),
-           // The registered radius as its own cap: a clamped covering circle still matches.
-           MonitoredCircle(center: center, radius: radius, maximumRadius: radius).matches(geofence),
+           // The registered radius as its own cap: a clamped covering circle still matches, unless
+           // only the whole circle may.
+           MonitoredCircle(center: center, radius: radius, maximumRadius: wholeCircleOnly ? .infinity : radius).matches(geofence),
            let circleOutside = record.lastObservedOutside {
             outside.append(circleOutside)
         }

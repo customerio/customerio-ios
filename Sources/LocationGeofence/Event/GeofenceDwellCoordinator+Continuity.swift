@@ -11,7 +11,8 @@ extension GeofenceDwellCoordinator {
     func resumePendingVisits(geofences: [Geofence]) async {
         guard let userId = contextStore.currentUserId, !userId.isEmpty else { return }
         for geofence in geofences where tracksVisit(geofence) {
-            if let visit = await currentVisit(geofence: geofence, userId: userId) {
+            if let visit = await currentVisit(geofence: geofence, userId: userId),
+               await !departureEndedStay(visit, geofence: geofence) {
                 scheduleDeadline(for: geofence, visit: visit)
             }
         }

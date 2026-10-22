@@ -47,7 +47,9 @@ extension GeofenceDwellCoordinator {
             return
         }
         guard contextStore.currentUserId == userId,
-              !knownExitRefusesFirstAdmission(of: visit, geofenceId: geofence.id)
+              !knownExitRefusesFirstAdmission(of: visit, geofenceId: geofence.id),
+              // A departure recorded but never applied, by a process that died before routing it.
+              await !departureEndedStay(visit, geofence: geofence)
         else { return }
         guard dwellEmissionsInFlight.insert(visit.visitId).inserted else { return }
         defer { dwellEmissionsInFlight.remove(visit.visitId) }

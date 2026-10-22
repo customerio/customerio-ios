@@ -7,8 +7,9 @@ extension GeofenceStorage {
     /// dying before the coordinator removes the visit leaves it closed, not open across the
     /// departure. Only for the cached circle `registered` is — the record's circle, under the cap it
     /// was registered with, matched as the registration and the event attribution match it — and
-    /// the visit measured against it; never a polygon's covering circle, whose EXIT proves nothing
-    /// about the shape.
+    /// the visit measured against it; never a polygon's covering circle, whose EXIT the record keeps
+    /// as departure evidence for the coordinator to judge against the shape
+    /// (`GeofenceDwellCoordinator.departureEndedStay`).
     /// `mark` orders the boundary against the visit as the coordinator orders its own: an EXIT
     /// must overtake it, a crossing ENTER supersede it, so a late EXIT dated before a newer visit
     /// does not close it; across a wall-clock step, processing order decides. The first closure

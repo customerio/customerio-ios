@@ -130,8 +130,9 @@ struct GeofenceDwellDurableExitTests {
         process.end()
     }
 
-    /// Control: a polygon's covering circle reports inside then outside. Its EXIT proves nothing
-    /// about the shape, so the polygon's visit is not closed.
+    /// Control: a polygon's covering circle reports inside then outside. The record write closes no
+    /// polygon visit: the coordinator judges the recorded EXIT against the shape before resuming or
+    /// qualifying the stay.
     @Test
     @available(iOS 17.0, *)
     func coveringCircleExit_expectThePolygonVisitNotClosed() async throws {
@@ -153,6 +154,69 @@ struct GeofenceDwellDurableExitTests {
         #expect(await process.storage.getMonitorRegionRecords()[polygon.id]?.lastState == .exit)
         #expect(await process.visit(polygon) == visit)
         process.end()
+    }
+
+    /// A polygon stay proven by a pass; its whole covering circle's EXIT is recorded, then the process
+    /// dies before routing it, so the polygon's membership still reads inside. After a short return,
+    /// the next process neither resumes the old stay nor lets fresh proof qualify it: the recorded
+    /// departure ends it, and the proof starts a stay of its own.
+    @Test(arguments: [false, true])
+    @available(iOS 17.0, *)
+    func coveringCircleExitRecordedThenDeath_expectTheOldPolygonStayNeverQualifies(resume: Bool) async throws {
+        let device = DurableExitDevice()
+        let first = await DurableExitProcess(device: device)
+        let polygon = DurableExitFences.polygon
+        device.polygonFixOffset = 0
+        await first.register(polygon)
+        let stay = try await Self.coveringCircleExitThenDeath(first, device: device)
+
+        let second = await DurableExitProcess(device: device)
+        if resume {
+            await second.dwell.resumePendingVisits(geofences: [polygon])
+            #expect(second.dwell.deadlineTasks[polygon.id] == nil, "a stay left since it began is not resumed")
+        }
+        await Self.pass(second)
+        #expect(await second.dwellRows().isEmpty)
+        #expect(await second.visit(polygon)?.visitId != stay.visitId)
+        second.end()
+    }
+
+    /// Control: a covering circle clamped by the monitoring cap may not cover the shape, so its
+    /// recorded EXIT proves no departure, and fresh proof still qualifies the stay.
+    @Test
+    @available(iOS 17.0, *)
+    func clampedCoveringCircleExitRecordedThenDeath_expectTheStayStillQualifies() async throws {
+        let device = DurableExitDevice()
+        let first = await DurableExitProcess(device: device)
+        let polygon = DurableExitFences.polygon
+        device.polygonFixOffset = 0
+        await first.register(polygon, radius: 150)
+        let stay = try await Self.coveringCircleExitThenDeath(first, device: device)
+
+        let second = await DurableExitProcess(device: device)
+        await Self.pass(second)
+        #expect(await second.dwellRows().map(\.visitId) == [stay.visitId])
+        second.end()
+    }
+
+    /// A stay proven by a pass; its covering circle reports inside, then outside, and the process
+    /// dies before routing either. 600 s later the next process may run.
+    @available(iOS 17.0, *)
+    private static func coveringCircleExitThenDeath(
+        _ first: DurableExitProcess, device: DurableExitDevice
+    ) async throws -> GeofenceDwellVisit {
+        let polygon = DurableExitFences.polygon
+        await Self.pass(first)
+        let stay = try #require(await first.visit(polygon))
+        first.dwell.cancelEvidence(for: polygon.id)
+        device.advance(30)
+        await first.deliver(.satisfied, to: polygon.id)
+        device.advance(30)
+        await first.deliver(.unsatisfied, to: polygon.id)
+        try #require(await first.visit(polygon) == stay, "unrouted, the EXIT leaves the visit open")
+        first.end()
+        device.advance(600)
+        return stay
     }
 
     /// Control: `CLMonitor` correcting the outside state it assumed at registration is no crossing:
@@ -248,6 +312,13 @@ struct GeofenceDwellDurableExitTests {
     }
 
     // MARK: - Helpers
+
+    @available(iOS 17.0, *)
+    private static func pass(_ process: DurableExitProcess) async {
+        await process.resolver.evaluateMembership(
+            geofenceIds: [DurableExitFences.polygon.id], reason: .movement, requiresFreshFix: true
+        )
+    }
 
     /// Registers the circle with its state assumed outside and routes `CLMonitor`'s correction
     /// ENTER, which starts the stay; from then on the process dies at the next event.

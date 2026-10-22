@@ -138,6 +138,26 @@ extension GeofenceDwellCoordinator {
         noteEnter(crossing, geofenceId: geofenceId, crossing: true)
     }
 
+    /// Ends `visit` when its polygon was left after it began, by evidence on disk that nothing
+    /// applied: its whole covering circle's observed EXIT, or an outside membership proof, recorded
+    /// after its entry on the monotonic timeline (`GeofenceStorage.polygonDepartureEvidence`). A
+    /// process that dies between recording either and ending the stay leaves the visit open, and
+    /// the EXIT is never routed again; after a short return, fresh proof would then qualify a dwell
+    /// across the absence. Checked before a stay is resumed or first admitted. A reserved dwell is a
+    /// fact about the stay before the departure and is left to deliver. Compare-and-remove, so a
+    /// visit written since survives.
+    /// - Returns: whether the visit was ended.
+    func departureEndedStay(_ visit: GeofenceDwellVisit, geofence: Geofence) async -> Bool {
+        guard geofence.vertices != nil, visit.dwellReservation == nil else { return false }
+        let evidence = await storage.polygonDepartureEvidence(geofenceId: geofence.id, wholeCircleOnly: true)
+        guard let stored = evidence.visit, stored.visitId == visit.visitId,
+              evidence.outside.contains(where: { $0.isAfterEntry(of: stored) })
+        else { return false }
+        cancelEvidence(for: geofence.id, ifVisit: visit.visitId)
+        await storage.removeDwellVisit(geofenceId: geofence.id, ifStill: visit.visitId)
+        return true
+    }
+
     /// Notes the corrections that arrived before the shapes were known, for the fences the catalog
     /// now says are circles; a polygon's covering-circle correction is dropped (`polygonIds`).
     private func drainPendingCorrections() {
