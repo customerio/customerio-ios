@@ -1,3 +1,9 @@
+## [4.12.1](https://github.com/customerio/customerio-ios/compare/4.12.0...4.12.1) (2026-10-22)
+
+### Bug Fixes
+
+* **messagingpush:** support apiHost in Notification Service Extension ([#1357](https://github.com/customerio/customerio-ios/issues/1357)) ([eca12ff](https://github.com/customerio/customerio-ios/commit/eca12ff8ae0d1f239d0169c2953d2194d5cb4953))
+
 ## [4.12.0](https://github.com/customerio/customerio-ios/compare/4.11.0...4.12.0) (2026-10-21)
 
 ### Features
