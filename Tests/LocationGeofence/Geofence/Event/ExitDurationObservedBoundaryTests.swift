@@ -116,8 +116,9 @@ struct ExitDurationObservedBoundaryTests {
         await second.deliver(.unsatisfied, to: Self.exitOnly.id)
 
         let row = try #require(await Self.exitRows(second).last)
-        // The EXIT still names the stay it ends; only its timing is withheld.
-        #expect(row.visitId == stay.visitId)
+        // Another boundary closed the stay: this EXIT is not its end and must not name it.
+        #expect(row.visitId == nil)
+        #expect(row.visitId != stay.visitId)
         #expect(row.enteredAt == nil)
         #expect(row.visitDurationSeconds == nil)
         #expect(row.visitDurationUncertaintySeconds == nil)
@@ -147,7 +148,8 @@ struct ExitDurationObservedBoundaryTests {
         )
 
         let row = try #require(await Self.exitRows(process).last)
-        #expect(row.visitId == stay.visitId)
+        // Only the EXIT whose exact date closed the stay is its end; another names no visit.
+        #expect(row.visitId == (ownDate ? stay.visitId : nil))
         #expect(row.visitDurationSeconds == (ownDate ? 0 : nil))
         #expect(row.visitDurationUncertaintySeconds == (ownDate ? 0 : nil))
         process.end()

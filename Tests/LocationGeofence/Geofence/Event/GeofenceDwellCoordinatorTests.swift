@@ -206,6 +206,58 @@ struct GeofenceDwellCoordinatorTests {
         setup.coordinator.cancelEvidence(for: setup.geofence.id)
     }
 
+    /// Two kinds of check: a timing suppressor (here an unobserved entry) still names the visit
+    /// the EXIT ends, while an attribution failure (an observed boundary other than this EXIT
+    /// already closed the stay) names nothing, though the EXIT still ends the visit.
+    @Test
+    func exitAttributionIsSeparateFromItsTiming() async throws {
+        let clock = ManualGeofenceClock(wall: Date(timeIntervalSince1970: 1000))
+        let setup = await makeSetup(isPolygon: false, clock: clock)
+        await setup.coordinator.handleBoundary(
+            geofence: setup.geofence, transition: .enter, occurredAt: clock.wall, crossingObserved: false
+        )
+        clock.advance(300)
+        let untimed = await setup.coordinator.handleBoundary(geofence: setup.geofence, transition: .exit, occurredAt: clock.wall)
+        #expect(untimed?.visitId != nil)
+        #expect(untimed?.durationSeconds == nil)
+        clock.advance(1)
+
+        let enteredAt = clock.wall
+        await setup.coordinator.handleBoundary(geofence: setup.geofence, transition: .enter, occurredAt: enteredAt)
+        var closed = try #require(await setup.storage.getDwellVisit(geofenceId: setup.geofence.id))
+        closed.closedByObservedBoundary = enteredAt.addingTimeInterval(100)
+        try #require(await setup.storage.saveDwellVisit(closed, geofenceId: setup.geofence.id))
+        clock.advance(200)
+
+        let other = await setup.coordinator.handleBoundary(geofence: setup.geofence, transition: .exit, occurredAt: clock.wall)
+
+        #expect(other == nil)
+        #expect(await setup.storage.getDwellVisit(geofenceId: setup.geofence.id) == nil)
+    }
+
+    /// A healed or corrected circle EXIT — not dated by the OS — bounds its departure by the last
+    /// decisive inside fix, not the entry: here the DWELL's qualifying fix, 60 s before the heal.
+    @Test
+    func healedCircleExitBoundsItsUncertaintyByTheLastDecisiveInsideFix() async throws {
+        let clock = ManualGeofenceClock(wall: Date(timeIntervalSince1970: 1000))
+        let setup = await makeSetup(isPolygon: false, clock: clock)
+        await setup.coordinator.handleBoundary(geofence: setup.geofence, transition: .enter, occurredAt: clock.wall)
+        clock.advance(600)
+        await setup.coordinator.recordInsideEvidence(
+            geofence: setup.geofence, at: clock.wall, source: "location_evidence", qualifiesDwell: true
+        )
+        try #require(await setup.storage.getDwellVisit(geofenceId: setup.geofence.id)?.lastDecisiveInsideAt == clock.wall)
+        clock.advance(60)
+
+        let healed = await setup.coordinator.handleBoundary(
+            geofence: setup.geofence, transition: .exit, occurredAt: clock.wall, crossingObserved: false
+        )
+
+        #expect(healed?.durationSeconds == 660)
+        #expect(healed?.visitDurationUncertaintySeconds == 60)
+        setup.coordinator.cancelEvidence(for: setup.geofence.id)
+    }
+
     /// A circle EXIT the classic monitor could only date at receipt bounds its departure by the
     /// whole stay: the OS decided it at some unknown earlier moment.
     @Test
@@ -214,12 +266,18 @@ struct GeofenceDwellCoordinatorTests {
         let setup = await makeSetup(isPolygon: false, clock: clock)
         setup.coordinator.osExitDatesAreReceipts = true
         await setup.coordinator.handleBoundary(geofence: setup.geofence, transition: .enter, occurredAt: clock.wall)
-        clock.advance(300)
+        clock.advance(240)
+        // A decisive inside fix does not narrow it: nothing says when, before receipt, the OS decided.
+        await setup.coordinator.recordInsideEvidence(
+            geofence: setup.geofence, at: clock.wall, source: "location_evidence", qualifiesDwell: true
+        )
+        clock.advance(60)
 
         let context = await setup.coordinator.handleBoundary(geofence: setup.geofence, transition: .exit, occurredAt: clock.wall)
 
         #expect(context?.durationSeconds == 300)
         #expect(context?.visitDurationUncertaintySeconds == 300)
+        setup.coordinator.cancelEvidence(for: setup.geofence.id)
     }
 
     /// Evidence that qualifies a stay while a correction for its circle still waits for the shapes

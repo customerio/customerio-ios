@@ -251,6 +251,11 @@ final class GeofenceDwellCoordinator {
         // The bookkeeping above still runs, so a marginal arrival starts, proves or continues its
         // visit at this time. Only a fix whose accuracy disk lies wholly inside proves the stay; a
         // reservation proven earlier still repeats its delivery.
+        if qualifiesDwell {
+            // Kept on the visit for the EXIT: how recently the device was known inside bounds how
+            // early it could have left, when the OS does not date the departure.
+            await storage.stampDecisiveInside(geofenceId: geofence.id, visitId: visit.visitId, at: observedAt)
+        }
         guard qualifiesDwell || visit.dwellReservation != nil else { return }
         await emitDwellIfQualified(
             geofence: geofence, visit: visit, observedAt: observedAt, source: source, userId: userId

@@ -101,6 +101,18 @@ extension GeofenceStorage {
         return saveToDisk(state) ? .reserved(proposed) : .writeFailed
     }
 
+    /// Records that `visitId` was decisively proven inside at `provenAt`, keeping the latest; only
+    /// while it is still the stored visit, so a stale copy cannot stamp a newer stay.
+    func stampDecisiveInside(geofenceId: String, visitId: String, at provenAt: Date) {
+        var state = loadFromDisk() ?? GeofenceState()
+        guard var stored = state.dwellVisits?[geofenceId], stored.visitId == visitId,
+              provenAt > (stored.lastDecisiveInsideAt ?? .distantPast)
+        else { return }
+        stored.lastDecisiveInsideAt = provenAt
+        state.dwellVisits?[geofenceId] = stored
+        saveToDisk(state)
+    }
+
     /// Takes back a reservation this process just wrote and has not delivered — only while the
     /// stored visit is still `visit` holding exactly `reservation`, unemitted — so an admission
     /// abandoned after its write leaves no fact behind.

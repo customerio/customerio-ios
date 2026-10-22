@@ -550,7 +550,7 @@ struct GeofenceExitDurationProvenanceTests {
         process.dwell.exitCallbackRouted(geofenceId: id, occurredAt: exitedAt20)
 
         let row = try #require(await process.exitRows().last)
-        #expect(row.visitId != nil)
+        #expect(row.visitId == nil)
         #expect(row.enteredAt == nil)
         #expect(row.visitDurationSeconds == nil)
         #expect(reentered.visitId != first.visitId)
@@ -616,7 +616,7 @@ struct GeofenceExitDurationProvenanceTests {
 
         let row = try #require(await process.exitRows().last)
         #expect(row.visitDurationSeconds == nil)
-        #expect(row.visitId != nil)
+        #expect(row.visitId == nil)
     }
 
     /// Control. With nothing noted before the EXIT, its delayed copy after a real re-entry still
@@ -766,7 +766,7 @@ struct GeofenceExitDurationProvenanceTests {
         files.advance(10)
         await process.crossing(.exit, Self.exitOnly)
 
-        #expect(untimed.visitId != nil)
+        #expect(untimed.visitId == nil)
         #expect(untimed.enteredAt == nil)
         #expect(untimed.visitDurationSeconds == nil)
         let rows = await process.exitRows()
@@ -876,7 +876,7 @@ struct GeofenceExitDurationProvenanceTests {
         await process.crossing(.exit, Self.exitOnly, at: start.addingTimeInterval(20))
 
         let row = try #require(await process.exitRows().last)
-        #expect(row.visitId != nil)
+        #expect(row.visitId == nil)
         #expect(row.enteredAt == nil)
         #expect(row.visitDurationSeconds == nil)
     }
