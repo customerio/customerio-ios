@@ -1745,6 +1745,7 @@ struct GeofenceDwellCoordinatorTests {
             isPolygon: false,
             freshFixProvider: { await probe.next() },
             evidenceRetryDelay: 0.001,
+            dwellProofSpacing: 0,
             clock: clock
         )
         await setup.coordinator.handleBoundary(
@@ -1766,9 +1767,14 @@ struct GeofenceDwellCoordinatorTests {
     @Test
     func polygonEvidenceRetriesAreBounded() async {
         let clock = ManualGeofenceClock(wall: Date().addingTimeInterval(-120))
-        let setup = await makeSetup(evidenceRetryDelay: 0.001, maxEvidenceRetryAttempts: 1, clock: clock)
+        // The clock is frozen, so the requests are unspaced.
+        let setup = await makeSetup(evidenceRetryDelay: 0.001, maxEvidenceRetryAttempts: 1, dwellProofSpacing: 0, clock: clock)
         var verifierCalls = 0
-        setup.coordinator.polygonVerifier = { _ in verifierCalls += 1 }
+        // As the resolver does when its pass issues a request: charged to the visit's budget.
+        setup.coordinator.polygonVerifier = { _ in
+            verifierCalls += 1
+            _ = await setup.coordinator.reserveDwellProofRequest()
+        }
 
         await setup.coordinator.handleBoundary(
             geofence: setup.geofence,
@@ -1881,11 +1887,12 @@ struct GeofenceDwellCoordinatorTests {
         #expect(await setup.storage.getDwellVisit(geofenceId: moved.id) == nil)
     }
 
-    /// Bounded retries can run out — a stationary indoor device may never produce a tight enough
-    /// fix in three minutes. The next wake re-arms the visit with a fresh budget, and a qualifying
-    /// fix then still emits the dwell for the original entry.
+    /// The dwell-proof budget can run out — a stationary indoor device may never produce a tight
+    /// enough fix. A later wake re-arms the visit without replenishing it: no request is made, no
+    /// deadline is armed, and the exhaustion is logged once. A qualifying fix the SDK obtains for
+    /// another reason still emits the dwell for the original entry.
     @Test
-    func wakeAfterExhaustedRetriesRequestsEvidenceAgain() async throws {
+    func wakeAfterExhaustedBudgetRequestsNothingButAnOpportunisticFixStillEmits() async throws {
         let inside = CLLocation(
             coordinate: CLLocationCoordinate2D(latitude: 0.5, longitude: 0.5),
             altitude: 0, horizontalAccuracy: 5, verticalAccuracy: 5, timestamp: Date()
@@ -1898,6 +1905,7 @@ struct GeofenceDwellCoordinatorTests {
             freshFixProvider: { fixes.next() },
             evidenceRetryDelay: 0.001,
             maxEvidenceRetryAttempts: 1,
+            dwellProofSpacing: 0,
             clock: clock
         )
         await setup.coordinator.handleBoundary(geofence: setup.geofence, transition: .enter, occurredAt: enteredAt)
@@ -1909,14 +1917,22 @@ struct GeofenceDwellCoordinatorTests {
             fixes.calls == 2 && setup.coordinator.deadlineTasks[setup.geofence.id] == nil
         })
         #expect(await setup.emitter.dwells().isEmpty)
+        #expect(await setup.storage.getDwellVisit(geofenceId: setup.geofence.id)?.dwellProofAttempts == 2)
 
+        clock.advance(600)
         await setup.coordinator.rearmPendingEvidence(includePolygons: false)
+        await settleQuietly(0.2)
+        #expect(fixes.calls == 2)
+        #expect(setup.coordinator.deadlineTasks[setup.geofence.id] == nil)
+        let logged = setup.logger.infoReceivedInvocations.filter { $0.message.contains("dwell proof budget exhausted") }
+        #expect(logged.count == 1)
+        #expect(logged.first?.message.contains(setup.geofence.id) == true)
 
-        for _ in 0 ..< 300 where await setup.emitter.dwells().isEmpty {
-            try? await Task.sleep(nanoseconds: 10000000)
-        }
+        let opportunistic = clock.read().wall
+        await setup.coordinator.recordInsideEvidence(geofence: setup.geofence, at: opportunistic, source: "location_evidence")
         let dwell = await setup.emitter.dwells().first
         #expect(abs(dwell?.context.enteredAt?.timeIntervalSince(enteredAt) ?? .infinity) < 0.001)
+        #expect(fixes.calls == 2)
     }
 
     /// A background wake re-arms circles only: a polygon's evidence is a forced fresh-fix pass,
@@ -1958,12 +1974,12 @@ struct GeofenceDwellCoordinatorTests {
             timing: .recorded(secondsAgo: 120, on: setup.clock)
         )
         #expect(await setup.storage.saveDwellVisit(stored, geofenceId: setup.geofence.id))
-        setup.coordinator.evidenceRetries[setup.geofence.id] = .init(visitId: "newer-visit", attempts: 2)
+        setup.coordinator.evidenceRetries[setup.geofence.id] = .init(visitId: "newer-visit", shortRetryUsed: true)
 
         await setup.coordinator.rearmPendingEvidence(includePolygons: true)
 
         #expect(setup.coordinator.evidenceRetries[setup.geofence.id]?.visitId == "newer-visit")
-        #expect(setup.coordinator.evidenceRetries[setup.geofence.id]?.attempts == 2)
+        #expect(setup.coordinator.evidenceRetries[setup.geofence.id]?.shortRetryUsed == true)
         #expect(setup.coordinator.deadlineTasks[setup.geofence.id] == nil)
     }
 
@@ -2016,7 +2032,8 @@ struct GeofenceDwellCoordinatorTests {
         setup.coordinator.scheduleEvidenceRetry(for: setup.geofence, visit: older)
 
         #expect(setup.coordinator.evidenceRetries[setup.geofence.id]?.visitId == newer.visitId)
-        #expect(setup.coordinator.evidenceRetries[setup.geofence.id]?.attempts == 0)
+        #expect(setup.coordinator.evidenceRetries[setup.geofence.id]?.shortRetryUsed == false)
+        #expect(setup.coordinator.evidenceRetries[setup.geofence.id]?.nextFixAfter == nil)
         #expect(setup.coordinator.deadlineTasks[setup.geofence.id] == deadline)
     }
 
@@ -2059,12 +2076,14 @@ struct GeofenceDwellCoordinatorTests {
         defer { rig.cancelWaits() }
         let setup = rig.setup, owner = rig.owner, manager = rig.manager
         let coordinator = setup.coordinator, id = setup.geofence.id, enteredAt = rig.start
-        // Never proves presence: each forced request waits out its 10 s fix timeout.
+        // Never proves presence: each forced request, charged to the visit's budget as the
+        // resolver charges it, waits out its 10 s fix timeout.
         coordinator.polygonVerifier = { @MainActor fenceId in
             probe.verified.append(fenceId)
+            _ = await coordinator.reserveDwellProofRequest()
             try? await rig.scheduler.sleep(nanoseconds: 10 * 1000000000)
         }
-        // Recording uptime + 3600 s threshold + 3 retries of 60 s + 4 requests of 10 s.
+        // Recording uptime + 3600 s threshold + the fixed 220 s grace.
         let capNanos = UInt64(rig.clock.uptime + 3820) * 1000000000
 
         await coordinator.handleBoundary(geofence: setup.geofence, transition: .enter, occurredAt: enteredAt)
@@ -2109,6 +2128,25 @@ struct GeofenceDwellCoordinatorTests {
         #expect(probe.waits == [3600, 1800, 1800, 60, 60, 60].map { UInt64($0) * 1000000000 })
         #expect(await setup.emitter.dwells().isEmpty)
         #expect(await setup.storage.getDwellVisit(geofenceId: id)?.visitId == visitId)
+    }
+
+    /// The lease's grace past the threshold is fixed at 220 s: the 120 s production retry spacing
+    /// does not lengthen it, and neither a re-arm nor a copied ENTER extends it.
+    @Test
+    func pendingCollection_whenRetrySpacingIs120_thenGraceStays220AndNoRearmExtendsIt() async throws {
+        let rig = try await makeCollectionRig(evidenceRetryDelay: 120)
+        defer { rig.cancelWaits() }
+        let coordinator = rig.setup.coordinator, id = rig.setup.geofence.id
+        let capNanos = UInt64(rig.clock.uptime + 60 + 220) * 1000000000
+        await coordinator.handleBoundary(geofence: rig.setup.geofence, transition: .enter, occurredAt: rig.at(0))
+        try await rig.settle(running: true, nextExpiry: 280)
+        #expect(rig.owner.leases[id]?.deadline == capNanos)
+
+        rig.advance(to: 30)
+        await coordinator.rearmPendingEvidence(includePolygons: true)
+        await coordinator.handleBoundary(geofence: rig.setup.geofence, transition: .enter, occurredAt: rig.at(0))
+        try await rig.settle(running: true, nextExpiry: 280)
+        #expect(rig.owner.leases[id]?.deadline == capNanos)
     }
 
     /// Two pending polygon visits share one opted-in session. Each EXIT releases only its own visit's
@@ -2303,6 +2341,7 @@ struct GeofenceDwellCoordinatorTests {
         freshFixProvider: (() async -> CLLocation?)? = nil,
         evidenceRetryDelay: TimeInterval = 60,
         maxEvidenceRetryAttempts: Int = 3,
+        dwellProofSpacing: TimeInterval? = nil,
         // Private by default: suites running alongside post `willEnterForeground` on `.default` (the
         // replay harness does), and each post re-arms every live coordinator — resetting retry
         // budgets and spending scripted fixes mid-test.
@@ -2344,15 +2383,17 @@ struct GeofenceDwellCoordinatorTests {
             center: LocationData(latitude: geofence.latitude, longitude: geofence.longitude),
             businessIds: [geofence.id]
         )
+        let logger = LoggerMock()
         let coordinator = GeofenceDwellCoordinator(
             storage: storage,
             transitionEmitter: transitionEmitter ?? emitter,
             contextStore: contextStore,
-            logger: LoggerMock(),
+            logger: logger,
             notificationCenter: notificationCenter,
             freshFixProvider: freshFixProvider,
             evidenceRetryDelay: evidenceRetryDelay,
             maxEvidenceRetryAttempts: maxEvidenceRetryAttempts,
+            dwellProofSpacing: dwellProofSpacing,
             clock: clock,
             locationAccess: locationAccess,
             identityTracker: observeIdentity ? GeofenceIdentityTracker(contextStore: contextStore) : nil,
@@ -2362,7 +2403,7 @@ struct GeofenceDwellCoordinatorTests {
         )
         return Setup(
             storage: storage, emitter: emitter, coordinator: coordinator, geofence: geofence, directory: directory,
-            clock: clock
+            clock: clock, logger: logger
         )
     }
 
@@ -2373,6 +2414,7 @@ struct GeofenceDwellCoordinatorTests {
         let geofence: Geofence
         let directory: URL
         let clock: GeofenceClock
+        let logger: LoggerMock
     }
 
     /// A coordinator whose opted-in pending-dwell session, evidence waits and clock the test drives.
@@ -2380,6 +2422,7 @@ struct GeofenceDwellCoordinatorTests {
     private func makeCollectionRig(
         transitionEmitter: GeofenceTransitionEmitting? = nil,
         dwellThresholdSeconds: Int = 60,
+        evidenceRetryDelay: TimeInterval = 60,
         probe: PulseProbe? = nil
     ) async throws -> CollectionRig {
         let clock = ManualGeofenceClock()
@@ -2394,6 +2437,7 @@ struct GeofenceDwellCoordinatorTests {
         let setup = await makeSetup(
             transitionEmitter: transitionEmitter,
             dwellThresholdSeconds: dwellThresholdSeconds,
+            evidenceRetryDelay: evidenceRetryDelay,
             clock: clock,
             locationAccess: { GeofenceLocationAccess(delivery: .background, fullAccuracy: true) },
             pendingDwellCollection: owner,

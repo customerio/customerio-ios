@@ -36,6 +36,18 @@ extension Logger {
         )
     }
 
+    /// `requests`: dwell-proof location requests the visit issued.
+    func geofenceDwellProofBudgetExhausted(geofenceId: String, requests: Int) {
+        info(
+            "Geofence '\(geofenceId)': dwell proof budget exhausted after \(requests) location requests"
+                + geofenceTail("dwell.proof_budget_exhausted", .observation, [
+                    ("id", geofenceId),
+                    ("n", String(requests))
+                ]),
+            geofenceTag
+        )
+    }
+
     /// `delay`: seconds from the visit edge to iOS reporting it.
     func geofenceVisitReported(
         coordinate: LocationData,

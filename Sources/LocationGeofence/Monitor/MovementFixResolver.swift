@@ -63,6 +63,8 @@ final class MovementFixResolver: NSObject, @preconcurrency CLLocationManagerDele
 
     /// Test seam replacing the one-shot request.
     var requestFreshFix: (() -> Void)?
+    /// Test seam replacing the request's cancellation, used with `requestFreshFix`.
+    var cancelFreshFix: (() -> Void)?
 
     /// Settable because the monitors construct this resolver, so a caller can't reach `init`.
     var waitForTimeout: (TimeInterval) async -> Void
@@ -100,6 +102,12 @@ final class MovementFixResolver: NSObject, @preconcurrency CLLocationManagerDele
     deinit {
         timeoutTask?.cancel()
         currentRequestSignal?.complete()
+    }
+
+    /// Whether `resolve(cached:)` with `cached` would issue a new request: no current answer to
+    /// give at once, and no request in flight to join.
+    func wouldIssueRequest(cached: CLLocation?) -> Bool {
+        !(cached.map(isCurrent) ?? false) && pendingCompletions.isEmpty
     }
 
     /// Completes exactly once per call. The `Bool` is whether the coordinates are current: false when
@@ -236,7 +244,19 @@ final class MovementFixResolver: NSObject, @preconcurrency CLLocationManagerDele
         timeoutTask = Task { @MainActor [weak self, requestTimeout, waitForTimeout] in
             await waitForTimeout(requestTimeout)
             guard !Task.isCancelled else { return }
+            self?.cancelPendingRequest()
             self?.handleRequestFailure()
+        }
+    }
+
+    /// A request timed out: Core Location is told to stop it, not just left to answer no one. A
+    /// fix it delivers anyway is still recorded.
+    private func cancelPendingRequest() {
+        guard !pendingCompletions.isEmpty else { return }
+        if requestFreshFix != nil {
+            cancelFreshFix?()
+        } else {
+            manager.stopUpdatingLocation()
         }
     }
 

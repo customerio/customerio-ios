@@ -15,7 +15,7 @@ struct GeofenceDwellEarlyEvidenceTests {
         defer { rig.close() }
         try await rig.enter()
         let initialRequests = rig.requests
-        rig.answers = [rig.fix(at: 56.6), rig.fix(at: 60.5)]
+        rig.answers = [rig.fix(at: 56.6), rig.fix(at: 90)]
 
         rig.advance(to: 60)
         try #require(await settleOnMain {
@@ -23,12 +23,12 @@ struct GeofenceDwellEarlyEvidenceTests {
         })
         #expect(rig.emitter.dwells.isEmpty)
         let retry = try #require(rig.scheduler.nextDeadline)
-        try #require(retry > 60 && retry <= 70, "a slightly early fix must not wait another minute: \(retry)")
+        try #require(abs(retry - 90) < 0.001, "a slightly early fix waits the short floor, not the spacing: \(retry)")
 
         rig.advance(to: retry)
         try #require(await settleOnMain { rig.emitter.dwells.count == 1 })
         #expect(rig.requests == initialRequests + 2, "the retry must request a newer measurement")
-        #expect(rig.emitter.dwells.first?.occurredAt == rig.at(60.5))
+        #expect(rig.emitter.dwells.first?.occurredAt == rig.at(90))
         #expect(await rig.storage.getDwellVisit(geofenceId: rig.geofence.id)?.emitted == true)
     }
 
@@ -37,7 +37,7 @@ struct GeofenceDwellEarlyEvidenceTests {
         let rig = await EarlyDwellRig.make(polygon: polygon)
         defer { rig.close() }
         try await rig.enter()
-        rig.answers = [rig.fix(at: 56.6), rig.fix(at: 60.5, inside: false)]
+        rig.answers = [rig.fix(at: 56.6), rig.fix(at: 90, inside: false)]
         let retry = try await rig.firstShortRetry()
 
         rig.advance(to: retry)
@@ -46,13 +46,15 @@ struct GeofenceDwellEarlyEvidenceTests {
         #expect(await rig.storage.getDwellVisit(geofenceId: rig.geofence.id) == nil)
     }
 
+    /// No answer at the short retry, which can be neither fresh nor early once it waits at least
+    /// 30 s past a 60 s threshold, so ordinary spacing resumes and the four requests are all.
     @Test(arguments: [false, true])
-    func retry_givenAnotherEarlyAnswerThenNoFixes_thenKeepsNormalBackoffAndRequestBudget(polygon: Bool) async throws {
+    func retry_givenNoFixesAfterShortRetry_thenKeepsNormalBackoffAndRequestBudget(polygon: Bool) async throws {
         let rig = await EarlyDwellRig.make(polygon: polygon)
         defer { rig.close() }
         try await rig.enter()
         let initialRequests = rig.requests
-        rig.answers = [rig.fix(at: 56.6), rig.fix(at: 59), nil, nil]
+        rig.answers = [rig.fix(at: 56.6), nil, nil, nil]
         var moment = try await rig.firstShortRetry()
 
         for attempt in 2 ... 4 {
@@ -63,7 +65,7 @@ struct GeofenceDwellEarlyEvidenceTests {
             })
             if attempt < 4 {
                 let next = try #require(rig.scheduler.nextDeadline)
-                #expect(abs(next - moment - 60) < 0.001, "only the first early answer gets a short retry")
+                #expect(abs(next - moment - 120) < 0.001, "only the first early answer gets a short retry")
                 moment = next
             }
         }
@@ -76,7 +78,7 @@ struct GeofenceDwellEarlyEvidenceTests {
         let rig = await EarlyDwellRig.make(polygon: polygon)
         defer { rig.close() }
         try await rig.enter()
-        rig.answers = [rig.fix(at: 56.6), rig.fix(at: 59), rig.fix(at: 59.5)]
+        rig.answers = [rig.fix(at: 56.6), nil]
         let retry = try await rig.firstShortRetry()
         rig.advance(to: retry)
         try #require(await settleOnMain { rig.scheduler.pendingCount == 1 })
@@ -85,8 +87,8 @@ struct GeofenceDwellEarlyEvidenceTests {
 
         try #require(await settleOnMain {
             guard let due = rig.scheduler.nextDeadline else { return false }
-            return abs(due - retry - 60) < 0.001
-        }, "rearming the same visit must not grant another short retry")
+            return abs(due - retry - 120) < 0.001
+        }, "rearming the same visit must not grant another short retry, nor shorten the spacing")
         #expect(rig.emitter.dwells.isEmpty)
     }
 
@@ -104,7 +106,7 @@ struct GeofenceDwellEarlyEvidenceTests {
 
         rig.advance(to: 60)
 
-        try #require(await settleOnMain { rig.scheduler.nextDeadline == 120 })
+        try #require(await settleOnMain { rig.scheduler.nextDeadline == 180 })
         #expect(rig.emitter.dwells.isEmpty)
     }
 
@@ -113,14 +115,18 @@ struct GeofenceDwellEarlyEvidenceTests {
         let rig = await EarlyDwellRig.make(polygon: false)
         defer { rig.close() }
         try await rig.enter()
-        rig.answers = [rig.fix(at: 56.6), rig.fix(at: 60)]
-        _ = try await rig.firstShortRetry()
+        rig.answers = [rig.fix(at: 56.6), rig.fix(at: 90)]
+        let retry = try await rig.firstShortRetry()
 
         await rig.coordinator.rearmPendingEvidence(includePolygons: true)
+        // The replaced wait is withdrawn, and the re-armed one registered, asynchronously.
+        await settleQuietly(0.2)
+        try #require(rig.scheduler.pendingCount == 1 && rig.scheduler.nextDeadline == retry, "a re-arm keeps the short retry's floor")
+        rig.advance(to: retry)
 
         try #require(await settleOnMain { rig.emitter.dwells.count == 1 })
         #expect(rig.requests == 2, "rearming must not reuse the rejected cached measurement")
-        #expect(rig.emitter.dwells.first?.occurredAt == rig.at(60))
+        #expect(rig.emitter.dwells.first?.occurredAt == rig.at(90))
     }
 
     @Test
@@ -134,14 +140,14 @@ struct GeofenceDwellEarlyEvidenceTests {
             geofenceIds: [rig.geofence.id], reason: .foreground, requiresFreshFix: false
         )
         let before = rig.requests
-        rig.answers = [rig.fix(at: 56.6), rig.fix(at: 60.5)]
+        rig.answers = [rig.fix(at: 56.6), rig.fix(at: 90)]
 
         let retry = try await rig.firstShortRetry()
         rig.advance(to: retry)
 
         try #require(await settleOnMain { rig.emitter.dwells.count == 1 })
         #expect(rig.requests == before + 2, "neither dwell request may reuse the ten-second-old movement fix")
-        #expect(rig.emitter.dwells.first?.occurredAt == rig.at(60.5))
+        #expect(rig.emitter.dwells.first?.occurredAt == rig.at(90))
     }
 
     @Test
@@ -158,13 +164,13 @@ struct GeofenceDwellEarlyEvidenceTests {
 
         await rig.coordinator.rearmPendingEvidence(includePolygons: true)
         try #require(await settleOnMain { rig.providerLogCount > previousLogs })
-        rig.provider.handleDeliveredFix(rig.fix(at: 60.5))
+        rig.provider.handleDeliveredFix(rig.fix(at: 90))
 
         try #require(
             await settleOnMain { rig.emitter.dwells.count == 1 },
             "a rearm must join the newer-fix request instead of accepting the old cached fix"
         )
-        #expect(rig.emitter.dwells.first?.occurredAt == rig.at(60.5))
+        #expect(rig.emitter.dwells.first?.occurredAt == rig.at(90))
     }
 
     @Test
@@ -181,7 +187,7 @@ struct GeofenceDwellEarlyEvidenceTests {
         )
         rig.provider.handleRequestFailure()
 
-        try #require(await settleOnMain { rig.scheduler.nextDeadline == 120 })
+        try #require(await settleOnMain { rig.scheduler.nextDeadline == 180 })
         #expect(rig.emitter.dwells.isEmpty)
     }
 
@@ -329,7 +335,7 @@ private final class EarlyDwellRig {
         advance(to: 60)
         try #require(await settleOnMain { self.requests == before + 1 && self.scheduler.pendingCount == 1 })
         let due = try #require(scheduler.nextDeadline)
-        try #require(due > 60 && due <= 70, "expected a short retry, got \(due)")
+        try #require(abs(due - 90) < 0.001, "expected a short retry at the 30 s floor, got \(due)")
         #expect(emitter.dwells.isEmpty)
         return due
     }

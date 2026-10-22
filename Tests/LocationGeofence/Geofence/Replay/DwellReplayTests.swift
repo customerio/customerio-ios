@@ -96,19 +96,19 @@ struct DwellReplayTests {
                     age: pastTimeout ? 0 : 31,
                     at: pastTimeout ? 100.1 : 90.6
                 ),
-                harness.pulledFix(latitude: 10, longitude: 20, accuracy: 10, age: 0, at: 160.6)
+                harness.pulledFix(latitude: 10, longitude: 20, accuracy: 10, age: 0, at: 220.6)
             ])
             await harness.advance(to: 99.9)
             #expect(dwells(harness).isEmpty)
             #expect(harness.fixRequestCount == 1)
             await harness.advance(to: 100)
             #expect(dwells(harness).isEmpty)
-            #expect(harness.dwellScheduler.nextDeadline == 160, "retry starts after the actual request timeout")
-            await harness.advance(to: 160.5)
+            #expect(harness.dwellScheduler.nextDeadline == 220, "retry starts after the actual request timeout")
+            await harness.advance(to: 220.5)
             #expect(dwells(harness).isEmpty)
-            await harness.advance(to: 160.6)
+            await harness.advance(to: 220.6)
             let dwell = try #require(dwells(harness).only)
-            #expect(abs(dwell.timestamp.timeIntervalSince(harness.epoch) - 160.6) < 0.001)
+            #expect(abs(dwell.timestamp.timeIntervalSince(harness.epoch) - 220.6) < 0.001)
         }
     }
 
@@ -121,7 +121,7 @@ struct DwellReplayTests {
             ])
             await harness.advance(to: 100)
             #expect(dwells(harness).isEmpty, "the request timeout must complete before the late reply")
-            #expect(harness.dwellScheduler.nextDeadline == 160)
+            #expect(harness.dwellScheduler.nextDeadline == 220)
             await harness.advance(to: 100.1)
             #expect(dwells(harness).isEmpty, "a late reply cannot complete the timed-out request")
             let fix = try #require(harness.dwellCoordinator.fixResolver.latestFix)
@@ -140,7 +140,7 @@ struct DwellReplayTests {
     func restart_whenRecordedResponseBelongsToNewProcess_thenOldRequestsStayInert() async throws {
         try await withVisit(fixes: []) { harness in
             harness.fixes.loadRequestedAnswers([
-                harness.pulledFix(latitude: 10, longitude: 20, accuracy: 10, age: 0, at: 91)
+                harness.pulledFix(latitude: 10, longitude: 20, accuracy: 10, age: 0, at: 211)
             ], processStarts: [0, 90.2])
             await harness.advance(to: 90.2)
             let oldResolver = try #require(harness.dwellCoordinator?.fixResolver)
@@ -162,11 +162,15 @@ struct DwellReplayTests {
             await harness.advance(to: 90.6)
             #expect(oldResolver.latestFix == nil, "a retained dead graph consumed its old OS reply")
             #expect(dwells(harness).isEmpty, "the new process's recorded reply has not arrived")
-            await harness.advance(to: 91)
+            // The relaunch's own request waits out the spacing since the old process's, at 90.
+            await harness.advance(to: 210.9)
+            #expect(dwells(harness).isEmpty, "the new process's recorded reply has not arrived")
+            #expect(harness.fixRequestCount == requestsBeforeOldWork + 1, "one request, once the spacing allows")
+            await harness.advance(to: 211)
             let dwell = try #require(dwells(harness).only)
             #expect(oldResolver.latestFix == nil, "the dead process must not receive its parked callback")
             #expect(dwell.visitId == visit.visitId)
-            #expect(dwell.timestamp == harness.epoch.addingTimeInterval(91))
+            #expect(dwell.timestamp == harness.epoch.addingTimeInterval(211))
             #expect(oldDelivery.trackMetricReceivedInvocations.allSatisfy { $0.metric.transition != .dwell })
         }
     }
@@ -208,7 +212,8 @@ struct DwellReplayTests {
             harness.reenterProcess()
             await harness.wireMonitor()
             await GeofenceBootstrap.awaitPendingWorkForTesting()
-            await harness.advance(to: 91)
+            // Its request waits out the spacing since the old process's, at 90.
+            await harness.advance(to: 210)
             #expect(harness.fixRequestCount == 2, "the new process must actually request evidence")
             #expect(dwells(harness).isEmpty, "an old synthetic request's reply cannot move to the new process")
             #expect(oldResolver.latestFix == nil)
@@ -227,7 +232,7 @@ struct DwellReplayTests {
             #expect(harness.dwellScheduler.nextDeadline == 100)
             await harness.advance(to: 100)
             #expect(dwells(harness).isEmpty)
-            #expect(harness.dwellScheduler.nextDeadline == 160)
+            #expect(harness.dwellScheduler.nextDeadline == 220)
         }
     }
 
@@ -251,25 +256,25 @@ struct DwellReplayTests {
     @Test
     @available(iOS 17.0, *)
     func deadline_whenOnlyOldCachedFixExists_thenNoDwellUntilFreshRetryEvidence() async throws {
-        try await withVisit(fixes: [.init(150, 10.0, 10)]) { harness in
+        try await withVisit(fixes: [.init(210, 10.0, 10)]) { harness in
             await harness.advance(to: 90)
             #expect(dwells(harness).isEmpty, "a timer or renewed cache timestamp qualified dwell")
-            await harness.advance(to: 149)
+            await harness.advance(to: 209)
             #expect(dwells(harness).isEmpty)
-            await harness.advance(to: 150)
+            await harness.advance(to: 210)
             let dwell = try #require(dwells(harness).only)
-            #expect(dwell.timestamp == harness.epoch.addingTimeInterval(150))
-            #expect(dwell.dwellDurationSeconds == 120)
+            #expect(dwell.timestamp == harness.epoch.addingTimeInterval(210))
+            #expect(dwell.dwellDurationSeconds == 180)
         }
     }
 
     @Test
     @available(iOS 17.0, *)
     func deadline_whenAccuracyOverlapsBoundary_thenNoDwellUntilReliableInsideFix() async throws {
-        try await withVisit(fixes: [.init(90, 10.0, 500), .init(150, 10.0, 10)]) { harness in
+        try await withVisit(fixes: [.init(90, 10.0, 500), .init(210, 10.0, 10)]) { harness in
             await harness.advance(to: 90)
             #expect(dwells(harness).isEmpty)
-            await harness.advance(to: 150)
+            await harness.advance(to: 210)
             #expect(dwells(harness).count == 1)
         }
     }
@@ -440,8 +445,8 @@ struct DwellReplayTests {
             #expect(answeredAt == ["in flight": thaw, "overdue": thaw], "held replies arrive at the thaw, not their recorded moment")
             #expect(harness.now == thaw, "the thaw rewound the clock")
             #expect(dwells(harness).isEmpty, "a fix measured at 95 is not proof at 300")
-            #expect(harness.dwellScheduler.nextDeadline == 360, "the overdue timeout runs at the thaw, so the retry starts there")
-            await harness.advance(to: 400)
+            #expect(harness.dwellScheduler.nextDeadline == 420, "the overdue timeout runs at the thaw, so the retry starts there")
+            await harness.advance(to: 450)
             #expect(dwells(harness).isEmpty)
             #expect(await harness.storedVisit(fence: "A") != nil, "old inside evidence must not end the visit")
         }

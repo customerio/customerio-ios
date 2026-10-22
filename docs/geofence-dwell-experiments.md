@@ -23,12 +23,13 @@ own state: whether a location this session caused can also reach another locatio
 location has not been established. Any location the resolver does read still goes through its
 existing freshness and accuracy checks.
 
-Each visit has a fixed cap from when it was originally recorded: threshold plus the bounded evidence
-request/retry budget. At the defaults, the cap is 3,820 seconds for a one-hour visit, measured on
+Each visit has a fixed cap from when it was originally recorded: threshold plus a fixed 220-second
+grace, which the retry spacing does not lengthen. The cap is 3,820 seconds for a one-hour visit, measured on
 continuous uptime and scheduled with a continuous-clock wait. An expiry job that starts late checks
 the absolute cap before waiting. iOS can still delay execution; the cap does not guarantee a process
 wake or an exact stop time. Repeated ENTERs and foreground re-arming do not extend the cap. EXIT, reservation, catalog changes, lost access and
-identity changes release the affected lease. Another pending visit can keep the shared session alive.
+identity changes release the affected lease, as does a visit spending its dwell-proof budget. Another
+pending visit can keep the shared session alive.
 
 The normal resolver still decides polygon membership. Merely reaching the dwell threshold,
 receiving a region callback or keeping a session running does not produce DWELL. The polygon
@@ -40,9 +41,26 @@ location it already held.
 
 The short retry is normal SDK behavior for circles and polygons, regardless of these experiment
 flags. If an inside measurement falls just before the dwell threshold, the SDK can spend one of its
-existing retry attempts on a shorter wait based on that timing shortfall. The first check still
-runs at the threshold, and a circle's short retry requests a newer measurement. Later failures
-keep the normal backoff. This does not extend the collection cap or qualify a stay without proof.
+four dwell-proof requests on a shorter wait based on that timing shortfall, never less than 30 seconds
+nor more than 60. The first check still runs at the threshold, and a circle's short retry requests a
+newer measurement. Later failures keep the normal 120-second spacing. This does not extend the
+collection cap or qualify a stay without proof.
+
+## Dwell-proof budget and small polygons
+
+This applies with or without the experiments. The SDK issues at most four location requests per
+visit to prove its dwell: one at the threshold and up to three retries, at least 120 seconds apart
+except for the short retry. The count is stored with the visit, so returning to the foreground,
+resuming or relaunching does not replenish it. A cached answer, or one shared with a request already
+in flight, is not counted. Once the four are spent, the SDK schedules no more dwell checks for that
+visit and logs `dwell proof budget exhausted` with the fence ID. Location requests the SDK makes for
+ENTER and EXIT are not counted or limited, and a qualifying fix one of them returns can still prove
+the dwell.
+
+A fix proves presence only when its whole accuracy circle lies inside the polygon. A polygon whose
+largest interior clearance is under about 10 m may therefore miss DWELL, especially indoors, where
+phone fixes are rarely that tight. A larger circle fence is one alternative, but it monitors a
+different footprint, so treat that as a product choice rather than an equivalent.
 
 Physical-device screen-off testing is still required to establish whether the OS keeps this session
 alive, lets it start from a short background wake, and lets pending deadlines run near their due

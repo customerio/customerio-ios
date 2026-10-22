@@ -4,6 +4,18 @@ import Foundation
 /// Durable dwell visits, split out to keep `GeofenceStorage` readable. Methods are `internal`
 /// (not `private`) only because they live in a separate file from their state; each still runs its
 /// load → modify → save inside the actor with no `await` between steps.
+/// The answer to a dwell-proof reservation (`GeofenceStorage.reserveDwellProofAttempt`).
+enum DwellProofReservation: Equatable {
+    /// Counted: the request may be issued.
+    case reserved
+    /// The visit has issued its whole budget.
+    case exhausted
+    /// The last request was too recent; another may be issued once `remaining` seconds pass.
+    case tooSoon(remaining: TimeInterval)
+    /// Not the stored visit, or the count could not be persisted: nothing may be issued.
+    case refused
+}
+
 extension GeofenceStorage {
     func getDwellVisit(geofenceId: String) -> GeofenceDwellVisit? {
         loadFromDisk()?.dwellVisits?[geofenceId]
@@ -99,6 +111,30 @@ extension GeofenceStorage {
         stored.dwellReservation = proposed
         state.dwellVisits?[geofenceId] = stored
         return saveToDisk(state) ? .reserved(proposed) : .writeFailed
+    }
+
+    /// Reserves one of `visitId`'s dwell-proof location requests before it is issued: only while
+    /// that is still the stored visit, fewer than `limit` are reserved, and at least `spacing`
+    /// seconds of uptime have passed since the last on this boot. Persisted before the request, so
+    /// a process dying with it in flight has still spent it.
+    func reserveDwellProofAttempt(
+        geofenceId: String,
+        visitId: String,
+        limit: Int,
+        spacing: TimeInterval,
+        at reading: GeofenceClockReading
+    ) -> DwellProofReservation {
+        var state = loadFromDisk() ?? GeofenceState()
+        guard var stored = state.dwellVisits?[geofenceId], stored.visitId == visitId else { return .refused }
+        guard stored.dwellProofAttempts < limit else { return .exhausted }
+        if let last = stored.lastDwellProofRequest, last.boot.isSameBoot(as: reading.boot), reading.uptime >= last.uptime,
+           reading.uptime - last.uptime < spacing {
+            return .tooSoon(remaining: spacing - (reading.uptime - last.uptime))
+        }
+        stored.dwellProofAttempts += 1
+        stored.lastDwellProofRequest = reading
+        state.dwellVisits?[geofenceId] = stored
+        return saveToDisk(state) ? .reserved : .refused
     }
 
     /// Records that `visitId` was decisively proven inside at `provenAt`, keeping the latest; only

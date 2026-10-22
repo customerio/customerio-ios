@@ -569,8 +569,9 @@ struct GeofenceDwellFollowupTests {
                     guard let self else { return nil }
                     return self.insideFixAlways ? self.fix(latitudeOffset: 0, accuracy: 10) : self.fixes.next()
                 },
-                // Retries never fire within a test; each test asks for evidence itself.
+                // Retries never fire within a test; each test asks for evidence itself, unspaced.
                 evidenceRetryDelay: 3600,
+                dwellProofSpacing: 0,
                 clock: clock
             )
         }

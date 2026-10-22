@@ -84,8 +84,17 @@ final class GeofenceDwellCoordinator {
     let fixResolver: MovementFixResolver
     let notificationCenter: NotificationCenter
     let freshFixProvider: (() async -> CLLocation?)?
+    /// The wait before an ordinary retry of a dwell-proof request.
     let evidenceRetryDelay: TimeInterval
+    /// The least uptime between two dwell-proof requests issued for one visit, short retry aside
+    /// (`reserveDwellProofRequest`): `evidenceRetryDelay` unless a test drives requests itself.
+    let dwellProofSpacing: TimeInterval
+    /// Retries after a visit's first dwell-proof request; with that one, its whole budget
+    /// (`dwellProofBudget`).
     let maxEvidenceRetryAttempts: Int
+    let logger: Logger
+    /// Visits whose spent budget this process has logged, so it is logged once.
+    var exhaustedProofBudgetsLogged: Set<String> = []
     /// Waits out an evidence deadline or retry. Deadlines are computed on `clock`, continuous uptime in
     /// production, so the default waits on continuous time where the OS has it; before iOS 16 it keeps
     /// `Task.sleep(nanoseconds:)`, which may end late across device sleep. Either way it only resumes a
@@ -123,8 +132,9 @@ final class GeofenceDwellCoordinator {
         fixResolver: MovementFixResolver? = nil,
         notificationCenter: NotificationCenter = .default,
         freshFixProvider: (() async -> CLLocation?)? = nil,
-        evidenceRetryDelay: TimeInterval = 60,
+        evidenceRetryDelay: TimeInterval = 120,
         maxEvidenceRetryAttempts: Int = 3,
+        dwellProofSpacing: TimeInterval? = nil,
         clock: GeofenceClock = SystemGeofenceClock(),
         locationAccess: (@MainActor () -> GeofenceLocationAccess?)? = nil,
         backgroundRefreshAvailable: (@MainActor () -> Bool)? = nil,
@@ -147,6 +157,8 @@ final class GeofenceDwellCoordinator {
         self.notificationCenter = notificationCenter
         self.freshFixProvider = freshFixProvider
         self.evidenceRetryDelay = evidenceRetryDelay
+        self.dwellProofSpacing = max(0, dwellProofSpacing ?? evidenceRetryDelay)
+        self.logger = logger
         self.maxEvidenceRetryAttempts = max(0, maxEvidenceRetryAttempts)
         self.waitForEvidence = waitForEvidence
         self.pendingDwellCollection = pendingDwellCollection

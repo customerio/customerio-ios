@@ -117,7 +117,8 @@ final class DurableExitProcess {
                 device?.fixesRequested += 1
                 return device?.fix()
             },
-            evidenceRetryDelay: 3600, clock: device.clock, identityTracker: GeofenceIdentityTracker(contextStore: contextStore)
+            // Driven by hand: requests are not spaced.
+            evidenceRetryDelay: 3600, dwellProofSpacing: 0, clock: device.clock, identityTracker: GeofenceIdentityTracker(contextStore: contextStore)
         )
         let fixResolver = MovementFixResolver(logger: LoggerMock(), dateUtil: device.dateUtil)
         fixResolver.systemCachedFix = { nil }

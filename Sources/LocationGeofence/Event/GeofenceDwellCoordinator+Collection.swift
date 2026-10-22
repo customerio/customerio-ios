@@ -6,6 +6,9 @@ import Foundation
 extension GeofenceDwellCoordinator {
     /// The longest threshold the experiment collects for.
     static let collectedThresholdCeilingSeconds: TimeInterval = 7200
+    /// How long past its threshold a visit's lease holds. Fixed: neither the retry spacing nor a
+    /// re-arm extends it, so a longer spacing leaves later retries to wakes the OS grants anyway.
+    static let collectionGraceSeconds: TimeInterval = 220
 
     /// From `init`. Weak, so the session never keeps this coordinator alive.
     func bindPendingDwellCollection() {
@@ -78,12 +81,8 @@ extension GeofenceDwellCoordinator {
               visit.closedByObservedBoundary == nil,
               let timing = visit.timing, timing.bootRelation(at: reading) == .same
         else { return nil }
-        let retries = TimeInterval(maxEvidenceRetryAttempts)
-        // The deadline's own request and each retry may each wait out one fix: 220 s at the defaults.
-        // One fix's wait is the resolver's own request timeout, read from it so the two cannot drift.
-        let fixTimeout = TimeInterval(GeofenceConstants.movementFixRequestTimeout)
-        let grace = retries * max(0, evidenceRetryDelay) + (retries + 1) * fixTimeout
-        guard let deadline = Self.collectionNanoseconds(timing.recordedUptime + threshold + grace) else { return nil }
+        guard let deadline = Self.collectionNanoseconds(timing.recordedUptime + threshold + Self.collectionGraceSeconds)
+        else { return nil }
         return PendingDwellCollectionOwner.Lease(visit: visit, deadline: deadline)
     }
 

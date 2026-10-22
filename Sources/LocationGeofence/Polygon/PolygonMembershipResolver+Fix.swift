@@ -70,11 +70,18 @@ extension PolygonMembershipResolver {
     /// With `requiringFresh`, only a fix received for THIS request and newer than the last delivered
     /// counts. Stricter than the coordinator's `wakeRadius` test; neither may be relaxed to the other.
     func resolveFix(requiringFresh: Bool = false) async -> CLLocation? {
+        let cached = requiringFresh ? nil : fixResolver.cachedFix
+        // A pass a dwell's evidence request runs is charged to that visit's budget, only when it
+        // would issue a request; refused, it decides nothing. Any other pass is not charged.
+        if fixResolver.wouldIssueRequest(cached: cached), let dwellCoordinator,
+           await !dwellCoordinator.reserveDwellProofRequest() {
+            return nil
+        }
         // Not `cachedFix`: CoreLocation's cache advances on its own, so the guard below would never
         // pass.
         let priorTimestamp = fixResolver.latestFix?.timestamp
         return await withCheckedContinuation { continuation in
-            fixResolver.resolve(cached: requiringFresh ? nil : fixResolver.cachedFix, purpose: .polygon) { [weak self] _, isFresh in
+            fixResolver.resolve(cached: cached, purpose: .polygon) { [weak self] _, isFresh in
                 guard let self else { return continuation.resume(returning: nil) }
                 let resolved = fixResolver.latestFix
                 if requiringFresh {

@@ -11,7 +11,6 @@ import UIKit
 extension GeofenceDwellCoordinator {
     struct EvidenceRetryState {
         let visitId: String
-        var attempts: Int
         /// The due uptime of a wait not yet fired, for diagnostics only.
         var pendingDueUptime: TimeInterval?
         /// The journal generation this visit's records go to, read when the state was made and
@@ -23,13 +22,15 @@ extension GeofenceDwellCoordinator {
         /// A re-arm must retain this floor while replacing a request still waiting for its fix.
         var activeFloor: Date?
         var earlyEvidence: (timestamp: Date, shortfall: TimeInterval)?
+        /// What is left of the spacing when the active request was held back by it.
+        var spacingWait: TimeInterval?
     }
 
     func scheduleDeadline(for geofence: Geofence, visit: GeofenceDwellVisit) {
         deadlineTasks.removeValue(forKey: geofence.id)?.cancel()
         let previous = evidenceRetries[geofence.id].flatMap { $0.visitId == visit.visitId ? $0 : nil }
         evidenceRetries[geofence.id] = EvidenceRetryState(
-            visitId: visit.visitId, attempts: 0, diagnosticToken: diagnosticToken(for: visit),
+            visitId: visit.visitId, diagnosticToken: diagnosticToken(for: visit),
             shortRetryUsed: previous?.shortRetryUsed ?? false,
             nextFixAfter: previous?.nextFixAfter ?? previous?.activeFloor
         )
@@ -37,11 +38,18 @@ extension GeofenceDwellCoordinator {
             cancelEvidence(for: geofence.id)
             return
         }
+        // A reserved dwell only repeats its delivery, which needs no location. Any other visit asks
+        // for one, from a budget no re-arm replenishes.
+        if visit.dwellReservation == nil, visit.dwellProofAttempts >= dwellProofBudget {
+            proofBudgetExhausted(geofenceId: geofence.id, visit: visit)
+            return
+        }
         // Elapsed as qualifying measures it, so a wall-clock step moves the deadline no more than
         // it moves qualification.
         // A candidate awaiting proof asks for it at once: its time has not started. So does a
         // reserved dwell, which only repeats its reservation; across an ambiguous boot no elapsed
-        // time is known to count down from.
+        // time is known to count down from. A request it would issue still waits out the spacing
+        // since the visit's last one (`reserveDwellProofRequest`).
         let now = readClock()
         let elapsed = visit.timing?.elapsed(enteredAt: visit.enteredAt, until: now.wall, at: now)?.qualifyingSeconds ?? 0
         let delay = visit.awaitsPresenceProof || visit.dwellReservation != nil ? 0 : min(
@@ -128,7 +136,9 @@ extension GeofenceDwellCoordinator {
               !Task.isCancelled
         else { return }
         guard let fix else {
-            scheduleEvidenceRetry(for: geofence, visit: remaining, reason: .noFix)
+            // Held back by the spacing, nothing was asked: no rejection to record.
+            let deferred = evidenceRetries[geofence.id]?.spacingWait != nil
+            scheduleEvidenceRetry(for: geofence, visit: remaining, reason: deferred ? nil : .noFix)
             return
         }
         switch circleVerdict(of: fix, for: geofence) {
@@ -272,9 +282,7 @@ extension GeofenceDwellCoordinator {
         // That deadline belongs to the next visit, even if this older attempt needs another retry.
         guard state?.visitId == nil || state?.visitId == visit.visitId else { return }
         if state?.visitId != visit.visitId {
-            state = EvidenceRetryState(
-                visitId: visit.visitId, attempts: 0, diagnosticToken: diagnosticToken(for: visit)
-            )
+            state = EvidenceRetryState(visitId: visit.visitId, diagnosticToken: diagnosticToken(for: visit))
         }
         // Read only once the state belongs to this visit. A superseded visit's rejection must
         // borrow neither a newer visit's generation nor a later identity's.
@@ -282,17 +290,27 @@ extension GeofenceDwellCoordinator {
         if let reason {
             recordDiagnostic(.dwellRejected, capturedToken: token, fenceId: geofence.id, reason: reason)
         }
-        guard var state, state.attempts < maxEvidenceRetryAttempts else {
+        // The persisted count, read from `visit` as the caller last read it: requests issued before
+        // a re-arm, a resume or a relaunch are still spent.
+        guard var state, visit.dwellProofAttempts < dwellProofBudget else {
             // Recorded once per chain: only when this ends the fence's pending request.
             if let task = deadlineTasks.removeValue(forKey: geofence.id) {
                 task.cancel()
                 recordDiagnostic(.dwellRejected, capturedToken: token, fenceId: geofence.id, reason: .retriesExhausted)
             }
-            releaseCollectionLease(geofenceId: geofence.id, ifVisit: visit.visitId)
+            proofBudgetExhausted(geofenceId: geofence.id, visit: visit)
             return
         }
-        state.attempts += 1
-        let delay = shortEvidenceRetryDelay(geofenceId: geofence.id, state: &state) ?? max(0, evidenceRetryDelay)
+        let delay: TimeInterval
+        if let spacingWait = state.spacingWait {
+            // A request held back by the spacing waits out the rest of it, keeping any short
+            // retry's newer-measurement floor for when it is asked.
+            delay = spacingWait
+            state.spacingWait = nil
+            state.nextFixAfter = state.nextFixAfter ?? state.activeFloor
+        } else {
+            delay = shortEvidenceRetryDelay(geofenceId: geofence.id, state: &state) ?? max(0, evidenceRetryDelay)
+        }
         evidenceRetries[geofence.id] = state
         deadlineTasks.removeValue(forKey: geofence.id)?.cancel()
         let wait = waitForEvidence
@@ -369,15 +387,16 @@ extension GeofenceDwellCoordinator {
         recordDiagnostic(wake, fenceId: fenceId)
     }
 
-    /// Re-arms every pending visit's deadline from its elapsed time, with a fresh retry budget.
+    /// Re-arms every pending visit's deadline from its elapsed time. The visit's dwell-proof budget
+    /// and spacing are persisted on it, so a re-arm neither replenishes nor shortens them.
     ///
     /// A deadline is an in-process sleep: it does not run while the app is suspended, and may run
     /// late after one. So besides foregrounding, every background wake the SDK gets — a region
     /// callback, a CLVisit — calls this, and a visit that came due while suspended requests its
     /// evidence then. That is the best iOS allows; nothing here emits on elapsed time alone.
     ///
-    /// Re-arming rather than requesting now: a due visit still requests immediately, but
-    /// pre-threshold evidence cannot qualify and would spend the bounded retries.
+    /// Re-arming rather than requesting now: a due visit still requests once its spacing allows,
+    /// but pre-threshold evidence cannot qualify and would spend the bounded budget.
     ///
     /// - Parameter includePolygons: false on a background wake. A polygon's evidence is a forced
     ///   fresh-fix pass, and the wake's own pass is already one; a second concurrent one is

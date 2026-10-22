@@ -80,9 +80,16 @@ struct GeofenceDwellVisit: Codable, Equatable, Sendable {
     /// wholly inside the fence (`recordInsideEvidence` with `qualifiesDwell`) — so an EXIT the OS
     /// did not date can bound its departure by it rather than by the entry. Nil until one is seen.
     var lastDecisiveInsideAt: Date?
+    /// Location requests issued to prove this visit's dwell (`GeofenceDwellCoordinator.dwellProofBudget`),
+    /// each reserved here before it is issued. Persisted, so no re-arm, resume or relaunch replenishes
+    /// the budget. Zero on visits persisted before the field.
+    var dwellProofAttempts = 0
+    /// When the latest of those requests was reserved, to space the next one.
+    var lastDwellProofRequest: GeofenceClockReading?
 
-    /// Equal when they are the same stay with the same facts. `lastDecisiveInsideAt` is left out: it
-    /// is bookkeeping about the evidence seen, refreshed by every decisive fix, not a fact of the stay.
+    /// Equal when they are the same stay with the same facts. `lastDecisiveInsideAt` and the
+    /// dwell-proof bookkeeping are left out: they record the evidence sought and seen, refreshed as
+    /// it is, not a fact of the stay.
     static func == (lhs: GeofenceDwellVisit, rhs: GeofenceDwellVisit) -> Bool {
         lhs.visitId == rhs.visitId && lhs.enteredAt == rhs.enteredAt && lhs.geometryRevision == rhs.geometryRevision
             && lhs.userId == rhs.userId && lhs.emitted == rhs.emitted && lhs.entryObserved == rhs.entryObserved
@@ -127,6 +134,7 @@ extension GeofenceDwellVisit {
         /// `closedByObservedBoundary`, as the decimal bit pattern of its `timeIntervalSinceReferenceDate`.
         case closedByObservedBoundaryReferenceBits
         case lastDecisiveInsideAt
+        case dwellProofAttempts, lastDwellProofRequest
     }
 
     /// Custom decode so visits persisted before `entryObserved` still decode; those were only ever
@@ -147,6 +155,8 @@ extension GeofenceDwellVisit {
         self.identityLineage = try container.decodeIfPresent(String.self, forKey: .identityLineage)
         self.closedByObservedBoundary = try Self.decodeClosure(from: container)
         self.lastDecisiveInsideAt = try container.decodeIfPresent(Date.self, forKey: .lastDecisiveInsideAt)
+        self.dwellProofAttempts = try container.decodeIfPresent(Int.self, forKey: .dwellProofAttempts) ?? 0
+        self.lastDwellProofRequest = try container.decodeIfPresent(GeofenceClockReading.self, forKey: .lastDwellProofRequest)
         let unqualified = !emitted && dwellReservation == nil
         guard container.contains(.identityVersion) else {
             // Written before identity provenance: nothing says which identities the visit spanned,
@@ -183,6 +193,8 @@ extension GeofenceDwellVisit {
             forKey: .closedByObservedBoundaryReferenceBits
         )
         try container.encodeIfPresent(lastDecisiveInsideAt, forKey: .lastDecisiveInsideAt)
+        if dwellProofAttempts > 0 { try container.encode(dwellProofAttempts, forKey: .dwellProofAttempts) }
+        try container.encodeIfPresent(lastDwellProofRequest, forKey: .lastDwellProofRequest)
     }
 
     /// The closure exactly as encoded; nil when the key is absent. Bits that are not a finite

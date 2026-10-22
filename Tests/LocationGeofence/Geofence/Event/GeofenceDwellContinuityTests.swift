@@ -630,7 +630,8 @@ struct GeofenceDwellContinuityTests {
         #expect(await setup.emitter.dwells().isEmpty)
         #expect(await setup.storage.getDwellVisit(geofenceId: setup.geofence.id)?.visitId == visit.visitId)
 
-        clock.advance(60)
+        // Past the spacing since the first request.
+        clock.advance(120)
         fixes.queue(Self.fix(latitude: 0.5, accuracy: 5, at: clock.wall))
         await setup.coordinator.requestQualifyingEvidence(geofenceId: setup.geofence.id)
 
