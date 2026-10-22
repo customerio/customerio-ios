@@ -555,6 +555,61 @@ struct GeofenceDwellCoordinatorTests {
         setup.coordinator.cancelEvidence(for: setup.geofence.id)
     }
 
+    /// A polygon departure recorded while the qualifying DWELL is being staged — an outside proof
+    /// dated before the qualifying fix — is judged in the promoting write: nothing is reserved or
+    /// delivered, and the stay ends, so no retry, EXIT or orphan sweep can deliver it later.
+    @Test
+    func departureRecordedWhileStaging_admitsNothing() async throws {
+        let enteredAt = Date(timeIntervalSince1970: 1000)
+        let clock = ManualGeofenceClock(wall: enteredAt)
+        let setup = await makeSetup(clock: clock)
+        await setup.coordinator.handleBoundary(geofence: setup.geofence, transition: .enter, occurredAt: enteredAt)
+        let visit = try #require(await setup.storage.getDwellVisit(geofenceId: setup.geofence.id))
+        clock.advance(60)
+        let storage = setup.storage
+        let geofenceId = setup.geofence.id
+        let leftAt = clock.wall.addingTimeInterval(-10)
+        let reading = clock.read()
+        await setup.storage.setBeforeReservationWrite {
+            _ = await storage.recordPolygonMembership(.outside, forIdentifier: geofenceId, now: leftAt, reading: reading)
+        }
+
+        await setup.coordinator.recordInsideEvidence(geofence: setup.geofence, at: clock.wall, source: "location_evidence")
+        await setup.storage.setBeforeReservationWrite(nil)
+
+        #expect(await setup.emitter.dwells().isEmpty)
+        let stored = await setup.storage.getDwellVisit(geofenceId: geofenceId)
+        #expect(stored?.visitId != visit.visitId || stored?.dwellReservation == nil)
+        #expect(await setup.storage.getOrphanedDwells().isEmpty)
+        setup.coordinator.cancelEvidence(for: geofenceId)
+    }
+
+    /// An EXIT noted while the qualifying DWELL is being staged, still routing, refuses its
+    /// promotion too: nothing is reserved for the EXIT's flush to deliver.
+    @Test
+    func exitNotedWhileStaging_promotesNothing() async throws {
+        let enteredAt = Date(timeIntervalSince1970: 1000)
+        let clock = ManualGeofenceClock(wall: enteredAt)
+        let setup = await makeSetup(isPolygon: false, clock: clock)
+        await setup.coordinator.handleBoundary(geofence: setup.geofence, transition: .enter, occurredAt: enteredAt)
+        clock.advance(60)
+        let coordinator = setup.coordinator
+        let geofenceId = setup.geofence.id
+        let exitedAt = clock.wall.addingTimeInterval(-5)
+        await setup.storage.setBeforeReservationWrite {
+            await MainActor.run { coordinator.noteExitCallback(geofenceId: geofenceId, occurredAt: exitedAt) }
+        }
+
+        await setup.coordinator.recordInsideEvidence(geofence: setup.geofence, at: clock.wall, source: "location_evidence")
+        await setup.storage.setBeforeReservationWrite(nil)
+
+        #expect(await setup.emitter.dwells().isEmpty)
+        let stored = await setup.storage.getDwellVisit(geofenceId: geofenceId)
+        #expect(stored?.dwellReservation == nil)
+        #expect(stored?.stagedDwellReservation == nil)
+        setup.coordinator.cancelEvidence(for: geofenceId)
+    }
+
     /// The same refused, un-retracted reservation, then the process dies: the correction that refused
     /// it dies with it. The next process does not replay the leftover as a fact; with no fresh
     /// proof, nothing is delivered.

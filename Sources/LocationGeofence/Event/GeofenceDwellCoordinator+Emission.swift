@@ -206,6 +206,13 @@ extension GeofenceDwellCoordinator {
                 scheduleEvidenceRetry(for: geofence, visit: visit)
                 return nil
             }
+            // An EXIT noted while the stage was written, still being routed: it ends this stay, and
+            // its departure may precede the qualifying fix. Nothing is promoted for it to deliver.
+            guard !knownExitRefusesFirstAdmission(of: visit, geofenceId: geofence.id) else {
+                await storage.retractDwellReservation(staged, from: visit, geofenceId: geofence.id)
+                return nil
+            }
+            // A recorded departure is judged in the promoting write itself (`.departed`).
             result = await storage.admitStagedDwellReservation(staged, for: visit, geofenceId: geofence.id)
         }
         switch result {
@@ -217,6 +224,9 @@ extension GeofenceDwellCoordinator {
         case .writeFailed:
             // Nothing was delivered, so nothing is lost by asking again.
             scheduleEvidenceRetry(for: geofence, visit: visit)
+            return nil
+        case .departed:
+            await departureEndedStay(visit, geofence: geofence)
             return nil
         case .superseded, .staged:
             return nil

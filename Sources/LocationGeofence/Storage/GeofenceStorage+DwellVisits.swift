@@ -77,6 +77,9 @@ extension GeofenceStorage {
         case writeFailed
         /// Written as the visit's staged reservation: no fact yet, until it is admitted.
         case staged(GeofenceDwellReservation)
+        /// Not admitted: the polygon was left since the visit began, by evidence on disk. The
+        /// staged reservation is taken back.
+        case departed
     }
 
     /// Stages and admits `proposed` in one go, for a caller that has already decided the admission.
@@ -109,7 +112,10 @@ extension GeofenceStorage {
     }
 
     /// Makes `staged` the visit's reservation, a fact from now on, once its admission stands: only
-    /// while the visit still holds exactly that staged reservation under the same guards.
+    /// while the visit still holds exactly that staged reservation under the same guards, and — in
+    /// the same read — while no departure from its polygon is recorded since its entry. A departure
+    /// recorded while the reservation was being staged may precede the qualifying fix; promoted, the
+    /// reservation would be delivered by every retry, EXIT and orphan sweep after.
     func admitStagedDwellReservation(
         _ staged: GeofenceDwellReservation,
         for visit: GeofenceDwellVisit,
@@ -119,6 +125,12 @@ extension GeofenceStorage {
         guard var stored = Self.reservable(visit, geofenceId: geofenceId, in: state) else { return .superseded }
         if let existing = stored.dwellReservation { return .reserved(existing) }
         guard stored.stagedDwellReservation == staged else { return .superseded }
+        guard !Self.polygonLeft(since: stored, geofenceId: geofenceId, in: state) else {
+            stored.stagedDwellReservation = nil
+            state.dwellVisits?[geofenceId] = stored
+            saveToDisk(state)
+            return .departed
+        }
         stored.dwellReservation = staged
         stored.stagedDwellReservation = nil
         state.dwellVisits?[geofenceId] = stored

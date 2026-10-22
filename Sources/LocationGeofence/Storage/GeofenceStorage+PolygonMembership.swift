@@ -172,16 +172,28 @@ extension GeofenceStorage {
         geofenceId: String, wholeCircleOnly: Bool = false
     ) -> (visit: GeofenceDwellVisit?, outside: [GeofenceClockStamp]) {
         let state = loadFromDisk()
-        var outside = [state?.polygonMembership?[geofenceId]?.lastOutside].compactMap { $0 }
-        if let record = state?.monitorRegionRecords?[geofenceId], let center = record.center, let radius = record.radius,
-           let geofence = state?.cachedGeofences?.first(where: { $0.id == geofenceId }),
+        return (state?.dwellVisits?[geofenceId], state.map { Self.departureEvidence(geofenceId, wholeCircleOnly: wholeCircleOnly, in: $0) } ?? [])
+    }
+
+    /// `polygonDepartureEvidence`'s outside evidence, read from `state`.
+    static func departureEvidence(_ geofenceId: String, wholeCircleOnly: Bool, in state: GeofenceState) -> [GeofenceClockStamp] {
+        var outside = [state.polygonMembership?[geofenceId]?.lastOutside].compactMap { $0 }
+        if let record = state.monitorRegionRecords?[geofenceId], let center = record.center, let radius = record.radius,
+           let geofence = state.cachedGeofences?.first(where: { $0.id == geofenceId }),
            // The registered radius as its own cap: a clamped covering circle still matches, unless
            // only the whole circle may.
            MonitoredCircle(center: center, radius: radius, maximumRadius: wholeCircleOnly ? .infinity : radius).matches(geofence),
            let circleOutside = record.lastObservedOutside {
             outside.append(circleOutside)
         }
-        return (state?.dwellVisits?[geofenceId], outside)
+        return outside
+    }
+
+    /// Whether `visit`'s polygon was left after it began, by the evidence `departureEndedStay`
+    /// judges (the whole covering circle's observed EXIT, or an outside membership proof).
+    static func polygonLeft(since visit: GeofenceDwellVisit, geofenceId: String, in state: GeofenceState) -> Bool {
+        guard state.cachedGeofences?.first(where: { $0.id == geofenceId })?.vertices != nil else { return false }
+        return departureEvidence(geofenceId, wholeCircleOnly: true, in: state).contains { $0.isAfterEntry(of: visit) }
     }
 }
 

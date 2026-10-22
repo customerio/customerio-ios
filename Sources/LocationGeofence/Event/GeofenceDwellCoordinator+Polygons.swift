@@ -147,6 +147,7 @@ extension GeofenceDwellCoordinator {
     /// fact about the stay before the departure and is left to deliver. Compare-and-remove, so a
     /// visit written since survives.
     /// - Returns: whether the visit was ended.
+    @discardableResult
     func departureEndedStay(_ visit: GeofenceDwellVisit, geofence: Geofence) async -> Bool {
         guard geofence.vertices != nil, visit.dwellReservation == nil else { return false }
         let evidence = await storage.polygonDepartureEvidence(geofenceId: geofence.id, wholeCircleOnly: true)
