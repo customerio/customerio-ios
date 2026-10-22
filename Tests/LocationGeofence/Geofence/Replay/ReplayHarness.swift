@@ -48,6 +48,8 @@ final class ReplayHarness {
     private let moduleLastKnownLocation: LocationData? = nil
 
     var fetchQueue: [Result<GeofenceApiResponse, GeofenceApiError>] = []
+    /// Never reset, so `fetchAccounting()` can tell a drive with no fetch fixture from an emptied queue.
+    var fetchFixtureEnqueued = false
     var fetchCount = 0
     var starvedFetchCount = 0
 
@@ -98,6 +100,9 @@ final class ReplayHarness {
         // Wired once: the recording outlives any process the drive restarts.
         authority.answerCachedLocation = { [fixes] in fixes.nextCachedLocation() }
         gate.onParkedCountChanged = { [taskSpawner] count in taskSpawner.setParked(count) }
+        // Before any fixture: a fetch the drive recorded no answer for still needs one, or the task
+        // awaiting it never finishes and `awaitIdle()` never returns.
+        installFetchHandler()
         di.override(value: taskSpawner as GeofenceTaskSpawning, forType: GeofenceTaskSpawning.self)
         // A missed override is silent: work started through it goes untracked and replays read as
         // the old flake.

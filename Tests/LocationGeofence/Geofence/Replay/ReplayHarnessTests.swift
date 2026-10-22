@@ -110,6 +110,43 @@ struct ReplayHarnessTests {
         }
     }
 
+    /// Left unanswered, the fetch keeps its task in flight and `awaitIdle()` never returns.
+    @Test
+    @available(iOS 17.0, *)
+    func awaitIdle_givenFetchWithNoRecordedFixture_expectAnsweredAndReported() async {
+        await ReplayHarness.withTail {
+            let harness = ReplayHarness()
+            harness.loadPulledFixes(stimuli: [0], samples: [
+                harness.pulledFix(
+                    latitude: Self.awayLatitude,
+                    longitude: Self.longitude,
+                    accuracy: 10,
+                    age: 0,
+                    at: 0
+                )
+            ])
+            harness.setIdentified(true)
+            await harness.awaitIdle()
+            #expect(harness.acquireFixCallCount == 1, "identify did not arm for a fix")
+
+            harness.feedFix(
+                latitude: Self.awayLatitude,
+                longitude: Self.longitude,
+                accuracy: nil,
+                age: 0,
+                source: .bus
+            )
+            await harness.awaitIdle()
+
+            // The control: with no fetch, `awaitIdle()` returning proves nothing.
+            #expect(harness.fetchCount == 1, "the bus fix did not start a fetch")
+            #expect(
+                harness.fetchAccounting()?.hasPrefix("1 fetch(es) with no recorded fixture") == true,
+                "fetch accounting: \(harness.fetchAccounting() ?? "nil")"
+            )
+        }
+    }
+
     @Test
     @available(iOS 17.0, *)
     func deliverCrossing_givenArmedFence_expectTransitionAccepted() async throws {
