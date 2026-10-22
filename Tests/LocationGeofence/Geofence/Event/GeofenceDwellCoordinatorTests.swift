@@ -898,6 +898,23 @@ struct GeofenceDwellCoordinatorTests {
         #expect(await setup.storage.getOrphanedDwells().isEmpty)
     }
 
+    /// An EXIT a day after the owed DWELL's evidence gives it up, as a retry or the launch sweep
+    /// would: it is not offered, and no orphan is left to offer later.
+    @Test
+    func exitADayAfterTheOwedDwell_givesItUp() async throws {
+        let emitter = DwellEmitterSpy(results: [false, true])
+        let clock = ManualGeofenceClock(wall: Date(timeIntervalSince1970: 1000))
+        let setup = await makeSetup(emitter: emitter, clock: clock)
+        try await owe(setup, clock: clock)
+        clock.advance(24 * 60 * 60)
+
+        await setup.coordinator.handleBoundary(geofence: setup.geofence, transition: .exit, occurredAt: clock.wall)
+
+        #expect(await emitter.dwells().count == 1, "only the first, failed attempt")
+        #expect(await setup.storage.getDwellVisit(geofenceId: setup.geofence.id) == nil)
+        #expect(await setup.storage.getOrphanedDwells().isEmpty)
+    }
+
     /// The EXIT's delivery fails too: the stay still ends, and its DWELL is kept as an orphan,
     /// which the next launch delivers.
     @Test

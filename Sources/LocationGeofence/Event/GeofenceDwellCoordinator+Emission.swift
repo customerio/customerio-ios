@@ -16,10 +16,6 @@ extension GeofenceDwellCoordinator {
         userId: String
     ) async {
         guard geofence.dwellThresholdSeconds > 0, !visit.emitted else { return }
-        if let reservation = visit.dwellReservation, reservationExpired(reservation) {
-            await abandonReservedDwell(geofence: geofence, visit: visit)
-            return
-        }
         // `visit` may be a copy read before a loss its removal has not yet reached. Admission is
         // judged now; a dwell already admitted goes on to its outbox row, a fact about the stay
         // before the loss. So a reservation is never refused here: the stay qualified when it was
@@ -56,11 +52,13 @@ extension GeofenceDwellCoordinator {
         // this record, even when the emitter still reports the write it finished.
         let emissionToken = diagnosticToken(for: visit)
         guard let reservation = await reserve(proposed, for: visit, geofence: geofence) else { return }
-        let persisted = await transitionEmitter.trackDwell(
-            geofenceId: geofence.id, occurredAt: reservation.occurredAt,
-            context: reservation.context(visitId: visit.visitId), expectedUserId: userId
-        )
-        guard persisted else { return }
+        guard let delivery = await offerReservedDwell(
+            reservation, geofenceId: geofence.id, visitId: visit.visitId, userId: userId
+        ) else {
+            await abandonReservedDwell(geofence: geofence, visit: visit)
+            return
+        }
+        guard delivery == .persisted else { return }
         recordDiagnostic(.dwellEmitted, capturedToken: emissionToken, fenceId: geofence.id)
         await finishDwellEmission(geofence: geofence, visit: visit)
     }
@@ -101,10 +99,12 @@ extension GeofenceDwellCoordinator {
               visit.owesDwell, let reservation = visit.dwellReservation
         else { return }
         let token = diagnosticToken(for: visit)
-        let delivery = await transitionEmitter.deliverDwell(
-            geofenceId: geofence.id, occurredAt: reservation.occurredAt,
-            context: reservation.context(visitId: visitId), expectedUserId: visit.userId
-        )
+        guard let delivery = await offerReservedDwell(
+            reservation, geofenceId: geofence.id, visitId: visitId, userId: visit.userId
+        ) else {
+            await abandonReservedDwell(geofence: geofence, visit: visit)
+            return
+        }
         guard delivery != .writeFailed else { return }
         if delivery == .persisted { recordDiagnostic(.dwellEmitted, capturedToken: token, fenceId: geofence.id) }
         _ = await storage.markDwellVisitEmitted(visit, geofenceId: geofence.id)
@@ -116,15 +116,25 @@ extension GeofenceDwellCoordinator {
     /// could not take is kept for the next launch.
     func deliverOrphanedDwells() async {
         for orphan in await storage.getOrphanedDwells() {
-            if !reservationExpired(orphan.reservation) {
-                let delivery = await transitionEmitter.deliverDwell(
-                    geofenceId: orphan.geofenceId, occurredAt: orphan.reservation.occurredAt,
-                    context: orphan.reservation.context(visitId: orphan.visitId), expectedUserId: orphan.userId
-                )
-                guard delivery != .writeFailed else { continue }
-            }
+            let delivery = await offerReservedDwell(
+                orphan.reservation, geofenceId: orphan.geofenceId, visitId: orphan.visitId, userId: orphan.userId
+            )
+            guard delivery != .writeFailed else { continue }
             await storage.removeOrphanedDwell(visitId: orphan.visitId)
         }
+    }
+
+    /// The one way a reserved dwell is handed to the outbox — a live visit's emission or retry, an
+    /// EXIT's flush, an orphan at launch — so none skips the expiry: nil, offering nothing, once it
+    /// is `reservedDwellLifetime` old, for the caller to give it up.
+    private func offerReservedDwell(
+        _ reservation: GeofenceDwellReservation, geofenceId: String, visitId: String, userId: String
+    ) async -> GeofenceDwellDelivery? {
+        guard !reservationExpired(reservation) else { return nil }
+        return await transitionEmitter.deliverDwell(
+            geofenceId: geofenceId, occurredAt: reservation.occurredAt,
+            context: reservation.context(visitId: visitId), expectedUserId: userId
+        )
     }
 
     /// Whether `reservation` was made `reservedDwellLifetime` or more ago on the wall clock. A clock
