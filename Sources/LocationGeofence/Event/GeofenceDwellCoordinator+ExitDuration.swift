@@ -22,11 +22,12 @@ extension GeofenceDwellCoordinator {
         crossingObserved: Bool = true,
         insideProvenAt: Date? = nil
     ) async -> (context: GeofenceExitContext?, endedVisitId: String?) {
+        let routed = RoutedExit(
+            mark: exit, reading: reading, source: detectionSource,
+            crossingObserved: crossingObserved, insideProvenAt: insideProvenAt
+        )
         let describe = { (visit: GeofenceDwellVisit) -> GeofenceExitContext? in
-            self.exitContext(
-                for: visit, geofence: geofence, exit: exit, processedAt: reading, source: detectionSource,
-                crossingObserved: crossingObserved, insideProvenAt: insideProvenAt
-            )
+            self.exitContext(for: visit, geofence: geofence, exit: routed)
         }
         guard let userId = contextStore.currentUserId, !userId.isEmpty,
               expectedUserId == nil || expectedUserId == userId
@@ -54,40 +55,41 @@ extension GeofenceDwellCoordinator {
     /// decisively proven inside — a polygon's membership proof or the visit's own stamp, after its
     /// entry — or since the entry when nothing was; the whole stay for a circle EXIT the classic
     /// monitor could only date at receipt.
-    private func exitContext(
-        for visit: GeofenceDwellVisit,
-        geofence: Geofence,
-        exit: GeofenceExitMark,
-        processedAt reading: GeofenceClockReading,
-        source: String,
-        crossingObserved: Bool,
-        insideProvenAt: Date?
-    ) -> GeofenceExitContext? {
-        guard visit.closedByObservedBoundary.map({ $0 == exit.date }) ?? true,
-              !enterKnownAtExitEnded(visit, exit: exit, geofenceId: geofence.id)
+    private func exitContext(for visit: GeofenceDwellVisit, geofence: Geofence, exit: RoutedExit) -> GeofenceExitContext? {
+        guard visit.closedByObservedBoundary.map({ $0 == exit.mark.date }) ?? true,
+              !enterKnownAtExitEnded(visit, exit: exit.mark, geofenceId: geofence.id)
         else { return nil }
         let timed = visit.entryObserved && !visit.awaitsPresenceProof && geofence.transitionTypes.contains(.exit)
             && !outsideEvidenceOvertook(visit, geofenceId: geofence.id)
-            && Self.spanIsTimeable(visit, exitedAt: exit.date, processedAt: reading)
+            && Self.spanIsTimeable(visit, exitedAt: exit.mark.date, processedAt: exit.reading)
         guard timed else {
             return GeofenceExitContext(
                 visitId: visit.visitId, enteredAt: nil, durationSeconds: nil,
-                visitDurationUncertaintySeconds: nil, detectionSource: source
+                visitDurationUncertaintySeconds: nil, detectionSource: exit.source
             )
         }
         let isCircle = geofence.vertices == nil
-        let decidedByOs = crossingObserved && isCircle && !osExitDatesAreReceipts
+        let decidedByOs = exit.crossingObserved && isCircle && !osExitDatesAreReceipts
         let receiptDated = isCircle && osExitDatesAreReceipts
         let provenInsideAt = receiptDated
             ? visit.enteredAt
-            : max(visit.enteredAt, insideProvenAt ?? .distantPast, visit.lastDecisiveInsideAt ?? .distantPast)
+            : max(visit.enteredAt, exit.insideProvenAt ?? .distantPast, visit.lastDecisiveInsideAt ?? .distantPast)
         return GeofenceExitContext(
             visitId: visit.visitId,
             enteredAt: visit.enteredAt,
-            durationSeconds: Self.reportedSeconds(from: visit.enteredAt, to: exit.date),
-            visitDurationUncertaintySeconds: decidedByOs ? 0 : Self.reportedSeconds(from: provenInsideAt, to: exit.date),
-            detectionSource: source
+            durationSeconds: Self.reportedSeconds(from: visit.enteredAt, to: exit.mark.date),
+            visitDurationUncertaintySeconds: decidedByOs ? 0 : Self.reportedSeconds(from: provenInsideAt, to: exit.mark.date),
+            detectionSource: exit.source
         )
+    }
+
+    /// The EXIT `exitContext` describes a visit for, as `exitContext(geofence:exit:…)` received it.
+    private struct RoutedExit {
+        let mark: GeofenceExitMark
+        let reading: GeofenceClockReading
+        let source: String
+        let crossingObserved: Bool
+        let insideProvenAt: Date?
     }
 
     /// Records an EXIT event before its first await, and what it knew of the stay's end if no

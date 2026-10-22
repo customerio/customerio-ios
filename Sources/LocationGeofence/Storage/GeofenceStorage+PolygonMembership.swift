@@ -52,8 +52,7 @@ extension GeofenceStorage {
             evaluatedRing: evaluatedRing, evaluatedCircle: evaluatedCircle
         ) else { return PolygonMembershipWrite(outcome: .suppressedGeometryChanged) }
         let currentRing = state.cachedGeofences?.first { $0.id == identifier }?.vertices
-        var records = state.polygonMembership ?? [:]
-        let existing = records[identifier]
+        let existing = state.polygonMembership?[identifier]
         // A future stamp is discarded, not capped: capped at `now` it would outrank every real fix.
         let existingStamp = existing.map { $0.lastChangedAt > now ? Date.distantPast : $0.lastChangedAt }
         if let evidenceTimestamp, let existingStamp, existingStamp > evidenceTimestamp {
@@ -67,43 +66,30 @@ extension GeofenceStorage {
             guard state.monitoredGeofenceIds?.contains(identifier) == true else {
                 return PolygonMembershipWrite(outcome: .suppressedUnmonitored)
             }
-            records[identifier] = PolygonMembershipRecord(
+            let first = PolygonMembershipRecord(
                 membership: membership, lastChangedAt: stamp, ring: currentRing, lastDecisiveInsideAt: decisiveStamp,
                 lastOutside: outsideStamp
             )
-            state.polygonMembership = records
-            saveToDisk(state)
+            savePolygonMembership(first, forIdentifier: identifier, in: &state)
             return PolygonMembershipWrite(outcome: membership == .inside ? .discoveredInside : .suppressedInitialOutside)
         }
         guard existing.membership != membership else {
-            var confirmed = existing
-            if let evidenceTimestamp, let existingStamp, evidenceTimestamp > existingStamp {
-                confirmed.lastChangedAt = evidenceTimestamp
-            }
-            if let decisiveStamp, decisiveStamp > (existing.lastDecisiveInsideAt ?? .distantPast) {
-                confirmed.lastDecisiveInsideAt = decisiveStamp
-            }
-            if let outsideStamp {
-                confirmed.lastOutside = existing.lastOutside.map { $0.newer(outsideStamp) } ?? outsideStamp
-            }
-            // A confirmation under a replaced ring re-proves the belief against the new ring, so it
-            // is re-stamped even when its evidence is no newer.
-            confirmed.ring = currentRing
+            let confirmed = existing.confirmed(
+                at: evidenceTimestamp, provenAt: existingStamp, decisiveStamp: decisiveStamp,
+                outsideStamp: outsideStamp, ring: currentRing
+            )
             if confirmed != existing {
-                records[identifier] = confirmed
-                state.polygonMembership = records
-                saveToDisk(state)
+                savePolygonMembership(confirmed, forIdentifier: identifier, in: &state)
             }
             return PolygonMembershipWrite(outcome: .suppressedNoChange, previousProvenAt: existingStamp)
         }
         // The last decisive inside proof, for the EXIT this write may deliver.
         let decisiveInsideProvenAt = existing.lastDecisiveInsideAt.map { $0 > now ? Date.distantPast : $0 }
-        records[identifier] = PolygonMembershipRecord(
+        let changed = PolygonMembershipRecord(
             membership: membership, lastChangedAt: stamp, ring: currentRing, lastDecisiveInsideAt: decisiveStamp,
             lastOutside: outsideStamp.map { existing.lastOutside?.newer($0) ?? $0 } ?? existing.lastOutside
         )
-        state.polygonMembership = records
-        saveToDisk(state)
+        savePolygonMembership(changed, forIdentifier: identifier, in: &state)
         guard membership == .inside else {
             return PolygonMembershipWrite(outcome: .deliver(.exit), previousProvenAt: decisiveInsideProvenAt)
         }
@@ -111,6 +97,14 @@ extension GeofenceStorage {
             from: existing, provenAt: existingStamp, insideAt: evidenceTimestamp, currentRing: currentRing
         )
         return PolygonMembershipWrite(outcome: observed ? .deliver(.enter) : .discoveredInside, previousProvenAt: existingStamp)
+    }
+
+    /// Writes `record` as `identifier`'s membership into `state`, and saves it.
+    private func savePolygonMembership(_ record: PolygonMembershipRecord, forIdentifier identifier: String, in state: inout GeofenceState) {
+        var records = state.polygonMembership ?? [:]
+        records[identifier] = record
+        state.polygonMembership = records
+        saveToDisk(state)
     }
 
     /// Whether `outside` → inside is an observed crossing: only when the outside belief was formed
@@ -183,6 +177,34 @@ extension GeofenceStorage {
             outside.append(circleOutside)
         }
         return (state?.dwellVisits?[geofenceId], outside)
+    }
+}
+
+private extension PolygonMembershipRecord {
+    /// This belief, confirmed by evidence that agrees with it at `evidenceTimestamp`, when it was
+    /// last proven at `existingStamp`: the newer evidence time, decisive inside proof and outside
+    /// proof are kept.
+    func confirmed(
+        at evidenceTimestamp: Date?,
+        provenAt existingStamp: Date?,
+        decisiveStamp: Date?,
+        outsideStamp: GeofenceClockStamp?,
+        ring currentRing: [LocationData]?
+    ) -> PolygonMembershipRecord {
+        var confirmed = self
+        if let evidenceTimestamp, let existingStamp, evidenceTimestamp > existingStamp {
+            confirmed.lastChangedAt = evidenceTimestamp
+        }
+        if let decisiveStamp, decisiveStamp > (lastDecisiveInsideAt ?? .distantPast) {
+            confirmed.lastDecisiveInsideAt = decisiveStamp
+        }
+        if let outsideStamp {
+            confirmed.lastOutside = lastOutside.map { $0.newer(outsideStamp) } ?? outsideStamp
+        }
+        // A confirmation under a replaced ring re-proves the belief against the new ring, so it
+        // is re-stamped even when its evidence is no newer.
+        confirmed.ring = currentRing
+        return confirmed
     }
 }
 

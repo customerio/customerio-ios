@@ -411,6 +411,21 @@ struct PolygonMembershipResolverTests {
         let passesQueuedOrSkipped: EventCounter
     }
 
+    /// `Setup.passesQueuedOrSkipped`, counted from `logger`'s skips and the returned fix logger's
+    /// requests.
+    private func countPassesQueuedOrSkipped(logger: LoggerMock) -> (EventCounter, LoggerMock) {
+        let passesQueuedOrSkipped = EventCounter()
+        logger.debugClosure = { message, _ in
+            if message.contains("Skipped polygon evaluation pass") { passesQueuedOrSkipped.record() }
+        }
+        let fixLogger = LoggerMock()
+        // Logged by `resolve` in the same main-actor turn that queues the caller.
+        fixLogger.infoClosure = { message, _ in
+            if message.contains("requesting a fresh fix") { passesQueuedOrSkipped.record() }
+        }
+        return (passesQueuedOrSkipped, fixLogger)
+    }
+
     private func makeSetup(
         fix: CLLocation?,
         logger: LoggerMock = LoggerMock(),
@@ -436,15 +451,7 @@ struct PolygonMembershipResolverTests {
         await storage.recordRegistration(center: LocationData(latitude: 0, longitude: 0), businessIds: ["1"])
         let emitter = EmitterSpy()
         let timeouts = VirtualTimeouts(clock: clock)
-        let passesQueuedOrSkipped = EventCounter()
-        logger.debugClosure = { message, _ in
-            if message.contains("Skipped polygon evaluation pass") { passesQueuedOrSkipped.record() }
-        }
-        let fixLogger = LoggerMock()
-        // Logged by `resolve` in the same main-actor turn that queues the caller.
-        fixLogger.infoClosure = { message, _ in
-            if message.contains("requesting a fresh fix") { passesQueuedOrSkipped.record() }
-        }
+        let (passesQueuedOrSkipped, fixLogger) = countPassesQueuedOrSkipped(logger: logger)
         let fixResolver = makeFixResolver(logger: fixLogger, timeouts: timeouts)
         fixResolver.requestFreshFix = { [weak fixResolver] in
             guard let fix else { return fixResolver?.handleRequestFailure() ?? () }

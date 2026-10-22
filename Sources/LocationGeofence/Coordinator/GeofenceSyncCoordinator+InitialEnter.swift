@@ -17,15 +17,7 @@ extension GeofenceSyncCoordinatorImpl {
         }
         // Not polygons: `radius` is the covering circle, so the resolver evaluates them instead.
         let newPolygons = newlyRegistered.filter { $0.vertices != nil }
-        let newInside = newlyRegistered.filter { region in
-            region.vertices == nil
-                && (
-                    region.transitionTypes.contains(.enter) ||
-                        region.dwellThresholdSeconds > 0 ||
-                        region.transitionTypes.contains(.exit)
-                )
-                && region.distanceTo(anchor) <= min(region.radius, osRegistration.maxMonitoringRadius)
-        }
+        let newInside = Self.trackedCircles(newlyRegistered, containing: anchor, maxMonitoringRadius: osRegistration.maxMonitoringRadius)
         if !newPolygons.isEmpty {
             evaluateNewPolygons(newPolygons, expectedUserId: expectedUserId)
         }
@@ -96,6 +88,20 @@ extension GeofenceSyncCoordinatorImpl {
                 heldFix: heldFix,
                 isStillCurrent: { contextStore.currentUserId == expectedUserId }
             )
+        }
+    }
+
+    /// The circles among `regions` that track an ENTER, a dwell or an EXIT and hold `anchor`
+    /// within the radius the OS monitors them by.
+    private static func trackedCircles(_ regions: [Geofence], containing anchor: LocationData, maxMonitoringRadius: Double) -> [Geofence] {
+        regions.filter { region in
+            region.vertices == nil
+                && (
+                    region.transitionTypes.contains(.enter) ||
+                        region.dwellThresholdSeconds > 0 ||
+                        region.transitionTypes.contains(.exit)
+                )
+                && region.distanceTo(anchor) <= min(region.radius, maxMonitoringRadius)
         }
     }
 
