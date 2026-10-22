@@ -3484,6 +3484,46 @@ struct GeofenceSyncCoordinatorTests {
         await emitter.release()
     }
 
+    /// An EXIT arrives while the synthesized ENTER is in flight. The ENTER's visit, ENTER mark and
+    /// all, was written before the ENTER was tracked, so the EXIT closes that visit and reports it.
+    @Test
+    func refresh_givenExitDuringInitialEnter_expectExitClosesTheVisitWrittenFirst() async {
+        let anchor = LocationData(latitude: 1.0, longitude: 2.0)
+        let storage = makeStorage()
+        let contextStore = makeContextStore()
+        let emitter = StallingEnterEmitter(visitsOf: storage)
+        let dwellCoordinator = GeofenceDwellCoordinator(
+            storage: storage, transitionEmitter: emitter, contextStore: contextStore, logger: LoggerMock(),
+            freshFixProvider: { nil }
+        )
+        let dateUtil = DateUtilStub()
+        await storage.recordSync(
+            timestamp: dateUtil.givenNow.addingTimeInterval(-25 * 60 * 60), location: LocationData(latitude: 0, longitude: 0)
+        )
+        let region = Geofence(
+            id: "enter-exit", latitude: anchor.latitude, longitude: anchor.longitude, radius: 100,
+            name: "Enter and exit", transitionTypes: [.enter, .exit], lastUpdated: Date(timeIntervalSince1970: 1),
+            dwellThresholdSeconds: 60
+        )
+        let coordinator = makeStallingEnterCoordinator(
+            serving: region, emitter: emitter, dwellCoordinator: dwellCoordinator, dateUtil: dateUtil
+        )
+
+        _ = await coordinator.refresh(latitude: anchor.latitude, longitude: anchor.longitude, anchorIsLiveFix: true)
+        for _ in 0 ..< 1000 where await !emitter.isStalled {
+            await Task.yield()
+        }
+        let exitContext = await dwellCoordinator.handleBoundary(
+            geofence: region, transition: .exit, occurredAt: dateUtil.givenNow.addingTimeInterval(5)
+        )
+
+        #expect(await emitter.isStalled)
+        #expect(await emitter.visitStoredAtEnter == [true], "the ENTER was tracked before its visit was written")
+        #expect(exitContext?.visitId != nil)
+        #expect(await storage.getDwellVisit(geofenceId: region.id) == nil)
+        await emitter.release()
+    }
+
     /// A fence the SDK stops monitoring gets no EXIT. Its visit ends with the registration, so
     /// the ENTER synthesized when a later re-rank registers it again cannot adopt a stay that
     /// spans the time nobody watched. A fence that stays registered keeps its visit.
@@ -4030,6 +4070,13 @@ private actor StallingEnterEmitter: GeofenceTransitionEmitting {
     private var released = false
     private var stalledSends: [CheckedContinuation<Void, Never>] = []
     private(set) var entersReceived = 0
+    /// With `visitsOf`, whether the fence's visit was already stored as each ENTER was tracked.
+    private(set) var visitStoredAtEnter: [Bool] = []
+    private let storage: GeofenceStorage?
+
+    init(visitsOf storage: GeofenceStorage? = nil) {
+        self.storage = storage
+    }
 
     var isStalled: Bool {
         !stalledSends.isEmpty
@@ -4037,6 +4084,7 @@ private actor StallingEnterEmitter: GeofenceTransitionEmitting {
 
     func trackTransition(geofenceId: String, transition: GeofenceTransition, occurredAt: Date) async {
         guard transition == .enter else { return }
+        if let storage { visitStoredAtEnter.append(await storage.getDwellVisit(geofenceId: geofenceId) != nil) }
         entersReceived += 1
         guard !released else { return }
         await withCheckedContinuation { stalledSends.append($0) }

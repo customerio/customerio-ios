@@ -42,9 +42,11 @@ extension GeofenceSyncCoordinatorImpl {
         guard !newInside.isEmpty || !keptWithDwell.isEmpty else { return }
         // Read outside the Task: `DateUtil` isn't Sendable, and Swift 5 mode doesn't diagnose it.
         let discoveredAt = dateUtil.now
-        // Off the gate: a slow send must not stall the next refresh. Not main-actor bound either, so
-        // the ENTER can't queue behind a sign-out; only the visit bookkeeping hops, in a child run
-        // alongside the emit — awaited after it, a stalled send left the visit unwritten past an EXIT.
+        // Off the gate: a slow send must not stall the next refresh. Not main-actor bound either; only
+        // the visit bookkeeping hops. Each ENTER's visit, and its ENTER mark, is written before the
+        // ENTER is tracked: run alongside the send, an EXIT routed meanwhile could find no visit to
+        // close and report no visit; awaited after it, a stalled send left the visit unwritten past
+        // an EXIT.
         Task { [transitionEmitter, contextStore, logger, dwellCoordinator, storage] in
             if !keptWithDwell.isEmpty, let dwellCoordinator {
                 let records = await storage.getMonitorRegionRecords()
@@ -59,7 +61,7 @@ extension GeofenceSyncCoordinatorImpl {
             for region in newInside {
                 // Per iteration: an awaited send can span a user switch.
                 guard contextStore.currentUserId == expectedUserId else { return }
-                async let visitRecorded: GeofenceExitContext? = dwellCoordinator?.handleBoundary(
+                await dwellCoordinator?.handleBoundary(
                     geofence: region,
                     transition: .enter,
                     occurredAt: discoveredAt,
@@ -72,12 +74,13 @@ extension GeofenceSyncCoordinatorImpl {
                     presenceProven: false
                 )
                 if region.transitionTypes.contains(.enter) {
+                    // The visit write hops to the main actor, which a user switch can reach first.
+                    guard contextStore.currentUserId == expectedUserId else { return }
                     logger.geofenceTransitionSynthesized(geofenceId: region.id, transition: .enter)
                     await transitionEmitter.trackTransition(
                         geofenceId: region.id, transition: .enter, occurredAt: discoveredAt
                     )
                 }
-                _ = await visitRecorded
             }
         }
     }
