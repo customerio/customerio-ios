@@ -116,10 +116,11 @@ struct ExitDurationObservedBoundaryTests {
         await second.deliver(.unsatisfied, to: Self.exitOnly.id)
 
         let row = try #require(await Self.exitRows(second).last)
-        #expect(row.visitId == nil)
-        #expect(row.visitId != stay.visitId)
+        // The EXIT still names the stay it ends; only its timing is withheld.
+        #expect(row.visitId == stay.visitId)
         #expect(row.enteredAt == nil)
         #expect(row.visitDurationSeconds == nil)
+        #expect(row.visitDurationUncertaintySeconds == nil)
         second.end()
     }
 
@@ -146,8 +147,9 @@ struct ExitDurationObservedBoundaryTests {
         )
 
         let row = try #require(await Self.exitRows(process).last)
-        #expect(row.visitId == (ownDate ? stay.visitId : nil))
+        #expect(row.visitId == stay.visitId)
         #expect(row.visitDurationSeconds == (ownDate ? 0 : nil))
+        #expect(row.visitDurationUncertaintySeconds == (ownDate ? 0 : nil))
         process.end()
     }
 
@@ -212,7 +214,7 @@ struct ExitDurationObservedBoundaryTests {
         )
 
         let row = try #require(await Self.exitRows(second).last)
-        #expect(row.visitId == nil)
+        #expect(row.visitId != nil)
         #expect(row.visitDurationSeconds == nil)
         #expect(await second.dwellRows().count == 1)
         second.end()

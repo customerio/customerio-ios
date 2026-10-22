@@ -27,8 +27,9 @@ struct PolygonVisitBoundaryTests {
         dwellThresholdSeconds: 600
     )
 
-    /// An outside fix within `polygonOutsideProofMaxAge` of the last inside proof dates the
-    /// departure: the crossing lies in that short gap, so the EXIT is timed from the observed entry.
+    /// A fix outside the polygon ends the visit: the EXIT is timed from the observed entry to the
+    /// fix, and carries as its uncertainty the gap since the device was last proven inside — here
+    /// the decisive entry fix itself.
     @Test
     func fixExitSoonAfterTheLastInsideProofReportsTheDuration() async throws {
         let setup = await makeSetup()
@@ -47,15 +48,15 @@ struct PolygonVisitBoundaryTests {
         #expect(rows[0].visitId == visit.visitId)
         #expect(rows[0].enteredAt.map { Int($0.timeIntervalSince1970) } == Int(enteredAt.timeIntervalSince1970))
         #expect(rows[0].visitDurationSeconds == 90)
+        #expect(rows[0].visitDurationUncertaintySeconds == 90)
         #expect(rows[0].detectionSource == "location_evidence")
         #expect(await setup.storage.getDwellVisit(geofenceId: Self.polygon.id) == nil)
     }
 
-    /// An outside fix long after the last inside proof only discovers the departure: the device
-    /// left at some unknown point in the gap, so the EXIT is delivered untimed, as a discovered
-    /// exit is — the bound an ENTER's outside proof must meet, mirrored.
+    /// An outside fix long after the last inside proof still times the EXIT to the fix: the device
+    /// left at some unknown point in the gap, which the uncertainty reports in full.
     @Test
-    func fixExitLongAfterTheLastInsideProofIsUntimed() async throws {
+    func fixExitLongAfterTheLastInsideProofReportsTheWholeGapAsUncertainty() async throws {
         let setup = await makeSetup()
         await setup.judge(.outside)
         setup.advance(30)
@@ -68,18 +69,62 @@ struct PolygonVisitBoundaryTests {
 
         let rows = await setup.exitRows()
         try #require(rows.count == 1)
-        #expect(rows[0].visitId == nil)
+        #expect(rows[0].visitId == visit.visitId)
+        #expect(rows[0].enteredAt.map { Int($0.timeIntervalSince1970) } == Int(visit.enteredAt.timeIntervalSince1970))
+        #expect(rows[0].visitDurationSeconds == Int(GeofenceConstants.polygonOutsideProofMaxAge) + 3600)
+        #expect(rows[0].visitDurationUncertaintySeconds == rows[0].visitDurationSeconds)
+        #expect(rows[0].trackEventProperties["visitDurationUncertaintySeconds"] as? Int == rows[0].visitDurationSeconds)
+        #expect(await setup.storage.getDwellVisit(geofenceId: Self.polygon.id) == nil)
+    }
+
+    /// A visit discovered inside, with no observed entry, ends with an EXIT that names the visit
+    /// and nothing else: no entry, no duration, no uncertainty.
+    @Test
+    func fixExitOfADiscoveredVisitCarriesOnlyTheVisitId() async throws {
+        let setup = await makeSetup()
+        await setup.judge(.inside)
+        let visit = try #require(await setup.storage.getDwellVisit(geofenceId: Self.polygon.id))
+        try #require(!visit.entryObserved)
+        setup.advance(90)
+
+        await setup.judge(.outside)
+
+        let rows = await setup.exitRows()
+        try #require(rows.count == 1)
+        #expect(rows[0].visitId == visit.visitId)
         #expect(rows[0].enteredAt == nil)
         #expect(rows[0].visitDurationSeconds == nil)
-        #expect(rows[0].trackEventProperties["visitDurationSeconds"] == nil)
+        #expect(rows[0].visitDurationUncertaintySeconds == nil)
+        #expect(rows[0].trackEventProperties["visitDurationUncertaintySeconds"] == nil)
+    }
+
+    /// The covering circle's EXIT ends the polygon visit too: the EXIT names the visit, is timed
+    /// to the circle crossing, and reports the gap since the last decisive inside proof.
+    @Test
+    func coveringCircleExitCarriesTheVisitAndItsUncertainty() async throws {
+        let setup = await makeSetup()
+        await setup.judge(.outside)
+        setup.advance(30)
+        await setup.judge(.inside)
+        let visit = try #require(await setup.storage.getDwellVisit(geofenceId: Self.polygon.id))
+        setup.advance(200)
+
+        await setup.resolver.applyCoveringCircleExit(geofence: Self.polygon, eventCircle: .unknown, occurredAt: setup.clock.wall)
+
+        let rows = await setup.exitRows()
+        try #require(rows.count == 1)
+        #expect(rows[0].visitId == visit.visitId)
+        #expect(rows[0].visitDurationSeconds == 200)
+        #expect(rows[0].visitDurationUncertaintySeconds == 200)
+        #expect(rows[0].detectionSource == "covering_circle")
         #expect(await setup.storage.getDwellVisit(geofenceId: Self.polygon.id) == nil)
     }
 
     /// A marginal arrival — a corroborated fix whose accuracy disk crossed the edge — begins the
-    /// visit but is no proof of the stay, so an outside fix soon after it is not a dated departure:
-    /// the EXIT is untimed until a decisive inside fix has proven the device there.
+    /// visit but is no proof of the stay: the EXIT is timed from it, and with nothing decisive
+    /// since, the uncertainty is the whole stay.
     @Test
-    func fixExitAfterOnlyAMarginalArrivalIsUntimed() async throws {
+    func fixExitAfterOnlyAMarginalArrivalReportsTheWholeStayAsUncertainty() async throws {
         let setup = await makeSetup()
         await setup.judge(.outside)
         setup.advance(30)
@@ -91,11 +136,12 @@ struct PolygonVisitBoundaryTests {
 
         let rows = await setup.exitRows()
         try #require(rows.count == 1)
-        #expect(rows[0].visitId == nil)
-        #expect(rows[0].visitDurationSeconds == nil)
+        #expect(rows[0].visitDurationSeconds == 60)
+        #expect(rows[0].visitDurationUncertaintySeconds == 60)
     }
 
-    /// The same stay, decisively confirmed inside before it is left, is timed from its entry.
+    /// The same stay, decisively confirmed inside before it is left, is timed from its entry with
+    /// the uncertainty counted from that confirmation.
     @Test
     func decisiveConfirmationAfterAMarginalArrivalTimesTheExit() async throws {
         let setup = await makeSetup()
@@ -111,6 +157,7 @@ struct PolygonVisitBoundaryTests {
         let rows = await setup.exitRows()
         try #require(rows.count == 1)
         #expect(rows[0].visitDurationSeconds == 60)
+        #expect(rows[0].visitDurationUncertaintySeconds == 30)
     }
 
     /// An outside confirmation that was suspended while a newer inside pass began a stay must not
@@ -179,6 +226,7 @@ struct PolygonVisitBoundaryTests {
         let rows = await setup.exitRows()
         try #require(rows.count == 1)
         #expect(rows[0].visitDurationSeconds == 3660)
+        #expect(rows[0].visitDurationUncertaintySeconds == 60)
     }
 
     /// The belief went outside but the visit's removal never ran — the process died between the

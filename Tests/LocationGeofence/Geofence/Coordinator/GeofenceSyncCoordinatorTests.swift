@@ -3424,7 +3424,8 @@ struct GeofenceSyncCoordinatorTests {
         #expect(setup.emitter.calls.wrappedValue.map(\.transition) == [.enter])
         #expect(visit != nil)
         #expect(visit?.entryObserved == false)
-        #expect(exitContext == nil)
+        #expect(exitContext?.visitId == visit?.visitId)
+        #expect(exitContext?.durationSeconds == nil)
         #expect(await storage.getDwellVisit(geofenceId: region.id) == nil)
     }
 

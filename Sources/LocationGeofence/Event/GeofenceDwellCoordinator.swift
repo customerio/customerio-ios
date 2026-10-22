@@ -161,7 +161,10 @@ final class GeofenceDwellCoordinator {
     ///   - crossingObserved: whether `occurredAt` is when the boundary was crossed, not when it, or a
     ///     side, was discovered: false for a synthesized discovery, an OS correction of an assumed
     ///     state, or a heal. A discovered ENTER's visit reports no entry or duration on its dwell or
-    ///     EXIT; a discovered EXIT ends its visit, untimed, as the device left at some earlier time.
+    ///     EXIT; a discovered EXIT ends its visit and reports its duration with the whole gap since
+    ///     the device was last proven inside as its uncertainty.
+    ///   - insideProvenAt: for a polygon EXIT, when the device was last decisively proven inside.
+    ///     It bounds the EXIT's uncertainty; nil falls back to the entry.
     ///   - presenceProven: for an ENTER, whether anything showed the device there: false only for
     ///     an ENTER synthesized from the refresh anchor, a location nothing proved current. The
     ///     candidate it starts counts no time until a fresh fix proves it.
@@ -173,7 +176,8 @@ final class GeofenceDwellCoordinator {
         expectedUserId: String? = nil,
         detectionSource: String? = nil,
         crossingObserved: Bool = true,
-        presenceProven: Bool = true
+        presenceProven: Bool = true,
+        insideProvenAt: Date? = nil
     ) async -> GeofenceExitContext? {
         // Placed on the monotonic timeline as it is processed, before any await.
         let reading = readClock()
@@ -201,10 +205,10 @@ final class GeofenceDwellCoordinator {
                 geofence: geofence,
                 exit: mark, processedAt: reading,
                 detectionSource: detectionSource ?? (geofence.vertices == nil ? "native" : "location_evidence"),
-                expectedUserId: expectedUserId
+                expectedUserId: expectedUserId,
+                crossingObserved: crossingObserved, insideProvenAt: insideProvenAt
             )
-            // The visit ends either way; a discovered EXIT only withholds the duration it would carry.
-            let context = crossingObserved ? result.context : nil
+            let context = result.context
             // Only the visit this EXIT read and judged: an overlapping ENTER may have written a newer
             // one since, and a delayed EXIT that found none has nothing to end.
             guard let endedVisitId = result.endedVisitId else { return context }

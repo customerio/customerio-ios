@@ -184,6 +184,7 @@ public struct TrackGeofenceMetricEvent: EventRepresentable, GeofenceMetric {
     public let dwellThresholdSeconds: Int?
     public let dwellDurationSeconds: Int?
     public let visitDurationSeconds: Int?
+    public let visitDurationUncertaintySeconds: Int?
     public let detectionSource: String?
 
     public init(
@@ -202,6 +203,7 @@ public struct TrackGeofenceMetricEvent: EventRepresentable, GeofenceMetric {
         dwellThresholdSeconds: Int? = nil,
         dwellDurationSeconds: Int? = nil,
         visitDurationSeconds: Int? = nil,
+        visitDurationUncertaintySeconds: Int? = nil,
         detectionSource: String? = nil
     ) {
         self.storageId = storageId
@@ -219,6 +221,7 @@ public struct TrackGeofenceMetricEvent: EventRepresentable, GeofenceMetric {
         self.dwellThresholdSeconds = dwellThresholdSeconds
         self.dwellDurationSeconds = dwellDurationSeconds
         self.visitDurationSeconds = visitDurationSeconds
+        self.visitDurationUncertaintySeconds = visitDurationUncertaintySeconds
         self.detectionSource = detectionSource
     }
 }

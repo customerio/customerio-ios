@@ -90,7 +90,9 @@ struct GeofenceExitDurationContinuityTests {
             geofence: setup.geofence, transition: .exit, occurredAt: clock.wall
         )
 
-        #expect(context == nil)
+        #expect(context?.visitId != nil)
+        #expect(context?.durationSeconds == nil)
+        #expect(context?.enteredAt == nil)
         #expect(await setup.storage.getDwellVisit(geofenceId: setup.geofence.id) == nil)
     }
 
@@ -133,7 +135,9 @@ struct GeofenceExitDurationContinuityTests {
             geofence: setup.geofence, transition: .exit, occurredAt: clock.wall
         )
 
-        #expect(context == nil)
+        #expect(context?.visitId != nil)
+        #expect(context?.durationSeconds == nil)
+        #expect(context?.enteredAt == nil)
         #expect(await setup.storage.getDwellVisit(geofenceId: setup.geofence.id) == nil)
     }
 
@@ -153,7 +157,9 @@ struct GeofenceExitDurationContinuityTests {
             geofence: setup.geofence, transition: .exit, occurredAt: clock.wall
         )
 
-        #expect(context == nil)
+        #expect(context?.visitId != nil)
+        #expect(context?.durationSeconds == nil)
+        #expect(context?.enteredAt == nil)
         #expect(await setup.storage.getDwellVisit(geofenceId: setup.geofence.id) == nil)
     }
 
@@ -170,7 +176,9 @@ struct GeofenceExitDurationContinuityTests {
             geofence: setup.geofence, transition: .exit, occurredAt: clock.wall.addingTimeInterval(100)
         )
 
-        #expect(context == nil)
+        #expect(context?.visitId != nil)
+        #expect(context?.durationSeconds == nil)
+        #expect(context?.enteredAt == nil)
         #expect(await setup.storage.getDwellVisit(geofenceId: setup.geofence.id) == nil)
     }
 
@@ -211,7 +219,9 @@ struct GeofenceExitDurationContinuityTests {
             geofence: setup.geofence, transition: .exit, occurredAt: exitDatedOnTheOldClock
         )
 
-        #expect(context == nil)
+        #expect(context?.visitId != nil)
+        #expect(context?.durationSeconds == nil)
+        #expect(context?.enteredAt == nil)
         #expect(await setup.storage.getDwellVisit(geofenceId: setup.geofence.id) == nil)
     }
 
@@ -350,7 +360,9 @@ struct GeofenceExitDurationContinuityTests {
             geofence: setup.geofence, transition: .exit, occurredAt: clock.wall
         )
 
-        #expect(context == nil)
+        #expect(context?.visitId != nil)
+        #expect(context?.durationSeconds == nil)
+        #expect(context?.enteredAt == nil)
         #expect(await setup.storage.getDwellVisit(geofenceId: setup.geofence.id) == nil)
     }
 
@@ -379,7 +391,7 @@ struct GeofenceExitDurationContinuityTests {
 
         let closed = await setup.coordinator.handleBoundary(geofence: setup.geofence, transition: .exit, occurredAt: exitedAt)
 
-        #expect(closed == nil)
+        #expect(closed?.durationSeconds == nil)
         #expect(newer.enteredAt == reentry)
         clock.advance(90)
         let reentryExit = await setup.coordinator.handleBoundary(
@@ -408,7 +420,7 @@ struct GeofenceExitDurationContinuityTests {
 
         let closed = await setup.coordinator.handleBoundary(geofence: setup.geofence, transition: .exit, occurredAt: exitedAt)
 
-        #expect(closed == nil)
+        #expect(closed?.durationSeconds == nil)
         #expect(await setup.storage.getDwellVisit(geofenceId: setup.geofence.id)?.enteredAt == reentry)
     }
 
@@ -432,7 +444,7 @@ struct GeofenceExitDurationContinuityTests {
 
         let closed = await setup.coordinator.handleBoundary(geofence: setup.geofence, transition: .exit, occurredAt: exitedAt)
 
-        #expect(closed == nil)
+        #expect(closed?.durationSeconds == nil)
     }
 
     // MARK: - Interrupted continuity
@@ -578,7 +590,8 @@ struct GeofenceExitDurationContinuityTests {
             geofence: setup.geofence, transition: .exit, occurredAt: clock.wall, crossingObserved: false
         )
 
-        #expect(context == nil)
+        #expect(context?.durationSeconds == 600)
+        #expect(context?.visitDurationUncertaintySeconds == 600)
         #expect(await setup.storage.getDwellVisit(geofenceId: setup.geofence.id) == nil)
     }
 
@@ -596,7 +609,9 @@ struct GeofenceExitDurationContinuityTests {
             geofence: setup.geofence, transition: .exit, occurredAt: clock.wall
         )
 
-        #expect(context == nil)
+        #expect(context?.visitId != nil)
+        #expect(context?.durationSeconds == nil)
+        #expect(context?.enteredAt == nil)
         #expect(await setup.storage.getDwellVisit(geofenceId: setup.geofence.id) == nil)
     }
 
@@ -644,7 +659,8 @@ struct GeofenceExitDurationContinuityTests {
         let candidateExit = await setup.coordinator.handleBoundary(
             geofence: setup.geofence, transition: .exit, occurredAt: clock.wall
         )
-        #expect(candidateExit == nil)
+        #expect(candidateExit?.visitId != nil)
+        #expect(candidateExit?.durationSeconds == nil)
         #expect(await setup.storage.getDwellVisit(geofenceId: setup.geofence.id) == nil)
         setup.coordinator.cancelEvidence(for: setup.geofence.id)
     }
@@ -663,7 +679,7 @@ struct GeofenceExitDurationContinuityTests {
 
         let context = GeofenceExitContext(
             visitId: "visit-1", enteredAt: Date(timeIntervalSince1970: 1000000.9),
-            durationSeconds: 75, detectionSource: "native"
+            durationSeconds: 75, visitDurationUncertaintySeconds: 0, detectionSource: "native"
         )
         let geofence = Geofence(
             id: "fence", latitude: 0.5, longitude: 0.5, radius: 100, name: "Campus",

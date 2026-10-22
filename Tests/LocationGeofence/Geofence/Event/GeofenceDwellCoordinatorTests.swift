@@ -1073,7 +1073,10 @@ struct GeofenceDwellCoordinatorTests {
             crossingObserved: false
         )
         #expect(first?.entryObserved == true)
-        #expect(discovered == nil)
+        // Discovered, the departure is dated by its discovery: the whole stay is the uncertainty.
+        #expect(discovered?.visitId == first?.visitId)
+        #expect(discovered?.durationSeconds == 7200)
+        #expect(discovered?.visitDurationUncertaintySeconds == 7200)
         #expect(await setup.storage.getDwellVisit(geofenceId: setup.geofence.id) == nil)
 
         let reentry = enteredAt.addingTimeInterval(9000)
@@ -1122,7 +1125,9 @@ struct GeofenceDwellCoordinatorTests {
             occurredAt: enteredAt.addingTimeInterval(90)
         )
 
-        #expect(context == nil)
+        #expect(context?.visitId != nil)
+        #expect(context?.durationSeconds == nil)
+        #expect(context?.enteredAt == nil)
         #expect(await setup.storage.getDwellVisit(geofenceId: setup.geofence.id) == nil)
     }
 
@@ -1372,7 +1377,7 @@ struct GeofenceDwellCoordinatorTests {
 
         let context = await setup.coordinator.handleBoundary(geofence: setup.geofence, transition: .exit, occurredAt: exitedAt)
 
-        let enteredSeconds = Int(context?.enteredAt.timeIntervalSince1970 ?? 0)
+        let enteredSeconds = Int(context?.enteredAt?.timeIntervalSince1970 ?? 0)
         #expect(context?.durationSeconds == 60)
         #expect(context?.durationSeconds == Int(exitedAt.timeIntervalSince1970) - enteredSeconds)
     }

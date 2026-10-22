@@ -235,6 +235,7 @@ final class GeofenceEventTracker: @unchecked Sendable {
             dwellThresholdSeconds: metric.dwellThresholdSeconds,
             dwellDurationSeconds: metric.dwellDurationSeconds,
             visitDurationSeconds: metric.visitDurationSeconds,
+            visitDurationUncertaintySeconds: metric.visitDurationUncertaintySeconds,
             detectionSource: metric.detectionSource
         ))
         logger.geofenceDeliveryQueued(geofenceId: metric.geofenceId, transition: metric.transition, via: "event_bus")

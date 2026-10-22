@@ -39,6 +39,7 @@ extension GeofenceCrossing {
                 dwellThresholdSeconds: dwell?.thresholdSeconds,
                 dwellDurationSeconds: dwell?.durationSeconds,
                 visitDurationSeconds: exit?.durationSeconds,
+                visitDurationUncertaintySeconds: exit?.visitDurationUncertaintySeconds,
                 detectionSource: dwell?.detectionSource ?? exit?.detectionSource
             )
         }

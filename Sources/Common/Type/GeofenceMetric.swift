@@ -24,6 +24,9 @@ public protocol GeofenceMetric {
     var dwellThresholdSeconds: Int? { get }
     var dwellDurationSeconds: Int? { get }
     var visitDurationSeconds: Int? { get }
+    /// With `visitDurationSeconds` only: whole seconds between the last moment the device was
+    /// proven inside and the moment the departure was observed; 0 when the OS decided the EXIT.
+    var visitDurationUncertaintySeconds: Int? { get }
     var detectionSource: String? { get }
 }
 
@@ -35,6 +38,7 @@ public extension GeofenceMetric {
     var dwellDurationSeconds: Int? { nil }
     var detectionSource: String? { nil }
     var visitDurationSeconds: Int? { nil }
+    var visitDurationUncertaintySeconds: Int? { nil }
 
     /// `/track` event name. The same name for every transition; the direction is the
     /// `transition` property.
@@ -61,6 +65,9 @@ public extension GeofenceMetric {
         if let dwellThresholdSeconds { properties["dwellThresholdSeconds"] = dwellThresholdSeconds }
         if let dwellDurationSeconds { properties["dwellDurationSeconds"] = dwellDurationSeconds }
         if let visitDurationSeconds { properties["visitDurationSeconds"] = visitDurationSeconds }
+        if let visitDurationUncertaintySeconds {
+            properties["visitDurationUncertaintySeconds"] = visitDurationUncertaintySeconds
+        }
         if let detectionSource { properties["detectionSource"] = detectionSource }
         return properties
     }

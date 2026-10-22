@@ -100,9 +100,12 @@ struct ExitDurationStaleGenerationTests {
 
         let row = try #require(await Self.exitRows(process).last)
         #expect(await Self.exitRows(process).count == 1)
-        #expect(row.visitId == nil)
-        #expect(row.enteredAt == nil)
-        #expect(row.visitDurationSeconds == nil)
+        // A healed EXIT discovers the departure: timed to the heal, with the whole stay since the
+        // device was last proven inside as its uncertainty.
+        #expect(row.visitId == stay.visitId)
+        #expect(row.enteredAt != nil)
+        #expect(row.visitDurationSeconds == 600)
+        #expect(row.visitDurationUncertaintySeconds == 600)
         #expect(await process.visit()?.visitId != stay.visitId)
         Self.expectNoExitBarrier(process.dwell)
         await process.freshInsideEvidence()

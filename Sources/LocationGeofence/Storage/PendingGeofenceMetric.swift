@@ -18,6 +18,7 @@ struct PendingGeofenceMetric: Codable, Equatable, Sendable, GeofenceMetric {
     let dwellThresholdSeconds: Int?
     let dwellDurationSeconds: Int?
     let visitDurationSeconds: Int?
+    let visitDurationUncertaintySeconds: Int?
     let detectionSource: String?
 
     /// Includes `userId`: the queue survives sign-out, so one crossing can be queued under two users.
@@ -53,6 +54,7 @@ struct PendingGeofenceMetric: Codable, Equatable, Sendable, GeofenceMetric {
         dwellThresholdSeconds: Int? = nil,
         dwellDurationSeconds: Int? = nil,
         visitDurationSeconds: Int? = nil,
+        visitDurationUncertaintySeconds: Int? = nil,
         detectionSource: String? = nil
     ) {
         self.geofenceId = geofenceId
@@ -68,6 +70,7 @@ struct PendingGeofenceMetric: Codable, Equatable, Sendable, GeofenceMetric {
         self.dwellThresholdSeconds = dwellThresholdSeconds
         self.dwellDurationSeconds = dwellDurationSeconds
         self.visitDurationSeconds = visitDurationSeconds
+        self.visitDurationUncertaintySeconds = visitDurationUncertaintySeconds
         self.detectionSource = detectionSource
     }
 
@@ -85,6 +88,7 @@ struct PendingGeofenceMetric: Codable, Equatable, Sendable, GeofenceMetric {
         case dwellThresholdSeconds = "dwell_threshold_seconds"
         case dwellDurationSeconds = "dwell_duration_seconds"
         case visitDurationSeconds = "visit_duration_seconds"
+        case visitDurationUncertaintySeconds = "visit_duration_uncertainty_seconds"
         case detectionSource = "detection_source"
     }
 
@@ -103,6 +107,7 @@ struct PendingGeofenceMetric: Codable, Equatable, Sendable, GeofenceMetric {
             dwellThresholdSeconds: dwellThresholdSeconds,
             dwellDurationSeconds: dwellDurationSeconds,
             visitDurationSeconds: visitDurationSeconds,
+            visitDurationUncertaintySeconds: visitDurationUncertaintySeconds,
             detectionSource: detectionSource
         )
     }

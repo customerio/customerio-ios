@@ -186,6 +186,7 @@ struct GeofenceEventTrackerTests {
                 visitId: "visit-1",
                 enteredAt: enteredAt,
                 durationSeconds: 75,
+                visitDurationUncertaintySeconds: 0,
                 detectionSource: "native"
             ),
             expectedUserId: "user_42"
@@ -222,6 +223,7 @@ struct GeofenceEventTrackerTests {
                 visitId: "visit-of-A",
                 enteredAt: crossedAt.addingTimeInterval(-75),
                 durationSeconds: 75,
+                visitDurationUncertaintySeconds: 0,
                 detectionSource: "native"
             ),
             expectedUserId: "user_A"

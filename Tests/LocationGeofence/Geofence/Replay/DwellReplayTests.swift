@@ -495,9 +495,11 @@ struct DwellReplayTests {
                 #expect(await harness.storedVisit(fence: "A") == nil, "fresh outside-polygon proof ends the visit")
                 let exits = harness.deliveredMetrics.filter { $0.transition == .exit }
                 #expect(exits.count == 1, "an outside proof ends the visit exactly once")
-                // Found outside 170 s after the last inside proof: the device left at some point in
-                // that gap, so the EXIT is discovered, not dated, and names no visit.
-                #expect(exits.allSatisfy { $0.visitId == nil && $0.visitDurationSeconds == nil })
+                // Found outside 170 s after the entry: the EXIT is timed to the fix, and the gap
+                // since the device was last proven inside travels with it as the uncertainty.
+                #expect(exits.first?.visitId == visit.visitId)
+                #expect(exits.first?.visitDurationSeconds == 170)
+                #expect(exits.first?.visitDurationUncertaintySeconds == 170)
             }
         }
     }

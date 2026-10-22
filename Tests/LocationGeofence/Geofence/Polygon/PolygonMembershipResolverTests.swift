@@ -244,10 +244,11 @@ struct PolygonMembershipResolverTests {
 
     /// A circle EXIT the OS only discovered — a heal of a crossing it missed, or its correction of an
     /// assumed inside — is dated when it was noticed, not when the device left. The EXIT is still
-    /// delivered and closes the visit; only the duration measured to that date is withheld. The
-    /// observed case is the control that the visit was otherwise timed.
+    /// delivered, closes the visit and is timed to that date; the uncertainty says how much of the
+    /// stay the departure may fall in: nothing for a crossing the OS decided, all of it for one it
+    /// discovered.
     @Test(arguments: [true, false])
-    func circleExit_givenObservedVisit_expectDurationOnlyWhenExitObserved(crossingObserved: Bool) async {
+    func circleExit_givenObservedVisit_expectUncertaintyByExitObservation(crossingObserved: Bool) async {
         // Whole seconds, so the persisted `enteredAt` round-trips exactly.
         let entry = Date(timeIntervalSince1970: clock.now.timeIntervalSince1970.rounded(.down) - 7200)
         let dwellClock = ManualGeofenceClock(wall: entry)
@@ -268,8 +269,9 @@ struct PolygonMembershipResolverTests {
         #expect(await setup.emitter.snapshot().map(\.transition) == [.enter, .exit])
         let exits = await setup.emitter.exitSnapshot()
         #expect(exits.count == 1)
-        #expect(exits.first?.context?.durationSeconds == (crossingObserved ? 7200 : nil))
-        #expect(exits.first?.context?.detectionSource == (crossingObserved ? "native" : nil))
+        #expect(exits.first?.context?.durationSeconds == 7200)
+        #expect(exits.first?.context?.visitDurationUncertaintySeconds == (crossingObserved ? 0 : 7200))
+        #expect(exits.first?.context?.detectionSource == "native")
         #expect(await setup.storage.getDwellVisit(geofenceId: circle.id) == nil)
     }
 
@@ -277,7 +279,7 @@ struct PolygonMembershipResolverTests {
     /// the polygon long before reaching the circle edge. Neither observed nor healed circle exits
     /// can time the polygon stay, although both deliver the EXIT and close the visit.
     @Test(arguments: [true, false])
-    func coveringCircleExit_givenObservedPolygonVisit_expectNoDuration(crossingObserved: Bool) async {
+    func coveringCircleExit_givenObservedPolygonVisit_expectDurationWithUncertainty(crossingObserved: Bool) async {
         let entry = Date(timeIntervalSince1970: 1000)
         let dwellClock = ManualGeofenceClock(wall: entry.addingTimeInterval(-60))
         let setup = await makeSetup(fix: nil, withDwellCoordinator: true, dwellClock: dwellClock)
@@ -299,7 +301,11 @@ struct PolygonMembershipResolverTests {
         #expect(await setup.emitter.snapshot().map(\.transition) == [.enter, .exit])
         let exits = await setup.emitter.exitSnapshot()
         #expect(exits.count == 1)
-        #expect(exits.first?.context == nil)
+        // The covering circle says nothing about when the polygon was left: timed to its EXIT,
+        // with the whole stay since the decisive entry fix as the uncertainty.
+        #expect(exits.first?.context?.durationSeconds == 600)
+        #expect(exits.first?.context?.visitDurationUncertaintySeconds == 600)
+        #expect(exits.first?.context?.detectionSource == "covering_circle")
         #expect(await setup.storage.getDwellVisit(geofenceId: geofence.id) == nil)
     }
 
@@ -908,7 +914,8 @@ struct PolygonMembershipResolverTests {
 
         let exits = await setup.emitter.exitSnapshot()
         #expect(exits.count == 1)
-        #expect(exits.first?.context == nil)
+        #expect(exits.first?.context?.visitId != nil)
+        #expect(exits.first?.context?.durationSeconds == nil)
         #expect(await setup.storage.getDwellVisit(geofenceId: geofence.id) == nil)
     }
 
@@ -933,7 +940,8 @@ struct PolygonMembershipResolverTests {
         #expect(visit?.entryObserved == false)
         let exits = await setup.emitter.exitSnapshot()
         #expect(exits.count == 1)
-        #expect(exits.first?.context == nil)
+        #expect(exits.first?.context?.visitId != nil)
+        #expect(exits.first?.context?.durationSeconds == nil)
     }
 
     /// An EXIT-only polygon discovered inside gets no ENTER, and its EXIT still has no duration to
@@ -953,7 +961,10 @@ struct PolygonMembershipResolverTests {
         #expect(await setup.emitter.snapshot().map(\.transition) == [.exit])
         let exits = await setup.emitter.exitSnapshot()
         #expect(exits.count == 1)
-        #expect(exits.first?.context == nil)
+        #expect(exits.first?.context?.visitId != nil)
+        #expect(exits.first?.context?.enteredAt == nil)
+        #expect(exits.first?.context?.durationSeconds == nil)
+        #expect(exits.first?.context?.visitDurationUncertaintySeconds == nil)
     }
 
     /// Control for the two above: seen outside first, the arrival is a real crossing and its EXIT

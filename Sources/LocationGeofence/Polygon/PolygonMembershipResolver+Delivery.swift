@@ -9,8 +9,8 @@ import Foundation
 extension PolygonMembershipResolver {
     /// The write is refused if the fence moved off `evaluatedRing`/`evaluatedCircle`. Only the
     /// emit and dwell evidence check `isStillCurrent`: a belief is geometry, true whoever is signed in.
-    /// `crossingObserved` is false for a discovered covering-circle EXIT: it still delivers EXIT,
-    /// but the evidence dates discovery rather than departure, so it reports no visit duration.
+    /// `crossingObserved` is false for a discovered covering-circle EXIT: it still delivers EXIT
+    /// with its visit, the evidence dating discovery rather than departure.
     func apply(
         _ membership: PolygonMembership,
         to geofence: Geofence,
@@ -46,8 +46,7 @@ extension PolygonMembershipResolver {
                 insideProvenAt: write.previousProvenAt, processedAt: processedAt,
                 expectedUserId: expectedUserId, qualifiesDwell: qualifiesDwell
             )
-            // The visit is closed either way; a discovered exit only withholds its duration.
-            exitContext = crossingObserved ? visitContext : nil
+            exitContext = visitContext
         }
         guard let transition = outcome.deliveredTransition else {
             logger.geofencePolygonNotDelivered(identifier: geofence.id, reason: .outcome(outcome))
@@ -246,12 +245,11 @@ extension PolygonMembershipResolver {
                 occurredAt: evidence,
                 expectedUserId: expectedUserId,
                 detectionSource: confirmedByFix ? "location_evidence" : "covering_circle",
-                // Leaving the covering circle proves outside now, but says nothing about when
-                // the device crossed the polygon boundary within it. Nor does an outside fix long
-                // after the last inside proof: the device left at some point in that gap, so the
-                // fix dates discovery, not departure, and the visit reports no duration — the
-                // same bound an ENTER's outside proof must meet (`observesEntry`).
-                crossingObserved: confirmedByFix && Self.departureObserved(insideProvenAt: insideProvenAt, outsideAt: evidence)
+                // Neither a covering-circle EXIT nor an outside fix dates the polygon crossing
+                // itself; the duration runs to the evidence, and the time since the device was last
+                // decisively proven inside travels with it as the uncertainty.
+                crossingObserved: confirmedByFix,
+                insideProvenAt: insideProvenAt
             )
         case .stillOutside:
             // Outside, and nothing to deliver: the belief was already outside. A visit the store
@@ -263,14 +261,6 @@ extension PolygonMembershipResolver {
         case .none:
             return nil
         }
-    }
-
-    /// Whether a fix outside the polygon dates the departure: the device was decisively proven
-    /// inside no longer than `polygonOutsideProofMaxAge` before it, so the crossing lies within
-    /// that bound. A marginal arrival is no such proof, so a stay it began is left untimed.
-    static func departureObserved(insideProvenAt: Date?, outsideAt: Date) -> Bool {
-        guard let insideProvenAt, insideProvenAt <= outsideAt else { return false }
-        return outsideAt.timeIntervalSince(insideProvenAt) <= GeofenceConstants.polygonOutsideProofMaxAge
     }
 
     private func emitPolygonTransition(

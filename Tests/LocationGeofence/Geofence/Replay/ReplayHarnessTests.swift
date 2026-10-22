@@ -268,10 +268,13 @@ struct ReplayHarnessTests {
 
             #expect(harness.emitted(ev: "baseline.healed").count == 1, "\(harness.emitted.map { $0["ev"] ?? "?" })")
             #expect(exit != nil, "the healed EXIT was not delivered")
-            #expect(exit?.visitDurationSeconds == nil, "a discovered exit was timed as a crossing")
-            #expect(exit?.visitId == nil)
-            #expect(exit?.enteredAt == nil)
-            #expect(exit?.detectionSource == nil)
+            // A healed EXIT discovers the departure: timed to the heal, the whole stay since the
+            // device was last proven inside as its uncertainty.
+            #expect(exit?.visitId == visit?.visitId)
+            #expect(exit?.enteredAt != nil)
+            #expect(exit?.visitDurationSeconds != nil)
+            #expect(exit?.visitDurationUncertaintySeconds == exit?.visitDurationSeconds)
+            #expect(exit?.detectionSource == "native")
             #expect(await harness.storedVisit(fence: "A") == nil, "the healed EXIT left the visit open")
         }
     }

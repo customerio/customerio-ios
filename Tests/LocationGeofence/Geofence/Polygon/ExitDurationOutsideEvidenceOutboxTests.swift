@@ -79,6 +79,9 @@ struct ExitDurationOutsideEvidenceOutboxTests {
         try #require(rows.count == 1)
         #expect(rows[0].visitDurationSeconds == 90)
         #expect(rows[0].enteredAt.map { Int($0.timeIntervalSince1970) } == Int(enteredAt.timeIntervalSince1970))
+        // Decided by the OS: the departure is the EXIT itself.
+        #expect(rows[0].visitDurationUncertaintySeconds == 0)
+        #expect(rows[0].trackEventProperties["visitDurationUncertaintySeconds"] as? Int == 0)
     }
 
     // MARK: - Setup

@@ -11,10 +11,17 @@ struct GeofenceDwellContext: Sendable {
     let detectionSource: String
 }
 
+/// The visit an EXIT ends. `visitId` travels on every EXIT attributed to a visit; `enteredAt` and
+/// `durationSeconds` together, when the entry was observed and the span is on one monotonic
+/// timeline, else both nil. `visitDurationUncertaintySeconds` goes with the duration: the whole
+/// seconds between the last moment the device was proven inside and the moment the departure was
+/// observed — 0 for a circle EXIT the OS decided, the gap since the last decisive inside fix (or the
+/// entry) for a polygon left by a fix or its covering circle.
 struct GeofenceExitContext: Sendable, Equatable {
     let visitId: String
-    let enteredAt: Date
-    let durationSeconds: Int
+    let enteredAt: Date?
+    let durationSeconds: Int?
+    let visitDurationUncertaintySeconds: Int?
     let detectionSource: String
 }
 

@@ -179,7 +179,7 @@ struct GeofenceExitDurationProvenanceTests {
 
         let untimed = try #require(await process.exitRows().last)
         #expect(untimed.visitDurationSeconds == nil)
-        #expect(untimed.visitId == nil)
+        #expect(untimed.visitId != nil)
         files.advance(60)
         await process.crossing(.enter, Self.exitOnly)
         files.advance(45)
@@ -251,7 +251,7 @@ struct GeofenceExitDurationProvenanceTests {
 
         let row = try #require(await process.exitRows().last)
         #expect(row.visitDurationSeconds == nil)
-        #expect(row.visitId == nil)
+        #expect(row.visitId != nil)
         #expect(await process.rows(.dwell).isEmpty)
         process.dwell.cancelEvidence(for: Self.dwellCircle.id)
     }
@@ -368,7 +368,7 @@ struct GeofenceExitDurationProvenanceTests {
         #expect(restarted.entryObserved == false)
         let row = try #require(await process.exitRows().last)
         #expect(row.visitDurationSeconds == nil)
-        #expect(row.visitId == nil)
+        #expect(row.visitId == restarted.visitId)
     }
 
     /// Two native ENTERs, a crossing and a correction, are noted — as the binder notes them, in the
@@ -424,7 +424,7 @@ struct GeofenceExitDurationProvenanceTests {
         #expect(newer.visitId != first.visitId)
         let rows = await process.exitRows()
         try #require(rows.count == 2)
-        #expect(rows[1].visitId == (crossing ? newer.visitId : nil))
+        #expect(rows[1].visitId == newer.visitId)
         #expect(rows[1].enteredAt.map { Int($0.timeIntervalSince1970) } == (crossing ? Int(reentry.timeIntervalSince1970) : nil))
         #expect(rows[1].visitDurationSeconds == (crossing ? 120 : nil))
     }
@@ -455,7 +455,7 @@ struct GeofenceExitDurationProvenanceTests {
         let row = try #require(await process.exitRows().last)
         #expect(row.visitDurationSeconds == nil)
         #expect(row.enteredAt == nil)
-        #expect(row.visitId == nil)
+        // Whether the EXIT names a visit depends on which stay it ends; it times neither.
     }
 
     /// Control. The OS delivered the EXIT, then the re-entry; the re-entry's callback notes its
@@ -550,7 +550,7 @@ struct GeofenceExitDurationProvenanceTests {
         process.dwell.exitCallbackRouted(geofenceId: id, occurredAt: exitedAt20)
 
         let row = try #require(await process.exitRows().last)
-        #expect(row.visitId == nil)
+        #expect(row.visitId != nil)
         #expect(row.enteredAt == nil)
         #expect(row.visitDurationSeconds == nil)
         #expect(reentered.visitId != first.visitId)
@@ -616,7 +616,7 @@ struct GeofenceExitDurationProvenanceTests {
 
         let row = try #require(await process.exitRows().last)
         #expect(row.visitDurationSeconds == nil)
-        #expect(row.visitId == nil)
+        #expect(row.visitId != nil)
     }
 
     /// Control. With nothing noted before the EXIT, its delayed copy after a real re-entry still
@@ -766,7 +766,7 @@ struct GeofenceExitDurationProvenanceTests {
         files.advance(10)
         await process.crossing(.exit, Self.exitOnly)
 
-        #expect(untimed.visitId == nil)
+        #expect(untimed.visitId != nil)
         #expect(untimed.enteredAt == nil)
         #expect(untimed.visitDurationSeconds == nil)
         let rows = await process.exitRows()
@@ -823,7 +823,7 @@ struct GeofenceExitDurationProvenanceTests {
 
         let rows = await process.exitRows()
         try #require(rows.count == 1)
-        #expect(rows.allSatisfy { $0.visitId != first.visitId })
+        #expect(rows.allSatisfy { $0.visitId != first.visitId || $0.visitDurationSeconds == nil })
         #expect(rows.allSatisfy { ($0.visitDurationSeconds ?? 0) <= 10 })
         withExtendedLifetime(monitor) {}
     }
@@ -876,8 +876,7 @@ struct GeofenceExitDurationProvenanceTests {
         await process.crossing(.exit, Self.exitOnly, at: start.addingTimeInterval(20))
 
         let row = try #require(await process.exitRows().last)
-        #expect(row.visitId == nil)
-        #expect(row.visitId != first.visitId)
+        #expect(row.visitId != nil)
         #expect(row.enteredAt == nil)
         #expect(row.visitDurationSeconds == nil)
     }
@@ -906,7 +905,7 @@ struct GeofenceExitDurationProvenanceTests {
 
         let rows = await process.exitRows()
         try #require(rows.count == 2)
-        #expect(rows.allSatisfy { $0.visitId != first.visitId })
+        #expect(rows.allSatisfy { $0.visitId != first.visitId || $0.visitDurationSeconds == nil })
         #expect(rows.allSatisfy { ($0.visitDurationSeconds ?? 0) <= 10 })
         #expect(
             process.dwell.exitDuration.entersKnownAtExit[Self.exitOnly.id].map { Set($0.keys) }
@@ -971,7 +970,7 @@ struct GeofenceExitDurationProvenanceTests {
         #expect(kept.emitted == visit.emitted)
         #expect(kept.dwellReservation == visit.dwellReservation)
         let row = try #require(await process.exitRows().last)
-        #expect(row.visitId == nil)
+        #expect(row.visitId == kept.visitId)
         #expect(row.enteredAt == nil)
         #expect(row.visitDurationSeconds == nil)
         #expect(await process.storage.getDwellVisit(geofenceId: Self.dwellCircle.id) == nil)
