@@ -187,6 +187,28 @@ class HttpClientTest: UnitTest {
         XCTAssertEqual(actual, expected)
     }
 
+    // MARK: getCIOsessionHeader
+
+    func test_getCIOsessionHeader_givenSecretKey_expectNoAuthorizationHeader() {
+        let headers = RichPushHttpClient.getCIOsessionHeader(cdpApiKey: "sk_us_\(String.random)", userAgentHeaderValue: "ua")
+
+        XCTAssertNil(headers["Authorization"])
+    }
+
+    func test_getCIOsessionHeader_givenPublicOrLegacyKey_expectAuthorizationHeader() {
+        let givenPublicKey = "pk_us_\(String.random)"
+        let givenLegacyKey = String.random
+
+        XCTAssertEqual(
+            RichPushHttpClient.getCIOsessionHeader(cdpApiKey: givenPublicKey, userAgentHeaderValue: "ua")["Authorization"],
+            "Basic \(RichPushHttpClient.authorizationHeaderForCdpApiKey(givenPublicKey))"
+        )
+        XCTAssertEqual(
+            RichPushHttpClient.getCIOsessionHeader(cdpApiKey: givenLegacyKey, userAgentHeaderValue: "ua")["Authorization"],
+            "Basic \(RichPushHttpClient.authorizationHeaderForCdpApiKey(givenLegacyKey))"
+        )
+    }
+
     // MARK: getSessionForRequest
 
     func test_getSessionForRequest_givenCIOApiEndpoint_expectGetCIOApiSession() {

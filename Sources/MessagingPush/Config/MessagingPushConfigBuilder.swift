@@ -48,19 +48,28 @@ public class MessagingPushConfigBuilder {
 
     /// Initializes new `MessagingPushConfigBuilder` with required configuration options.
     /// - Parameters:
-    ///   - cdpApiKey: Customer.io Data Pipeline API Key required for NotificationServiceExtension only to track metrics
+    ///   - cdpApiKey: Customer.io Data Pipeline API Key required for NotificationServiceExtension only to track metrics.
+    ///     Secret `sk_` keys are rejected and the extension will not initialize.
     @available(iOS, unavailable)
     @available(visionOS, unavailable)
     @available(iOSApplicationExtension, introduced: 13.0)
     @available(visionOSApplicationExtension, introduced: 1.0)
     public init(cdpApiKey: String) {
         self.cdpApiKey = cdpApiKey
+        Self.logIfSecret(cdpApiKey)
     }
 
     // Same as the extension-only `init(cdpApiKey:)` plus `.region()`, callable from the app target so tests can use it.
     init(cdpApiKey: String, region: Region?) {
         self.cdpApiKey = cdpApiKey
         self.region = region
+        Self.logIfSecret(cdpApiKey)
+    }
+
+    private static func logIfSecret(_ cdpApiKey: String) {
+        if ApiKey.isSecret(cdpApiKey) {
+            DIGraphShared.shared.logger.error(ApiKey.secretKeyError)
+        }
     }
 
     /// Configures the region for NotificationServiceExtension for metric tracking.
