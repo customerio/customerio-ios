@@ -237,7 +237,8 @@ extension GeofenceDwellCoordinator {
         )
     }
 
-    private static func epochMilliseconds(_ date: Date) -> Int64 {
+    /// Internal for `+ExitDuration`.
+    static func epochMilliseconds(_ date: Date) -> Int64 {
         Int64((date.timeIntervalSince1970 * 1000).rounded())
     }
 }

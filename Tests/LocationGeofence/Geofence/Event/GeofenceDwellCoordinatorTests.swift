@@ -281,6 +281,27 @@ struct GeofenceDwellCoordinatorTests {
         setup.coordinator.cancelEvidence(for: setup.geofence.id)
     }
 
+    /// The uncertainty is the millisecond gap rounded up, never down: 61.8 s since the last inside
+    /// fix reports 62, though the whole epoch seconds of the two dates are 61 apart. Rounded down,
+    /// a departure early in the gap would fall outside what the EXIT reports.
+    @Test
+    func exitUncertainty_roundsTheGapUp() async throws {
+        let clock = ManualGeofenceClock(wall: Date(timeIntervalSince1970: 1000))
+        let setup = await makeSetup(isPolygon: false, clock: clock)
+        await setup.coordinator.handleBoundary(geofence: setup.geofence, transition: .enter, occurredAt: clock.wall)
+        clock.advance(600.1)
+        await setup.coordinator.recordInsideEvidence(
+            geofence: setup.geofence, at: clock.wall, source: "location_evidence", qualifiesDwell: true
+        )
+        clock.advance(61.8)
+
+        let context = await setup.coordinator.handleBoundary(geofence: setup.geofence, transition: .exit, occurredAt: clock.wall)
+
+        #expect(context?.durationSeconds == 661)
+        #expect(context?.visitDurationUncertaintySeconds == 62)
+        setup.coordinator.cancelEvidence(for: setup.geofence.id)
+    }
+
     /// An OS-decided circle EXIT of a stay nothing proved inside since its entry is uncertain by the
     /// whole stay, never by more.
     @Test

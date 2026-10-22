@@ -77,7 +77,7 @@ extension GeofenceDwellCoordinator {
             visitId: visit.visitId,
             enteredAt: visit.enteredAt,
             durationSeconds: durationSeconds,
-            visitDurationUncertaintySeconds: min(durationSeconds, Self.reportedSeconds(from: provenInsideAt, to: exit.mark.date)),
+            visitDurationUncertaintySeconds: min(durationSeconds, Self.uncertaintySeconds(from: provenInsideAt, to: exit.mark.date)),
             detectionSource: exit.source
         )
     }
@@ -176,6 +176,15 @@ extension GeofenceDwellCoordinator {
     /// 160.1 s reports 60, not 59); qualifying stays on that elapsed time (`GeofenceVisitElapsed`).
     static func reportedSeconds(from start: Date, to end: Date) -> Int {
         max(0, Int(end.timeIntervalSince1970) - Int(start.timeIntervalSince1970))
+    }
+
+    /// The uncertainty an EXIT reports: the millisecond gap, rounded up to whole seconds, never
+    /// down, so a departure anywhere in the gap stays within it. Whole epoch seconds truncated
+    /// apart would under-report it (100.1 s → 161.9 s is 61.8 s, but 61 by truncation).
+    static func uncertaintySeconds(from start: Date, to end: Date) -> Int {
+        let gapMilliseconds = epochMilliseconds(end) - epochMilliseconds(start)
+        guard gapMilliseconds > 0 else { return 0 }
+        return Int((gapMilliseconds + 999) / 1000)
     }
 
     /// Remembers `visit`, which a re-ENTER replaced because an EXIT overtook it, under the exact
