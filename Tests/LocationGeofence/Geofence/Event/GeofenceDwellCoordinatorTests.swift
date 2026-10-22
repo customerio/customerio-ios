@@ -1101,6 +1101,29 @@ struct GeofenceDwellCoordinatorTests {
         #expect(await second.storage.getOrphanedDwells().isEmpty)
     }
 
+    /// At launch the orphans are only queued, then sent in one flush once the visits are resumed:
+    /// a slow network never holds the resume back by one send per orphan.
+    @Test
+    func orphanedDwellsAtLaunch_areQueuedAndFlushedOnce() async throws {
+        let clock = ManualGeofenceClock(wall: Date(timeIntervalSince1970: 1000))
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        let first = await makeSetup(emitter: DwellEmitterSpy(results: [false, false, false]), directory: directory, clock: clock)
+        for _ in 0 ..< 3 {
+            let visit = try await owe(first, clock: clock)
+            await first.storage.removeDwellVisit(geofenceId: first.geofence.id, ifStill: visit.visitId)
+            clock.advance(10)
+        }
+        try #require(await first.storage.getOrphanedDwells().count == 3)
+
+        let second = await makeSetup(directory: directory, clock: clock)
+        await second.coordinator.resumePendingVisits(geofences: [second.geofence])
+
+        #expect(await second.emitter.queued.count == 3)
+        #expect(await second.emitter.dwells().count == 3, "none sent on its own")
+        #expect(await second.emitter.queueFlushes == 1)
+        #expect(await second.storage.getOrphanedDwells().isEmpty)
+    }
+
     /// At launch an orphan the outbox cannot take is kept for the next launch; one refused for good
     /// is dropped; one 24 h old is given up without being offered.
     @Test(arguments: [GeofenceDwellDelivery.writeFailed, .refused])
@@ -3132,6 +3155,11 @@ private actor DwellEmitterSpy: GeofenceTransitionEmitting {
 
     /// Dwells only queued (`queueDwell`), in order; each is in `dwells()` too.
     private(set) var queued: [Invocation] = []
+    private(set) var queueFlushes = 0
+
+    func sendQueued() async {
+        queueFlushes += 1
+    }
 
     func queueDwell(
         geofenceId: String, occurredAt: Date, context: GeofenceDwellContext, expectedUserId: String?

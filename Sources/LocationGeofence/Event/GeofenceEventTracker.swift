@@ -88,6 +88,10 @@ final class GeofenceEventTracker: @unchecked Sendable {
         ), sends: false)
     }
 
+    func sendQueued() async {
+        await flushPending()
+    }
+
     /// With `sends` false, the crossing's rows are only written to the outbox: nothing is sent and
     /// the backlog is not flushed, so the caller never waits on the network. The next flush sends
     /// them.

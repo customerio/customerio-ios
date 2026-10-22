@@ -24,7 +24,7 @@ struct GeofenceState: Codable, Equatable, Sendable {
 
     /// Dwells their visits still owed when they were dropped — by an EXIT whose flush the outbox
     /// refused, a replacement, a pruned fence — oldest first, at most `maxOrphanedDwells`. Offered
-    /// again at launch (`GeofenceDwellCoordinator.deliverOrphanedDwells`).
+    /// again at launch (`GeofenceDwellCoordinator.queueOrphanedDwells`).
     var orphanedDwells: [GeofenceOrphanedDwell]?
     /// Per circle, the OS edges registered only for visit bookkeeping (see
     /// `Geofence.unconfiguredOsTransitions`). Outlives the fence's cache entry, which is the point:

@@ -8,16 +8,18 @@ extension GeofenceDwellCoordinator {
     /// earlier boot, recorded under more location access than there is now, or recorded by an
     /// earlier process under access that observes nothing in the background, is dropped instead:
     /// nothing watched the fence through the gap. First, the dwells dropped visits still owed are
-    /// offered again (`deliverOrphanedDwells`).
+    /// queued again (`queueOrphanedDwells`); they are sent in one flush once every visit is armed,
+    /// so a slow network never holds the resume back.
     func resumePendingVisits(geofences: [Geofence]) async {
         guard let userId = contextStore.currentUserId, !userId.isEmpty else { return }
-        await deliverOrphanedDwells()
+        let queuedOrphans = await queueOrphanedDwells()
         for geofence in geofences where tracksVisit(geofence) {
             if let visit = await currentVisit(geofence: geofence, userId: userId),
                await !departureEndedStay(visit, geofence: geofence) {
                 scheduleDeadline(for: geofence, visit: visit)
             }
         }
+        if queuedOrphans { await transitionEmitter.sendQueued() }
     }
 
     /// Monitoring stopped being trustworthy, so persisted entry time can no longer support a

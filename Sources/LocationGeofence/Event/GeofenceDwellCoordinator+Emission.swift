@@ -93,7 +93,7 @@ extension GeofenceDwellCoordinator {
     /// Queues the dwell `visitId` still owes before its EXIT ends it, so an EXIT routed first does
     /// not lose a qualified DWELL. Delivered, or refused for good, it is owed no more. One the
     /// outbox could not take stays owed: removing the visit then leaves it in
-    /// `GeofenceState.orphanedDwells`, offered again at launch (`deliverOrphanedDwells`).
+    /// `GeofenceState.orphanedDwells`, offered again at launch (`queueOrphanedDwells`).
     /// An emission already in flight for the visit owns the delivery: it is not repeated here, and
     /// if it lands after the removal it forgets the orphan the removal left. A reservation evidenced
     /// after `exitedAt` is no dwell of the stay this EXIT ends — an EXIT noted while it was being
@@ -120,18 +120,24 @@ extension GeofenceDwellCoordinator {
         _ = await storage.markDwellVisitEmitted(visit, geofenceId: geofence.id)
     }
 
-    /// At launch, offers again each dwell a visit still owed when it was dropped
-    /// (`GeofenceState.orphanedDwells`), for the user it was reserved under. Each is forgotten once
-    /// delivered, refused for good, or `reservedDwellLifetime` old by the wall clock; one the outbox
-    /// could not take is kept for the next launch.
-    func deliverOrphanedDwells() async {
+    /// At launch, queues again each dwell a visit still owed when it was dropped
+    /// (`GeofenceState.orphanedDwells`), for the user it was reserved under, writing it to the outbox
+    /// only: the caller sends them all in one flush. Each is forgotten once queued, refused for
+    /// good, or `reservedDwellLifetime` old by the wall clock; one the outbox could not take is kept
+    /// for the next launch.
+    /// - Returns: whether any was queued.
+    func queueOrphanedDwells() async -> Bool {
+        var queued = false
         for orphan in await storage.getOrphanedDwells() {
             let delivery = await offerReservedDwell(
-                orphan.reservation, geofenceId: orphan.geofenceId, visitId: orphan.visitId, userId: orphan.userId
+                orphan.reservation, geofenceId: orphan.geofenceId, visitId: orphan.visitId, userId: orphan.userId,
+                queueOnly: true
             )
             guard delivery != .writeFailed else { continue }
+            queued = queued || delivery == .persisted
             await storage.removeOrphanedDwell(visitId: orphan.visitId)
         }
+        return queued
     }
 
     /// The one way a reserved dwell is handed to the outbox — a live visit's emission or retry, an
