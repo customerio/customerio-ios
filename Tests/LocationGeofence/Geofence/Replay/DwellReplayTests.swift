@@ -154,6 +154,11 @@ struct DwellReplayTests {
             await harness.wireMonitor()
             await GeofenceBootstrap.awaitPendingWorkForTesting()
             try await ReplayHarness.letAsyncWorkRun()
+            // The resumed deadline is already due; `advance` would jump past it until its check parks a retry.
+            try #require(
+                await settleOnMain { harness.dwellScheduler.nextDeadline != nil },
+                "the relaunch must resume the visit's evidence check"
+            )
             // A retained graph can start late work. Its request port must not issue another OS
             // request in the replacement process.
             let requestsBeforeOldWork = harness.fixRequestCount
@@ -165,8 +170,13 @@ struct DwellReplayTests {
             // The relaunch's own request waits out the spacing since the old process's, at 90.
             await harness.advance(to: 210.9)
             #expect(dwells(harness).isEmpty, "the new process's recorded reply has not arrived")
-            #expect(harness.fixRequestCount == requestsBeforeOldWork + 1, "one request, once the spacing allows")
+            // The released retry reaches the port through storage reads `advance` does not await.
+            #expect(
+                await settleOnMain { harness.fixRequestCount == requestsBeforeOldWork + 1 },
+                "one request, once the spacing allows"
+            )
             await harness.advance(to: 211)
+            #expect(await settleOnMain { dwells(harness).count == 1 })
             let dwell = try #require(dwells(harness).only)
             #expect(oldResolver.latestFix == nil, "the dead process must not receive its parked callback")
             #expect(dwell.visitId == visit.visitId)
@@ -212,9 +222,18 @@ struct DwellReplayTests {
             harness.reenterProcess()
             await harness.wireMonitor()
             await GeofenceBootstrap.awaitPendingWorkForTesting()
+            // The resumed deadline is already due, so its check runs in a task the bootstrap does not
+            // await. Until it parks its retry, `advance` sees no deadline and would jump the clock past it.
+            try #require(
+                await settleOnMain { harness.dwellScheduler.nextDeadline != nil },
+                "the relaunch must resume the visit's evidence check"
+            )
             // Its request waits out the spacing since the old process's, at 90.
+            #expect(harness.fixRequestCount == 1, "the spacing must hold back the relaunch's first request")
+            #expect(abs((harness.dwellScheduler.nextDeadline ?? 0) - 210) < 0.001)
             await harness.advance(to: 210)
-            #expect(harness.fixRequestCount == 2, "the new process must actually request evidence")
+            // The released retry reaches the port through storage reads `advance` does not await.
+            #expect(await settleOnMain { harness.fixRequestCount == 2 }, "the new process must actually request evidence")
             #expect(dwells(harness).isEmpty, "an old synthetic request's reply cannot move to the new process")
             #expect(oldResolver.latestFix == nil)
             #expect(oldDelivery.trackMetricReceivedInvocations.allSatisfy { $0.metric.transition != .dwell })
