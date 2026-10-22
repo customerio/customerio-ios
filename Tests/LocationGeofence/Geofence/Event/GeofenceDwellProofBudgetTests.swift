@@ -293,6 +293,31 @@ struct GeofenceDwellProofBudgetTests {
         #expect(rig.coordinator.unsavedProofCharges.isEmpty)
     }
 
+    /// The stored state cannot be read when the unsaved charge is confirmed. That is not a visit
+    /// gone: the charge stays unconfirmed, so admission keeps refusing until a save goes through.
+    @Test
+    func unreadableState_doesNotConfirmAnUnsavedCharge() async throws {
+        let rig = await BudgetRig.make(polygon: false)
+        defer { rig.close() }
+        await rig.enterCircle()
+        await rig.storage.setLedgerSaveFails(true)
+        await rig.drive(to: 60)
+        try #require(rig.requestTimes == [60])
+        let visitId = try #require(await rig.visit()?.visitId)
+        await rig.storage.setLedgerSaveFails(false)
+
+        let stateFile = rig.root.appendingPathComponent("geofenceState.json")
+        let saved = try Data(contentsOf: stateFile)
+        try Data("not a state".utf8).write(to: stateFile)
+        await rig.coordinator.persistProofLedger(geofenceId: BudgetRig.circle.id, visitId: visitId)
+        #expect(rig.coordinator.unsavedProofCharges == [visitId])
+
+        try saved.write(to: stateFile)
+        await rig.coordinator.persistProofLedger(geofenceId: BudgetRig.circle.id, visitId: visitId)
+        #expect(rig.coordinator.unsavedProofCharges.isEmpty)
+        #expect(await rig.visit()?.dwellProofAttempts == 1)
+    }
+
     /// A covering crossing is held for a long-threshold polygon visit while membership passes keep
     /// finding the device inside. None of them can qualify the stay before its threshold, so none
     /// replaces the threshold deadline with an earlier retry, and no check is counted until then.

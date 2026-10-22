@@ -289,6 +289,13 @@ actor GeofenceStorage {
 
     // MARK: - Private (file persistence)
 
+    /// Whether no state has been written at all, as opposed to a state file that cannot be read
+    /// now (e.g. Data Protection before first unlock, or an undecodable file).
+    func stateIsAbsent() -> Bool {
+        guard let url = stateFileURL() else { return false }
+        return !fileManager.fileExists(atPath: url.path)
+    }
+
     func loadFromDisk() -> GeofenceState? {
         guard let url = stateFileURL() else { return nil }
         guard fileManager.fileExists(atPath: url.path),

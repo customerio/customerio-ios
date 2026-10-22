@@ -105,10 +105,12 @@ extension GeofenceStorage {
     /// only while that is still the stored visit, and never lowering a count or moving the last
     /// request back, so writes landing out of order keep the most spent.
     /// - Returns: whether the store now holds at least `ledger`'s spending for that visit, or no
-    ///   longer holds the visit at all; false when the write failed.
+    ///   longer holds the visit at all; false when the write failed or the stored state could not
+    ///   be read.
     @discardableResult
     func recordDwellProofLedger(geofenceId: String, visitId: String, ledger: GeofenceDwellProofLedger) -> Bool {
-        var state = loadFromDisk() ?? GeofenceState()
+        // Unreadable is not absent: reporting the visit gone would confirm a charge never saved.
+        guard var state = loadFromDisk() else { return stateIsAbsent() }
         guard var stored = state.dwellVisits?[geofenceId], stored.visitId == visitId else { return true }
         let merged = ledger.merged(with: stored)
         guard merged.attempts != stored.dwellProofAttempts || merged.checks != stored.dwellProofChecks
