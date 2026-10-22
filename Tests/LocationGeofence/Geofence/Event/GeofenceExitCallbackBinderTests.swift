@@ -54,14 +54,15 @@ struct GeofenceExitCallbackBinderTests {
         let rig = await GeofenceDwellFollowupTests.Rig.make(insideFixAlways: true)
         await rig.cacheCircle()
         let monitor = MockGeofenceRegionMonitor()
-        var resolver: PolygonMembershipResolver? = Self.bind(monitor, to: rig)
+        let routed = EventCounter()
+        var resolver: PolygonMembershipResolver? = Self.bind(monitor, to: rig, routed: routed)
         if route == "noResolver" { resolver = nil }
         let identifier = route == "uncached" ? "uncached" : Self.circleId
 
         monitor.simulateTransition(identifier: identifier, transition: .exit, location: nil, occurredAt: rig.clock.wall)
         #expect(rig.dwell.pendingExitCallbacks[identifier]?.count == 1)
         if route == "userChanged" { rig.contextStore.setUserId("user-2") }
-        await settleQuietly(0.5)
+        await routed.reached(1)
 
         #expect(rig.dwell.pendingExitCallbacks.isEmpty)
         withExtendedLifetime(resolver) {}
@@ -101,7 +102,7 @@ struct GeofenceExitCallbackBinderTests {
             identifier: polygon.id, transition: .exit, location: nil, occurredAt: device.clock.wall, eventCircle: .expired
         )
         #expect(process.dwell.pendingExitCallbacks[polygon.id]?.count == 1)
-        await settleQuietly(0.5)
+        await process.routed.reached(1)
 
         #expect(process.dwell.pendingExitCallbacks.isEmpty)
         #expect(process.dwell.exitMarks[polygon.id] == nil)
@@ -112,10 +113,11 @@ struct GeofenceExitCallbackBinderTests {
     // MARK: - Helpers
 
     /// Binds the monitor to the rig's coordinator through a real resolver, which the binder holds
-    /// weakly: the caller keeps it alive, or releases it. `sync` receives the routing tasks' follow-ups.
+    /// weakly: the caller keeps it alive, or releases it. `sync` receives the routing tasks' follow-ups;
+    /// `routed` counts the routing tasks that finished.
     private static func bind(
         _ monitor: MockGeofenceRegionMonitor, to rig: GeofenceDwellFollowupTests.Rig,
-        sync: GeofenceSyncCoordinatorMock = GeofenceSyncCoordinatorMock()
+        sync: GeofenceSyncCoordinatorMock = GeofenceSyncCoordinatorMock(), routed: EventCounter = EventCounter()
     ) -> PolygonMembershipResolver {
         let resolver = PolygonMembershipResolver(
             storage: rig.storage, transitionEmitter: rig.tracker, logger: LoggerMock(), contextStore: rig.contextStore,
@@ -123,7 +125,10 @@ struct GeofenceExitCallbackBinderTests {
         )
         sync.refreshReturnValue = .success(())
         sync.handleMovementReturnValue = .success(())
-        GeofenceMonitorBinder.bind(monitor: monitor, resolver: resolver, coordinator: sync, logger: LoggerMock(), dwellCoordinator: rig.dwell)
+        GeofenceMonitorBinder.bind(
+            monitor: monitor, resolver: resolver, coordinator: sync, logger: LoggerMock(), dwellCoordinator: rig.dwell,
+            onRouted: { routed.record() }
+        )
         return resolver
     }
 }

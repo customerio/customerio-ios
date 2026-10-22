@@ -143,9 +143,16 @@ final class DurableExitProcess {
         _ = await settleOnMain { os.hasSubscriber }
     }
 
+    /// Counts the routing tasks of routed events that have finished.
+    let routed = EventCounter()
+
     /// From here on, events reach the binder, the resolver and the coordinator.
     func route() {
-        GeofenceMonitorBinder.bind(monitor: monitor, resolver: resolver, coordinator: sync, logger: LoggerMock(), dwellCoordinator: dwell)
+        let routed = routed
+        GeofenceMonitorBinder.bind(
+            monitor: monitor, resolver: resolver, coordinator: sync, logger: LoggerMock(), dwellCoordinator: dwell,
+            onRouted: { routed.record() }
+        )
     }
 
     /// From here on, the process dies the moment `CLMonitor` hands it an event: recorded, never routed.

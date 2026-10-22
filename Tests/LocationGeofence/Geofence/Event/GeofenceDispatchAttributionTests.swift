@@ -103,8 +103,10 @@ struct GeofenceDispatchAttributionTests {
 
         let dispatched = process.monitor.dispatchedEventCircle(captured: captured, for: Self.polygon.id, raisedAt: raisedAt)
         #expect(dispatched == .expired)
+        let routedBefore = process.routed.count
         process.monitor.onTransition?(Self.polygon.id, .enter, nil, raisedAt, false, dispatched, true)
-        await settleQuietly(0.5)
+        // Its routing runs a resolver pass; a later pass meeting it mid-emission leaves the DWELL to it.
+        await process.routed.reached(routedBefore + 1)
 
         let kept = try #require(await process.visit(Self.polygon))
         #expect(kept.visitId == stay.visitId)

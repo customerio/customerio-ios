@@ -142,9 +142,14 @@ final class BootAmbiguityProcess {
     }
 
     /// Binds a region monitor double to this process's resolver and coordinator, as setup does.
+    /// Counts the routing tasks of transitions `bind`'s monitor delivered that have finished.
+    let routed = EventCounter()
+
     func bind(_ monitor: GeofenceRegionMonitoring) {
+        let routed = routed
         GeofenceMonitorBinder.bind(
-            monitor: monitor, resolver: resolver, coordinator: sync, logger: LoggerMock(), dwellCoordinator: dwell
+            monitor: monitor, resolver: resolver, coordinator: sync, logger: LoggerMock(), dwellCoordinator: dwell,
+            onRouted: { routed.record() }
         )
     }
 

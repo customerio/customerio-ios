@@ -4,13 +4,16 @@ import Foundation
 /// `bind` must run before any `startMonitoring`, so cold-wake callbacks find a handler.
 @MainActor
 enum GeofenceMonitorBinder {
+    /// - Parameter onRouted: test seam, nil in production: runs once a fence transition's routing
+    ///   task has finished, follow-up included, so a test can await the routing it delivered.
     static func bind(
         monitor: GeofenceRegionMonitoring,
         resolver: PolygonMembershipResolver,
         coordinator: GeofenceSyncCoordinator,
         logger: Logger,
         dwellCoordinator: GeofenceDwellCoordinator? = nil,
-        backgroundTaskRunner: BackgroundTaskRunner = GeofenceBackgroundTime.runner(name: "io.customer.geofence.movement-pass")
+        backgroundTaskRunner: BackgroundTaskRunner = GeofenceBackgroundTime.runner(name: "io.customer.geofence.movement-pass"),
+        onRouted: (@Sendable () -> Void)? = nil
     ) {
         // Dated here, synchronously: a visit entered before the removal task runs is not one the
         // loss interrupted.
@@ -74,6 +77,7 @@ enum GeofenceMonitorBinder {
                     location: location, locationIsFresh: locationIsFresh,
                     backgroundTaskRunner: backgroundTaskRunner
                 )
+                onRouted?()
             }
         }
     }
