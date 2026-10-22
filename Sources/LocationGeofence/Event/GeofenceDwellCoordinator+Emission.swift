@@ -17,6 +17,10 @@ extension GeofenceDwellCoordinator {
     ) async {
         let visit = standing(visit)
         guard geofence.dwellThresholdSeconds > 0, !visit.emitted else { return }
+        if let reservation = visit.dwellReservation, reservationExpired(reservation) {
+            await abandonReservedDwell(geofence: geofence, visit: visit)
+            return
+        }
         // `visit` may be a copy read before a loss its removal has not yet reached. Admission is
         // judged now; a dwell already admitted goes on to its outbox row, a fact about the stay
         // before the loss. So a reservation is never refused here: the stay qualified when it was
@@ -30,19 +34,7 @@ extension GeofenceDwellCoordinator {
             for: visit, observedAt: observedAt, elapsed: elapsed,
             thresholdSeconds: geofence.dwellThresholdSeconds, source: source
         ) else {
-            let shortfall = elapsed.flatMap { elapsed -> TimeInterval? in
-                let value = TimeInterval(geofence.dwellThresholdSeconds) - elapsed.qualifyingSeconds
-                return value.isFinite && value > 0 ? value : nil
-            }
-            rememberEarlyEvidence(
-                geofenceId: geofence.id, visitId: visit.visitId, timestamp: observedAt, shortfall: shortfall
-            )
-            // Continuity held on this boot with no reservation, so the stay is still too short.
-            // Checked against the identity now: the caller's awaits may have spanned a sign-out.
-            recordDiagnostic(
-                .dwellRejected, capturedToken: diagnosticToken(for: visit),
-                fenceId: geofence.id, reason: .belowThreshold, thresholdShortfall: shortfall
-            )
+            rejectBelowThreshold(geofence: geofence, visit: visit, observedAt: observedAt, elapsed: elapsed)
             return
         }
         // A correction noted before the shapes were loaded (`pendingCorrections`), or a crossing
@@ -78,6 +70,47 @@ extension GeofenceDwellCoordinator {
         guard persisted else { return }
         recordDiagnostic(.dwellEmitted, capturedToken: emissionToken, fenceId: geofence.id)
         await finishDwellEmission(geofence: geofence, visit: visit)
+    }
+
+    /// Evidence for a stay still too short: remembered for the short retry, and recorded with how
+    /// far it fell short.
+    private func rejectBelowThreshold(
+        geofence: Geofence, visit: GeofenceDwellVisit, observedAt: Date, elapsed: GeofenceVisitElapsed?
+    ) {
+        let shortfall = elapsed.flatMap { elapsed -> TimeInterval? in
+            let value = TimeInterval(geofence.dwellThresholdSeconds) - elapsed.qualifyingSeconds
+            return value.isFinite && value > 0 ? value : nil
+        }
+        rememberEarlyEvidence(
+            geofenceId: geofence.id, visitId: visit.visitId, timestamp: observedAt, shortfall: shortfall
+        )
+        // Continuity held on this boot with no reservation, so the stay is still too short.
+        // Checked against the identity now: the caller's awaits may have spanned a sign-out.
+        recordDiagnostic(
+            .dwellRejected, capturedToken: diagnosticToken(for: visit),
+            fenceId: geofence.id, reason: .belowThreshold, thresholdShortfall: shortfall
+        )
+    }
+
+    /// How long a reserved dwell the outbox keeps refusing is offered again, by the wall clock since
+    /// its evidence. After it, the delivery is given up rather than retried on every wake for good.
+    static let reservedDwellLifetime: TimeInterval = 24 * 60 * 60
+
+    /// Whether `reservation` was made `reservedDwellLifetime` or more ago on the wall clock. A clock
+    /// set back reads it as younger, which only delays giving up.
+    private func reservationExpired(_ reservation: GeofenceDwellReservation) -> Bool {
+        readClock().wall.timeIntervalSince(reservation.occurredAt) >= Self.reservedDwellLifetime
+    }
+
+    /// Gives up a reserved dwell the outbox refused for `reservedDwellLifetime`: nothing is
+    /// delivered, and the visit is marked emitted so it neither repeats the delivery nor qualifies
+    /// again. A failed mark leaves it to the next attempt.
+    private func abandonReservedDwell(geofence: Geofence, visit: GeofenceDwellVisit) async {
+        let token = diagnosticToken(for: visit)
+        guard await storage.markDwellVisitEmitted(visit, geofenceId: geofence.id) == .marked else { return }
+        cancelEvidence(for: geofence.id, ifVisit: visit.visitId)
+        logger.geofenceInfo("dwell_reservation_abandoned", fields: [("id", geofence.id)])
+        recordDiagnostic(.dwellRejected, capturedToken: token, fenceId: geofence.id, reason: .retriesExhausted)
     }
 
     /// `visit` as it stands: without a reservation an admission refused and could not take back

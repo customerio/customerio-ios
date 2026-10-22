@@ -788,6 +788,37 @@ struct GeofenceDwellCoordinatorTests {
         #expect(await setup.storage.getDwellVisit(geofenceId: setup.geofence.id)?.emitted == true)
     }
 
+    /// A reserved dwell the outbox keeps refusing is offered again until 24 h have passed on the
+    /// wall clock since its evidence, then given up: nothing more is delivered, and the visit is
+    /// marked emitted so later evidence cannot qualify it again.
+    @Test
+    func reservedDwellRefusedForADay_isGivenUpAndCannotQualifyAgain() async throws {
+        let emitter = DwellEmitterSpy(results: Array(repeating: false, count: 10))
+        let enteredAt = Date(timeIntervalSince1970: 1000)
+        let clock = ManualGeofenceClock(wall: enteredAt)
+        let setup = await makeSetup(emitter: emitter, clock: clock)
+        await setup.coordinator.handleBoundary(geofence: setup.geofence, transition: .enter, occurredAt: enteredAt)
+        clock.advance(60)
+        await setup.coordinator.recordInsideEvidence(geofence: setup.geofence, at: clock.wall, source: "location_evidence")
+        setup.coordinator.cancelEvidence(for: setup.geofence.id)
+        try #require(await emitter.dwells().count == 1)
+        try #require(await setup.storage.getDwellVisit(geofenceId: setup.geofence.id)?.dwellReservation != nil)
+
+        clock.advance(24 * 60 * 60 - 1)
+        await setup.coordinator.recordInsideEvidence(geofence: setup.geofence, at: clock.wall, source: "location_evidence")
+        setup.coordinator.cancelEvidence(for: setup.geofence.id)
+        #expect(await emitter.dwells().count == 2, "within the day the reserved dwell is offered again")
+
+        clock.advance(1)
+        await setup.coordinator.recordInsideEvidence(geofence: setup.geofence, at: clock.wall, source: "location_evidence")
+        #expect(await emitter.dwells().count == 2, "after a day it is given up, not offered again")
+        #expect(await setup.storage.getDwellVisit(geofenceId: setup.geofence.id)?.emitted == true)
+        clock.advance(60)
+        await setup.coordinator.recordInsideEvidence(geofence: setup.geofence, at: clock.wall, source: "location_evidence")
+        #expect(await emitter.dwells().count == 2, "the abandoned stay cannot qualify again")
+        setup.coordinator.cancelEvidence(for: setup.geofence.id)
+    }
+
     @Test
     func failedEmittedWriteRetryRepeatsTheOutboxRowItAlreadyWrote() async throws {
         let outbox = makeOutbox()
