@@ -48,9 +48,10 @@ extension GeofenceDwellCoordinator {
     /// the visit, an observed boundary closed it that was not this EXIT, or the span is not on one
     /// timeline. A closed visit is timed only by the EXIT whose exact original date closed it: any
     /// other EXIT, however close, came after the stay had already ended. With the duration, how
-    /// uncertain its end is: 0 when the OS decided a circle's EXIT, else the whole seconds since the
-    /// device was last proven inside — a polygon's last decisive inside fix after its entry, or the
-    /// entry itself.
+    /// uncertain its end is: 0 when the OS decided a circle's EXIT and dated it, else the whole
+    /// seconds since the device was last proven inside — a polygon's last decisive inside fix after
+    /// its entry, or the entry itself, which is the whole stay for a circle EXIT the classic monitor
+    /// could only date at receipt.
     private func exitContext(
         for visit: GeofenceDwellVisit,
         geofence: Geofence,
@@ -71,7 +72,7 @@ extension GeofenceDwellCoordinator {
                 visitDurationUncertaintySeconds: nil, detectionSource: source
             )
         }
-        let decidedByOs = crossingObserved && geofence.vertices == nil
+        let decidedByOs = crossingObserved && geofence.vertices == nil && !osExitDatesAreReceipts
         let provenInsideAt = max(insideProvenAt ?? visit.enteredAt, visit.enteredAt)
         return GeofenceExitContext(
             visitId: visit.visitId,

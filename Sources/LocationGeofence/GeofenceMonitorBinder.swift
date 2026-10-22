@@ -17,6 +17,8 @@ enum GeofenceMonitorBinder {
         monitor.setOnMonitoringInterrupted { [weak dwellCoordinator] geofenceId in
             dwellCoordinator?.interruptContinuity(geofenceId: geofenceId)
         }
+        // How this monitor dates its events decides what a circle EXIT's duration is uncertain by.
+        dwellCoordinator?.osExitDatesAreReceipts = monitor.datesEventsAtReceipt
         monitor.setOnTransition { [weak resolver, weak coordinator, weak dwellCoordinator] identifier, transition, location, occurredAt, locationIsFresh, eventCircle, crossingObserved in
             // Before the re-arm below: evidence it requests must not qualify a visit this ENTER
             // supersedes ahead of the task that routes the ENTER. Not for a replaced circle's

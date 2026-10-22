@@ -206,6 +206,22 @@ struct GeofenceDwellCoordinatorTests {
         setup.coordinator.cancelEvidence(for: setup.geofence.id)
     }
 
+    /// A circle EXIT the classic monitor could only date at receipt bounds its departure by the
+    /// whole stay: the OS decided it at some unknown earlier moment.
+    @Test
+    func receiptDatedCircleExitReportsTheWholeStayAsUncertainty() async throws {
+        let clock = ManualGeofenceClock(wall: Date(timeIntervalSince1970: 1000))
+        let setup = await makeSetup(isPolygon: false, clock: clock)
+        setup.coordinator.osExitDatesAreReceipts = true
+        await setup.coordinator.handleBoundary(geofence: setup.geofence, transition: .enter, occurredAt: clock.wall)
+        clock.advance(300)
+
+        let context = await setup.coordinator.handleBoundary(geofence: setup.geofence, transition: .exit, occurredAt: clock.wall)
+
+        #expect(context?.durationSeconds == 300)
+        #expect(context?.visitDurationUncertaintySeconds == 300)
+    }
+
     /// Evidence that qualifies a stay while a correction for its circle still waits for the shapes
     /// reserves nothing: reserved, the dwell would be a fact the correction could no longer undo.
     /// The drain applies the correction, which ends the unqualified stay; the next ENTER starts

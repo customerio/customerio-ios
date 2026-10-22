@@ -17,6 +17,7 @@ enum MockMonitorOperation: Sendable, Equatable {
 
 @MainActor
 final class MockGeofenceRegionMonitor: GeofenceRegionMonitoring {
+    var datesEventsAtReceipt = false
     private var onTransition: GeofenceTransitionHandler?
     private var onMonitoringInterrupted: GeofenceMonitoringInterruptedHandler?
     private(set) var onAuthorizationChanged: GeofenceAuthorizationChangedHandler?

@@ -121,6 +121,30 @@ struct GeofenceMonitorBinderTests {
         return delivery
     }
 
+    /// The binder tells the coordinator how the monitor dates its events, which decides what a
+    /// circle EXIT's duration is uncertain by.
+    @Test(arguments: [true, false])
+    func bind_givenMonitorDating_expectCoordinatorToldHowExitsAreDated(atReceipt: Bool) async {
+        let monitor = MockGeofenceRegionMonitor()
+        monitor.datesEventsAtReceipt = atReceipt
+        let storage = makeStorage()
+        let contextStore = makeContextStore(userId: "user-1")
+        let tracker = makeTracker(deliveryTracker: makeDeliveryMock())
+        let dwellCoordinator = GeofenceDwellCoordinator(
+            storage: storage, transitionEmitter: tracker, contextStore: contextStore,
+            logger: LoggerMock(), notificationCenter: NotificationCenter()
+        )
+        let resolver = makeResolver(tracker: tracker, storage: storage, contextStore: contextStore)
+
+        GeofenceMonitorBinder.bind(
+            monitor: monitor, resolver: resolver, coordinator: makeCoordinatorMock(),
+            logger: LoggerMock(), dwellCoordinator: dwellCoordinator
+        )
+
+        #expect(dwellCoordinator.osExitDatesAreReceipts == atReceipt)
+        withExtendedLifetime(resolver) {}
+    }
+
     @Test
     func bind_givenMonitoringInterrupted_expectVisitContinuityInvalidated() async {
         let monitor = MockGeofenceRegionMonitor()

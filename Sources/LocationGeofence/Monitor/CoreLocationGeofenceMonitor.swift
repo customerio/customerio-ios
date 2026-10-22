@@ -6,6 +6,9 @@ import Foundation
 /// synchronous so the ownership update and the OS call have no reentrancy point between them.
 @MainActor
 final class CoreLocationGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @preconcurrency CLLocationManagerDelegate {
+    /// `didEnterRegion`/`didExitRegion` carry no event date; every transition is stamped on receipt.
+    var datesEventsAtReceipt: Bool { true }
+
     /// The SDK never requests permission. `.foregroundOnly` still registers; regions fire only while
     /// foregrounded.
     enum PermissionTier: Equatable {

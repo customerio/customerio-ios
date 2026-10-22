@@ -48,6 +48,10 @@ final class GeofenceDwellCoordinator {
     /// succeeds, so the orphan is never delivered and a correction can still end the stay. In
     /// memory only: a relaunch reads the orphan as a fact. Internal for `+Emission`.
     var refusedReservations: [String: GeofenceDwellReservation] = [:]
+    /// Whether the OS monitor dates its events at receipt rather than by the event itself
+    /// (`GeofenceRegionMonitoring.datesEventsAtReceipt`); set by the binder. A circle EXIT dated at
+    /// receipt bounds its departure only by the whole stay. Internal for `+ExitDuration`.
+    var osExitDatesAreReceipts = false
     var pendingExitCallbacks: [String: [Date: GeofencePendingExitCallback]] = [:] // `noteExitCallback`
     /// This coordinator's first clock reading, taken when it was built; the wall offset of its
     /// previous reading, and the uptime it last saw the wall clock step at. Internal for

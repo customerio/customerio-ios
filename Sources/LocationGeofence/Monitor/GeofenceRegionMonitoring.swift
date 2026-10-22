@@ -104,6 +104,11 @@ struct GeofenceRegionDiff: Equatable, Sendable {
 /// registrations only; callers decide which regions to monitor.
 @MainActor
 protocol GeofenceRegionMonitoring: AnyObject, Sendable {
+    /// Whether the `occurredAt` this monitor hands a transition is when the app received it rather
+    /// than when the OS dated the event: the classic monitor's region callbacks carry no date. An
+    /// EXIT so dated can only bound the departure by the whole stay (`GeofenceExitContext`).
+    var datesEventsAtReceipt: Bool { get }
+
     func setOnTransition(_ handler: GeofenceTransitionHandler?)
 
     /// Fires on every status change, in either direction.
@@ -149,6 +154,9 @@ protocol GeofenceRegionMonitoring: AnyObject, Sendable {
 }
 
 extension GeofenceRegionMonitoring {
+    /// Dated by the OS unless the monitor says otherwise.
+    var datesEventsAtReceipt: Bool { false }
+
     func setOnReconciled(_ handler: GeofenceReconciledHandler?) {}
     func setOnMonitoringInterrupted(_ handler: GeofenceMonitoringInterruptedHandler?) {}
 }
