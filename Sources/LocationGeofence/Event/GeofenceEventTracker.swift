@@ -93,17 +93,32 @@ final class GeofenceEventTracker: @unchecked Sendable {
     /// them.
     @discardableResult
     private func track(_ crossing: GeofenceCrossing, sends: Bool = true) async -> GeofenceDwellDelivery {
-        // Current crossing before the backlog: the dedup baseline has advanced, so an un-persisted
-        // crossing can never re-emit.
-        let fresh = await deliverCurrentCrossing(crossing, sends: sends)
-        // Excluding the rows just written keeps a failed fresh send on disk for the next trigger.
-        if sends { await flushPending(excluding: fresh.keys) }
+        // Current crossing written before the backlog is sent: the dedup baseline has advanced, so
+        // an un-persisted crossing can never re-emit.
+        let fresh = await persistCurrentCrossing(crossing)
+        guard sends else { return fresh.delivery }
+        // The backlog is sent first, oldest rows first: a DWELL its stay still owed, queued just
+        // before the EXIT that ended it, goes out before that EXIT. Excluding the rows just written
+        // keeps a failed fresh send on disk for the next trigger.
+        await flushPending(excluding: Set(fresh.metrics.map(\.key)))
+        // Concurrent is safe: keys are distinct, and unfinished rows are already persisted.
+        let metrics = fresh.metrics
+        if !metrics.isEmpty {
+            await backgroundTaskRunner.withBackgroundTime { [self] in
+                await withTaskGroup(of: Void.self) { group in
+                    for metric in metrics {
+                        group.addTask { await self.deliverFresh(metric: metric) }
+                    }
+                }
+            }
+        }
         return fresh.delivery
     }
 
-    private func deliverCurrentCrossing(
-        _ crossing: GeofenceCrossing, sends: Bool
-    ) async -> (keys: Set<String>, delivery: GeofenceDwellDelivery) {
+    /// Writes the crossing's rows to the outbox, sending nothing.
+    private func persistCurrentCrossing(
+        _ crossing: GeofenceCrossing
+    ) async -> (metrics: [PendingGeofenceMetric], delivery: GeofenceDwellDelivery) {
         let geofenceId = crossing.geofenceId
         let transition = crossing.transition
         // Snapshot the userId so a later sign-out/sign-in can't reattribute the row.
@@ -142,20 +157,8 @@ final class GeofenceEventTracker: @unchecked Sendable {
         }
         // Accepted means persisted; delivery outcomes are the `delivery.*` records.
         logger.geofenceTransitionAccepted(geofenceId: geofenceId, transition: transition, rows: metrics.count)
-
-        // Concurrent is safe: keys are distinct, and unfinished rows are already persisted.
-        if sends {
-            await backgroundTaskRunner.withBackgroundTime { [self] in
-                await withTaskGroup(of: Void.self) { group in
-                    for metric in metrics {
-                        group.addTask { await self.deliverFresh(metric: metric) }
-                    }
-                }
-            }
-        }
         await storage.purgeExpiredCooldowns(now: now, interval: interval)
-        let keys = Set(metrics.map(\.key))
-        return (keys, keys.isEmpty ? .refused : .persisted)
+        return (metrics, metrics.isEmpty ? .refused : .persisted)
     }
 
     /// DataPipeline live → EventBus; else a persisted key → direct HTTP (cold wake); neither →

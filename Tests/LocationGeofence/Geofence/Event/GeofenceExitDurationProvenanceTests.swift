@@ -315,8 +315,8 @@ struct GeofenceExitDurationProvenanceTests {
 
     /// A stay owing its reserved DWELL ends with an EXIT while the network hangs (the trip saw
     /// ~16 s transport failures). The owed DWELL is only queued and the EXIT persisted before any
-    /// send is awaited: both rows are on disk by the time the first send starts, which is the
-    /// EXIT's own, and a process killed while it hangs loses neither.
+    /// send is awaited: both rows are on disk by the time the first send starts, and a process
+    /// killed while it hangs loses neither. The DWELL is sent first, then the EXIT.
     @Test
     func exitOfAStayOwingItsDwell_persistsBothBeforeAnyNetworkWait() async throws {
         let files = Files()
@@ -339,11 +339,16 @@ struct GeofenceExitDurationProvenanceTests {
         let exit = Task { await process.crossing(.exit, Self.dwellCircle) }
         try #require(await sends.started.reached(sentBefore + 1, within: 60), "the EXIT's routing must reach a send")
 
-        #expect(sends.transitions.dropFirst(sentBefore).first == .exit, "the first send is the EXIT's, after both rows are written")
+        // The first send is the backlog's: queued rows go before the EXIT's own.
+        #expect(!sends.transitions.dropFirst(sentBefore).contains(.exit))
         #expect(await process.rows(.dwell).map(\.visitId) == [visit.visitId])
         #expect(await process.rows(.exit).map(\.visitId) == [visit.visitId])
         sends.releaseAll()
         await exit.value
+        let order = Array(sends.transitions.dropFirst(sentBefore))
+        let dwellSent = try #require(order.firstIndex(of: .dwell))
+        let exitSent = try #require(order.firstIndex(of: .exit))
+        #expect(dwellSent < exitSent, "the owed DWELL is sent before the EXIT: \(order)")
         process.dwell.cancelEvidence(for: Self.dwellCircle.id)
     }
 

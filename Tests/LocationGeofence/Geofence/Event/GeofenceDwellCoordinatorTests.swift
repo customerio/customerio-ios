@@ -1061,6 +1061,24 @@ struct GeofenceDwellCoordinatorTests {
         #expect(await setup.storage.getOrphanedDwells().isEmpty)
     }
 
+    /// For a fence that tracks no EXIT, nothing will flush a queued row after the stay ends, so its
+    /// owed DWELL is sent at once; a fence that tracks EXIT only queues it for the EXIT's send.
+    @Test(arguments: [false, true])
+    func exitOfAStayOwingItsDwell_queuesOnlyWhenTheFenceTracksExit(tracksExit: Bool) async throws {
+        let emitter = DwellEmitterSpy(results: [false, true])
+        let clock = ManualGeofenceClock(wall: Date(timeIntervalSince1970: 1000))
+        let setup = await makeSetup(
+            emitter: emitter, transitionTypes: tracksExit ? [.enter, .exit] : [.enter], isPolygon: false, clock: clock
+        )
+        try await owe(setup, clock: clock)
+        clock.advance(30)
+
+        await setup.coordinator.handleBoundary(geofence: setup.geofence, transition: .exit, occurredAt: clock.wall)
+
+        #expect(await emitter.dwells().count == 2)
+        #expect(await emitter.queued.count == (tracksExit ? 1 : 0))
+    }
+
     /// The EXIT's delivery fails too: the stay still ends, and its DWELL is kept as an orphan,
     /// which the next launch delivers.
     @Test
@@ -3110,6 +3128,16 @@ private actor DwellEmitterSpy: GeofenceTransitionEmitting {
     init(results: [Bool] = [true], deliveries: [GeofenceDwellDelivery] = []) {
         self.results = results
         self.deliveries = deliveries
+    }
+
+    /// Dwells only queued (`queueDwell`), in order; each is in `dwells()` too.
+    private(set) var queued: [Invocation] = []
+
+    func queueDwell(
+        geofenceId: String, occurredAt: Date, context: GeofenceDwellContext, expectedUserId: String?
+    ) async -> GeofenceDwellDelivery {
+        queued.append(Invocation(geofenceId: geofenceId, occurredAt: occurredAt, context: context))
+        return await deliverDwell(geofenceId: geofenceId, occurredAt: occurredAt, context: context, expectedUserId: expectedUserId)
     }
 
     func deliverDwell(

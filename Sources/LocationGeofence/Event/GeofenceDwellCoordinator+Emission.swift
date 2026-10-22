@@ -105,10 +105,12 @@ extension GeofenceDwellCoordinator {
               visit.owesDwell, let reservation = visit.dwellReservation, !reservation.isEvidenced(after: exitedAt)
         else { return }
         let token = diagnosticToken(for: visit)
-        // Queued only: the EXIT the caller persists next must not wait on the network. The EXIT's
-        // own send flushes the queue, this row first.
+        // Queued only when the fence tracks EXIT: the EXIT the caller persists next must not wait on
+        // the network, and its own send flushes the queue, this row first. A fence that tracks no
+        // EXIT sends it now, or it would wait for an unrelated flush.
         guard let delivery = await offerReservedDwell(
-            reservation, geofenceId: geofence.id, visitId: visitId, userId: visit.userId, queueOnly: true
+            reservation, geofenceId: geofence.id, visitId: visitId, userId: visit.userId,
+            queueOnly: geofence.transitionTypes.contains(.exit)
         ) else {
             await abandonReservedDwell(geofence: geofence, visit: visit)
             return
