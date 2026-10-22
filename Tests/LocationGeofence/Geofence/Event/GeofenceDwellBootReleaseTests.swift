@@ -23,7 +23,9 @@ struct GeofenceDwellBootReleaseTests {
         let (first, emitted) = try await BootAmbiguityProcess.emitted(on: device)
         if crossing {
             device.advance(30)
-            _ = await first.storage.recordPolygonMembership(.outside, forIdentifier: Self.polygon.id, now: device.clock.wall)
+            _ = await first.storage.recordPolygonMembership(
+                .outside, forIdentifier: Self.polygon.id, now: device.clock.wall, reading: device.clock.read()
+            )
             try #require(await first.visit() != nil)
         }
         first.end()

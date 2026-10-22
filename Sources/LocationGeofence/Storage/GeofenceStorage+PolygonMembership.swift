@@ -15,11 +15,12 @@ extension GeofenceStorage {
         onlyIfBeliefPredates evidenceTimestamp: Date? = nil,
         onlyIfRingMatches evaluatedRing: [LocationData]? = nil,
         onlyIfCircleMatches evaluatedCircle: MonitoredCircle? = nil,
-        now: Date = Date()
+        now: Date = Date(),
+        reading: GeofenceClockReading? = nil
     ) -> PolygonMembershipOutcome {
         recordPolygonMembershipWrite(
             membership, forIdentifier: identifier, onlyIfBeliefPredates: evidenceTimestamp,
-            onlyIfRingMatches: evaluatedRing, onlyIfCircleMatches: evaluatedCircle, now: now
+            onlyIfRingMatches: evaluatedRing, onlyIfCircleMatches: evaluatedCircle, now: now, reading: reading
         ).outcome
     }
 
@@ -28,7 +29,9 @@ extension GeofenceStorage {
     /// inside proof (`lastDecisiveInsideAt`); a future stamp reads as `distantPast`, an absent one
     /// as nil. For an EXIT that is how recently the device was really known inside, which bounds
     /// how early it could have left. `decisiveInside` marks inside evidence that proved the stay on
-    /// its own, which stamps that proof; a marginal arrival or confirmation does not.
+    /// its own, which stamps that proof; a marginal arrival or confirmation does not. `reading` is
+    /// the dwell clock read before the write, which places outside evidence on the monotonic
+    /// timeline (`PolygonMembershipRecord.lastOutside`); nil places none.
     func recordPolygonMembershipWrite(
         _ membership: PolygonMembership,
         forIdentifier identifier: String,
@@ -36,7 +39,8 @@ extension GeofenceStorage {
         onlyIfRingMatches evaluatedRing: [LocationData]? = nil,
         onlyIfCircleMatches evaluatedCircle: MonitoredCircle? = nil,
         decisiveInside: Bool = false,
-        now: Date = Date()
+        now: Date = Date(),
+        reading: GeofenceClockReading? = nil
     ) -> PolygonMembershipWrite {
         // Clamped: a clock set backwards would stamp the belief in the future and refuse corrections.
         let evidenceTimestamp = evidenceTimestamp.map { min($0, now) }
@@ -57,6 +61,7 @@ extension GeofenceStorage {
         }
         let stamp = evidenceTimestamp ?? now
         let decisiveStamp = membership == .inside && decisiveInside ? stamp : nil
+        let outsideStamp = membership == .outside ? reading.map { GeofenceClockStamp(date: stamp, at: $0) } : nil
         guard let existing else {
             // An evaluation in flight when the polygon was pruned would enter an unregistered fence.
             guard state.monitoredGeofenceIds?.contains(identifier) == true else {
@@ -64,7 +69,7 @@ extension GeofenceStorage {
             }
             records[identifier] = PolygonMembershipRecord(
                 membership: membership, lastChangedAt: stamp, ring: currentRing, lastDecisiveInsideAt: decisiveStamp,
-                lastOutsideAt: membership == .outside ? stamp : nil
+                lastOutside: outsideStamp
             )
             state.polygonMembership = records
             saveToDisk(state)
@@ -78,8 +83,8 @@ extension GeofenceStorage {
             if let decisiveStamp, decisiveStamp > (existing.lastDecisiveInsideAt ?? .distantPast) {
                 confirmed.lastDecisiveInsideAt = decisiveStamp
             }
-            if membership == .outside {
-                confirmed.lastOutsideAt = max(existing.lastOutsideAt ?? .distantPast, confirmed.lastChangedAt)
+            if let outsideStamp {
+                confirmed.lastOutside = existing.lastOutside.map { $0.newer(outsideStamp) } ?? outsideStamp
             }
             // A confirmation under a replaced ring re-proves the belief against the new ring, so it
             // is re-stamped even when its evidence is no newer.
@@ -95,7 +100,7 @@ extension GeofenceStorage {
         let decisiveInsideProvenAt = existing.lastDecisiveInsideAt.map { $0 > now ? Date.distantPast : $0 }
         records[identifier] = PolygonMembershipRecord(
             membership: membership, lastChangedAt: stamp, ring: currentRing, lastDecisiveInsideAt: decisiveStamp,
-            lastOutsideAt: membership == .outside ? stamp : existing.latestOutsideAt
+            lastOutside: outsideStamp.map { existing.lastOutside?.newer($0) ?? $0 } ?? existing.lastOutside
         )
         state.polygonMembership = records
         saveToDisk(state)
@@ -162,23 +167,22 @@ extension GeofenceStorage {
     }
 
     /// What a polygon's covering-circle crossing is judged by, in one read: the polygon's stored
-    /// dwell visit, and the newest evidence that the device was outside it — the membership's latest
-    /// outside proof, kept through any inside pass since (`PolygonMembershipRecord.lastOutsideAt`),
-    /// or the covering circle's last observed outside state, kept through the ENTER that replaced
-    /// it (`MonitorRegionRecord.lastObservedOutsideAt`) while that record is still this fence's
-    /// circle. A stamp later than `now` proves nothing and is left out.
-    func polygonDepartureEvidence(geofenceId: String, now: Date) -> (visit: GeofenceDwellVisit?, outsideAt: Date?) {
+    /// dwell visit, and the evidence that the device was outside it, each placed on the monotonic
+    /// timeline it was recorded on — the membership's latest outside proof, kept through any inside
+    /// pass since (`PolygonMembershipRecord.lastOutside`), and the covering circle's last observed
+    /// outside state, kept through the ENTER that replaced it (`MonitorRegionRecord.lastObservedOutside`)
+    /// while that record is still this fence's circle.
+    func polygonDepartureEvidence(geofenceId: String) -> (visit: GeofenceDwellVisit?, outside: [GeofenceClockStamp]) {
         let state = loadFromDisk()
-        let polygonOutside = state?.polygonMembership?[geofenceId]?.latestOutsideAt
-        var circleOutside: Date?
+        var outside = [state?.polygonMembership?[geofenceId]?.lastOutside].compactMap { $0 }
         if let record = state?.monitorRegionRecords?[geofenceId], let center = record.center, let radius = record.radius,
            let geofence = state?.cachedGeofences?.first(where: { $0.id == geofenceId }),
            // The registered radius as its own cap: a clamped covering circle still matches.
-           MonitoredCircle(center: center, radius: radius, maximumRadius: radius).matches(geofence) {
-            circleOutside = record.lastObservedOutsideAt
+           MonitoredCircle(center: center, radius: radius, maximumRadius: radius).matches(geofence),
+           let circleOutside = record.lastObservedOutside {
+            outside.append(circleOutside)
         }
-        let outsideAt = [polygonOutside, circleOutside].compactMap { $0 }.filter { $0 <= now }.max()
-        return (state?.dwellVisits?[geofenceId], outsideAt)
+        return (state?.dwellVisits?[geofenceId], outside)
     }
 }
 

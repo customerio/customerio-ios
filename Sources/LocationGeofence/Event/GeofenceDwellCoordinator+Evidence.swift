@@ -24,6 +24,9 @@ extension GeofenceDwellCoordinator {
         var earlyEvidence: (timestamp: Date, shortfall: TimeInterval)?
         /// What is left of the spacing when the active request was held back by it.
         var spacingWait: TimeInterval?
+        /// Retries of a reserved dwell's delivery in this chain, bounded by `maxEvidenceRetryAttempts`:
+        /// it needs no location and spends no budget, and a later wake re-arms it.
+        var deliveryRetries = 0
     }
 
     func scheduleDeadline(for geofence: Geofence, visit: GeofenceDwellVisit) {
@@ -40,7 +43,7 @@ extension GeofenceDwellCoordinator {
         }
         // A reserved dwell only repeats its delivery, which needs no location. Any other visit asks
         // for one, from a budget no re-arm replenishes.
-        if visit.dwellReservation == nil, visit.dwellProofAttempts >= dwellProofBudget {
+        if proofSpent(visit) {
             proofBudgetExhausted(geofenceId: geofence.id, visit: visit)
             return
         }
@@ -49,7 +52,7 @@ extension GeofenceDwellCoordinator {
         // A candidate awaiting proof asks for it at once: its time has not started. So does a
         // reserved dwell, which only repeats its reservation; across an ambiguous boot no elapsed
         // time is known to count down from. A request it would issue still waits out the spacing
-        // since the visit's last one (`reserveDwellProofRequest`).
+        // since the visit's last one (`admitDwellProofRequest`).
         let now = readClock()
         let elapsed = visit.timing?.elapsed(enteredAt: visit.enteredAt, until: now.wall, at: now)?.qualifyingSeconds ?? 0
         let delay = visit.awaitsPresenceProof || visit.dwellReservation != nil ? 0 : min(
@@ -85,6 +88,12 @@ extension GeofenceDwellCoordinator {
         // A refused reservation on disk is no fact to deliver: the stay is judged unreserved and
         // asks for evidence as any other, which takes the orphan back before reserving anew.
         let visit = standing(storedVisit)
+        // A check that needs a location is counted, answered by a request or not; with none left
+        // the chain stops. A reserved dwell's delivery is never held back.
+        if visit.dwellReservation == nil, !countDwellProofCheck(geofenceId: geofence.id, visit: visit) {
+            proofBudgetExhausted(geofenceId: geofence.id, visit: visit)
+            return
+        }
         guard let request = beginEvidenceRequest(geofenceId: geofence.id, visit: visit) else { return }
         defer { finishEvidenceRequest(request) }
         await GeofenceDwellEvidenceScope.$request.withValue(request) {
@@ -290,17 +299,20 @@ extension GeofenceDwellCoordinator {
         if let reason {
             recordDiagnostic(.dwellRejected, capturedToken: token, fenceId: geofence.id, reason: reason)
         }
-        // The persisted count, read from `visit` as the caller last read it: requests issued before
-        // a re-arm, a resume or a relaunch are still spent.
-        guard var state, visit.dwellProofAttempts < dwellProofBudget else {
+        // What the visit has spent, persisted and counted here: requests and checks made before a
+        // re-arm, a resume or a relaunch are still spent. A reserved dwell spends neither, and its
+        // delivery retries are bounded per chain instead.
+        let deliveryExhausted = visit.dwellReservation != nil && (state?.deliveryRetries ?? 0) >= maxEvidenceRetryAttempts
+        guard var state, !proofSpent(visit), !deliveryExhausted else {
             // Recorded once per chain: only when this ends the fence's pending request.
             if let task = deadlineTasks.removeValue(forKey: geofence.id) {
                 task.cancel()
                 recordDiagnostic(.dwellRejected, capturedToken: token, fenceId: geofence.id, reason: .retriesExhausted)
             }
-            proofBudgetExhausted(geofenceId: geofence.id, visit: visit)
+            if !deliveryExhausted { proofBudgetExhausted(geofenceId: geofence.id, visit: visit) }
             return
         }
+        if visit.dwellReservation != nil { state.deliveryRetries += 1 }
         let delay: TimeInterval
         if let spacingWait = state.spacingWait {
             // A request held back by the spacing waits out the rest of it, keeping any short
@@ -343,6 +355,7 @@ extension GeofenceDwellCoordinator {
         for geofenceId in Set(deadlineTasks.keys).union(evidenceRetries.keys) {
             cancelEvidence(for: geofenceId)
         }
+        proofLedgers.removeAll()
     }
 
     /// Cancels only while the pending evidence is `visitId`'s: an overlapping ENTER may already have

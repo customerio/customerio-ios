@@ -87,7 +87,7 @@ final class GeofenceDwellCoordinator {
     /// The wait before an ordinary retry of a dwell-proof request.
     let evidenceRetryDelay: TimeInterval
     /// The least uptime between two dwell-proof requests issued for one visit, short retry aside
-    /// (`reserveDwellProofRequest`): `evidenceRetryDelay` unless a test drives requests itself.
+    /// (`admitDwellProofRequest`): `evidenceRetryDelay` unless a test drives requests itself.
     let dwellProofSpacing: TimeInterval
     /// Retries after a visit's first dwell-proof request; with that one, its whole budget
     /// (`dwellProofBudget`).
@@ -95,6 +95,9 @@ final class GeofenceDwellCoordinator {
     let logger: Logger
     /// Visits whose spent budget this process has logged, so it is logged once.
     var exhaustedProofBudgetsLogged: Set<String> = []
+    /// What each visit has spent proving its dwell, by visit id: authoritative in this process,
+    /// merged with what was persisted, so admission reads it without awaiting storage.
+    var proofLedgers: [String: GeofenceDwellProofLedger] = [:]
     /// Waits out an evidence deadline or retry. Deadlines are computed on `clock`, continuous uptime in
     /// production, so the default waits on continuous time where the OS has it; before iOS 16 it keeps
     /// `Task.sleep(nanoseconds:)`, which may end late across device sleep. Either way it only resumes a

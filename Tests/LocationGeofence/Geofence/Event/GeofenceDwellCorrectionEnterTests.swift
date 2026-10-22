@@ -364,16 +364,54 @@ struct GeofenceDwellCorrectionEnterTests {
 
         rig.advance(30)
         let exitedAt = rig.clock.wall
-        _ = await rig.storage.recordMonitorTransition(.exit, forIdentifier: Self.polygon.id, now: exitedAt)
+        let exitReading = rig.clock.read()
+        _ = await rig.storage.recordMonitorTransition(
+            .exit, forIdentifier: Self.polygon.id, now: exitedAt, processedAt: exitReading
+        )
 
         rig.advance(300)
         rig.os.deliver(identifier: Self.polygon.id, state: .satisfied, at: rig.clock.wall)
         await rig.awaitMonitorState(.enter, for: Self.polygon.id)
         await rig.resolver.evaluateMembership(geofenceIds: [Self.polygon.id], reason: .movement, requiresFreshFix: true)
 
-        #expect(await rig.storage.getMonitorRegionRecords()[Self.polygon.id]?.lastObservedOutsideAt == exitedAt)
+        #expect(
+            await rig.storage.getMonitorRegionRecords()[Self.polygon.id]?.lastObservedOutside
+                == GeofenceClockStamp(date: exitedAt, at: exitReading)
+        )
         let after = try #require(await rig.storage.getDwellVisit(geofenceId: Self.polygon.id))
         #expect(after.visitId != first.visitId)
+        rig.dwell.cancelEvidence(for: Self.polygon.id)
+    }
+
+    /// Outside evidence recorded, then the wall clock set back, and a newer stay recorded after
+    /// it, dated before that evidence. Once the clock reads past the evidence again, a late
+    /// crossing must not take it for a departure from the newer stay: the two are ordered on the
+    /// monotonic timeline, not by wall date.
+    @Test
+    @available(iOS 17.0, *)
+    func lateCrossingAfterTheClockWasSetBack_keepsTheNewerStay() async throws {
+        let rig = await Rig.make()
+        _ = try await rig.fixDetectedPolygonVisit()
+        rig.advance(30)
+        await rig.recordPolygonOutsideWithLostExit()
+
+        rig.stepWall(-500)
+        rig.advance(10)
+        let enteredAt = rig.clock.wall
+        let newer = GeofenceDwellVisit(
+            visitId: "newer", enteredAt: enteredAt, geometryRevision: Self.polygon.dwellRevision, userId: "user-1",
+            emitted: false, timing: GeofenceVisitTiming(enteredAt: enteredAt, recordedAt: rig.clock.read())
+        )
+        try #require(await rig.storage.saveDwellVisit(newer, geofenceId: Self.polygon.id))
+        _ = await rig.storage.recordPolygonMembership(.inside, forIdentifier: Self.polygon.id, now: enteredAt)
+
+        rig.advance(700)
+        rig.os.deliver(identifier: Self.polygon.id, state: .satisfied, at: rig.clock.wall)
+        await rig.awaitMonitorState(.enter, for: Self.polygon.id)
+        await rig.resolver.evaluateMembership(geofenceIds: [Self.polygon.id], reason: .movement, requiresFreshFix: true)
+
+        let after = try #require(await rig.storage.getDwellVisit(geofenceId: Self.polygon.id))
+        #expect(after.visitId == newer.visitId)
         rig.dwell.cancelEvidence(for: Self.polygon.id)
     }
 
@@ -508,6 +546,12 @@ struct GeofenceDwellCorrectionEnterTests {
             dateUtil.givenNow = clock.wall
         }
 
+        /// The wall clock alone is set by `seconds`; uptime is untouched.
+        func stepWall(_ seconds: TimeInterval) {
+            clock.stepWall(seconds)
+            dateUtil.givenNow = clock.wall
+        }
+
         /// A 10 m fix taken now, `latitudeOffset` degrees north of `geofence`'s centre.
         func fix(at geofence: Geofence, latitudeOffset: Double) -> CLLocation {
             CLLocation(
@@ -536,7 +580,7 @@ struct GeofenceDwellCorrectionEnterTests {
         /// visit still stored.
         func recordPolygonOutsideWithLostExit() async {
             let polygon = GeofenceDwellCorrectionEnterTests.polygon
-            _ = await storage.recordPolygonMembership(.outside, forIdentifier: polygon.id, now: clock.wall)
+            _ = await storage.recordPolygonMembership(.outside, forIdentifier: polygon.id, now: clock.wall, reading: clock.read())
             #expect(await storage.getDwellVisit(geofenceId: polygon.id) != nil)
         }
 

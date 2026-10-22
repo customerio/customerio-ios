@@ -81,11 +81,16 @@ struct GeofenceDwellVisit: Codable, Equatable, Sendable {
     /// did not date can bound its departure by it rather than by the entry. Nil until one is seen.
     var lastDecisiveInsideAt: Date?
     /// Location requests issued to prove this visit's dwell (`GeofenceDwellCoordinator.dwellProofBudget`),
-    /// each reserved here before it is issued. Persisted, so no re-arm, resume or relaunch replenishes
-    /// the budget. Zero on visits persisted before the field.
+    /// counted in memory as each is issued and persisted just after: a process dying in between loses
+    /// at most that one. Persisted, so no re-arm, resume or relaunch replenishes the budget. Zero on
+    /// visits persisted before the field.
     var dwellProofAttempts = 0
-    /// When the latest of those requests was reserved, to space the next one.
+    /// When the latest of those requests was issued, to space the next one.
     var lastDwellProofRequest: GeofenceClockReading?
+    /// Dwell evidence checks the visit's deadline and retries ran, answered from a request or not
+    /// (`GeofenceDwellCoordinator.maxDwellProofChecks`). Persisted for the same reason. Zero on
+    /// visits persisted before the field.
+    var dwellProofChecks = 0
 
     /// Equal when they are the same stay with the same facts. `lastDecisiveInsideAt` and the
     /// dwell-proof bookkeeping are left out: they record the evidence sought and seen, refreshed as
@@ -134,7 +139,7 @@ extension GeofenceDwellVisit {
         /// `closedByObservedBoundary`, as the decimal bit pattern of its `timeIntervalSinceReferenceDate`.
         case closedByObservedBoundaryReferenceBits
         case lastDecisiveInsideAt
-        case dwellProofAttempts, lastDwellProofRequest
+        case dwellProofAttempts, lastDwellProofRequest, dwellProofChecks
     }
 
     /// Custom decode so visits persisted before `entryObserved` still decode; those were only ever
@@ -157,6 +162,7 @@ extension GeofenceDwellVisit {
         self.lastDecisiveInsideAt = try container.decodeIfPresent(Date.self, forKey: .lastDecisiveInsideAt)
         self.dwellProofAttempts = try container.decodeIfPresent(Int.self, forKey: .dwellProofAttempts) ?? 0
         self.lastDwellProofRequest = try container.decodeIfPresent(GeofenceClockReading.self, forKey: .lastDwellProofRequest)
+        self.dwellProofChecks = try container.decodeIfPresent(Int.self, forKey: .dwellProofChecks) ?? 0
         let unqualified = !emitted && dwellReservation == nil
         guard container.contains(.identityVersion) else {
             // Written before identity provenance: nothing says which identities the visit spanned,
@@ -195,6 +201,7 @@ extension GeofenceDwellVisit {
         try container.encodeIfPresent(lastDecisiveInsideAt, forKey: .lastDecisiveInsideAt)
         if dwellProofAttempts > 0 { try container.encode(dwellProofAttempts, forKey: .dwellProofAttempts) }
         try container.encodeIfPresent(lastDwellProofRequest, forKey: .lastDwellProofRequest)
+        if dwellProofChecks > 0 { try container.encode(dwellProofChecks, forKey: .dwellProofChecks) }
     }
 
     /// The closure exactly as encoded; nil when the key is absent. Bits that are not a finite
@@ -238,9 +245,9 @@ struct MonitorRegionRecord: Codable, Equatable, Sendable {
     /// neither is a crossing a visit can be timed by. Optional for records persisted before the
     /// field; `nil` counts as assumed.
     var lastStateObserved: Bool?
-    /// When the circle was last observed outside, kept when an ENTER replaces that state: the
-    /// `lastStateChangedAt` of the observed EXIT a crossing ENTER left. For a polygon's covering
-    /// circle it is departure evidence the polygon's late crossing is judged by, though the EXIT's
-    /// routing was lost. Nil until a crossing has been recorded.
-    var lastObservedOutsideAt: Date?
+    /// When an EXIT was last recorded for this circle, on the monotonic timeline of the reading its
+    /// producer took, kept when an ENTER replaces that state. For a polygon's covering circle it is
+    /// departure evidence the polygon's late crossing is judged by, though the EXIT's routing was
+    /// lost. Nil until an EXIT with a reading has been recorded.
+    var lastObservedOutside: GeofenceClockStamp?
 }

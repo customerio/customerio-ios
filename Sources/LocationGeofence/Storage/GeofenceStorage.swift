@@ -89,7 +89,7 @@ actor GeofenceStorage {
             lastEventDate: (preserved || identifier == GeofenceConstants.movementTriggerIdentifier) ? existing?.lastEventDate : nil,
             lastStateObserved: preserved ? existing?.lastStateObserved : initialStateObserved,
             // Of the same circle only: a changed one's outside says nothing about the new one.
-            lastObservedOutsideAt: preserved ? existing?.lastObservedOutsideAt : nil
+            lastObservedOutside: preserved ? existing?.lastObservedOutside : nil
         )
         state.monitorRegionRecords = records
         saveToDisk(state)
@@ -172,8 +172,8 @@ actor GeofenceStorage {
             return (.suppressedNoChange, false)
         }
         let leftObservedState = record.lastStateObserved ?? false
-        if transition == .enter, leftObservedState, record.lastState == .exit {
-            record.lastObservedOutsideAt = record.lastStateChangedAt
+        if transition == .exit, let reading {
+            record.lastObservedOutside = GeofenceClockStamp(date: now ?? dateUtil.now, at: reading)
         }
         record.lastState = transition
         record.lastStateChangedAt = now ?? dateUtil.now

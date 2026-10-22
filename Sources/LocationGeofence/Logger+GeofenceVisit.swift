@@ -36,13 +36,14 @@ extension Logger {
         )
     }
 
-    /// `requests`: dwell-proof location requests the visit issued.
-    func geofenceDwellProofBudgetExhausted(geofenceId: String, requests: Int) {
+    /// `requests`: dwell-proof location requests the visit issued; `checks`: evidence checks it ran.
+    func geofenceDwellProofBudgetExhausted(geofenceId: String, requests: Int, checks: Int) {
         info(
-            "Geofence '\(geofenceId)': dwell proof budget exhausted after \(requests) location requests"
+            "Geofence '\(geofenceId)': dwell proof budget exhausted after \(requests) location requests and \(checks) checks"
                 + geofenceTail("dwell.proof_budget_exhausted", .observation, [
                     ("id", geofenceId),
-                    ("n", String(requests))
+                    ("n", String(requests)),
+                    ("checks", String(checks))
                 ]),
             geofenceTag
         )

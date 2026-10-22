@@ -14,6 +14,30 @@ enum GeofenceDwellEvidenceScope {
     @TaskLocal static var request: GeofenceDwellEvidenceRequest?
 }
 
+/// What one visit has spent proving its dwell: location requests issued, evidence checks run, and
+/// when the last request was issued. Each count only grows.
+struct GeofenceDwellProofLedger: Equatable, Sendable {
+    var attempts = 0
+    var checks = 0
+    var lastRequest: GeofenceClockReading?
+
+    /// This ledger with whatever `visit` persisted that it has not seen: the higher count, and the
+    /// later request on one boot (on two, the one recorded since).
+    func merged(with visit: GeofenceDwellVisit) -> GeofenceDwellProofLedger {
+        var merged = self
+        merged.attempts = max(attempts, visit.dwellProofAttempts)
+        merged.checks = max(checks, visit.dwellProofChecks)
+        if let persisted = visit.lastDwellProofRequest {
+            if let last = lastRequest, last.boot.isSameBoot(as: persisted.boot) {
+                merged.lastRequest = persisted.uptime > last.uptime ? persisted : last
+            } else {
+                merged.lastRequest = lastRequest ?? persisted
+            }
+        }
+        return merged
+    }
+}
+
 /// Request ownership and early-evidence retries, split from the scheduler to keep its file focused.
 /// These helpers are internal only so the coordinator's other extension files can call them.
 extension GeofenceDwellCoordinator {
@@ -22,6 +46,8 @@ extension GeofenceDwellCoordinator {
             visitId: visit.visitId, diagnosticToken: diagnosticToken(for: visit)
         )
         guard state.visitId == visit.visitId else { return nil }
+        // Seeded from what the visit persisted, so admission needs no storage read.
+        proofLedgers[visit.visitId] = proofLedger(for: visit)
         let request = GeofenceDwellEvidenceRequest(
             geofenceId: geofenceId, visitId: visit.visitId, token: UUID(), minimumTimestamp: state.nextFixAfter
         )
@@ -84,38 +110,86 @@ extension GeofenceDwellCoordinator {
         maxEvidenceRetryAttempts + 1
     }
 
-    /// Reserves one of the visit's dwell-proof requests before one is issued on its behalf, inside
-    /// a dwell evidence request (`GeofenceDwellEvidenceScope`). Outside one — a membership pass for
-    /// a wake, an ENTER or an EXIT — nothing is charged or refused. Only an issued request is
-    /// spaced: a cached answer, or one joining a request in flight, is neither charged nor held
-    /// back. A request too soon after the visit's last is held back, and its retry waits out the
-    /// rest of the spacing: the ordinary `dwellProofSpacing`, or for the short retry, whose request
-    /// carries a newer-measurement floor, the lower bound of `shortRetryDelayRange`.
-    /// - Returns: whether the request may be issued.
-    func reserveDwellProofRequest() async -> Bool {
-        guard let request = GeofenceDwellEvidenceScope.request else { return true }
-        let spacing = min(dwellProofSpacing, request.minimumTimestamp != nil ? Self.shortRetryDelayRange.lowerBound : .infinity)
-        let outcome = await storage.reserveDwellProofAttempt(
-            geofenceId: request.geofenceId, visitId: request.visitId, limit: dwellProofBudget,
-            spacing: spacing, at: readClock()
-        )
-        guard case .tooSoon(let remaining) = outcome else { return outcome == .reserved }
-        if var state = evidenceRetries[request.geofenceId], state.visitId == request.visitId,
-           state.activeRequest == request.token {
-            state.spacingWait = remaining
-            evidenceRetries[request.geofenceId] = state
-        }
-        return false
+    /// Evidence checks a visit's deadline and retries may run, whether a request answered them or
+    /// a cached or shared fix did: twice the request budget. It ends a chain that free answers
+    /// would otherwise keep alive for as long as the process runs.
+    var maxDwellProofChecks: Int {
+        2 * dwellProofBudget
     }
 
-    /// `visit` has spent its dwell-proof budget: no deadline or retry asks for another location,
-    /// and its collection lease goes. A qualifying fix the SDK obtains for another reason can
-    /// still prove the dwell. Logged once per visit.
+    /// What `visit` has spent, as this process counts it, merged with what was persisted.
+    func proofLedger(for visit: GeofenceDwellVisit) -> GeofenceDwellProofLedger {
+        (proofLedgers[visit.visitId] ?? GeofenceDwellProofLedger()).merged(with: visit)
+    }
+
+    /// Whether a visit that needs a location to prove its dwell has spent its requests or its
+    /// checks. A reserved dwell needs none: its delivery is never held back by either.
+    func proofSpent(_ visit: GeofenceDwellVisit) -> Bool {
+        guard visit.dwellReservation == nil else { return false }
+        let ledger = proofLedger(for: visit)
+        return ledger.attempts >= dwellProofBudget || ledger.checks >= maxDwellProofChecks
+    }
+
+    /// Counts one evidence check for `visit`. False, counting nothing, when it has none left.
+    func countDwellProofCheck(geofenceId: String, visit: GeofenceDwellVisit) -> Bool {
+        guard !proofSpent(visit) else { return false }
+        var ledger = proofLedger(for: visit)
+        ledger.checks += 1
+        updateProofLedger(ledger, geofenceId: geofenceId, visitId: visit.visitId)
+        return true
+    }
+
+    /// The admission a fix resolver calls at the moment it would issue a request for the dwell
+    /// evidence request this task runs (`GeofenceDwellEvidenceScope`); nil outside one, so a
+    /// membership pass for a wake, an ENTER or an EXIT is neither charged nor refused. Called only
+    /// when a request is about to be issued: a cached answer, or one joining a request in flight,
+    /// is neither charged nor held back.
+    func dwellProofAdmission() -> (() -> Bool)? {
+        guard let request = GeofenceDwellEvidenceScope.request else { return nil }
+        return { [weak self] in self?.admitDwellProofRequest(request) ?? false }
+    }
+
+    /// Synchronous, at the issuing boundary, so nothing can change between the decision and the
+    /// request: refuses a request for a cancelled or superseded evidence request, past the budget,
+    /// or too soon after the visit's last — the ordinary `dwellProofSpacing`, or for the short
+    /// retry, whose request carries a newer-measurement floor, the lower bound of
+    /// `shortRetryDelayRange`; a held-back request's retry waits out the rest. An admitted request
+    /// is counted in memory now and persisted after.
+    func admitDwellProofRequest(_ request: GeofenceDwellEvidenceRequest) -> Bool {
+        guard !Task.isCancelled, var state = evidenceRetries[request.geofenceId],
+              state.visitId == request.visitId, state.activeRequest == request.token,
+              var ledger = proofLedgers[request.visitId], ledger.attempts < dwellProofBudget
+        else { return false }
+        let reading = readClock()
+        let spacing = min(dwellProofSpacing, request.minimumTimestamp != nil ? Self.shortRetryDelayRange.lowerBound : .infinity)
+        if let last = ledger.lastRequest, last.boot.isSameBoot(as: reading.boot), reading.uptime >= last.uptime,
+           reading.uptime - last.uptime < spacing {
+            state.spacingWait = spacing - (reading.uptime - last.uptime)
+            evidenceRetries[request.geofenceId] = state
+            return false
+        }
+        ledger.attempts += 1
+        ledger.lastRequest = reading
+        updateProofLedger(ledger, geofenceId: request.geofenceId, visitId: request.visitId)
+        return true
+    }
+
+    /// Keeps `ledger` as `visitId`'s and persists it in the background; the persisted copy only
+    /// grows, so writes landing out of order are harmless.
+    private func updateProofLedger(_ ledger: GeofenceDwellProofLedger, geofenceId: String, visitId: String) {
+        proofLedgers[visitId] = ledger
+        Task { [storage] in await storage.recordDwellProofLedger(geofenceId: geofenceId, visitId: visitId, ledger: ledger) }
+    }
+
+    /// `visit` has spent its dwell-proof requests or checks: no deadline or retry asks for another
+    /// location, and its collection lease goes. A qualifying fix the SDK obtains for another reason
+    /// can still prove the dwell. Logged once per visit.
     func proofBudgetExhausted(geofenceId: String, visit: GeofenceDwellVisit) {
         deadlineTasks.removeValue(forKey: geofenceId)?.cancel()
         releaseCollectionLease(geofenceId: geofenceId, ifVisit: visit.visitId)
         if exhaustedProofBudgetsLogged.insert(visit.visitId).inserted {
-            logger.geofenceDwellProofBudgetExhausted(geofenceId: geofenceId, requests: visit.dwellProofAttempts)
+            let ledger = proofLedger(for: visit)
+            logger.geofenceDwellProofBudgetExhausted(geofenceId: geofenceId, requests: ledger.attempts, checks: ledger.checks)
         }
     }
 
@@ -126,19 +200,19 @@ extension GeofenceDwellCoordinator {
             guard let minimumTimestamp, let fix else { return fix }
             return fix.timestamp > minimumTimestamp ? fix : nil
         }
-        // Charged only when a request would be issued: a cached answer, or one joining a request
-        // already in flight, costs nothing. The test provider stands for a request every time.
+        // Charged only as a request is issued (`dwellProofAdmission`): a cached answer, or one
+        // joining a request already in flight, costs nothing. The test provider stands for a
+        // request every time.
+        let admit = dwellProofAdmission()
         if let freshFixProvider {
-            guard await reserveDwellProofRequest() else { return nil }
+            if let admit, !admit() { return nil }
             let provided = await freshFixProvider()
             return newEnough(provided)
         }
-        let cached = minimumTimestamp == nil ? fixResolver.latestFix : nil
-        if fixResolver.wouldIssueRequest(cached: cached) {
-            guard await reserveDwellProofRequest() else { return nil }
-        }
         return await withCheckedContinuation { continuation in
-            fixResolver.resolve(cached: cached, purpose: .pendingEvents) { location, isFresh in
+            fixResolver.resolve(
+                cached: minimumTimestamp == nil ? fixResolver.latestFix : nil, purpose: .pendingEvents, admit: admit
+            ) { location, isFresh in
                 guard isFresh, location != nil else {
                     continuation.resume(returning: nil)
                     return

@@ -32,7 +32,8 @@ extension PolygonMembershipResolver {
             onlyIfBeliefPredates: evidence,
             onlyIfRingMatches: evaluatedRing,
             onlyIfCircleMatches: evaluatedCircle,
-            decisiveInside: membership == .inside && qualifiesDwell
+            decisiveInside: membership == .inside && qualifiesDwell,
+            reading: processedAt
         )
         let outcome = write.outcome
         var exitContext: GeofenceExitContext?

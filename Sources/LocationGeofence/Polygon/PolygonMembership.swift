@@ -23,16 +23,11 @@ struct PolygonMembershipRecord: Codable, Equatable, Sendable {
     /// marginal arrival moves `lastChangedAt` but not this, so an EXIT is timed only from a stay
     /// that was really proven. Nil on records written before the field, which then time no EXIT.
     var lastDecisiveInsideAt: Date?
-    /// Newest outside evidence, kept through later inside writes, so a departure the SDK observed
-    /// is not erased by the inside pass that followed it. Nil on records written before the field,
-    /// whose `lastChangedAt` stands in while the belief is still outside.
-    var lastOutsideAt: Date?
-
-    /// The newest outside evidence this record holds, from the field or, for a record written
-    /// before it, from an outside belief's own stamp.
-    var latestOutsideAt: Date? {
-        lastOutsideAt ?? (membership == .outside ? lastChangedAt : nil)
-    }
+    /// Newest outside evidence, on the monotonic timeline it was recorded on, kept through later
+    /// inside writes so a departure the SDK observed is not erased by the inside pass that followed
+    /// it. Nil when no outside write carried a clock reading, including records written before the
+    /// field: such evidence cannot be ordered against a visit, and ends none.
+    var lastOutside: GeofenceClockStamp?
 }
 
 /// A membership write's outcome, with when the belief it found was last proven; see

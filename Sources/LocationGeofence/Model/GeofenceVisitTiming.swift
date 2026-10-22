@@ -1,5 +1,33 @@
 import Foundation
 
+/// A moment placed on the monotonic timeline of the boot it was recorded on, so it can be ordered
+/// against a visit's entry whatever the wall clock has done since: a clock set back makes a newer
+/// visit's wall date earlier than older evidence, which uptime never does.
+struct GeofenceClockStamp: Codable, Equatable, Sendable {
+    let boot: GeofenceBootIdentity
+    /// `date` mapped to uptime when it was recorded (`GeofenceVisitTiming.uptime(of:at:)`).
+    let uptime: TimeInterval
+
+    init(date: Date, at reading: GeofenceClockReading) {
+        self.boot = reading.boot
+        self.uptime = GeofenceVisitTiming.uptime(of: date, at: reading)
+    }
+
+    /// Whether this moment came after `visit` began. Only on the boot both were recorded on: across
+    /// boots, or for a visit without timing, nothing orders them, and the answer is no.
+    func isAfterEntry(of visit: GeofenceDwellVisit) -> Bool {
+        guard let timing = visit.timing, boot.isSameBoot(as: timing.boot) else { return false }
+        return uptime > timing.enteredUptime
+    }
+
+    /// The later of two stamps on one boot; across boots, `other`, the one recorded since.
+    func newer(_ other: GeofenceClockStamp?) -> GeofenceClockStamp {
+        guard let other else { return self }
+        guard boot.isSameBoot(as: other.boot) else { return other }
+        return other.uptime > uptime ? other : self
+    }
+}
+
 /// Where a visit's entry sits on the monotonic timeline, stored next to its wall-clock entry. It is
 /// what lets the visit's elapsed time be measured without trusting the wall clock, and what tells
 /// a visit recorded on an earlier boot from one on this boot.

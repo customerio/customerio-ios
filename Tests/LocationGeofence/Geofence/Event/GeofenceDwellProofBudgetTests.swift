@@ -132,6 +132,141 @@ struct GeofenceDwellProofBudgetTests {
         #expect(try JSONDecoder().decode(GeofenceDwellVisit.self, from: encoder.encode(visit)).dwellProofAttempts == 3)
     }
 
+    /// A membership request is already in flight when the dwell deadline fires. The dwell check
+    /// joins it at the resolver's issuing boundary, so it issues and is charged nothing, and the
+    /// shared fix still proves the dwell.
+    @Test
+    func dwellCheckJoiningAMembershipRequest_isNotCharged() async throws {
+        let rig = await BudgetRig.make(polygon: true)
+        defer { rig.close() }
+        try await rig.enterPolygon()
+        let entryRequests = rig.requestTimes.count
+        rig.advance(to: 50)
+        rig.holdAnswers = true
+        let membership = Task {
+            await rig.resolver.evaluateMembership(geofenceIds: [BudgetRig.polygon.id], reason: .movement, requiresFreshFix: true)
+        }
+        try #require(await settleOnMain { rig.requestTimes.count == entryRequests + 1 })
+
+        rig.advance(to: 60)
+        // The deadline's check has run and is waiting on the shared request.
+        try #require(await settleOnMain { rig.coordinator.proofLedgers.values.first?.checks == 1 })
+        await settleQuietly(0.1)
+        rig.provider.handleDeliveredFix(rig.insideFix(at: 60))
+        _ = await membership.value
+
+        #expect(await settleOnMain { rig.emitter.dwells.count == 1 })
+        #expect(rig.requestTimes.count == entryRequests + 1, "the dwell check joined, issuing nothing")
+        #expect(await rig.visit()?.dwellProofAttempts == 0)
+    }
+
+    /// The resolver asks admission exactly when it would issue a request: never for a current
+    /// cached answer or one joining a request in flight, always for a stale cache. A refusal
+    /// issues nothing and answers at once.
+    @Test
+    func resolverAsksAdmissionOnlyAsItIssues() {
+        let dateUtil = DateUtilStub()
+        dateUtil.givenNow = Date(timeIntervalSince1970: 5000)
+        let resolver = MovementFixResolver(logger: LoggerMock(), dateUtil: dateUtil, waitForTimeout: { _ in
+            try? await Task.sleep(nanoseconds: 60000000000)
+        })
+        var issued = 0, asked = 0
+        resolver.requestFreshFix = { issued += 1 }
+        resolver.cancelFreshFix = {}
+        func fix(age: TimeInterval) -> CLLocation {
+            CLLocation(
+                coordinate: CLLocationCoordinate2D(latitude: 1, longitude: 2), altitude: 0,
+                horizontalAccuracy: 5, verticalAccuracy: 5, timestamp: dateUtil.now.addingTimeInterval(-age)
+            )
+        }
+        var answers: [Bool] = []
+
+        resolver.resolve(cached: fix(age: 5), purpose: .pendingEvents, admit: { asked += 1
+            return true
+        }) { _, fresh in answers.append(fresh) }
+        #expect(asked == 0 && issued == 0 && answers == [true], "a current cached answer is free")
+
+        resolver.resolve(cached: fix(age: 60), purpose: .pendingEvents, admit: { asked += 1
+            return false
+        }) { _, fresh in answers.append(fresh) }
+        #expect(asked == 1 && issued == 0 && answers == [true, false], "a refused request is not issued")
+
+        resolver.resolve(cached: fix(age: 60), purpose: .pendingEvents, admit: { asked += 1
+            return true
+        }) { _, fresh in answers.append(fresh) }
+        #expect(asked == 2 && issued == 1, "a stale cache issues, and is admitted, at once")
+        resolver.resolve(cached: nil, purpose: .pendingEvents, admit: { asked += 1
+            return true
+        }) { _, fresh in answers.append(fresh) }
+        #expect(asked == 2 && issued == 1, "joining the request in flight is free")
+
+        resolver.handleDeliveredFix(fix(age: 0))
+        #expect(answers == [true, false, true, true])
+    }
+
+    /// A dwell evidence request cancelled, or superseded by another, before its request is issued
+    /// is refused at the issuing boundary and spends nothing.
+    @Test
+    func cancelledOrSupersededEvidenceRequest_isRefusedAsItWouldIssue() async throws {
+        let rig = await BudgetRig.make(polygon: false)
+        defer { rig.close() }
+        await rig.enterCircle()
+        let visit = try #require(await rig.visit())
+        let coordinator = rig.coordinator!
+        let request = try #require(coordinator.beginEvidenceRequest(geofenceId: BudgetRig.circle.id, visit: visit))
+
+        let cancelled = Task { @MainActor in
+            withUnsafeCurrentTask { $0?.cancel() }
+            return GeofenceDwellEvidenceScope.$request.withValue(request) { coordinator.dwellProofAdmission()?() }
+        }
+        #expect(await cancelled.value == false)
+        #expect(coordinator.proofLedgers[visit.visitId]?.attempts == 0)
+
+        coordinator.finishEvidenceRequest(request)
+        _ = coordinator.beginEvidenceRequest(geofenceId: BudgetRig.circle.id, visit: visit)
+        let superseded = GeofenceDwellEvidenceScope.$request.withValue(request) { coordinator.dwellProofAdmission()?() }
+        #expect(superseded == false)
+        #expect(coordinator.proofLedgers[visit.visitId]?.attempts == 0)
+    }
+
+    /// The fourth request proves the dwell and reserves it, but its outbox write fails. The
+    /// delivery needs no location, so the spent budget does not stop its retry.
+    @Test
+    func reservedDwellAfterTheLastRequest_stillRetriesItsDelivery() async throws {
+        let rig = await BudgetRig.make(polygon: false)
+        defer { rig.close() }
+        await rig.enterCircle()
+        rig.answers = [nil, nil, nil, rig.insideFix(at: 420)]
+        rig.emitter.failingDeliveries = 1
+        await rig.drive(to: 420)
+        try #require(rig.emitter.deliveries.count == 1 && rig.emitter.dwells.isEmpty)
+        #expect(rig.scheduler.nextDeadline == 540)
+
+        await rig.drive(to: 600)
+
+        #expect(rig.emitter.dwells.map(\.occurredAt) == [rig.at(420)])
+        #expect(rig.requestTimes == [60, 180, 300, 420])
+        #expect(await rig.visit()?.dwellProofAttempts == 4)
+    }
+
+    /// Every check is answered from a fix the SDK already holds, so none is charged; the chain
+    /// still stops after eight checks rather than running for as long as the process does.
+    @Test
+    func freeAnswers_stopAfterTheCheckLimit() async throws {
+        let rig = await BudgetRig.make(polygon: false)
+        defer { rig.close() }
+        await rig.enterCircle()
+        rig.beforeEachDeadline = { [rig] moment in rig.provider.handleDeliveredFix(rig.vagueFix(at: moment)) }
+        await rig.drive(to: 2000)
+
+        #expect(rig.requestTimes.isEmpty)
+        let visit = try #require(await rig.visit())
+        #expect(visit.dwellProofChecks == 8)
+        #expect(visit.dwellProofAttempts == 0)
+        #expect(rig.coordinator.deadlineTasks[BudgetRig.circle.id] == nil)
+        #expect(rig.exhaustionLogs() == 1)
+    }
+
     /// On its timeout, the resolver tells Core Location to stop the request, rather than only
     /// answering its callers; a request answered in time is not cancelled.
     @Test
@@ -201,6 +336,10 @@ private final class BudgetRig {
     private(set) var resolver: PolygonMembershipResolver!
     /// Answers for the next requests, in order; an empty list or nil fails the request.
     var answers: [CLLocation?] = []
+    /// Leaves each request pending, for `provider.handleDeliveredFix` to answer.
+    var holdAnswers = false
+    /// Runs at each deadline `drive` reaches, once the clock reads it and before it fires.
+    var beforeEachDeadline: ((TimeInterval) -> Void)?
     private(set) var requestTimes: [TimeInterval] = []
     private var now: TimeInterval = 0
     private var exhaustionLogsBeforeRelaunch = 0
@@ -231,6 +370,7 @@ private final class BudgetRig {
         provider.requestFreshFix = { [weak self, weak provider] in
             guard let self, let provider else { return }
             requestTimes.append(now)
+            guard !holdAnswers else { return }
             guard !answers.isEmpty, let fix = answers.removeFirst() else {
                 provider.handleRequestFailure()
                 return
@@ -287,7 +427,7 @@ private final class BudgetRig {
     func drive(to moment: TimeInterval) async {
         await settleQuietly(0.1)
         while let next = scheduler.nextDeadline, next <= moment {
-            advance(to: next)
+            advance(to: next, before: beforeEachDeadline)
             // Until the request it ran has scheduled its retry; one that schedules none, the
             // last, waits out the timeout.
             _ = await settleOnMain(timeout: 1) { (self.scheduler.nextDeadline ?? 0) > next }
@@ -297,11 +437,20 @@ private final class BudgetRig {
         await settleQuietly(0.1)
     }
 
-    private func advance(to moment: TimeInterval) {
+    func advance(to moment: TimeInterval, before: ((TimeInterval) -> Void)? = nil) {
         now = max(now, moment)
         clock.advance(to: at(now))
         dateUtil.givenNow = clock.wall
+        before?(now)
         scheduler.advance(to: now)
+    }
+
+    /// A fix at the fence's centre whose accuracy circle is far wider than it: it decides nothing.
+    func vagueFix(at seconds: TimeInterval) -> CLLocation {
+        CLLocation(
+            coordinate: CLLocationCoordinate2D(latitude: 0.25, longitude: 0.25),
+            altitude: 0, horizontalAccuracy: 500, verticalAccuracy: 500, timestamp: at(seconds)
+        )
     }
 
     func at(_ seconds: TimeInterval) -> Date {
@@ -337,6 +486,10 @@ private final class BudgetEmitter: GeofenceTransitionEmitting {
     }
 
     private(set) var dwells: [Dwell] = []
+    /// Every delivery attempt, failed or not.
+    private(set) var deliveries: [Date] = []
+    /// Deliveries still to fail, as an outbox write would.
+    var failingDeliveries = 0
 
     func trackTransition(geofenceId: String, transition: GeofenceTransition, occurredAt: Date) async {}
 
@@ -347,6 +500,11 @@ private final class BudgetEmitter: GeofenceTransitionEmitting {
     func trackDwell(
         geofenceId: String, occurredAt: Date, context: GeofenceDwellContext, expectedUserId: String?
     ) async -> Bool {
+        deliveries.append(occurredAt)
+        guard failingDeliveries == 0 else {
+            failingDeliveries -= 1
+            return false
+        }
         dwells.append(Dwell(occurredAt: occurredAt))
         return true
     }

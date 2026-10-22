@@ -1773,7 +1773,7 @@ struct GeofenceDwellCoordinatorTests {
         // As the resolver does when its pass issues a request: charged to the visit's budget.
         setup.coordinator.polygonVerifier = { _ in
             verifierCalls += 1
-            _ = await setup.coordinator.reserveDwellProofRequest()
+            _ = setup.coordinator.dwellProofAdmission()?()
         }
 
         await setup.coordinator.handleBoundary(
@@ -2080,7 +2080,7 @@ struct GeofenceDwellCoordinatorTests {
         // resolver charges it, waits out its 10 s fix timeout.
         coordinator.polygonVerifier = { @MainActor fenceId in
             probe.verified.append(fenceId)
-            _ = await coordinator.reserveDwellProofRequest()
+            _ = coordinator.dwellProofAdmission()?()
             try? await rig.scheduler.sleep(nanoseconds: 10 * 1000000000)
         }
         // Recording uptime + 3600 s threshold + the fixed 220 s grace.

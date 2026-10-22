@@ -52,8 +52,11 @@ This applies with or without the experiments. The SDK issues at most four locati
 visit to prove its dwell: one at the threshold and up to three retries, at least 120 seconds apart
 except for the short retry. The count is stored with the visit, so returning to the foreground,
 resuming or relaunching does not replenish it. A cached answer, or one shared with a request already
-in flight, is not counted. Once the four are spent, the SDK schedules no more dwell checks for that
-visit and logs `dwell proof budget exhausted` with the fence ID. Location requests the SDK makes for
+in flight, is not counted: on iOS, a request shared with a membership pass or with another visit's
+dwell check is not charged to the visit that joins it. Each visit also runs at most eight dwell checks,
+counted whether a request answered them or not. Once either limit is reached, the SDK schedules no more
+dwell checks for that visit and logs `dwell proof budget exhausted` with the fence ID. A dwell already
+proven and awaiting delivery needs no location, so neither limit holds back its delivery. Location requests the SDK makes for
 ENTER and EXIT are not counted or limited, and a qualifying fix one of them returns can still prove
 the dwell.
 

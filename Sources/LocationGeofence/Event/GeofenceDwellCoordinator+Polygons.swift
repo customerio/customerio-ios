@@ -120,30 +120,22 @@ extension GeofenceDwellCoordinator {
 
     /// A polygon's held covering-circle crossing ends or restarts its visit only if the polygon was
     /// observed outside since that visit began: outside evidence for it, polygon membership or its
-    /// covering circle's observed state (`GeofenceStorage.polygonDepartureEvidence`), proven after
-    /// the visit's entry (`provenAfterEntry`). That evidence is kept through later inside writes,
-    /// so a pass that found the device back inside before this read does not hide the departure. Otherwise it is the OS reporting late the arrival a fix
-    /// already began the visit with, and is dropped, leaving the visit, its id, entry and timing
-    /// untouched; the polygon's own passes still end the stay.
+    /// covering circle's observed state (`GeofenceStorage.polygonDepartureEvidence`), after the
+    /// visit's entry on the monotonic timeline both were recorded on
+    /// (`GeofenceClockStamp.isAfterEntry`). That evidence is kept through later inside writes, so a
+    /// pass that found the device back inside before this read does not hide the departure; and it
+    /// is never ordered by wall date, so after the clock is set back, old evidence cannot pass for a
+    /// departure from a newer visit. Evidence without a reading, or from another boot, ends nothing.
+    /// Otherwise it is the OS reporting late the arrival a fix already began the visit with, and is
+    /// dropped, leaving the visit, its id, entry and timing untouched; the polygon's own passes still
+    /// end the stay.
     func judgeCoveringCrossing(geofenceId: String) async {
         guard let crossing = heldCoveringCrossings[geofenceId] else { return }
-        let evidence = await storage.polygonDepartureEvidence(geofenceId: geofenceId, now: readClock().wall)
+        let evidence = await storage.polygonDepartureEvidence(geofenceId: geofenceId)
         // A later crossing held during the read waits for its own routed ENTER.
         if heldCoveringCrossings[geofenceId] == crossing { heldCoveringCrossings[geofenceId] = nil }
-        guard let visit = evidence.visit, let outsideAt = evidence.outsideAt,
-              Self.provenAfterEntry(outsideAt, of: visit, at: readClock())
-        else { return }
+        guard let visit = evidence.visit, evidence.outside.contains(where: { $0.isAfterEntry(of: visit) }) else { return }
         noteEnter(crossing, geofenceId: geofenceId, crossing: true)
-    }
-
-    /// Whether evidence stamped `stamp` came after `visit` began: on the monotonic timeline while
-    /// the visit is of this boot and the wall clock has kept step since it was recorded, else by
-    /// wall dates, as `GeofenceExitMark.overtakes` falls back. A visit with no timing has no
-    /// continuity to keep.
-    static func provenAfterEntry(_ stamp: Date, of visit: GeofenceDwellVisit, at reading: GeofenceClockReading) -> Bool {
-        guard let timing = visit.timing else { return true }
-        guard timing.isCurrent(at: reading), timing.wallClockAgrees(at: reading) else { return stamp > visit.enteredAt }
-        return GeofenceVisitTiming.uptime(of: stamp, at: reading) > timing.enteredUptime
     }
 
     /// Notes the corrections that arrived before the shapes were known, for the fences the catalog

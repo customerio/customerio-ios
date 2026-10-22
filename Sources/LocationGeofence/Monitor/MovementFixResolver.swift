@@ -104,15 +104,17 @@ final class MovementFixResolver: NSObject, @preconcurrency CLLocationManagerDele
         currentRequestSignal?.complete()
     }
 
-    /// Whether `resolve(cached:)` with `cached` would issue a new request: no current answer to
-    /// give at once, and no request in flight to join.
-    func wouldIssueRequest(cached: CLLocation?) -> Bool {
-        !(cached.map(isCurrent) ?? false) && pendingCompletions.isEmpty
-    }
-
     /// Completes exactly once per call. The `Bool` is whether the coordinates are current: false when
     /// the request failed or timed out and the answer is the stale fallback.
-    func resolve(cached: CLLocation?, purpose: GeofenceFixPurpose, completion: @escaping (LocationData?, Bool) -> Void) {
+    /// - Parameter admit: called synchronously at the moment this call would issue a new request —
+    ///   no current cached answer, and none in flight to join — and never otherwise; false refuses
+    ///   it, and the call completes at once with no answer.
+    func resolve(
+        cached: CLLocation?,
+        purpose: GeofenceFixPurpose,
+        admit: (() -> Bool)? = nil,
+        completion: @escaping (LocationData?, Bool) -> Void
+    ) {
         let age = cached.map { self.age(of: $0) }
         if let cached, let age, isCurrent(cached) {
             logger.geofenceMovementFixResolved(ageSeconds: age, requested: false, speed: cached.speed, purpose: purpose)
@@ -122,6 +124,10 @@ final class MovementFixResolver: NSObject, @preconcurrency CLLocationManagerDele
             return
         }
         logger.geofenceMovementFixStale(ageSeconds: age)
+        if pendingCompletions.isEmpty, let admit, !admit() {
+            completion(nil, false)
+            return
+        }
         // On a tie the held fallback wins.
         fallbackFix = FixSelection.newest(cached: cached, delivered: fallbackFix)?.fix
         pendingCompletions.append(completion)
