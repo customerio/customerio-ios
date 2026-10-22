@@ -31,7 +31,13 @@ struct GeofenceDwellProofBudgetTests {
         await rig.drive(to: 200)
         rig.foreground()
         // The re-armed deadline is due at once; its request is held back to 120 s after the last.
-        try #require(await settleOnMain { rig.scheduler.nextDeadline == 300 })
+        // The retry it replaced was due at 300 too, so wait for the re-armed check itself: it
+        // confirms the last charge saved, and ends once it has parked its own retry.
+        try #require(await settleOnMain {
+            rig.coordinator.unsavedProofCharges.isEmpty
+                && rig.coordinator.evidenceRetries[BudgetRig.circle.id]?.activeRequest == nil
+                && rig.scheduler.nextDeadline == 300
+        })
         await rig.drive(to: 2000)
 
         #expect(rig.requestTimes == [60, 180, 300, 420])
