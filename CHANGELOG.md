@@ -1,3 +1,9 @@
+## [4.12.2](https://github.com/customerio/customerio-ios/compare/4.12.1...4.12.2) (2026-10-22)
+
+### Bug Fixes
+
+* track launch lifecycle events when the SDK initializes after app launch ([#1354](https://github.com/customerio/customerio-ios/issues/1354)) ([b88d612](https://github.com/customerio/customerio-ios/commit/b88d612433ab68239cf43d6adf5875f1916ce4b4))
+
 ## [4.12.1](https://github.com/customerio/customerio-ios/compare/4.12.0...4.12.1) (2026-10-22)
 
 ### Bug Fixes
