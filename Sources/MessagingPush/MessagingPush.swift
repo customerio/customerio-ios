@@ -157,6 +157,18 @@ public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, Messagi
     @discardableResult
     public static func initializeForExtension(withConfig config: MessagingPushConfigOptions)
         -> MessagingPushInstance {
+        initializeExtensionModule(config: config)
+    }
+
+    /// Body of ``initializeForExtension(withConfig:)`` without its availability limits, so tests can call it.
+    @discardableResult
+    static func initializeExtensionModule(config: MessagingPushConfigOptions) -> MessagingPushInstance {
+        // Secret keys must not ship in apps. `MessagingPushConfigBuilder` already logged the error.
+        // Without an implementation, `didReceive` passes the notification through and sends nothing.
+        guard !ApiKey.isSecret(config.cdpApiKey) else {
+            return shared
+        }
+
         shared.initializeModuleIfNotAlready {
             // set moduleConfig before creating implementation instance as dependencies inside instance may directly use moduleConfig from MessagingPush.
             Self.moduleConfig = config

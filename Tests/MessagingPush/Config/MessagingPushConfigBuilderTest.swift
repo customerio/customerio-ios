@@ -1,4 +1,5 @@
 @testable import CioInternalCommon
+@testable import CioInternalCommonMocks
 @testable import CioMessagingPush
 import SharedTests
 import XCTest
@@ -61,6 +62,27 @@ class MessagingPushConfigBuilderTest: UnitTest {
         let config = MessagingPushConfigBuilder(cdpApiKey: String.random, region: nil).build()
 
         XCTAssertEqual(config.region, Region.US)
+    }
+
+    func test_init_givenSecretKey_expectSecretKeyErrorLogged() {
+        let loggerMock = LoggerMock()
+        mockCollection.add(mock: loggerMock)
+        diGraphShared.override(value: loggerMock, forType: Logger.self)
+
+        _ = MessagingPushConfigBuilder(cdpApiKey: "sk_us_\(String.random)", region: nil)
+
+        XCTAssertEqual(loggerMock.errorReceivedInvocations.map(\.message), [ApiKey.secretKeyError])
+    }
+
+    func test_init_givenPublicOrLegacyKey_expectNoErrorLogged() {
+        let loggerMock = LoggerMock()
+        mockCollection.add(mock: loggerMock)
+        diGraphShared.override(value: loggerMock, forType: Logger.self)
+
+        _ = MessagingPushConfigBuilder(cdpApiKey: "pk_us_\(String.random)", region: nil)
+        _ = MessagingPushConfigBuilder(cdpApiKey: String.random, region: nil)
+
+        XCTAssertFalse(loggerMock.errorCalled)
     }
 
     func test_apiHost_whenNotSet_expectNil() {

@@ -168,11 +168,13 @@ extension RichPushHttpClient {
         cdpApiKey: String,
         userAgentHeaderValue: String
     ) -> [String: String] {
-        let basicAuthHeaderString = "Basic \(authorizationHeaderForCdpApiKey(cdpApiKey))"
-
-        return ["Content-Type": "application/json; charset=utf-8",
-                "User-Agent": userAgentHeaderValue,
-                "Authorization": basicAuthHeaderString]
+        var headers = ["Content-Type": "application/json; charset=utf-8",
+                       "User-Agent": userAgentHeaderValue]
+        // Never send a secret key. The extension does not initialize with one, so this is a second guard.
+        if !ApiKey.isSecret(cdpApiKey) {
+            headers["Authorization"] = "Basic \(authorizationHeaderForCdpApiKey(cdpApiKey))"
+        }
+        return headers
     }
 
     static func getBasicSession() -> URLSession {
