@@ -21,19 +21,41 @@ final class ReplayHarness {
     let authority = FakeLocationAuthority()
     let api: GeofenceApiServiceMock
     private(set) var fixRequestCount = 0
+    /// Transitions this harness's binder has finished routing, across relaunches. Not those the
+    /// bootstrap's own binding routes after `wireMonitor()`.
+    let routed = EventCounter()
     /// Read through `authority`, never directly.
     let fixes: ReplayFixProvider
     let clock: DateUtilStub
     let logger: CapturingLogger
 
     let gate = ReplayBoundaryGate()
+    /// Everything the SDK starts goes through this, so the runner waits for idle instead of sleeping.
+    let taskSpawner = TrackingTaskSpawner()
+    private(set) var dwellScheduler = ReplayDwellScheduler()
+    private var processGeneration = UUID()
+    /// Lifecycle delivery belongs to one process, even when a test retains its old graph.
+    private(set) var notificationCenter = NotificationCenter()
+    /// Tracked work waiting on drive time, summed into `taskSpawner`'s parked count: replies parked on
+    /// the gate, sleeps on the scheduler, and callers of a replay fix request, any process's.
+    private var parkedOnGate = 0
+    private var parkedOnScheduler = 0
+    private var parkedOnFixRequests = 0
 
     // MARK: - The SDK
 
     private(set) var monitor: CLMonitorGeofenceMonitor!
     private(set) var coordinator: GeofenceSyncCoordinatorImpl!
     private(set) var tracker: GeofenceEventTracker!
+    /// Where the tracker sends; read back through `deliveredMetrics`.
+    private(set) var deliveryTracker: GeofenceDeliveryTrackerMock!
     private(set) var resolver: PolygonMembershipResolver!
+    /// This composition's visits. Without its own, `GeofenceBootstrap` resolves
+    /// `GeofenceDwellCoordinator.shared` — a process-wide `static let` holding the storage, identity
+    /// and tracker of whichever harness touched it first — and awaits it inside the process-global
+    /// run chain every later drive's setup queues behind. It also leaves the resolver and
+    /// coordinator on the pre-dwell paths production no longer takes.
+    private(set) var dwellCoordinator: GeofenceDwellCoordinator!
     private(set) var trigger: GeofenceRefreshTrigger!
 
     let contextStore: BackgroundDeliveryContextStore
@@ -46,6 +68,8 @@ final class ReplayHarness {
     private let moduleLastKnownLocation: LocationData? = nil
 
     var fetchQueue: [Result<GeofenceApiResponse, GeofenceApiError>] = []
+    /// Never reset, so `fetchAccounting()` can tell a drive with no fetch fixture from an emptied queue.
+    var fetchFixtureEnqueued = false
     var fetchCount = 0
     var starvedFetchCount = 0
 
@@ -95,6 +119,21 @@ final class ReplayHarness {
 
         // Wired once: the recording outlives any process the drive restarts.
         authority.answerCachedLocation = { [fixes] in fixes.nextCachedLocation() }
+        gate.isTrackedWork = { [taskSpawner] in taskSpawner.startedCurrentTask }
+        gate.onParkedCountChanged = { [weak self] count in
+            self?.parkedOnGate = count
+            self?.reportParked()
+        }
+        // Before any fixture: a fetch the drive recorded no answer for still needs one, or the task
+        // awaiting it never finishes and `awaitIdle()` never returns.
+        installFetchHandler()
+        di.override(value: taskSpawner as GeofenceTaskSpawning, forType: GeofenceTaskSpawning.self)
+        // A missed override is silent: work started through it goes untracked and replays read as
+        // the old flake.
+        precondition(
+            (di.geofenceTaskSpawner as? TrackingTaskSpawner) === taskSpawner,
+            "the harness graph doesn't return the tracking spawner"
+        )
 
         composeSDK()
     }
@@ -115,7 +154,8 @@ final class ReplayHarness {
             dateUtil: clock,
             authority: authority,
             // One for the whole drive: CoreLocation keeps monitoring while the app is dead.
-            makeConditionMonitor: { [conditionMonitor] _ in conditionMonitor }
+            makeConditionMonitor: { [conditionMonitor] _ in conditionMonitor },
+            taskSpawner: taskSpawner
         )
         monitor.movementFixResolver.requestFreshFix = { [weak self] in self?.fixRequestCount += 1 }
         // Known limitation: the timeout always wins, so every fresh-fix request falls back to the
@@ -124,33 +164,8 @@ final class ReplayHarness {
         return monitor
     }
 
-    /// Rerun by `reenterProcess()`: build here only what a dying process loses.
-    private func composeSDK() {
-        tracker = GeofenceEventTracker(
-            storage: storage,
-            pendingStore: pendingStore,
-            deliveryTracker: Self.completingDeliveryTracker(),
-            contextStore: contextStore,
-            eventBusHandler: eventBus,
-            dateUtil: clock,
-            logger: logger
-        )
-
-        resolver = makePolygonResolver()
-
-        monitor = makeMonitor()
-
-        coordinator = GeofenceSyncCoordinatorImpl(
-            apiService: api,
-            storage: storage,
-            monitor: monitor,
-            contextStore: contextStore,
-            transitionEmitter: tracker,
-            dateUtil: clock,
-            logger: logger
-        )
-
-        trigger = GeofenceRefreshTrigger(
+    private func makeRefreshTrigger() -> GeofenceRefreshTrigger {
+        GeofenceRefreshTrigger(
             storage: storage,
             contextStore: contextStore,
             coordinator: { [coordinator] in coordinator },
@@ -159,24 +174,110 @@ final class ReplayHarness {
             explicitRefreshRequested: Synchronized<Bool>(false),
             // Not the fix provider: that would read the OS cache where the drive recorded no read.
             lastKnownLocation: { [weak self] in self?.moduleLastKnownLocation },
-            acquireFix: { [weak self] in self?.acquireFixCallCount += 1 }
+            acquireFix: { [weak self] in self?.acquireFixCallCount += 1 },
+            taskSpawner: taskSpawner
         )
+    }
 
-        // Kept though `wireMonitor()` binds too: a hand-driven test never sends `module.init`.
-        GeofenceMonitorBinder.bind(
-            monitor: monitor,
-            resolver: resolver,
-            coordinator: coordinator,
+    /// Rerun by `reenterProcess()`: build here only what a dying process loses.
+    private func composeSDK() {
+        resetProcessRuntime()
+        deliveryTracker = Self.completingDeliveryTracker()
+        tracker = GeofenceEventTracker(
+            storage: storage,
+            pendingStore: pendingStore,
+            deliveryTracker: deliveryTracker,
+            contextStore: contextStore,
+            eventBusHandler: eventBus,
+            dateUtil: clock,
             logger: logger
         )
+
+        // Evidence and lifecycle input belong to this composition; OS conditions persist across it.
+        dwellCoordinator = GeofenceDwellCoordinator(
+            storage: storage,
+            transitionEmitter: tracker,
+            contextStore: contextStore,
+            logger: logger,
+            fixResolver: makeReplayFixResolver(),
+            notificationCenter: notificationCenter,
+            clock: DateUtilGeofenceClock(dateUtil: clock),
+            taskSpawner: taskSpawner,
+            waitForEvidence: { [dwellScheduler] in try await dwellScheduler.sleep(nanoseconds: $0) }
+        )
+
+        resolver = makePolygonResolver()
+
+        monitor = makeMonitor()
+
+        let polygonResolver: PolygonMembershipResolver = resolver
+        coordinator = GeofenceSyncCoordinatorImpl(
+            apiService: api,
+            storage: storage,
+            monitor: monitor,
+            contextStore: contextStore,
+            transitionEmitter: tracker,
+            dwellCoordinator: dwellCoordinator,
+            // The post-refresh polygon passes run here too, not on the process-wide singleton.
+            polygonResolver: { polygonResolver },
+            dateUtil: clock,
+            logger: logger,
+            taskSpawner: taskSpawner
+        )
+
+        trigger = makeRefreshTrigger()
+
+        // Kept though `wireMonitor()` binds too: a hand-driven test never sends `module.init`.
+        bindMonitor()
         // Also rebinds visits to the fresh resolver on `reenterProcess()`.
         GeofenceMonitorBinder.bindVisits(
             visitMonitor: visitMonitor,
             resolver: resolver,
-            contextStore: contextStore
+            contextStore: contextStore,
+            dwellCoordinator: dwellCoordinator,
+            taskSpawner: taskSpawner
         )
 
-        // Plus `DateUtil`, so a later read cannot reach the wall clock.
+        overrideBootstrapDependencies()
+    }
+
+    /// Binds this composition's monitor, counting the routing tasks its transitions finish.
+    private func bindMonitor() {
+        let routed = routed
+        GeofenceMonitorBinder.bind(
+            monitor: monitor,
+            resolver: resolver,
+            coordinator: coordinator,
+            logger: logger,
+            dwellCoordinator: dwellCoordinator,
+            taskSpawner: taskSpawner,
+            routingActivity: { began in if !began { routed.record() } }
+        )
+    }
+
+    private func resetProcessRuntime() {
+        processGeneration = UUID()
+        notificationCenter = NotificationCenter()
+        let scheduler = ReplayDwellScheduler()
+        scheduler.taskSpawner = taskSpawner
+        scheduler.isTrackedWork = { [taskSpawner] in taskSpawner.startedCurrentTask }
+        // A stopped process's scheduler reports its cancelled sleeps before it is replaced.
+        scheduler.onTrackedWaitersChanged = { [weak self, weak scheduler] count in
+            guard let self, self.dwellScheduler === scheduler else { return }
+            self.parkedOnScheduler = count
+            self.reportParked()
+        }
+        dwellScheduler = scheduler
+        dwellScheduler.advance(to: clock.givenNow.timeIntervalSince(epoch))
+    }
+
+    private func reportParked() {
+        taskSpawner.setParked(parkedOnGate + parkedOnScheduler + parkedOnFixRequests)
+    }
+
+    /// Everything `GeofenceBootstrap` resolves, plus `DateUtil` so a later read cannot reach the
+    /// wall clock.
+    private func overrideBootstrapDependencies() {
         di.override(value: logger as Logger, forType: Logger.self)
         di.override(value: clock as DateUtil, forType: DateUtil.self)
         di.override(value: storage, forType: GeofenceStorage.self)
@@ -184,9 +285,16 @@ final class ReplayHarness {
         di.override(value: tracker, forType: GeofenceEventTracker.self)
         // Without this, transitions land in the process-wide `PolygonMembershipResolver.shared`.
         di.override(value: resolver, forType: PolygonMembershipResolver.self)
+        di.override(value: dwellCoordinator, forType: GeofenceDwellCoordinator.self)
         di.override(value: monitor as GeofenceRegionMonitoring, forType: GeofenceRegionMonitoring.self)
         di.override(value: visitMonitor as GeofenceVisitMonitoring, forType: GeofenceVisitMonitoring.self)
         di.override(value: coordinator as GeofenceSyncCoordinator, forType: GeofenceSyncCoordinator.self)
+    }
+
+    /// Returns once everything the SDK started is finished or waits on drive time: a reply parked on
+    /// `gate`, a sleep on `dwellScheduler`, or a replay fix request.
+    func awaitIdle() async {
+        await taskSpawner.awaitIdle()
     }
 
     /// Call after `trigger.onModuleInit()`, as `GeofenceModuleState.setup` does.
@@ -197,23 +305,42 @@ final class ReplayHarness {
     /// Drops what `composeSDK` builds; keeps disk stores, the condition mirror and the OS condition
     /// monitor, as a real relaunch does.
     func reenterProcess() {
+        // Replies held while frozen would reach the new process or be dropped mid-await; `ReplayRunner`
+        // reports such a relaunch unsupported instead.
+        precondition(!gate.isSuspended, "replay cannot relaunch a frozen process")
         // The old consume task stays parked; the new wrapper's subscription supersedes it.
         monitor.setOnTransition(nil)
         detachFromBootstrap()
+        dwellScheduler.stop()
+        fixes.beginNextProcess()
         composeSDK()
     }
 
     /// Call before replacing a composition: the bootstrap's handlers would re-run `wireMonitor` on it.
-    /// Doesn't free the monitor: its `consumeTask` holds `self`, so it still reacts to
-    /// `enterForeground()`.
+    /// Its consume task can retain it, so remove its process-local foreground observer too.
     func detachFromBootstrap() {
         monitor.setOnReconciled(nil)
         monitor.setOnAuthorizationChanged(nil)
+        if let token = monitor.foregroundObserverToken {
+            NotificationCenter.default.removeObserver(token)
+            monitor.foregroundObserverToken = nil
+        }
     }
 
     deinit {
         try? FileManager.default.removeItem(at: root)
         UserDefaults.standard.removePersistentDomain(forName: defaultsSuite)
+    }
+
+    /// Whether the graph `GeofenceBootstrap` resolves hands out this composition's dwell
+    /// coordinator rather than the process-wide `shared` one.
+    var bootstrapResolvesOwnDwellCoordinator: Bool {
+        di.geofenceDwellCoordinator === dwellCoordinator
+    }
+
+    /// The visit this composition's storage holds for a fence, if any.
+    func storedVisit(fence: String) async -> GeofenceDwellVisit? {
+        await storage.getDwellVisit(geofenceId: fence)
     }
 
     func hasRegisteredPolygons() async -> Bool {
@@ -240,34 +367,87 @@ final class ReplayHarness {
         emitted.filter { $0["ev"] == ev }
     }
 
+    /// Every row this composition's tracker sent, in order. Not carried across `reenterProcess()`.
+    var deliveredMetrics: [PendingGeofenceMetric] {
+        deliveryTracker.trackMetricReceivedInvocations.map(\.metric)
+    }
+
     func resetOutput() {
         logger.reset()
     }
 
-    /// The default `fixResolver` would issue a live `CLLocationManager` request from a unit test.
-    private func makePolygonResolver() -> PolygonMembershipResolver {
+    /// OS answers pass through the shipping resolver's freshness filter.
+    private func makeReplayFixResolver() -> MovementFixResolver {
+        let generation = processGeneration
         let fixResolver = MovementFixResolver(
             logger: logger,
             dateUtil: clock,
             desiredAccuracy: kCLLocationAccuracyNearestTenMeters,
-            waitForTimeout: { _ in await Task.yield() }
+            waitForTimeout: { [dwellScheduler] seconds in
+                do {
+                    try await dwellScheduler.sleep(nanoseconds: UInt64(seconds * 1000000000))
+                } catch {
+                    // The timeout never elapsed: the request completed, or this process stopped.
+                    // Cancel the resolver's timeout task so its own guard skips the failure. A dead
+                    // process's request stays pending, as a killed app's would.
+                    withUnsafeCurrentTask { $0?.cancel() }
+                }
+            },
+            taskSpawner: taskSpawner
         )
         fixResolver.requestFreshFix = { [weak self, weak fixResolver] in
-            guard let self, let fixResolver else { return }
+            guard let self, self.processGeneration == generation, let fixResolver else { return }
             self.fixRequestCount += 1
-            // Through `handleDeliveredFix`, so a fix older than `maxAge` is refused as on a device.
-            let answer = self.fixes.requestedAnswer(within: GeofenceConstants.movementFixRequestTimeout)
-            if let fix = answer ?? self.fixes.currentPosition() {
-                fixResolver.handleDeliveredFix(fix)
+            if let answer = self.fixes.reserveRequestedAnswer() {
+                if answer.at <= self.fixes.now {
+                    fixResolver.handleDeliveredFix(answer.fix)
+                } else {
+                    // Tracked, so idle waits for the answer to park. It holds no task: the callers
+                    // waiting on the request count as parked themselves.
+                    self.taskSpawner.spawn { @MainActor [weak self, weak fixResolver] in
+                        guard let self else { return }
+                        await self.gate.park(at: answer.at, what: "requested fix", holdsTask: false) { [weak self, weak fixResolver] in
+                            guard let self, self.processGeneration == generation else { return }
+                            fixResolver?.handleDeliveredFix(answer.fix)
+                        }
+                    }
+                }
+            } else if self.fixes.allowsSyntheticRequestedAnswers {
+                // Authored fixtures without a recorded response stream supply synthetic OS answers.
+                // A refused or absent answer fails immediately; recorded runs use the real timeout.
+                if let fix = self.fixes.currentPosition() {
+                    fixResolver.handleDeliveredFix(fix)
+                }
+                fixResolver.handleRequestFailure()
             }
         }
+        // Any process's: a dead one's callers stay parked, as its request is never answered.
+        fixResolver.onCallerWaiting = { [weak self] in
+            guard let self, self.taskSpawner.startedCurrentTask else { return {} }
+            self.parkedOnFixRequests += 1
+            self.reportParked()
+            return { [weak self] in
+                guard let self else { return }
+                self.parkedOnFixRequests -= 1
+                self.reportParked()
+            }
+        }
+        return fixResolver
+    }
+
+    /// The default resolver would issue a live `CLLocationManager` request from a unit test.
+    private func makePolygonResolver() -> PolygonMembershipResolver {
+        let fixResolver = makeReplayFixResolver()
         return PolygonMembershipResolver(
             storage: storage,
             transitionEmitter: tracker,
             logger: logger,
             contextStore: contextStore,
             dateUtil: clock,
-            fixResolver: fixResolver
+            fixResolver: fixResolver,
+            notificationCenter: notificationCenter,
+            dwellCoordinator: dwellCoordinator,
+            taskSpawner: taskSpawner
         )
     }
 }

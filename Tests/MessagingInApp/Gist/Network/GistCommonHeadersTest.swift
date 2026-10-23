@@ -61,4 +61,39 @@ class GistCommonHeadersTest: UnitTest {
             "X-CIO-Client-App-Identifier"
         ])
     }
+
+    func test_headers_givenPublicKey_expectBearerAuthorizationAndNoSiteId() {
+        let headers = builder().headers(state: InAppMessageState(siteId: "test-site", publicKey: "pk_us_abc", dataCenter: "US"))
+
+        XCTAssertEqual(headers["Authorization"], "Bearer pk_us_abc")
+        XCTAssertNil(headers["X-CIO-Site-Id"])
+    }
+
+    func test_headers_givenPublicKeyWithoutAuthorization_expectNeitherKeyNorSiteId() {
+        let headers = builder().headers(
+            state: InAppMessageState(siteId: "test-site", publicKey: "pk_us_abc", dataCenter: "US"),
+            includeAuthorization: false
+        )
+
+        XCTAssertNil(headers["Authorization"])
+        XCTAssertNil(headers["X-CIO-Site-Id"])
+    }
+
+    func test_headers_givenNoPublicKey_expectSiteIdAndNoAuthorization() {
+        let headers = builder().headers(state: state)
+
+        XCTAssertNil(headers["Authorization"])
+        XCTAssertEqual(headers["X-CIO-Site-Id"], "test-site")
+    }
+
+    func test_headers_givenStaleSavedKey_expectStateDecides() {
+        let store = DIGraphShared.shared.backgroundDeliveryContextStore
+        store.setCdpApiKey("pk_us_stale")
+        defer { store.setCdpApiKey(nil) }
+
+        let headers = builder().headers(state: state)
+
+        XCTAssertNil(headers["Authorization"])
+        XCTAssertEqual(headers["X-CIO-Site-Id"], "test-site")
+    }
 }

@@ -7,6 +7,7 @@ extension CLMonitorGeofenceMonitor {
     @MainActor
     static let shared = CLMonitorGeofenceMonitor(
         logger: DIGraphShared.shared.logger,
-        storage: DIGraphShared.shared.geofenceStorage
+        storage: DIGraphShared.shared.geofenceStorage,
+        diagnosticRecorder: DIGraphShared.shared.dwellDiagnosticRecorder
     )
 }

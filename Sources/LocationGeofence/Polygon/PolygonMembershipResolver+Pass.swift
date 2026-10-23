@@ -11,6 +11,11 @@ extension PolygonMembershipResolver {
         pass: Int,
         isStillCurrent: (@Sendable () -> Bool)? = nil
     ) async {
+        // Polygons are judged here; a circle's visit only learns of a fix that proves the device
+        // away from it. Before the polygons, so the fix is no older than the pass chose it at. Not
+        // gated on `isStillCurrent`: like a belief, a position is true whoever is signed in, and
+        // only the identified user's own visit is read.
+        await dwellCoordinator?.recordOutsideEvidence(fix: fix.location, expectedUserId: nil)
         // Per pass, not per resolver; see `PassCorroboration`.
         let cache = PassCorroboration()
         var deferred: [DeferredCorroboration] = []
@@ -66,7 +71,8 @@ extension PolygonMembershipResolver {
         )
         await apply(
             verdict.membership, to: geofence, evidence: fix.timestamp,
-            confirmedByFix: true, evaluatedRing: geofence.vertices, isStillCurrent: isStillCurrent
+            confirmedByFix: true, evaluatedRing: geofence.vertices, isStillCurrent: isStillCurrent,
+            qualifiesDwell: verdict.qualifiesDwell(horizontalAccuracy: fix.horizontalAccuracy)
         )
     }
 }
@@ -91,5 +97,15 @@ enum VerdictCorroboration: Equatable {
     var unconfirmedReason: String? {
         guard case .unconfirmed(let reason) = self else { return nil }
         return reason.rawValue
+    }
+}
+
+extension PolygonVerdict {
+    /// Whether this verdict may prove a dwell: inside on its single deciding fix, whose accuracy
+    /// disk lies wholly within the polygon. A corroborated arrival began with a disk crossing the
+    /// edge: it still delivers ENTER and updates the visit, but never proves the stay.
+    func qualifiesDwell(horizontalAccuracy: Double) -> Bool {
+        membership == .inside && corroboration == .notNeeded
+            && horizontalAccuracy >= 0 && signedEdgeDistance >= horizontalAccuracy
     }
 }

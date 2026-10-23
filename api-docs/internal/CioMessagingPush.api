@@ -4,7 +4,9 @@ public final class CioMessagingPush.MessagingPush {
 	public var moduleConfig: MessagingPushConfigOptions;
 	public fun func initialize(withConfig config: MessagingPushConfigOptions = MessagingPushConfigBuilder().build()) -> MessagingPushInstance;
 	public fun func registerDeviceToken(_ deviceToken: String);
+	public fun func registerDeviceToken(_ deviceToken: String, tokenType: DeviceTokenType?);
 	public fun func deleteDeviceToken();
+	public fun func didFailToRegisterForRemoteNotifications(error: Error);
 	public fun func trackMetric(deliveryID: String, event: Metric, deviceToken: String);
 	public fun func didReceive(_ request: UNNotificationRequest, withContentHandler contentHandler: @escaping (UNNotificationContent) -> Unit) -> Boolean;
 	public fun func serviceExtensionTimeWillExpire();
@@ -25,6 +27,7 @@ public final class CioMessagingPush.MessagingPushConfigOptions {
 	public final val autoTrackPushEvents: Boolean;
 	public final val showPushAppInForeground: Boolean;
 	public final val appGroupId: String?;
+	public final val apiHost: String?;
 }
 public interface CioMessagingPush.MessagingPushInstance {
 	public fun func registerDeviceToken(_ deviceToken: String);

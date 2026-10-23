@@ -124,15 +124,17 @@ class SDKConfigBuilderTest: UnitTest {
     }
 
     func test_givenEuPublicKeyAndNoRegion_expectEuDefaults() {
-        let result = SDKConfigBuilder(cdpApiKey: "wk_eu_\(String.random)")
+        let result = SDKConfigBuilder(cdpApiKey: "pk_eu_\(String.random)")
             .build()
 
         XCTAssertEqual(result.dataPipelineConfig.apiHost, "cdp-eu.customer.io/v1")
         XCTAssertEqual(result.dataPipelineConfig.cdnHost, "cdp-eu.customer.io/v1")
+        // Modules such as in-app read the region from here.
+        XCTAssertEqual(result.dataPipelineConfig.region, .EU)
     }
 
     func test_givenUsPublicKeyAndNoRegion_expectUsDefaults() {
-        let result = SDKConfigBuilder(cdpApiKey: "wk_us_\(String.random)")
+        let result = SDKConfigBuilder(cdpApiKey: "pk_us_\(String.random)")
             .build()
 
         XCTAssertEqual(result.dataPipelineConfig.apiHost, "cdp.customer.io/v1")
@@ -140,7 +142,7 @@ class SDKConfigBuilderTest: UnitTest {
     }
 
     func test_givenEuPublicKeyAndRegionUS_expectRegionWins() {
-        let result = SDKConfigBuilder(cdpApiKey: "wk_eu_\(String.random)")
+        let result = SDKConfigBuilder(cdpApiKey: "pk_eu_\(String.random)")
             .region(.US)
             .build()
 
@@ -149,7 +151,7 @@ class SDKConfigBuilderTest: UnitTest {
     }
 
     func test_givenEuPublicKey_expectKeyPassedAsIs() {
-        let givenKey = "wk_eu_\(String.random)"
+        let givenKey = "pk_eu_\(String.random)"
 
         let result = SDKConfigBuilder(cdpApiKey: givenKey).build()
 
