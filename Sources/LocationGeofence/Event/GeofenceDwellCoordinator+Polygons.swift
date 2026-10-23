@@ -56,7 +56,7 @@ extension GeofenceDwellCoordinator {
             let waiting = pendingShapeChecks
             pendingShapeChecks.removeAll()
             for geofenceId in waiting {
-                Task { [weak self] in await self?.forgetCoveringCircleEnter(geofenceId: geofenceId) }
+                taskSpawner.spawn { [weak self] in await self?.forgetCoveringCircleEnter(geofenceId: geofenceId) }
             }
         }
     }
@@ -65,7 +65,7 @@ extension GeofenceDwellCoordinator {
     /// which then holds the shapes; either way the corrections that waited are noted.
     func loadPolygonIds() {
         let generation = polygonCatalogGeneration
-        Task { [weak self, storage] in
+        taskSpawner.spawn { [weak self, storage] in
             let ids = await storage.getCachedGeofences().filter { $0.vertices != nil }.map(\.id)
             guard let self else { return }
             if self.polygonCatalogGeneration == generation {

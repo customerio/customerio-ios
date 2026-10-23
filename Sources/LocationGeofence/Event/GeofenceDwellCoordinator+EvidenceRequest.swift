@@ -209,13 +209,13 @@ extension GeofenceDwellCoordinator {
         return true
     }
 
-    /// Keeps `ledger` as `visitId`'s and starts saving it at once, off the main actor, so a request
+    /// Keeps `ledger` as `visitId`'s and starts saving it at once, on the storage actor, so a request
     /// in flight when the process dies is normally already on disk. Only the confirming save
     /// before the next admission (`persistProofLedger`) clears the visit's unsaved charge.
     private func updateProofLedger(_ ledger: GeofenceDwellProofLedger, geofenceId: String, visitId: String) {
         proofLedgers[visitId] = ledger
         dirtyProofLedgers.insert(visitId)
-        Task.detached { [storage] in
+        taskSpawner.spawn { [storage] in
             await storage.recordDwellProofLedger(geofenceId: geofenceId, visitId: visitId, ledger: ledger)
         }
     }

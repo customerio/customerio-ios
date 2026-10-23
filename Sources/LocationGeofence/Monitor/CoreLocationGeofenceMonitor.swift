@@ -36,6 +36,7 @@ final class CoreLocationGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @pr
     private let readLocationAccess: @MainActor (CLLocationManager) -> GeofenceLocationAccess
     /// The region the OS monitors now under an id; internal for the `+PendingEvents` extension.
     let monitoredRegion: @MainActor (CLLocationManager, String) -> CLCircularRegion?
+    let taskSpawner: GeofenceTaskSpawning
 
     init(
         logger: Logger,
@@ -44,9 +45,11 @@ final class CoreLocationGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @pr
         monitoredRegion: @escaping @MainActor (CLLocationManager, String) -> CLCircularRegion? = { manager, identifier in
             manager.monitoredRegions.first { $0.identifier == identifier } as? CLCircularRegion
         },
-        diagnosticRecorder: DwellDiagnosticRecorder? = nil
+        diagnosticRecorder: DwellDiagnosticRecorder? = nil,
+        taskSpawner: GeofenceTaskSpawning = LiveGeofenceTaskSpawner()
     ) {
         self.dateUtil = dateUtil
+        self.taskSpawner = taskSpawner
         self.readLocationAccess = readLocationAccess
         self.monitoredRegion = monitoredRegion
         self.manager = CLLocationManager()
@@ -55,7 +58,8 @@ final class CoreLocationGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @pr
             logger: logger,
             backgroundTaskRunner: GeofenceBackgroundTime.runner(name: "io.customer.geofence.movement-fix"),
             dateUtil: dateUtil,
-            diagnosticRecorder: diagnosticRecorder
+            diagnosticRecorder: diagnosticRecorder,
+            taskSpawner: taskSpawner
         )
         super.init()
         self.lastObservedAccess = readLocationAccess(manager)

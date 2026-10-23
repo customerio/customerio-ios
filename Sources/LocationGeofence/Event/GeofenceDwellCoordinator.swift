@@ -115,9 +115,6 @@ final class GeofenceDwellCoordinator {
     /// access that observes nothing in the background cannot span it. Internal for `+Continuity`.
     var foregroundOnlyLostUptime: TimeInterval?
     var polygonVerifier: ((String) async -> Void)?
-    /// Test seam, nil in production: told true as a deadline or retry starts its evidence check and
-    /// false as it ends, so a test driving virtual time can wait for the checks it released.
-    var evidenceCheckActivity: (@MainActor (Bool) -> Void)?
     /// The opt-in pending-dwell session; nil unless the host opted in. See `+Collection`.
     let pendingDwellCollection: PendingDwellCollectionOwner?
     /// Opt-in dwell diagnostics, shared with the default fix resolver; nil records nothing.
@@ -131,6 +128,8 @@ final class GeofenceDwellCoordinator {
     var lastBackgroundRefreshAvailable: Bool?
     /// Identities the profile callback has reported, kept off the main actor.
     let identityTracker: GeofenceIdentityTracker
+    /// Starts every task this coordinator launches without awaiting.
+    let taskSpawner: GeofenceTaskSpawning
 
     init(
         storage: GeofenceStorage,
@@ -149,6 +148,7 @@ final class GeofenceDwellCoordinator {
         identityTracker: GeofenceIdentityTracker? = nil,
         pendingDwellCollection: PendingDwellCollectionOwner? = nil,
         diagnosticRecorder: DwellDiagnosticRecorder? = nil,
+        taskSpawner: GeofenceTaskSpawning = LiveGeofenceTaskSpawner(),
         waitForEvidence: @escaping @MainActor (UInt64) async throws -> Void = {
             try await GeofenceContinuousWait.preferringContinuous(nanoseconds: $0)
         }
@@ -171,11 +171,13 @@ final class GeofenceDwellCoordinator {
         self.waitForEvidence = waitForEvidence
         self.pendingDwellCollection = pendingDwellCollection
         self.diagnosticRecorder = diagnosticRecorder
+        self.taskSpawner = taskSpawner
         self.fixResolver = fixResolver ?? MovementFixResolver(
             logger: logger,
             backgroundTaskRunner: GeofenceBackgroundTime.runner(name: "io.customer.geofence.dwell-fix"),
             desiredAccuracy: kCLLocationAccuracyNearestTenMeters,
-            diagnosticRecorder: diagnosticRecorder
+            diagnosticRecorder: diagnosticRecorder,
+            taskSpawner: taskSpawner
         )
         // The recorder judges identity itself, so a change another writer already synced is not cleared again.
         diagnosticRecorder?.syncIdentity()

@@ -1,3 +1,4 @@
+@testable import CioLocationGeofence
 import Foundation
 
 /// Deadlines and retries share drive time. Cancellation resumes parked tasks rather than leaking them.
@@ -6,10 +7,21 @@ final class ReplayDwellScheduler {
     private struct Waiter {
         let deadline: TimeInterval
         let sequence: Int
+        /// Whether the sleeping task is one the harness tracks, and so counts as parked.
+        let tracked: Bool
         let continuation: CheckedContinuation<Void, Error>
     }
 
-    private var waiters: [UUID: Waiter] = [:]
+    private var waiters: [UUID: Waiter] = [:] {
+        didSet { onTrackedWaitersChanged?(waiters.values.filter(\.tracked).count) }
+    }
+
+    /// Whether the sleeping task is tracked work. Unset, none is.
+    var isTrackedWork: () -> Bool = { false }
+    /// Told how many tracked tasks sleep here whenever that changes.
+    var onTrackedWaitersChanged: ((Int) -> Void)?
+    /// Starts the hop a cancellation takes, so the harness waits for it. Nil starts a plain task.
+    var taskSpawner: GeofenceTaskSpawning?
     private var sequence = 0
     private var stopped = false
     private(set) var now: TimeInterval = 0
@@ -28,17 +40,23 @@ final class ReplayDwellScheduler {
         guard nanoseconds > 0 else { return }
         let id = UUID()
         let deadline = now + TimeInterval(nanoseconds) / 1000000000
+        let tracked = isTrackedWork()
+        let taskSpawner = taskSpawner
         try await withTaskCancellationHandler {
             try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
                 if Task.isCancelled {
                     continuation.resume(throwing: CancellationError())
                 } else {
                     sequence += 1
-                    waiters[id] = Waiter(deadline: deadline, sequence: sequence, continuation: continuation)
+                    waiters[id] = Waiter(deadline: deadline, sequence: sequence, tracked: tracked, continuation: continuation)
                 }
             }
         } onCancel: {
-            Task { @MainActor [weak self] in self?.cancel(id) }
+            guard let taskSpawner else {
+                Task { @MainActor [weak self] in self?.cancel(id) }
+                return
+            }
+            taskSpawner.spawn { @MainActor [weak self] in self?.cancel(id) }
         }
     }
 

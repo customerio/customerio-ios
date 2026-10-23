@@ -16,6 +16,7 @@ final class PendingDwellBackgroundCollection<Key: Hashable> {
     private let sleep: @Sendable (Nanoseconds) async throws -> Void
     private let start: () -> Void
     private let stop: () -> Void
+    private let taskSpawner: GeofenceTaskSpawning
 
     private var deadlines: [Key: Nanoseconds] = [:]
     private var permitted = false
@@ -32,8 +33,10 @@ final class PendingDwellBackgroundCollection<Key: Hashable> {
         now: @escaping () -> Nanoseconds,
         sleep: @escaping @Sendable (Nanoseconds) async throws -> Void,
         start: @escaping () -> Void,
-        stop: @escaping () -> Void
+        stop: @escaping () -> Void,
+        taskSpawner: GeofenceTaskSpawning = LiveGeofenceTaskSpawner()
     ) {
+        self.taskSpawner = taskSpawner
         self.now = now
         self.sleep = sleep
         self.start = start
@@ -77,7 +80,7 @@ final class PendingDwellBackgroundCollection<Key: Hashable> {
         }
         guard let expiry = nextExpiry else { return }
         let wait = sleep
-        expiryTask = Task { [weak self] in
+        expiryTask = taskSpawner.spawn { [weak self] in
             // Measured as the wait begins, not when it was scheduled: a job that first runs after
             // the cap (the process suspended in between) stops at once instead of parking a full
             // delay. `self?` holds the collection for this call only, never across the wait.

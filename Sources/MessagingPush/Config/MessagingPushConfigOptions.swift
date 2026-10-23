@@ -14,6 +14,9 @@ public struct MessagingPushConfigOptions {
     /// When `nil`, the SDK infers the identifier from the app bundle ID using the format `group.{bundleId}.cio`.
     /// Set this when your App Group does not follow the default naming convention.
     public let appGroupId: String?
+    /// Optional host Notification Service Extension sends metrics to, for routing them through your own proxy.
+    /// When `nil` or empty, the SDK uses the Customer.io host for `region`.
+    public let apiHost: String?
 }
 
 // Add MessagingPush config options to the DIGraph like we do for SdkConfig.

@@ -72,8 +72,9 @@ struct ReplayDwellSchedulerTests {
         var firedAt: TimeInterval?
         Task {
             await harness.gate.park(at: 5, what: "fetch") {
-                Task {
-                    try await harness.dwellScheduler.sleep(nanoseconds: 60000000000)
+                // Tracked, so `advance` waits for it to sleep before scanning for the next deadline.
+                harness.taskSpawner.spawn {
+                    guard (try? await harness.dwellScheduler.sleep(nanoseconds: 60000000000)) != nil else { return }
                     firedAt = harness.now.timeIntervalSince(harness.epoch)
                 }
             }
@@ -93,15 +94,16 @@ struct ReplayDwellSchedulerTests {
         var firedAt: TimeInterval?
         Task {
             await harness.gate.park(at: 5, what: "fetch") {
-                Task {
-                    try await harness.dwellScheduler.sleep(nanoseconds: 60000000000)
+                // Tracked, so `advance` waits for it to sleep before scanning for the next deadline.
+                harness.taskSpawner.spawn {
+                    guard (try? await harness.dwellScheduler.sleep(nanoseconds: 60000000000)) != nil else { return }
                     firedAt = harness.now.timeIntervalSince(harness.epoch)
                 }
                 await harness.gate.park(at: 200, what: "later fetch") {}
             }
         }
         #expect(await settleOnMain { harness.gate.hasParked })
-        try await harness.releaseRemainingBoundaries { try await ReplayHarness.letAsyncWorkRun() }
+        await harness.releaseRemainingBoundaries { await harness.awaitIdle() }
         #expect(firedAt == 65)
     }
 

@@ -22,17 +22,24 @@ extension ReplayHarness {
     ) {
         let date = identity.map { epoch.addingTimeInterval($0) }
             ?? clock.givenNow.addingTimeInterval(-evage)
-        if conditionMonitor.hasSubscriber { eventsUnhandled += 1 }
-        conditionMonitor.deliver(
-            identifier: fence,
-            state: transition == .enter ? .satisfied : .unsatisfied,
-            at: date
-        )
+        trackDelivery {
+            conditionMonitor.deliver(
+                identifier: fence,
+                state: transition == .enter ? .satisfied : .unsatisfied,
+                at: date
+            )
+        }
     }
 
     func deliverMonitorStopped(fence: String) {
-        if conditionMonitor.hasSubscriber { eventsUnhandled += 1 }
-        conditionMonitor.deliver(identifier: fence, state: .unmonitored, at: clock.givenNow)
+        trackDelivery { conditionMonitor.deliver(identifier: fence, state: .unmonitored, at: clock.givenNow) }
+    }
+
+    /// Counted from before delivery: the consumer can handle the event before `deliver` returns.
+    private func trackDelivery(_ deliver: () -> Bool) {
+        let tracked = conditionMonitor.hasSubscriber
+        if tracked { taskSpawner.workStarted() }
+        if !deliver(), tracked { taskSpawner.workFinished() }
     }
 
     func setAuthorization(_ status: CLAuthorizationStatus) {

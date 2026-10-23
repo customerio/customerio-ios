@@ -69,6 +69,8 @@ final class GeofenceSyncCoordinatorImpl: GeofenceSyncCoordinator, @unchecked Sen
     /// Arrival sequence of the newest movement that has already re-centred the trigger.
     let appliedMovementSequence = Synchronized<UInt64>(0)
 
+    let taskSpawner: GeofenceTaskSpawning
+
     init(
         apiService: GeofenceApiService,
         storage: GeofenceSyncStorage,
@@ -81,8 +83,10 @@ final class GeofenceSyncCoordinatorImpl: GeofenceSyncCoordinator, @unchecked Sen
         },
         distanceFilter: GeofenceDistanceFilter = GeofenceDistanceFilter(),
         dateUtil: DateUtil,
-        logger: Logger
+        logger: Logger,
+        taskSpawner: GeofenceTaskSpawning = LiveGeofenceTaskSpawner()
     ) {
+        self.taskSpawner = taskSpawner
         self.apiService = apiService
         self.storage = storage
         self.monitor = monitor

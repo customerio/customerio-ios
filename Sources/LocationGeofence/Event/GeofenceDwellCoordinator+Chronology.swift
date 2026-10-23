@@ -265,7 +265,7 @@ extension GeofenceDwellCoordinator {
     func syncClockReference(_ reading: GeofenceClockReading) async {
         if clockReferenceLoad == nil {
             let storage = storage
-            clockReferenceLoad = Task { await storage.getClockReference() }
+            clockReferenceLoad = taskSpawner.spawn { await storage.getClockReference() }
         }
         guard let load = clockReferenceLoad else { return }
         let launchReference = await load.value

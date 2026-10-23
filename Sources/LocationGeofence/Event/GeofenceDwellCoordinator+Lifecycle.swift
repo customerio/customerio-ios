@@ -13,7 +13,7 @@ extension GeofenceDwellCoordinator {
             // before the re-arm requests evidence for it.
             coordinator.foregroundChanged()
             coordinator.recordWake(.wakeForeground)
-            Task { await coordinator.rearmPendingEvidence(includePolygons: true) }
+            coordinator.taskSpawner.spawn { await coordinator.rearmPendingEvidence(includePolygons: true) }
         }
         observeLifecycle(UIApplication.didEnterBackgroundNotification) { $0.foregroundChanged() }
         observeLifecycle(UIApplication.backgroundRefreshStatusDidChangeNotification) { coordinator in

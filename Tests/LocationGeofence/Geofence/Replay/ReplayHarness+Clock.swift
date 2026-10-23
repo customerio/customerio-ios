@@ -15,7 +15,7 @@ import UIKit
 extension ReplayHarness {
     func advance(to at: TimeInterval, settle: () async -> Void) async {
         // A check already running must park its retry before the first scan, or the scan misses it.
-        await awaitQuiescence()
+        await awaitIdle()
         // Re-scan after every boundary and deadline: a fetch answer can schedule a timer before
         // the next stimulus, and evidence can schedule a retry before the target is reached.
         await gate.advance(
@@ -23,47 +23,21 @@ extension ReplayHarness {
             setClock: { [weak self] moment in self?.setClock(moment) },
             nextWakeup: { [dwellScheduler] in dwellScheduler.nextDeadline }
         ) {
-            for _ in 0 ..< 3 {
-                await settle()
-            }
-            await awaitQuiescence()
+            await settle()
+            await awaitIdle()
         }
     }
-
-    /// Until the work `advance` cannot see has ended or waits on drive time: an OS event not yet
-    /// handled, a routing task, or an evidence check, each started by this process. Waiting on
-    /// drive time means a reply parked on the gate or a wait on the scheduler (a request's timeout,
-    /// or a retry). The real-time grace in `settle` cannot tell slow work from finished work; this
-    /// can. Real time only bounds work that never ends.
-    func awaitQuiescence() async {
-        let limit = Date().addingTimeInterval(Self.quiescenceLimit)
-        while evidenceChecksInFlight > 0 || routingsInFlight > 0 || eventsUnhandled > 0,
-              !gate.hasParked, dwellScheduler.pendingCount == 0 {
-            guard Date() < limit else {
-                Issue.record("work neither ended nor waited on drive time within \(Self.quiescenceLimit) s")
-                return
-            }
-            await Task.yield()
-            try? await Task.sleep(nanoseconds: 1000000)
-        }
-    }
-
-    static let quiescenceLimit: TimeInterval = 60
 
     func releaseRemainingBoundaries(settle: () async throws -> Void) async rethrows {
         try await gate.releaseAll(
             setClock: { [weak self] moment in self?.setClock(moment) },
-            nextWakeup: { [dwellScheduler] in dwellScheduler.nextDeadline }
-        ) {
-            for _ in 0 ..< 3 {
-                try await settle()
-            }
-        }
+            nextWakeup: { [dwellScheduler] in dwellScheduler.nextDeadline },
+            settle: settle
+        )
     }
 
     func advance(to at: TimeInterval) async {
-        // `try?`: unwinding mid-advance would leave the clock half-moved.
-        await advance(to: at) { try? await ReplayHarness.letAsyncWorkRun() }
+        await advance(to: at) { await self.awaitIdle() }
     }
 
     // MARK: - Execution suspension
@@ -82,51 +56,26 @@ extension ReplayHarness {
     /// Real OS ordering is not modelled.
     func resumeExecution() async {
         guard isExecutionSuspended else { return }
-        await gate.resume(setClock: { [weak self] moment in self?.setClock(moment) }) {
-            for _ in 0 ..< 3 {
-                try? await ReplayHarness.letAsyncWorkRun()
-            }
-        }
+        await gate.resume(setClock: { [weak self] moment in self?.setClock(moment) }) { await self.awaitIdle() }
         dwellScheduler.resumeExecution()
-        for _ in 0 ..< 3 {
-            try? await ReplayHarness.letAsyncWorkRun()
-        }
+        await awaitIdle()
     }
 
-    /// `quietRounds` resets on every park, so without this bound a park chain would hang, not fail.
+    /// Without this bound a park chain would hang, not fail.
     static let maxSettleRounds = 256
 
-    /// Settles before releasing: the fetch parks a hop after the coordinator issues it. Cancellation
-    /// isn't swallowed: a `try?` would spin this loop instead of unwinding.
-    func settleBoundaries() async throws {
-        var quietRounds = 0
-        var totalRounds = 0
-        while quietRounds < 3 {
-            totalRounds += 1
-            guard totalRounds <= Self.maxSettleRounds else {
-                Issue.record(
-                    "settleBoundaries gave up after \(Self.maxSettleRounds) rounds — answering a boundary keeps parking another"
-                )
-                return
-            }
-            try await ReplayHarness.letAsyncWorkRun()
-            // Held answers count as quiet: a frozen process has nothing to settle.
-            guard gate.hasReleasable else {
-                quietRounds += 1
-                continue
-            }
-            quietRounds = 0
-            try await releaseRemainingBoundaries { try await ReplayHarness.letAsyncWorkRun() }
+    /// Answers every parked boundary in time order, idling after each, until none is left. Idles
+    /// first: the fetch parks a hop after the coordinator issues it.
+    func settleBoundaries() async {
+        for _ in 0 ..< Self.maxSettleRounds {
+            await awaitIdle()
+            // Held answers count as settled: a frozen process has nothing to settle.
+            guard gate.hasReleasable else { return }
+            await releaseRemainingBoundaries { await self.awaitIdle() }
         }
-    }
-
-    /// Real time, the only place the harness spends any. If a scenario diverges only under load,
-    /// suspect this.
-    static let asyncWorkGrace: Duration = .milliseconds(50)
-
-    static func letAsyncWorkRun() async throws {
-        await Task.yield()
-        try await Task.sleep(for: asyncWorkGrace)
+        Issue.record(
+            "settleBoundaries gave up after \(Self.maxSettleRounds) rounds — answering a boundary keeps parking another"
+        )
     }
 
     /// The only writer of virtual time.

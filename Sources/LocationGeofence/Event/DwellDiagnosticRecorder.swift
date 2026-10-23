@@ -29,6 +29,7 @@ final class DwellDiagnosticRecorder {
     private let state: State
     private let identityProvider: (@MainActor () -> GeofenceIdentity?)?
     private var tail: Task<Void, Never>?
+    private let taskSpawner: GeofenceTaskSpawning
 
     /// Touches no storage. `now` reads uptime on `GeofenceClockReading.uptime`'s timeline. With an
     /// `identityProvider` the recorder is bound: its records belong to the identity that reports, none
@@ -37,8 +38,10 @@ final class DwellDiagnosticRecorder {
         journal: DwellDiagnosticJournal,
         isEnabled: Bool,
         now: @escaping @MainActor () -> TimeInterval,
-        identityProvider: (@MainActor () -> GeofenceIdentity?)? = nil
+        identityProvider: (@MainActor () -> GeofenceIdentity?)? = nil,
+        taskSpawner: GeofenceTaskSpawning = LiveGeofenceTaskSpawner()
     ) {
+        self.taskSpawner = taskSpawner
         self.journal = journal
         self.isEnabled = isEnabled
         self.now = now
@@ -128,7 +131,7 @@ final class DwellDiagnosticRecorder {
     /// recorder is released, holding only the journal and the shared state.
     private func enqueue(_ operation: @escaping @Sendable @MainActor () async -> Void) {
         let previous = tail
-        tail = Task { @MainActor in
+        tail = taskSpawner.spawn { @MainActor in
             await previous?.value
             await operation()
         }

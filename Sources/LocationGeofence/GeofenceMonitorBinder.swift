@@ -14,6 +14,7 @@ enum GeofenceMonitorBinder {
         logger: Logger,
         dwellCoordinator: GeofenceDwellCoordinator? = nil,
         backgroundTaskRunner: BackgroundTaskRunner = GeofenceBackgroundTime.runner(name: "io.customer.geofence.movement-pass"),
+        taskSpawner: GeofenceTaskSpawning = LiveGeofenceTaskSpawner(),
         routingActivity: (@Sendable (Bool) -> Void)? = nil
     ) {
         // Dated here, synchronously: a visit entered before the removal task runs is not one the
@@ -37,15 +38,19 @@ enum GeofenceMonitorBinder {
                 // that evidence requested meanwhile would admit across it.
                 noteExit(dwellCoordinator, geofenceId: identifier, occurredAt: occurredAt)
             }
-            rearmDwellEvidence(dwellCoordinator, wake: .wakeRegion, fenceId: identifier)
+            rearmDwellEvidence(dwellCoordinator, wake: .wakeRegion, fenceId: identifier, taskSpawner: taskSpawner)
             if identifier == GeofenceConstants.movementTriggerIdentifier {
                 guard transition == .exit else {
                     logger.geofenceCallbackDropped(identifier: identifier, transition: transition, reason: "movement_trigger_not_exit")
                     return
                 }
+                guard let location else {
+                    logger.geofenceCallbackDropped(identifier: identifier, transition: transition, reason: "movement_trigger_no_location")
+                    return
+                }
                 return routeMovementTriggerExit(
-                    location: location, locationIsFresh: locationIsFresh,
-                    coordinator: coordinator, logger: logger, backgroundTaskRunner: backgroundTaskRunner
+                    location: location, locationIsFresh: locationIsFresh, coordinator: coordinator,
+                    backgroundTaskRunner: backgroundTaskRunner, taskSpawner: taskSpawner
                 )
             }
             // Before the Task hop: a sign-in switch can run before the task does, and the crossing
@@ -53,7 +58,7 @@ enum GeofenceMonitorBinder {
             let receivedForUserId = resolver?.identifiedUserId ?? ""
             routingActivity?(true)
             // One Task: parallel dispatch would lose the coordinator's gate.
-            Task { [dwellCoordinator] in
+            taskSpawner.spawn { [dwellCoordinator] in
                 let outcome = await resolver?.handleTransition(
                     identifier: identifier, transition: transition,
                     occurredAt: occurredAt, eventCircle: eventCircle,
@@ -74,20 +79,14 @@ enum GeofenceMonitorBinder {
 
     /// The movement trigger's EXIT re-plans the catalog around where the device went.
     private nonisolated static func routeMovementTriggerExit(
-        location: LocationData?,
+        location: LocationData,
         locationIsFresh: Bool,
         coordinator: GeofenceSyncCoordinator?,
-        logger: Logger,
-        backgroundTaskRunner: BackgroundTaskRunner
+        backgroundTaskRunner: BackgroundTaskRunner,
+        taskSpawner: GeofenceTaskSpawning
     ) {
-        guard let location else {
-            logger.geofenceCallbackDropped(
-                identifier: GeofenceConstants.movementTriggerIdentifier, transition: .exit, reason: "movement_trigger_no_location"
-            )
-            return
-        }
         // Background time: the EXIT is consumed once dispatched and never retried.
-        Task {
+        taskSpawner.spawn {
             await backgroundTaskRunner.withBackgroundTime {
                 _ = await coordinator?.handleMovement(
                     latitude: location.latitude,
@@ -147,15 +146,16 @@ enum GeofenceMonitorBinder {
         resolver: PolygonMembershipResolver,
         contextStore: BackgroundDeliveryContextStore,
         dwellCoordinator: GeofenceDwellCoordinator? = nil,
-        backgroundTaskRunner: BackgroundTaskRunner = GeofenceBackgroundTime.runner(name: "io.customer.geofence.visit-pass")
+        backgroundTaskRunner: BackgroundTaskRunner = GeofenceBackgroundTime.runner(name: "io.customer.geofence.visit-pass"),
+        taskSpawner: GeofenceTaskSpawning = LiveGeofenceTaskSpawner()
     ) {
         visitMonitor.setOnVisit { [weak resolver, weak dwellCoordinator] _ in
             // Read before the Task: the return value must reflect identity at the wake.
             guard let expectedUserId = contextStore.currentUserId else { return false }
             // A visit reports the device stayed somewhere, which is exactly when a circle dwell
             // that came due during suspension needs its evidence.
-            rearmDwellEvidence(dwellCoordinator, wake: .wakeVisit)
-            Task {
+            rearmDwellEvidence(dwellCoordinator, wake: .wakeVisit, taskSpawner: taskSpawner)
+            taskSpawner.spawn {
                 await backgroundTaskRunner.withBackgroundTime {
                     // Forced fresh: the cached fix predates the arrival. Also bypasses the
                     // already-running short-circuit, as a visit may be the only wake.
@@ -204,12 +204,13 @@ enum GeofenceMonitorBinder {
     private nonisolated static func rearmDwellEvidence(
         _ dwellCoordinator: GeofenceDwellCoordinator?,
         wake: DwellDiagnosticEvent,
-        fenceId: String? = nil
+        fenceId: String? = nil,
+        taskSpawner: GeofenceTaskSpawning
     ) {
         guard let dwellCoordinator else { return }
         MainActor.assumeIsolated {
             dwellCoordinator.recordWake(wake, fenceId: fenceId)
         }
-        Task { await dwellCoordinator.rearmPendingEvidence(includePolygons: false) }
+        taskSpawner.spawn { await dwellCoordinator.rearmPendingEvidence(includePolygons: false) }
     }
 }

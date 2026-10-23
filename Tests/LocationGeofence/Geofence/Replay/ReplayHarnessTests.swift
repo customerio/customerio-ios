@@ -62,7 +62,7 @@ struct ReplayHarnessTests {
             age: 0,
             source: .bus
         )
-        try await harness.settleBoundaries()
+        await harness.settleBoundaries()
         #expect(
             await settleOnMain { harness.emitted(ev: "registration.applied").count == 1 },
             "setup did not reach a registered state: \(harness.emitted.map { $0["ev"] ?? "?" })"
@@ -101,7 +101,7 @@ struct ReplayHarnessTests {
                 age: 0,
                 source: .resolver
             )
-            try await harness.settleBoundaries()
+            await harness.settleBoundaries()
             #expect(harness.fetchCount == 0, "a cache read started a sync")
             #expect(harness.emitted(ev: "registration.applied").isEmpty)
 
@@ -112,10 +112,47 @@ struct ReplayHarnessTests {
                 age: 0,
                 source: .bus
             )
-            try await harness.settleBoundaries()
+            await harness.settleBoundaries()
             #expect(
                 await settleOnMain { harness.emitted(ev: "registration.applied").count == 1 },
                 "the bus fix did not drive the sync: \(harness.emitted.map { $0["ev"] ?? "?" })"
+            )
+        }
+    }
+
+    /// Left unanswered, the fetch keeps its task in flight and `awaitIdle()` never returns.
+    @Test
+    @available(iOS 17.0, *)
+    func awaitIdle_givenFetchWithNoRecordedFixture_expectAnsweredAndReported() async {
+        await ReplayHarness.withTail {
+            let harness = ReplayHarness()
+            harness.loadPulledFixes(stimuli: [0], samples: [
+                harness.pulledFix(
+                    latitude: Self.awayLatitude,
+                    longitude: Self.longitude,
+                    accuracy: 10,
+                    age: 0,
+                    at: 0
+                )
+            ])
+            harness.setIdentified(true)
+            await harness.awaitIdle()
+            #expect(harness.acquireFixCallCount == 1, "identify did not arm for a fix")
+
+            harness.feedFix(
+                latitude: Self.awayLatitude,
+                longitude: Self.longitude,
+                accuracy: nil,
+                age: 0,
+                source: .bus
+            )
+            await harness.awaitIdle()
+
+            // The control: with no fetch, `awaitIdle()` returning proves nothing.
+            #expect(harness.fetchCount == 1, "the bus fix did not start a fetch")
+            #expect(
+                harness.fetchAccounting()?.hasPrefix("1 fetch(es) with no recorded fixture") == true,
+                "fetch accounting: \(harness.fetchAccounting() ?? "nil")"
             )
         }
     }
@@ -240,7 +277,7 @@ struct ReplayHarnessTests {
             // Cleanup only, after the frozen contract was asserted: thaw this same process so the fetch it
             // parked is answered and its continuation resumes, rather than outliving the test.
             await harness.resumeExecution()
-            try await harness.settleBoundaries()
+            await harness.settleBoundaries()
         }
     }
 
@@ -362,7 +399,7 @@ struct ReplayHarnessTests {
                 },
                 "the trigger's stop was never processed, so this test proves nothing"
             )
-            try await harness.settleBoundaries()
+            await harness.settleBoundaries()
             for _ in 0 ..< 10 {
                 await Task.yield()
             }
@@ -399,7 +436,7 @@ struct ReplayHarnessTests {
                 await harness.advance(to: at)
                 let accepted = harness.emitted(ev: "transition.accepted").count
                 harness.deliverCrossing(fence: "A", transition: transition)
-                try await harness.settleBoundaries()
+                await harness.settleBoundaries()
                 await settleOnMain { harness.emitted(ev: "transition.accepted").count > accepted }
             }
 
@@ -435,7 +472,7 @@ struct ReplayHarnessTests {
 
             harness.deliverCrossing(fence: "A", transition: .enter)
             harness.deliverCrossing(fence: "A", transition: .enter)
-            try await harness.settleBoundaries()
+            await harness.settleBoundaries()
             await settleOnMain { harness.emitted(ev: "os.callback.dropped").count == 1 }
 
             #expect(harness.emitted(ev: "transition.accepted").count == 1)
@@ -453,11 +490,11 @@ struct ReplayHarnessTests {
             try await registered(harness, fenceId: "A")
 
             harness.deliverCrossing(fence: "A", transition: .enter)
-            try await harness.settleBoundaries()
+            await harness.settleBoundaries()
             await settleOnMain { harness.emitted(ev: "transition.accepted").count == 1 }
             await harness.advance(to: Self.arrivalAt + 120)
             harness.deliverCrossing(fence: "A", transition: .exit)
-            try await harness.settleBoundaries()
+            await harness.settleBoundaries()
             await settleOnMain { harness.emitted(ev: "transition.accepted").count == 2 }
 
             #expect(harness.emitted(ev: "os.callback.dropped").isEmpty)
@@ -474,14 +511,14 @@ struct ReplayHarnessTests {
             try await registered(harness, fenceId: "A")
 
             harness.deliverCrossing(fence: "A", transition: .enter, identity: Self.arrivalAt)
-            try await harness.settleBoundaries()
+            await harness.settleBoundaries()
             await settleOnMain { harness.emitted(ev: "transition.accepted").count == 1 }
             await harness.advance(to: Self.arrivalAt + 60)
             harness.deliverCrossing(fence: "A", transition: .exit, identity: Self.arrivalAt + 60)
-            try await harness.settleBoundaries()
+            await harness.settleBoundaries()
             await settleOnMain { harness.emitted(ev: "transition.accepted").count == 2 }
             harness.deliverCrossing(fence: "A", transition: .enter, identity: Self.arrivalAt)
-            try await harness.settleBoundaries()
+            await harness.settleBoundaries()
             await settleOnMain { harness.emitted(ev: "os.callback.dropped").count == 1 }
 
             #expect(harness.emitted(ev: "transition.accepted").count == 2)
@@ -517,13 +554,13 @@ struct ReplayHarnessTests {
 
             harness.reenterProcess()
             await harness.wireMonitor()
-            try await harness.settleBoundaries()
+            await harness.settleBoundaries()
             _ = await settleOnMain { harness.emitted(ev: "registration.adopted").count == 1 }
             let armedOnce = harness.conditionMonitor.operations.count
             #expect(armedOnce > armedBeforeRelaunch, "the first adopt re-armed nothing")
 
             await harness.wireMonitor()
-            try await harness.settleBoundaries()
+            await harness.settleBoundaries()
 
             #expect(harness.emitted(ev: "registration.adopted").count == 1, "the second run adopted again")
             #expect(harness.conditionMonitor.operations.count == armedOnce, "the second run drove the OS: \(harness.conditionMonitor.operations[armedOnce...])")

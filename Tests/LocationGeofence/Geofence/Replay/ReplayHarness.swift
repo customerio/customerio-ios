@@ -24,22 +24,23 @@ final class ReplayHarness {
     /// Transitions this harness's binder has finished routing, across relaunches. Not those the
     /// bootstrap's own binding routes after `wireMonitor()`.
     let routed = EventCounter()
-    /// This process's work that `advance` waits for (`awaitQuiescence`): evidence checks its
-    /// deadlines and retries started, routing tasks its binder started, and OS events delivered
-    /// to its monitor, none yet ended or handled.
-    private(set) var evidenceChecksInFlight = 0
-    private(set) var routingsInFlight = 0
-    var eventsUnhandled = 0
     /// Read through `authority`, never directly.
     let fixes: ReplayFixProvider
     let clock: DateUtilStub
     let logger: CapturingLogger
 
     let gate = ReplayBoundaryGate()
+    /// Everything the SDK starts goes through this, so the runner waits for idle instead of sleeping.
+    let taskSpawner = TrackingTaskSpawner()
     private(set) var dwellScheduler = ReplayDwellScheduler()
     private var processGeneration = UUID()
     /// Lifecycle delivery belongs to one process, even when a test retains its old graph.
     private(set) var notificationCenter = NotificationCenter()
+    /// Tracked work waiting on drive time, summed into `taskSpawner`'s parked count: replies parked on
+    /// the gate, sleeps on the scheduler, and callers of a replay fix request, any process's.
+    private var parkedOnGate = 0
+    private var parkedOnScheduler = 0
+    private var parkedOnFixRequests = 0
 
     // MARK: - The SDK
 
@@ -67,6 +68,8 @@ final class ReplayHarness {
     private let moduleLastKnownLocation: LocationData? = nil
 
     var fetchQueue: [Result<GeofenceApiResponse, GeofenceApiError>] = []
+    /// Never reset, so `fetchAccounting()` can tell a drive with no fetch fixture from an emptied queue.
+    var fetchFixtureEnqueued = false
     var fetchCount = 0
     var starvedFetchCount = 0
 
@@ -116,6 +119,21 @@ final class ReplayHarness {
 
         // Wired once: the recording outlives any process the drive restarts.
         authority.answerCachedLocation = { [fixes] in fixes.nextCachedLocation() }
+        gate.isTrackedWork = { [taskSpawner] in taskSpawner.startedCurrentTask }
+        gate.onParkedCountChanged = { [weak self] count in
+            self?.parkedOnGate = count
+            self?.reportParked()
+        }
+        // Before any fixture: a fetch the drive recorded no answer for still needs one, or the task
+        // awaiting it never finishes and `awaitIdle()` never returns.
+        installFetchHandler()
+        di.override(value: taskSpawner as GeofenceTaskSpawning, forType: GeofenceTaskSpawning.self)
+        // A missed override is silent: work started through it goes untracked and replays read as
+        // the old flake.
+        precondition(
+            (di.geofenceTaskSpawner as? TrackingTaskSpawner) === taskSpawner,
+            "the harness graph doesn't return the tracking spawner"
+        )
 
         composeSDK()
     }
@@ -136,14 +154,10 @@ final class ReplayHarness {
             dateUtil: clock,
             authority: authority,
             // One for the whole drive: CoreLocation keeps monitoring while the app is dead.
-            makeConditionMonitor: { [conditionMonitor] _ in conditionMonitor }
+            makeConditionMonitor: { [conditionMonitor] _ in conditionMonitor },
+            taskSpawner: taskSpawner
         )
         monitor.movementFixResolver.requestFreshFix = { [weak self] in self?.fixRequestCount += 1 }
-        let generation = processGeneration
-        monitor.onEventHandled = { [weak self] in
-            guard let self, self.processGeneration == generation else { return }
-            self.eventsUnhandled = max(0, self.eventsUnhandled - 1)
-        }
         // Known limitation: the timeout always wins, so every fresh-fix request falls back to the
         // cache. Parking it on the gate instead re-parked endlessly.
         monitor.movementFixResolver.waitForTimeout = { _ in await Task.yield() }
@@ -160,7 +174,8 @@ final class ReplayHarness {
             explicitRefreshRequested: Synchronized<Bool>(false),
             // Not the fix provider: that would read the OS cache where the drive recorded no read.
             lastKnownLocation: { [weak self] in self?.moduleLastKnownLocation },
-            acquireFix: { [weak self] in self?.acquireFixCallCount += 1 }
+            acquireFix: { [weak self] in self?.acquireFixCallCount += 1 },
+            taskSpawner: taskSpawner
         )
     }
 
@@ -187,10 +202,9 @@ final class ReplayHarness {
             fixResolver: makeReplayFixResolver(),
             notificationCenter: notificationCenter,
             clock: DateUtilGeofenceClock(dateUtil: clock),
+            taskSpawner: taskSpawner,
             waitForEvidence: { [dwellScheduler] in try await dwellScheduler.sleep(nanoseconds: $0) }
         )
-
-        countEvidenceChecks(of: dwellCoordinator)
 
         resolver = makePolygonResolver()
 
@@ -207,7 +221,8 @@ final class ReplayHarness {
             // The post-refresh polygon passes run here too, not on the process-wide singleton.
             polygonResolver: { polygonResolver },
             dateUtil: clock,
-            logger: logger
+            logger: logger,
+            taskSpawner: taskSpawner
         )
 
         trigger = makeRefreshTrigger()
@@ -219,55 +234,45 @@ final class ReplayHarness {
             visitMonitor: visitMonitor,
             resolver: resolver,
             contextStore: contextStore,
-            dwellCoordinator: dwellCoordinator
+            dwellCoordinator: dwellCoordinator,
+            taskSpawner: taskSpawner
         )
 
         overrideBootstrapDependencies()
     }
 
-    private func countEvidenceChecks(of dwellCoordinator: GeofenceDwellCoordinator) {
-        let generation = processGeneration
-        dwellCoordinator.evidenceCheckActivity = { [weak self] began in
-            guard let self, self.processGeneration == generation else { return }
-            self.evidenceChecksInFlight += began ? 1 : -1
-        }
-    }
-
-    /// Binds this composition's monitor, counting the routing tasks its transitions start.
+    /// Binds this composition's monitor, counting the routing tasks its transitions finish.
     private func bindMonitor() {
         let routed = routed
-        let routingGeneration = processGeneration
         GeofenceMonitorBinder.bind(
             monitor: monitor,
             resolver: resolver,
             coordinator: coordinator,
             logger: logger,
             dwellCoordinator: dwellCoordinator,
-            routingActivity: { [weak self] began in
-                // Started in the OS callback, on the main actor, before the event counts as
-                // handled; ended on the routing task, so counted down after a hop.
-                guard !began else {
-                    return MainActor.assumeIsolated { self?.countRouting(+1, generation: routingGeneration) }
-                }
-                routed.record()
-                Task { @MainActor [weak self] in self?.countRouting(-1, generation: routingGeneration) }
-            }
+            taskSpawner: taskSpawner,
+            routingActivity: { began in if !began { routed.record() } }
         )
-    }
-
-    private func countRouting(_ change: Int, generation: UUID) {
-        guard processGeneration == generation else { return }
-        routingsInFlight = max(0, routingsInFlight + change)
     }
 
     private func resetProcessRuntime() {
         processGeneration = UUID()
-        evidenceChecksInFlight = 0
-        routingsInFlight = 0
-        eventsUnhandled = 0
         notificationCenter = NotificationCenter()
-        dwellScheduler = ReplayDwellScheduler()
+        let scheduler = ReplayDwellScheduler()
+        scheduler.taskSpawner = taskSpawner
+        scheduler.isTrackedWork = { [taskSpawner] in taskSpawner.startedCurrentTask }
+        // A stopped process's scheduler reports its cancelled sleeps before it is replaced.
+        scheduler.onTrackedWaitersChanged = { [weak self, weak scheduler] count in
+            guard let self, self.dwellScheduler === scheduler else { return }
+            self.parkedOnScheduler = count
+            self.reportParked()
+        }
+        dwellScheduler = scheduler
         dwellScheduler.advance(to: clock.givenNow.timeIntervalSince(epoch))
+    }
+
+    private func reportParked() {
+        taskSpawner.setParked(parkedOnGate + parkedOnScheduler + parkedOnFixRequests)
     }
 
     /// Everything `GeofenceBootstrap` resolves, plus `DateUtil` so a later read cannot reach the
@@ -284,6 +289,12 @@ final class ReplayHarness {
         di.override(value: monitor as GeofenceRegionMonitoring, forType: GeofenceRegionMonitoring.self)
         di.override(value: visitMonitor as GeofenceVisitMonitoring, forType: GeofenceVisitMonitoring.self)
         di.override(value: coordinator as GeofenceSyncCoordinator, forType: GeofenceSyncCoordinator.self)
+    }
+
+    /// Returns once everything the SDK started is finished or waits on drive time: a reply parked on
+    /// `gate`, a sleep on `dwellScheduler`, or a replay fix request.
+    func awaitIdle() async {
+        await taskSpawner.awaitIdle()
     }
 
     /// Call after `trigger.onModuleInit()`, as `GeofenceModuleState.setup` does.
@@ -381,7 +392,8 @@ final class ReplayHarness {
                     // process's request stays pending, as a killed app's would.
                     withUnsafeCurrentTask { $0?.cancel() }
                 }
-            }
+            },
+            taskSpawner: taskSpawner
         )
         fixResolver.requestFreshFix = { [weak self, weak fixResolver] in
             guard let self, self.processGeneration == generation, let fixResolver else { return }
@@ -390,9 +402,11 @@ final class ReplayHarness {
                 if answer.at <= self.fixes.now {
                     fixResolver.handleDeliveredFix(answer.fix)
                 } else {
-                    Task { @MainActor [weak self, weak fixResolver] in
+                    // Tracked, so idle waits for the answer to park. It holds no task: the callers
+                    // waiting on the request count as parked themselves.
+                    self.taskSpawner.spawn { @MainActor [weak self, weak fixResolver] in
                         guard let self else { return }
-                        await self.gate.park(at: answer.at, what: "requested fix") { [weak self, weak fixResolver] in
+                        await self.gate.park(at: answer.at, what: "requested fix", holdsTask: false) { [weak self, weak fixResolver] in
                             guard let self, self.processGeneration == generation else { return }
                             fixResolver?.handleDeliveredFix(answer.fix)
                         }
@@ -405,6 +419,17 @@ final class ReplayHarness {
                     fixResolver.handleDeliveredFix(fix)
                 }
                 fixResolver.handleRequestFailure()
+            }
+        }
+        // Any process's: a dead one's callers stay parked, as its request is never answered.
+        fixResolver.onCallerWaiting = { [weak self] in
+            guard let self, self.taskSpawner.startedCurrentTask else { return {} }
+            self.parkedOnFixRequests += 1
+            self.reportParked()
+            return { [weak self] in
+                guard let self else { return }
+                self.parkedOnFixRequests -= 1
+                self.reportParked()
             }
         }
         return fixResolver
@@ -421,7 +446,8 @@ final class ReplayHarness {
             dateUtil: clock,
             fixResolver: fixResolver,
             notificationCenter: notificationCenter,
-            dwellCoordinator: dwellCoordinator
+            dwellCoordinator: dwellCoordinator,
+            taskSpawner: taskSpawner
         )
     }
 }

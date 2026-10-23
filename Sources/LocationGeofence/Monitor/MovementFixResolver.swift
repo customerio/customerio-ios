@@ -56,6 +56,9 @@ final class MovementFixResolver: NSObject, @preconcurrency CLLocationManagerDele
     private var pendingCompletions: [(LocationData?, Bool) -> Void] = []
     /// Callers waiting on the request in flight, the one that issued it included.
     var waitingCallers: Int { pendingCompletions.count }
+    /// Test seam, nil in production: called as a caller starts waiting on a request; the closure it
+    /// returns runs as that caller's completion is delivered.
+    var onCallerWaiting: (() -> () -> Void)?
     private var fallbackFix: CLLocation?
     private var pendingPurpose: GeofenceFixPurpose?
     private var timeoutTask: Task<Void, Never>?
@@ -70,6 +73,8 @@ final class MovementFixResolver: NSObject, @preconcurrency CLLocationManagerDele
 
     /// Settable because the monitors construct this resolver, so a caller can't reach `init`.
     var waitForTimeout: (TimeInterval) async -> Void
+    /// Starts the timeout, which is what delivers a fire-and-forget caller's completion.
+    private let taskSpawner: GeofenceTaskSpawning
 
     /// Opt-in dwell diagnostics; nil records nothing. It only observes: no fix qualification,
     /// coalescing or timeout reads it.
@@ -89,7 +94,8 @@ final class MovementFixResolver: NSObject, @preconcurrency CLLocationManagerDele
         diagnosticRecorder: DwellDiagnosticRecorder? = nil,
         waitForTimeout: @escaping (TimeInterval) async -> Void = { seconds in
             try? await Task.sleep(nanoseconds: UInt64(seconds * 1000000000))
-        }
+        },
+        taskSpawner: GeofenceTaskSpawning = LiveGeofenceTaskSpawner()
     ) {
         self.logger = logger
         self.maxAge = maxAge
@@ -97,6 +103,7 @@ final class MovementFixResolver: NSObject, @preconcurrency CLLocationManagerDele
         self.backgroundTaskRunner = backgroundTaskRunner
         self.dateUtil = dateUtil
         self.waitForTimeout = waitForTimeout
+        self.taskSpawner = taskSpawner
         self.desiredAccuracy = desiredAccuracy
         self.diagnosticRecorder = diagnosticRecorder
     }
@@ -132,7 +139,11 @@ final class MovementFixResolver: NSObject, @preconcurrency CLLocationManagerDele
         }
         // On a tie the held fallback wins.
         fallbackFix = FixSelection.newest(cached: cached, delivered: fallbackFix)?.fix
-        pendingCompletions.append(completion)
+        let answered = onCallerWaiting?()
+        pendingCompletions.append { location, isFresh in
+            answered?()
+            completion(location, isFresh)
+        }
         guard pendingCompletions.count == 1 else { return }
         // The initiator labels the record; coalesced callers don't log, so one request, one record.
         pendingPurpose = purpose
@@ -249,7 +260,7 @@ final class MovementFixResolver: NSObject, @preconcurrency CLLocationManagerDele
 
     private func startTimeout() {
         timeoutTask?.cancel()
-        timeoutTask = Task { @MainActor [weak self, requestTimeout, waitForTimeout] in
+        timeoutTask = taskSpawner.spawn { @MainActor [weak self, requestTimeout, waitForTimeout] in
             await waitForTimeout(requestTimeout)
             guard !Task.isCancelled else { return }
             self?.cancelPendingRequest()
@@ -274,6 +285,8 @@ final class MovementFixResolver: NSObject, @preconcurrency CLLocationManagerDele
         let signal = RequestCompletionSignal()
         currentRequestSignal = signal
         let runner = backgroundTaskRunner
+        // Holds background time until the request completes; the timeout that completes it is counted.
+        // swiftlint:disable:next geofence_untracked_task
         Task {
             await runner.withBackgroundTime { await signal.wait() }
         }

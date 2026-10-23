@@ -12,10 +12,19 @@ final class ReplayBoundaryGate {
         let id: Int
         let at: TimeInterval
         let what: String
+        /// Whether a task the harness tracks waits on this answer, and so counts as parked.
+        let holdsTrackedWork: Bool
         let answer: () async -> Void
     }
 
-    private var parked: [Parked] = []
+    private var parked: [Parked] = [] {
+        didSet { onParkedCountChanged?(parked.filter(\.holdsTrackedWork).count) }
+    }
+
+    /// So the harness can tell work parked here from work still running.
+    var onParkedCountChanged: ((Int) -> Void)?
+    /// Whether the task parking an answer is tracked work. Unset, every park counts.
+    var isTrackedWork: () -> Bool = { true }
     private var nextId = 0
 
     private var virtualNow: TimeInterval = 0
@@ -50,13 +59,16 @@ final class ReplayBoundaryGate {
 
     /// A past moment answers immediately, which also keeps `advance` from looping. A frozen process
     /// receives nothing: while suspended every answer is held, even an overdue one.
-    func park(at: TimeInterval, what: String, answer: @escaping () async -> Void) async {
+    /// - Parameter holdsTask: false when no task waits on the answer itself: a requested fix, whose
+    ///   callers count as parked where they wait.
+    func park(at: TimeInterval, what: String, holdsTask: Bool = true, answer: @escaping () async -> Void) async {
         guard isSuspended || at > virtualNow else {
             await answer()
             return
         }
         nextId += 1
-        parked.append(Parked(id: nextId, at: at, what: what, answer: answer))
+        let holdsTrackedWork = holdsTask && isTrackedWork()
+        parked.append(Parked(id: nextId, at: at, what: what, holdsTrackedWork: holdsTrackedWork, answer: answer))
     }
 
     /// Clamped like `setClock`, so `park` never compares against a moment the clock never took.

@@ -30,6 +30,7 @@ extension GeofenceDwellCoordinator {
         identityTracker: DIGraphShared.shared.geofenceIdentityTracker,
         // Info.plist, so a background launch that never initializes the SDK sees the same opt-in.
         pendingDwellCollection: PendingDwellCollectionOwner.ifOptedIn(PendingDwellCollectionOptIn(bundle: .main)),
-        diagnosticRecorder: DIGraphShared.shared.dwellDiagnosticRecorder
+        diagnosticRecorder: DIGraphShared.shared.dwellDiagnosticRecorder,
+        taskSpawner: DIGraphShared.shared.geofenceTaskSpawner
     )
 }

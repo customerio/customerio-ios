@@ -1,3 +1,21 @@
+## [4.12.3](https://github.com/customerio/customerio-ios/compare/4.12.2...4.12.3) (2026-10-22)
+
+### Bug Fixes
+
+* **MBL-2604:** refuse sk_ keys in the notification service extension ([#1362](https://github.com/customerio/customerio-ios/issues/1362)) ([d98314e](https://github.com/customerio/customerio-ios/commit/d98314e3192a66809097b36128a24c88f5bfbc96))
+
+## [4.12.2](https://github.com/customerio/customerio-ios/compare/4.12.1...4.12.2) (2026-10-22)
+
+### Bug Fixes
+
+* track launch lifecycle events when the SDK initializes after app launch ([#1354](https://github.com/customerio/customerio-ios/issues/1354)) ([b88d612](https://github.com/customerio/customerio-ios/commit/b88d612433ab68239cf43d6adf5875f1916ce4b4))
+
+## [4.12.1](https://github.com/customerio/customerio-ios/compare/4.12.0...4.12.1) (2026-10-22)
+
+### Bug Fixes
+
+* **messagingpush:** support apiHost in Notification Service Extension ([#1357](https://github.com/customerio/customerio-ios/issues/1357)) ([eca12ff](https://github.com/customerio/customerio-ios/commit/eca12ff8ae0d1f239d0169c2953d2194d5cb4953))
+
 ## [4.12.0](https://github.com/customerio/customerio-ios/compare/4.11.0...4.12.0) (2026-10-21)
 
 ### Features

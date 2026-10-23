@@ -49,8 +49,8 @@ final class GeofenceModuleState {
 
         registerEventSubscriptions(di: di, trigger: trigger)
         trigger.onModuleInit()
-        Task { await di.geofenceEventTracker.flushPending() }
-        Task { @MainActor in
+        di.geofenceTaskSpawner.spawn { await di.geofenceEventTracker.flushPending() }
+        di.geofenceTaskSpawner.spawn { @MainActor in
             await GeofenceBootstrap.wireMonitor(di: di)
         }
     }
@@ -60,16 +60,16 @@ final class GeofenceModuleState {
             // Identifying another user resets nothing. The tracker already holds the change, from
             // the context store's durable identity version; this only removes the visits it ends.
             // The event's timing — late, replayed — decides nothing.
-            Task { @MainActor in await di.geofenceDwellCoordinator.identityChanged() }
-            Task { await di.geofenceEventTracker.flushPending() }
+            di.geofenceTaskSpawner.spawn { @MainActor in await di.geofenceDwellCoordinator.identityChanged() }
+            di.geofenceTaskSpawner.spawn { await di.geofenceEventTracker.flushPending() }
             // `wireMonitor` usually ran before identify and left visits off; this arms them.
-            Task { @MainActor in await GeofenceBootstrap.armVisitMonitoring(di: di) }
+            di.geofenceTaskSpawner.spawn { @MainActor in await GeofenceBootstrap.armVisitMonitoring(di: di) }
             trigger.onIdentified()
         }
         di.eventBusHandler.addObserver(ResetEvent.self) { _ in
             trigger.onReset()
             // Disarms visits. Must stay after `onReset`, which starts the reset on the same actor.
-            Task { @MainActor in await GeofenceBootstrap.armVisitMonitoring(di: di) }
+            di.geofenceTaskSpawner.spawn { @MainActor in await GeofenceBootstrap.armVisitMonitoring(di: di) }
         }
         di.eventBusHandler.addObserver(LocationAcquiredEvent.self) { event in
             di.logger.geofenceLocationArrived(event.location)

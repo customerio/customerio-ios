@@ -39,7 +39,7 @@ extension GeofenceSyncCoordinatorImpl {
         // ENTER is tracked: run alongside the send, an EXIT routed meanwhile could find no visit to
         // close and report no visit; awaited after it, a stalled send left the visit unwritten past
         // an EXIT.
-        Task { [transitionEmitter, contextStore, logger, dwellCoordinator, storage] in
+        taskSpawner.spawn { [transitionEmitter, contextStore, logger, dwellCoordinator, storage] in
             if !keptWithDwell.isEmpty, let dwellCoordinator {
                 let records = await storage.getMonitorRegionRecords()
                 for region in keptWithDwell where records[region.id]?.lastState == .enter {
@@ -80,7 +80,7 @@ extension GeofenceSyncCoordinatorImpl {
     /// Forced-fresh: a cached fix would re-affirm the old verdict. Pass `heldFix` through; a new
     /// request would fail, as it needs a fix newer than the held one.
     func evaluatePolygonsAfterMovement(expectedUserId: String, heldFix: ResolvedFix? = nil) {
-        Task { @MainActor [contextStore, polygonResolver] in
+        taskSpawner.spawn { @MainActor [contextStore, polygonResolver] in
             guard contextStore.currentUserId == expectedUserId else { return }
             await polygonResolver().evaluateAllPolygons(
                 reason: .movement,
@@ -106,7 +106,7 @@ extension GeofenceSyncCoordinatorImpl {
     }
 
     private func evaluateNewPolygons(_ polygons: [Geofence], expectedUserId: String) {
-        Task { @MainActor [contextStore, polygonResolver] in
+        taskSpawner.spawn { @MainActor [contextStore, polygonResolver] in
             guard contextStore.currentUserId == expectedUserId else { return }
             await polygonResolver().evaluateNewlyRegistered(
                 geofenceIds: polygons.map(\.id),

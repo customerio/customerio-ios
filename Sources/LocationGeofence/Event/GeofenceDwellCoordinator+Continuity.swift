@@ -28,7 +28,7 @@ extension GeofenceDwellCoordinator {
     @discardableResult
     func interruptContinuity(geofenceId: String?) -> Task<Void, Never> {
         let lostAt = continuityLost(geofenceId: geofenceId)
-        return Task { [weak self] in
+        return taskSpawner.spawn { [weak self] in
             await self?.invalidateContinuity(geofenceId: geofenceId, lostAt: lostAt)
         }
     }
@@ -127,7 +127,7 @@ extension GeofenceDwellCoordinator {
         if lastBackgroundRefreshAvailable == true, available == false {
             interruptContinuity(geofenceId: nil)
         } else {
-            Task { await revalidateVisits() }
+            taskSpawner.spawn { await revalidateVisits() }
         }
         lastBackgroundRefreshAvailable = available
         reconcileCollection()
@@ -142,7 +142,7 @@ extension GeofenceDwellCoordinator {
         let reading = readClock()
         foregroundOnlyLostUptime = reading.uptime
         reconcileCollection()
-        Task { [weak self] in
+        taskSpawner.spawn { [weak self] in
             guard let self else { return }
             let removed = await self.storage.removeDwellVisits { _, visit in
                 Self.observesOnlyInForeground(visit) && !visit.owesDwell && (visit.timing?.spans(reading) ?? true)

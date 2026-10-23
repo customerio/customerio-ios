@@ -17,6 +17,7 @@ final class PolygonMembershipResolver {
     let contextStore: BackgroundDeliveryContextStore
     let dateUtil: DateUtil
     let notificationCenter: NotificationCenter
+    let taskSpawner: GeofenceTaskSpawning
     var foregroundObserverToken: NSObjectProtocol?
 
     private var passesInFlight = 0
@@ -36,7 +37,8 @@ final class PolygonMembershipResolver {
         fixResolver: MovementFixResolver? = nil,
         notificationCenter: NotificationCenter = .default,
         dwellCoordinator: GeofenceDwellCoordinator? = nil,
-        diagnosticRecorder: DwellDiagnosticRecorder? = nil
+        diagnosticRecorder: DwellDiagnosticRecorder? = nil,
+        taskSpawner: GeofenceTaskSpawning = LiveGeofenceTaskSpawner()
     ) {
         self.storage = storage
         self.transitionEmitter = transitionEmitter
@@ -45,13 +47,15 @@ final class PolygonMembershipResolver {
         self.dateUtil = dateUtil
         self.notificationCenter = notificationCenter
         self.dwellCoordinator = dwellCoordinator
+        self.taskSpawner = taskSpawner
         // Ten metres, not the circle path's 100: a 100 m fix can't decide a minimum-size polygon.
         self.fixResolver = fixResolver ?? MovementFixResolver(
             logger: logger,
             backgroundTaskRunner: GeofenceBackgroundTime.runner(name: "io.customer.geofence.polygon-fix"),
             dateUtil: dateUtil,
             desiredAccuracy: kCLLocationAccuracyNearestTenMeters,
-            diagnosticRecorder: diagnosticRecorder
+            diagnosticRecorder: diagnosticRecorder,
+            taskSpawner: taskSpawner
         )
         registerForegroundEvaluation()
         // Its own reason, not `.foreground`: a dwell's evidence request can come from a deadline in any app state.

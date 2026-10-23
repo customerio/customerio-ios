@@ -78,12 +78,16 @@ final class FakeConditionMonitor: GeofenceConditionMonitoring {
         held[identifier] = HeldCondition(center: center, radius: radius, assumed: assuming)
     }
 
-    func deliver(identifier: String, state: GeofenceConditionState, at date: Date) {
+    /// Whether the stream took the event, so a caller tracking it knows it will be handled.
+    @discardableResult
+    func deliver(identifier: String, state: GeofenceConditionState, at date: Date) -> Bool {
         guard let continuation else {
             deliveredWithNoSubscriber += 1
-            return
+            return false
         }
-        continuation.yield(GeofenceConditionEvent(identifier: identifier, state: state, date: date))
+        guard case .enqueued = continuation.yield(GeofenceConditionEvent(identifier: identifier, state: state, date: date))
+        else { return false }
+        return true
     }
 
     /// The wrapper subscribes asynchronously, so an early event is dropped; counted to make that

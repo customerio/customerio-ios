@@ -58,21 +58,13 @@ extension GeofenceDwellCoordinator {
         let wait = waitForEvidence
         let due = now.uptime + delay
         let token = scheduledDiagnosticDeadline(geofenceId: geofence.id, due: due)
-        deadlineTasks[geofence.id] = Task { [weak self] in
+        deadlineTasks[geofence.id] = taskSpawner.spawn { [weak self] in
             do { try await wait(delayNanoseconds) } catch { return }
             guard !Task.isCancelled, let self else { return }
             self.diagnosticDeadlineFired(geofenceId: geofence.id, due: due, token: token)
-            await self.runEvidenceCheck(geofenceId: geofence.id)
+            await self.requestQualifyingEvidence(geofenceId: geofence.id)
         }
         armCollectionLease(for: geofence, visit: visit, at: now)
-    }
-
-    /// The check a deadline or retry runs once its wait is over, reported to
-    /// `evidenceCheckActivity` as it starts and ends.
-    func runEvidenceCheck(geofenceId: String) async {
-        evidenceCheckActivity?(true)
-        defer { evidenceCheckActivity?(false) }
-        await requestQualifyingEvidence(geofenceId: geofenceId)
     }
 
     func requestQualifyingEvidence(geofenceId: String) async {
@@ -357,11 +349,11 @@ extension GeofenceDwellCoordinator {
         let wait = waitForEvidence
         let due = clock.read().uptime + delay
         let waitToken = scheduledDiagnosticDeadline(geofenceId: geofence.id, due: due)
-        deadlineTasks[geofence.id] = Task { [weak self] in
+        deadlineTasks[geofence.id] = taskSpawner.spawn { [weak self] in
             do { try await wait(UInt64(delay * 1000000000)) } catch { return }
             guard !Task.isCancelled, let self else { return }
             self.diagnosticDeadlineFired(geofenceId: geofence.id, due: due, token: waitToken)
-            await self.runEvidenceCheck(geofenceId: geofence.id)
+            await self.requestQualifyingEvidence(geofenceId: geofence.id)
         }
     }
 

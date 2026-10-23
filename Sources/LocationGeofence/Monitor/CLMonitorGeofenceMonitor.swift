@@ -57,9 +57,6 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring {
     /// conditions untouched.
     var lastRearmAt: Date
     var foregroundObserverToken: NSObjectProtocol?
-    /// Test seam, nil in production: runs as each event the OS delivered has been handled
-    /// (dispatched, refused, or queued until a handler binds).
-    var onEventHandled: (() -> Void)?
 
     /// Every timing decision reads this clock, never `Date()`.
     let dateUtil: DateUtil
@@ -68,6 +65,7 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring {
     let clock: GeofenceClock
 
     private let makeConditionMonitor: @Sendable (String) async -> GeofenceConditionMonitoring
+    private let taskSpawner: GeofenceTaskSpawning
 
     init(
         logger: Logger,
@@ -79,7 +77,8 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring {
             await CoreLocationConditionMonitor(monitor: CLMonitor(name))
         },
         clock: GeofenceClock = SystemGeofenceClock(),
-        diagnosticRecorder: DwellDiagnosticRecorder? = nil
+        diagnosticRecorder: DwellDiagnosticRecorder? = nil,
+        taskSpawner: GeofenceTaskSpawning = LiveGeofenceTaskSpawner()
     ) {
         self.logger = logger
         self.clock = clock
@@ -89,11 +88,13 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring {
         self.lastRearmAt = dateUtil.now
         self.authManager = authority
         self.makeConditionMonitor = makeConditionMonitor
+        self.taskSpawner = taskSpawner
         self.movementFixResolver = MovementFixResolver(
             logger: logger,
             backgroundTaskRunner: GeofenceBackgroundTime.runner(name: "io.customer.geofence.movement-fix"),
             dateUtil: dateUtil,
-            diagnosticRecorder: diagnosticRecorder
+            diagnosticRecorder: diagnosticRecorder,
+            taskSpawner: taskSpawner
         )
         super.init()
         self.lastObservedAccess = locationAccess
@@ -126,7 +127,7 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring {
         let name = Self.monitorName
         // Don't defer on protected-data availability despite the CLMonitor header: it reads false
         // while locked (the usual background wake), so the events consumer would never attach.
-        let task = Task { [makeConditionMonitor] in await makeConditionMonitor(name) }
+        let task = taskSpawner.spawn { [makeConditionMonitor] in await makeConditionMonitor(name) }
         monitorTask = task
         return task
     }
@@ -135,7 +136,7 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring {
     func enqueueMonitorOperation(_ operation: @escaping @MainActor (GeofenceConditionMonitoring) async -> Void) {
         let previous = lastQueuedOperation
         let monitorTask = monitorInstance()
-        lastQueuedOperation = Task { @MainActor in
+        lastQueuedOperation = taskSpawner.spawn { @MainActor in
             await previous?.value
             await operation(monitorTask.value)
         }
@@ -154,18 +155,29 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring {
     }
 
     private func startConsuming() {
-        consumeTask = Task { [weak self] in
-            guard let self else { return }
+        // Work until the first subscription, so nothing counts as idle before the SDK is listening.
+        taskSpawner.workStarted()
+        // Consumes for the process's life; its subscription and each event are counted instead.
+        // swiftlint:disable:next geofence_untracked_task
+        consumeTask = Task { [weak self, taskSpawner] in
+            guard let self else { return taskSpawner.workFinished() }
             let monitor = await self.monitorInstance().value
             // Re-subscribe on throw or end, or delivery stops for the process. Sequential, so there
             // is never a second consumer stealing events.
             var backoffNanos: UInt64 = 1000000000
             let maxBackoffNanos: UInt64 = 30000000000
+            var subscribed = false
             while !Task.isCancelled {
                 do {
-                    for try await event in await monitor.events {
+                    let events = await monitor.events
+                    if !subscribed {
+                        subscribed = true
+                        taskSpawner.workFinished()
+                    }
+                    for try await event in events {
                         await self.handle(event: event)
-                        self.onEventHandled?()
+                        // Pairs with the `workStarted` its delivery reported.
+                        taskSpawner.workFinished()
                         backoffNanos = 1000000000
                     }
                 } catch {
@@ -194,7 +206,7 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring {
     private func drainPendingEventsIfReady() {
         guard onTransition != nil, !isDrainingPendingEvents, !pendingEvents.isEmpty else { return }
         isDrainingPendingEvents = true
-        Task { @MainActor [weak self] in
+        taskSpawner.spawn { @MainActor [weak self] in
             guard let self else { return }
             while self.onTransition != nil, !self.pendingEvents.isEmpty {
                 let next = self.pendingEvents.removeFirst()

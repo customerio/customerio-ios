@@ -15,7 +15,8 @@ public class RichPushHttpClient: HttpClient {
         [cioApiSession, publicSession]
     }
 
-    private let region: Region
+    // nil when the configured `apiHost` isn't a valid URL, so no request gets the CIO API session.
+    private let cioApiHostname: String?
 
     public func request(_ params: CioInternalCommon.HttpRequestParams, onComplete: @escaping (Result<Data, CioInternalCommon.HttpRequestError>) -> Void) {
         let logger = self.logger
@@ -59,9 +60,8 @@ public class RichPushHttpClient: HttpClient {
     }
 
     func getSessionForRequest(url: URL) -> URLSession {
-        let cioApiHostname = URL(string: Self.getDefaultApiHost(region: region))!.host
         let requestHostname = url.host
-        let isRequestToCIOApi = cioApiHostname == requestHostname
+        let isRequestToCIOApi = cioApiHostname != nil && cioApiHostname == requestHostname
 
         return isRequestToCIOApi ? cioApiSession : publicSession
     }
@@ -125,7 +125,7 @@ public class RichPushHttpClient: HttpClient {
         self.httpRequestRunner = httpRequestRunner
         self.jsonAdapter = jsonAdapter
         self.logger = logger
-        self.region = MessagingPush.moduleConfig.region
+        self.cioApiHostname = URL(string: Self.getApiHost(config: MessagingPush.moduleConfig))?.host
         self.publicSession = Self.getBasicSession()
         self.cioApiSession = Self.getCIOApiSession(
             key: MessagingPush.moduleConfig.cdpApiKey,
@@ -148,6 +148,14 @@ extension RichPushHttpClient {
         }
     }
 
+    /// Base URL for metric requests: the configured `apiHost` when set (e.g. a proxy), otherwise the region's default host.
+    static func getApiHost(config: MessagingPushConfigOptions) -> String {
+        guard let apiHost = config.apiHost, !apiHost.isEmpty else {
+            return getDefaultApiHost(region: config.region)
+        }
+        return BackgroundDeliveryHttp.absoluteHost(apiHost)
+    }
+
     static func authorizationHeaderForCdpApiKey(_ key: String) -> String {
         var returnHeader = "\(key):"
         if let encodedRawHeader = returnHeader.data(using: .utf8) {
@@ -160,11 +168,13 @@ extension RichPushHttpClient {
         cdpApiKey: String,
         userAgentHeaderValue: String
     ) -> [String: String] {
-        let basicAuthHeaderString = "Basic \(authorizationHeaderForCdpApiKey(cdpApiKey))"
-
-        return ["Content-Type": "application/json; charset=utf-8",
-                "User-Agent": userAgentHeaderValue,
-                "Authorization": basicAuthHeaderString]
+        var headers = ["Content-Type": "application/json; charset=utf-8",
+                       "User-Agent": userAgentHeaderValue]
+        // Never send a secret key. The extension does not initialize with one, so this is a second guard.
+        if !ApiKey.isSecret(cdpApiKey) {
+            headers["Authorization"] = "Basic \(authorizationHeaderForCdpApiKey(cdpApiKey))"
+        }
+        return headers
     }
 
     static func getBasicSession() -> URLSession {
