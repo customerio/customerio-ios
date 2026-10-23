@@ -23,7 +23,7 @@ custom_rules:
     included: "Sources/LocationGeofence/.*\\.swift$"
     excluded: "Sources/LocationGeofence/GeofenceTaskSpawning\\.swift$"
     # Not after `-> ` or `: `, so a `Task<…>` return type or annotation before `{` isn't a spawn.
-    regex: "(?<!->\\s)(?<!:\\s)\\bTask(\\s*<[^{};=]*>)?\\s*(\\.\\s*(detached|init|immediate)\\s*)?(\\{|\\()"
+    regex: "(?<!->\\s)(?<!:\\s)\\bTask(\\s*<(?:->|[^<>{};=]|<(?:->|[^<>{};=])*>)*>)?\\s*(\\.\\s*(detached|init|immediate)\\s*)?(\\{|\\()"
     excluded_match_kinds:
       - comment
       - comment.mark

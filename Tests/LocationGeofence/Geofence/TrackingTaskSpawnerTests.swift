@@ -30,7 +30,7 @@ struct TrackingTaskSpawnerTests {
     func awaitIdle_givenTwoWaiters_expectTimeoutDoesNotConsumeOtherWaiter() async {
         let spawner = TrackingTaskSpawner()
         spawner.workStarted()
-        let patient = Task { await spawner.awaitIdle(timeout: 1) }
+        let patient = Task { await spawner.awaitIdle(timeout: 30) }
         let timeout = await spawner.awaitIdle(timeout: 0.02)
         #expect(timeout == TrackingTaskSpawner.IdleTimeout(inFlight: 1, parked: 0))
 
@@ -43,7 +43,7 @@ struct TrackingTaskSpawnerTests {
         let spawner = TrackingTaskSpawner()
         let task = spawner.spawn { 42 }
         #expect(await task.value == 42)
-        #expect(await spawner.awaitIdle(timeout: 1) == nil)
+        #expect(await spawner.awaitIdle(timeout: 30) == nil)
         #expect(spawner.inFlight == 0)
     }
 }

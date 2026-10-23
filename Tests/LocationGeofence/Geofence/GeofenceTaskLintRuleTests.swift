@@ -26,6 +26,9 @@ struct GeofenceTaskLintRuleTests {
             ("func spawn() -> Task<Void, Never> { task }", false),
             ("var task: Task<Result<A, B>, Never> { stored }", false),
             ("var task: Task<Void, Never>?", false),
+            ("Synchronized<Task<Void, Never>?>(nil)", false),
+            ("Set<Task<Void, Never>>()", false),
+            ("Dictionary<String, Task<Void, Never>>()", false),
             ("await task.value", false),
             ("Task.yield()", false),
             ("taskSpawner.spawn { work() }", false)
