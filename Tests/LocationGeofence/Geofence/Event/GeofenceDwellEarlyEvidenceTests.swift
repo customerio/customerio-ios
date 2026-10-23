@@ -6,6 +6,11 @@ import Foundation
 import SharedTests
 import Testing
 
+/// How long a wait for an exact state may take before the test fails. Only a bound: each wait ends
+/// as soon as its state holds, so a loaded runner (CI ran 3117 tests at once) gets the time it
+/// needs without any test waiting longer when it passes.
+private let earlyEvidenceSettleLimit: TimeInterval = 30
+
 @Suite("Dwell early evidence", .serialized)
 @MainActor
 struct GeofenceDwellEarlyEvidenceTests {
@@ -18,7 +23,7 @@ struct GeofenceDwellEarlyEvidenceTests {
         rig.answers = [rig.fix(at: 56.6), rig.fix(at: 90)]
 
         rig.advance(to: 60)
-        try #require(await settleOnMain {
+        try #require(await settleOnMain(timeout: earlyEvidenceSettleLimit) {
             rig.requests == initialRequests + 1 && rig.scheduler.pendingCount == 1
         })
         #expect(rig.emitter.dwells.isEmpty)
@@ -26,11 +31,11 @@ struct GeofenceDwellEarlyEvidenceTests {
         try #require(abs(retry - 90) < 0.001, "a slightly early fix waits the short floor, not the spacing: \(retry)")
 
         rig.advance(to: retry)
-        try #require(await settleOnMain { rig.emitter.dwells.count == 1 })
+        try #require(await settleOnMain(timeout: earlyEvidenceSettleLimit) { rig.emitter.dwells.count == 1 })
         #expect(rig.requests == initialRequests + 2, "the retry must request a newer measurement")
         #expect(rig.emitter.dwells.first?.occurredAt == rig.at(90))
         // The emitter has the row; `emitted` is written after it returns, and the chain then ends.
-        try #require(await settleOnMain { rig.coordinator.deadlineTasks[rig.geofence.id] == nil })
+        try #require(await settleOnMain(timeout: earlyEvidenceSettleLimit) { rig.coordinator.deadlineTasks[rig.geofence.id] == nil })
         #expect(await rig.storage.getDwellVisit(geofenceId: rig.geofence.id)?.emitted == true)
     }
 
@@ -61,7 +66,7 @@ struct GeofenceDwellEarlyEvidenceTests {
 
         for attempt in 2 ... 4 {
             rig.advance(to: moment)
-            try #require(await settleOnMain {
+            try #require(await settleOnMain(timeout: earlyEvidenceSettleLimit) {
                 rig.requests == initialRequests + attempt &&
                     (attempt == 4 ? rig.scheduler.pendingCount == 0 : rig.scheduler.pendingCount == 1)
             })
@@ -83,11 +88,11 @@ struct GeofenceDwellEarlyEvidenceTests {
         rig.answers = [rig.fix(at: 56.6), nil]
         let retry = try await rig.firstShortRetry()
         rig.advance(to: retry)
-        try #require(await settleOnMain { rig.scheduler.pendingCount == 1 })
+        try #require(await settleOnMain(timeout: earlyEvidenceSettleLimit) { rig.scheduler.pendingCount == 1 })
 
         await rig.coordinator.rearmPendingEvidence(includePolygons: true)
 
-        try #require(await settleOnMain {
+        try #require(await settleOnMain(timeout: earlyEvidenceSettleLimit) {
             guard let due = rig.scheduler.nextDeadline else { return false }
             return abs(due - retry - 120) < 0.001
         }, "rearming the same visit must not grant another short retry, nor shorten the spacing")
@@ -108,7 +113,7 @@ struct GeofenceDwellEarlyEvidenceTests {
 
         rig.advance(to: 60)
 
-        try #require(await settleOnMain { rig.scheduler.nextDeadline == 180 })
+        try #require(await settleOnMain(timeout: earlyEvidenceSettleLimit) { rig.scheduler.nextDeadline == 180 })
         #expect(rig.emitter.dwells.isEmpty)
     }
 
@@ -126,13 +131,13 @@ struct GeofenceDwellEarlyEvidenceTests {
         // replaced task ends once its wait is withdrawn, and only the re-armed wait is left.
         await replaced?.value
         try #require(
-            await settleOnMain(timeout: 30) { rig.scheduler.pendingCount == 1 },
+            await settleOnMain(timeout: earlyEvidenceSettleLimit) { rig.scheduler.pendingCount == 1 },
             "the re-armed wait must register"
         )
         try #require(rig.scheduler.nextDeadline == retry, "a re-arm keeps the short retry's floor")
         rig.advance(to: retry)
 
-        try #require(await settleOnMain { rig.emitter.dwells.count == 1 })
+        try #require(await settleOnMain(timeout: earlyEvidenceSettleLimit) { rig.emitter.dwells.count == 1 })
         #expect(rig.requests == 2, "rearming must not reuse the rejected cached measurement")
         #expect(rig.emitter.dwells.first?.occurredAt == rig.at(90))
     }
@@ -153,7 +158,7 @@ struct GeofenceDwellEarlyEvidenceTests {
         let retry = try await rig.firstShortRetry()
         rig.advance(to: retry)
 
-        try #require(await settleOnMain { rig.emitter.dwells.count == 1 })
+        try #require(await settleOnMain(timeout: earlyEvidenceSettleLimit) { rig.emitter.dwells.count == 1 })
         #expect(rig.requests == before + 2, "neither dwell request may reuse the ten-second-old movement fix")
         #expect(rig.emitter.dwells.first?.occurredAt == rig.at(90))
     }
@@ -167,15 +172,15 @@ struct GeofenceDwellEarlyEvidenceTests {
         let retry = try await rig.firstShortRetry()
         rig.holdAnswers = true
         rig.advance(to: retry)
-        try #require(await settleOnMain { rig.requests == 2 })
+        try #require(await settleOnMain(timeout: earlyEvidenceSettleLimit) { rig.requests == 2 })
         let previousLogs = rig.providerLogCount
 
         await rig.coordinator.rearmPendingEvidence(includePolygons: true)
-        try #require(await settleOnMain { rig.providerLogCount > previousLogs })
+        try #require(await settleOnMain(timeout: earlyEvidenceSettleLimit) { rig.providerLogCount > previousLogs })
         rig.provider.handleDeliveredFix(rig.fix(at: 90))
 
         try #require(
-            await settleOnMain { rig.emitter.dwells.count == 1 },
+            await settleOnMain(timeout: earlyEvidenceSettleLimit) { rig.emitter.dwells.count == 1 },
             "a rearm must join the newer-fix request instead of accepting the old cached fix"
         )
         #expect(rig.emitter.dwells.first?.occurredAt == rig.at(90))
@@ -188,14 +193,14 @@ struct GeofenceDwellEarlyEvidenceTests {
         try await rig.enter()
         rig.holdAnswers = true
         rig.advance(to: 60)
-        try #require(await settleOnMain { rig.requests == 1 })
+        try #require(await settleOnMain(timeout: earlyEvidenceSettleLimit) { rig.requests == 1 })
 
         await rig.coordinator.recordInsideEvidence(
             geofence: rig.geofence, at: rig.at(59), source: "location_evidence"
         )
         rig.provider.handleRequestFailure()
 
-        try #require(await settleOnMain { rig.scheduler.nextDeadline == 180 })
+        try #require(await settleOnMain(timeout: earlyEvidenceSettleLimit) { rig.scheduler.nextDeadline == 180 })
         #expect(rig.emitter.dwells.isEmpty)
     }
 
@@ -207,7 +212,7 @@ struct GeofenceDwellEarlyEvidenceTests {
         let initialRequests = rig.requests
         rig.answers = [rig.fix(at: 56.6)]
         rig.advance(to: 60)
-        try #require(await settleOnMain {
+        try #require(await settleOnMain(timeout: earlyEvidenceSettleLimit) {
             rig.requests == initialRequests + 1 && rig.scheduler.pendingCount == 1
         })
         await rig.diagnostics.drain()
@@ -331,7 +336,7 @@ private final class EarlyDwellRig {
         } else {
             await coordinator.handleBoundary(geofence: geofence, transition: .enter, occurredAt: start)
         }
-        try #require(await settleOnMain { self.scheduler.nextDeadline == 60 })
+        try #require(await settleOnMain(timeout: earlyEvidenceSettleLimit) { self.scheduler.nextDeadline == 60 })
     }
 
     func at(_ seconds: TimeInterval) -> Date {
@@ -341,7 +346,7 @@ private final class EarlyDwellRig {
     func firstShortRetry() async throws -> TimeInterval {
         let before = requests
         advance(to: 60)
-        try #require(await settleOnMain { self.requests == before + 1 && self.scheduler.pendingCount == 1 })
+        try #require(await settleOnMain(timeout: earlyEvidenceSettleLimit) { self.requests == before + 1 && self.scheduler.pendingCount == 1 })
         let due = try #require(scheduler.nextDeadline)
         try #require(abs(due - 90) < 0.001, "expected a short retry at the 30 s floor, got \(due)")
         #expect(emitter.dwells.isEmpty)
