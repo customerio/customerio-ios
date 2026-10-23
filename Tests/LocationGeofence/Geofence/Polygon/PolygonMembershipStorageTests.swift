@@ -26,6 +26,29 @@ struct PolygonMembershipStorageTests {
         #expect(outcome.deliveredTransition == .enter)
     }
 
+    /// A decisive inside confirmation later than the record's last one replaces it, so the EXIT that
+    /// follows is bounded by the latest proof. Checked here, with no visit stamp for an EXIT to fall
+    /// back on.
+    @Test
+    func decisiveInsideConfirmation_keepsTheLatestProofForTheExit() async {
+        let storage = await makeStorage()
+        let first = Date(timeIntervalSince1970: 1000)
+        let later = first.addingTimeInterval(60)
+        _ = await storage.recordPolygonMembershipWrite(
+            .inside, forIdentifier: "1", onlyIfBeliefPredates: first, decisiveInside: true, now: first
+        )
+        _ = await storage.recordPolygonMembershipWrite(
+            .inside, forIdentifier: "1", onlyIfBeliefPredates: later, decisiveInside: true, now: later
+        )
+
+        let exit = await storage.recordPolygonMembershipWrite(
+            .outside, forIdentifier: "1", onlyIfBeliefPredates: later.addingTimeInterval(30), now: later.addingTimeInterval(30)
+        )
+
+        #expect(exit.outcome == .deliver(.exit))
+        #expect(exit.previousProvenAt == later)
+    }
+
     @Test
     func recordPolygonMembership_givenNoRecordAndOutside_expectSuppressed() async {
         let storage = await makeStorage()
