@@ -615,4 +615,14 @@ class SseLifecycleManagerTest: XCTestCase {
         XCTAssertTrue(sseConnectionManagerMock.stopConnectionCalled)
         XCTAssertEqual(sseConnectionManagerMock.stopConnectionCallsCount, 1)
     }
+
+    // MARK: - Stop On Request
+
+    func test_stopConnection_expectConnectionStopped() async {
+        sut = createLifecycleManager()
+
+        await sut.stopConnection()
+
+        XCTAssertEqual(sseConnectionManagerMock.stopConnectionCallsCount, 1)
+    }
 }
