@@ -55,10 +55,12 @@ jobs:
       github.event.pull_request.user.login != 'dependabot[bot]' &&
       github.event.pull_request.head.repo.full_name == github.repository))
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     outputs:
       suites: ${{ steps.select.outputs.suites }}
     steps:
       - name: Select suite matrix
+        timeout-minutes: 1
         id: select
         env:
           EVENT_NAME: ${{ github.event_name }}
@@ -83,7 +85,8 @@ jobs:
           echo "suites=$suites" >> "$GITHUB_OUTPUT"
 
       - name: Notify #squad-mobile-alerts of a scheduled failure
-        if: failure() && github.event_name == 'schedule'
+        timeout-minutes: 2
+        if: (failure() || cancelled()) && github.event_name == 'schedule'
         uses: customerio/mobile-ci-tools/github-actions/slack-notify-scheduled-failure/v1@main
         with:
           slack_webhook_url: ${{ secrets.SLACK_NOTIFY_RELEASES_WEBHOOK_URL }}
@@ -98,6 +101,8 @@ jobs:
       vars.MOBILE_E2E_ENABLED == 'true' ||
       github.event_name == 'workflow_dispatch'
     runs-on: macos-26
+    # Step budgets total 56 minutes, leaving room before the job cancellation.
+    # A step timeout fails the job while evidence and notification steps can still run.
     timeout-minutes: 60
     env:
       DEVELOPER_DIR: /Applications/Xcode_26.6.app/Contents/Developer
@@ -108,9 +113,11 @@ jobs:
         suite: ${{ fromJSON(needs.prepare.outputs.suites) }}
     steps:
       - name: Check out iOS SDK
+        timeout-minutes: 2
         uses: actions/checkout@v4
 
       - name: Check out shared E2E harness
+        timeout-minutes: 2
         uses: actions/checkout@v4
         with:
           repository: customerio/mobile-e2e
@@ -118,6 +125,7 @@ jobs:
           path: .e2e-harness
 
       - name: Install Maestro and evidence dependencies
+        timeout-minutes: 8
         run: |
           curl -Ls https://get.maestro.mobile.dev | bash
           echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
@@ -127,6 +135,7 @@ jobs:
           echo "$RUNNER_TEMP/mobile-e2e-venv/bin" >> "$GITHUB_PATH"
 
       - name: Configure sample workspace
+        timeout-minutes: 1
         env:
           CDP_API_KEY: ${{ secrets.CUSTOMERIO_APN_WORKSPACE_CDP_API_KEY }}
           SITE_ID: ${{ secrets.CUSTOMERIO_APN_WORKSPACE_SITE_ID }}
@@ -146,6 +155,7 @@ jobs:
           ' "Apps/APN-UIKit/BuildEnvironment.swift"
 
       - name: Validate E2E backend configuration
+        timeout-minutes: 1
         env:
           SUITE: ${{ matrix.suite }}
           MAESTRO_APP_API_KEY: ${{ secrets.MOBILE_E2E_APP_API_KEY }}
@@ -163,6 +173,7 @@ jobs:
           done
 
       - name: Run SDK to backend E2E
+        timeout-minutes: 35
         env:
           SUITE: ${{ matrix.suite }}
           MAESTRO_APP_API_KEY: ${{ secrets.MOBILE_E2E_APP_API_KEY }}
@@ -177,6 +188,7 @@ jobs:
             --headless
 
       - name: Sanitize E2E evidence
+        timeout-minutes: 2
         id: sanitize
         if: always()
         env:
@@ -191,6 +203,7 @@ jobs:
           fi
 
       - name: Upload E2E evidence
+        timeout-minutes: 3
         if: ${{ always() && steps.sanitize.outcome == 'success' }}
         uses: actions/upload-artifact@v4
         with:
@@ -200,7 +213,8 @@ jobs:
           retention-days: 14
 
       - name: Notify #squad-mobile-alerts of a scheduled failure
-        if: failure() && github.event_name == 'schedule'
+        timeout-minutes: 2
+        if: (failure() || cancelled()) && github.event_name == 'schedule'
         uses: customerio/mobile-ci-tools/github-actions/slack-notify-scheduled-failure/v1@main
         with:
           slack_webhook_url: ${{ secrets.SLACK_NOTIFY_RELEASES_WEBHOOK_URL }}
