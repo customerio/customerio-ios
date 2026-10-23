@@ -22,6 +22,10 @@ protocol SseLifecycleManager: AutoMockable {
     /// - Parameter queueFetchHandler: Called to fetch the messages SSE will not deliver — those that
     ///   already existed before the stream opened. Invoked once per confirmed SSE connection.
     func start(queueFetchHandler: @escaping (InAppMessageState) -> Void) async
+
+    /// Stops the SSE connection now, whatever the app state and SSE flag. Used when switching users, so
+    /// the previous user's stream is gone before the new user is set.
+    func stopConnection() async
 }
 
 // sourcery: InjectRegisterShared = "SseLifecycleManager"
@@ -251,6 +255,11 @@ actor CioSseLifecycleManager: SseLifecycleManager {
                 level: .debug
             )
         }
+    }
+
+    func stopConnection() async {
+        logger.logWithModuleTag("SseLifecycleManager: Stopping SSE connection on request", level: .info)
+        await sseConnectionManager.stopConnection()
     }
 
     private func handleBackgrounded() async {

@@ -370,14 +370,16 @@ private extension Gist {
             return
         }
 
-        // Switching users without clearIdentify: reset as clearIdentify would, so the previous user's
-        // messages and SSE stream don't carry over. Chained because separate dispatches aren't ordered.
+        // Switching users without clearIdentify: reset as clearIdentify would, and stop the previous
+        // user's stream before setting the new one, so any later connection is built for the new user.
+        // Awaited in order because separate dispatches aren't ordered.
         queueManager.clearCachedUserQueue()
         invalidateTimer()
-        inAppMessageManager.dispatch(action: .resetState) { [self] in
-            inAppMessageManager.dispatch(action: .setUserIdentifier(user: userToken)) { [self] in
-                setupPollingAndFetch(skipMessageFetch: false, pollingInterval: state.pollInterval)
-            }
+        Task { [self] in
+            await inAppMessageManager.dispatch(action: .resetState).value
+            await sseLifecycleManager.stopConnection()
+            await inAppMessageManager.dispatch(action: .setUserIdentifier(user: userToken)).value
+            setupPollingAndFetch(skipMessageFetch: false, pollingInterval: state.pollInterval)
         }
     }
 }

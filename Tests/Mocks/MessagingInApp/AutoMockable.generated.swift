@@ -2516,6 +2516,9 @@ class SseLifecycleManagerMock: @unchecked Sendable, SseLifecycleManager, Mock {
         _startReceivedInvocations.wrappedValue = []
 
         mockCalled = false // do last as resetting properties above can make this true
+        _stopConnectionCallsCount.wrappedValue = 0
+
+        mockCalled = false // do last as resetting properties above can make this true
     }
 
     // MARK: - start
@@ -2555,6 +2558,31 @@ class SseLifecycleManagerMock: @unchecked Sendable, SseLifecycleManager, Mock {
         _startReceivedArguments.wrappedValue = queueFetchHandler
         _startReceivedInvocations.append(queueFetchHandler)
         startClosure?(queueFetchHandler)
+    }
+
+    // MARK: - stopConnection
+
+    /// Number of times the function was called.
+    private let _stopConnectionCallsCount: CioInternalCommon.Synchronized<Int> = .init(0)
+    var stopConnectionCallsCount: Int {
+        _stopConnectionCallsCount.wrappedValue
+    }
+
+    /// `true` if the function was ever called.
+    var stopConnectionCalled: Bool {
+        stopConnectionCallsCount > 0
+    }
+
+    /**
+     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
+     */
+    var stopConnectionClosure: (() -> Void)?
+
+    /// Mocked function for `stopConnection()`. Your opportunity to return a mocked value and check result of mock in test code.
+    func stopConnection() {
+        mockCalled = true
+        _stopConnectionCallsCount += 1
+        stopConnectionClosure?()
     }
 }
 
