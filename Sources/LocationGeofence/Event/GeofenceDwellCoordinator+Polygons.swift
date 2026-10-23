@@ -12,7 +12,9 @@ extension GeofenceDwellCoordinator {
     /// `processedAt` — the pass's own clock reading, taken before its membership write — places
     /// it, and only while the belief is still outside, judged in the removal itself: a newer
     /// inside pass may have written a new visit while this one was suspended, and that stay is
-    /// its own; a wall clock since stepped back cannot keep the stranded one.
+    /// its own; a wall clock since stepped back cannot keep the stranded one. An EXIT whose routing
+    /// began before the removal — another pass's, suspended before it read the visit — is handed the
+    /// removed visit (`rememberVisitEndedByPendingExit`), so it still names the stay it ends.
     func endVisitLeftOutside(
         geofence: Geofence,
         outsideAt: Date,
@@ -24,7 +26,8 @@ extension GeofenceDwellCoordinator {
               expectedUserId == nil || expectedUserId == userId,
               let removed = await storage.removeDwellVisitLeftOutside(geofenceId: geofence.id, endedBy: outside)
         else { return }
-        cancelEvidence(for: geofence.id, ifVisit: removed)
+        cancelEvidence(for: geofence.id, ifVisit: removed.visitId)
+        rememberVisitEndedByPendingExit(removed, geofenceId: geofence.id)
     }
 
     /// A refresh is about to replace the persisted catalog. Retires every catalog read still in

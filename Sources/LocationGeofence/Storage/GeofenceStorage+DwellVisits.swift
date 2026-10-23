@@ -253,14 +253,14 @@ extension GeofenceStorage {
     /// (`GeofenceExitMark.overtakes`), both judged here, in the one write. A visit begun after that
     /// fix was written by a newer inside pass and is a stay of its own; a wall clock stepped back
     /// behind the visit's entry cannot keep it, as the mark orders by processing then.
-    /// - Returns: the removed visit's id, nil when nothing was removed.
-    func removeDwellVisitLeftOutside(geofenceId: String, endedBy outside: GeofenceExitMark) -> String? {
+    /// - Returns: the removed visit, nil when nothing was removed.
+    func removeDwellVisitLeftOutside(geofenceId: String, endedBy outside: GeofenceExitMark) -> GeofenceDwellVisit? {
         var state = loadFromDisk() ?? GeofenceState()
         guard state.polygonMembership?[geofenceId]?.membership == .outside,
               let visit = state.dwellVisits?[geofenceId], outside.overtakes(visit)
         else { return nil }
         state.dwellVisits?.removeValue(forKey: geofenceId)
-        return saveToDisk(state) ? visit.visitId : nil
+        return saveToDisk(state) ? visit : nil
     }
 
     func getClockReference() -> GeofenceClockReading? {

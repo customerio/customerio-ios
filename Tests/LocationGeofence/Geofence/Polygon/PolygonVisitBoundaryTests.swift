@@ -160,6 +160,35 @@ struct PolygonVisitBoundaryTests {
         #expect(rows[0].visitDurationUncertaintySeconds == 30)
     }
 
+    /// A pass's polygon EXIT is suspended after recording its mark, before it reads the visit, and
+    /// another pass's outside confirmation removes the visit meanwhile. The EXIT still names the
+    /// stay it ends: the removal hands the visit over rather than leaving an EXIT with no visit.
+    @Test
+    func exitSuspendedWhileAnotherPassEndsTheVisit_keepsTheVisitId() async throws {
+        let setup = await makeSetup()
+        await setup.judge(.inside)
+        let visit = try #require(await setup.storage.getDwellVisit(geofenceId: Self.polygon.id))
+        setup.advance(60)
+        let exitedAt = setup.clock.wall
+        _ = await setup.storage.recordPolygonMembership(.outside, forIdentifier: Self.polygon.id, now: exitedAt)
+        // What `handleBoundary` does for the first pass's EXIT before its first await.
+        let reading = setup.clock.read()
+        let mark = GeofenceExitMark(date: exitedAt, processedAt: reading, source: .exitEvent)
+        setup.coordinator.recordExitEvent(mark, geofenceId: Self.polygon.id)
+
+        await setup.coordinator.endVisitLeftOutside(geofence: Self.polygon, outsideAt: exitedAt, expectedUserId: "user-1")
+        try #require(await setup.storage.getDwellVisit(geofenceId: Self.polygon.id) == nil)
+        // The first pass resumes and reads the visit it is ending.
+        let result = await setup.coordinator.exitContext(
+            geofence: Self.polygon, exit: mark, processedAt: reading,
+            detectionSource: "location_evidence", expectedUserId: "user-1"
+        )
+        setup.coordinator.exitRoutingEnded(at: exitedAt, geofenceId: Self.polygon.id)
+
+        #expect(result.context?.visitId == visit.visitId)
+        #expect(result.endedVisitId == nil, "already removed: nothing left to end")
+    }
+
     /// An outside confirmation that was suspended while a newer inside pass began a stay must not
     /// end that stay: only a visit begun before the outside fix, while the belief is still
     /// outside, is the one left behind.
