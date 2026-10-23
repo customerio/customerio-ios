@@ -1,3 +1,9 @@
+## [4.13.0](https://github.com/customerio/customerio-ios/compare/4.12.3...4.13.0) (2026-10-23)
+
+### Features
+
+* **geofence:** add dwell and observed exit duration (MBL-2493, MBL-2495) ([#1346](https://github.com/customerio/customerio-ios/issues/1346)) ([6b45f0e](https://github.com/customerio/customerio-ios/commit/6b45f0e0a5c05c91aae05638331e067a9fca8618))
+
 ## [4.12.3](https://github.com/customerio/customerio-ios/compare/4.12.2...4.12.3) (2026-10-22)
 
 ### Bug Fixes
