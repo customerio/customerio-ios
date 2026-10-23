@@ -47,14 +47,10 @@ struct GeofenceLocationAccess: Codable, Equatable, Sendable {
         delivery.rawValue < previous.delivery.rawValue || (previous.fullAccuracy && !fullAccuracy)
     }
 
-    /// Reduced accuracy exists from iOS 14; before it, every grant is precise.
     static func current(of manager: CLLocationManager) -> GeofenceLocationAccess {
-        if #available(iOS 14.0, *) {
-            return GeofenceLocationAccess(
-                status: manager.authorizationStatus,
-                fullAccuracy: manager.accuracyAuthorization == .fullAccuracy
-            )
-        }
-        return GeofenceLocationAccess(status: CLLocationManager.authorizationStatus(), fullAccuracy: true)
+        GeofenceLocationAccess(
+            status: manager.authorizationStatus,
+            fullAccuracy: manager.accuracyAuthorization == .fullAccuracy
+        )
     }
 }

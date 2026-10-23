@@ -99,11 +99,7 @@ class CioNotificationCenterDelegateTests: XCTestCase {
         XCTAssertFalse(mockNotificationCenterDelegate.willPresentNotificationCalled)
         XCTAssertTrue(completionHandlerCalled)
 
-        if #available(iOS 14.0, *) {
-            XCTAssertEqual(presentationOptions, [.list, .banner, .badge, .sound])
-        } else {
-            XCTAssertEqual(presentationOptions, [.alert, .badge, .sound])
-        }
+        XCTAssertEqual(presentationOptions, [.list, .banner, .badge, .sound])
     }
 
     func testUserNotificationCenterWillPresent_whenWrappedDelegateCallsCompletionHandlerAsync_thenCompletionHandlerIsCalledExactlyOnce() {
@@ -212,11 +208,7 @@ class CioNotificationCenterDelegateTests: XCTestCase {
             withCompletionHandler: { options in presentationOptions = options }
         )
 
-        if #available(iOS 14.0, *) {
-            XCTAssertEqual(presentationOptions, [.list, .banner, .badge, .sound])
-        } else {
-            XCTAssertEqual(presentationOptions, [.alert, .badge, .sound])
-        }
+        XCTAssertEqual(presentationOptions, [.list, .banner, .badge, .sound])
     }
 
     // MARK: - openSettingsFor

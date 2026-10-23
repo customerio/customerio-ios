@@ -4,7 +4,7 @@ import CoreLocation
 import Foundation
 import Testing
 
-/// iOS 13–17 run the classic monitor, where a polygon arrives as its covering circle.
+/// iOS 15–17 run the classic monitor, where a polygon arrives as its covering circle.
 @Suite("CoreLocationGeofenceMonitor polygon path", .serialized)
 @MainActor
 struct GeofenceClassicPolygonPathTests {
