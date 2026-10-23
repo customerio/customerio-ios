@@ -11,7 +11,6 @@ import XCTest
 /// ``VisualInboxModel``: the read-only message/unopened-count API (item 9), the load → refresh
 /// publish cycle (item 11), and the auto-mark-opened dedupe guard (item 8). These tests drive the
 /// model against a hand-written fake provider.
-@available(iOS 13.0, *)
 @MainActor
 final class VisualInboxModelTests: XCTestCase {
     // MARK: - refresh / read-only API (items 9, 11)
@@ -443,7 +442,7 @@ final class VisualInboxModelTests: XCTestCase {
         let model = VisualInboxModel(provider: provider)
         await model.refresh()
 
-        // Jist renders at the iOS 13 floor, so the no-template skip applies on every version:
+        // Jist renders at the SDK's iOS 15 floor, so the no-template skip applies on every version:
         // "b" has no matching template and is filtered out.
         XCTAssertEqual(model.renderableMessages.map(\.id), ["a"])
     }
@@ -542,7 +541,6 @@ final class VisualInboxModelTests: XCTestCase {
 
 /// Hand-written fake of the `@_spi(VisualInbox)` `VisualInboxProvider`. Avoids the auto-generated
 /// mock pipeline so this test target needs no sourcery config.
-@available(iOS 13.0, *)
 private final class FakeVisualInboxProvider: VisualInboxProvider, @unchecked Sendable {
     var stubState: VisualInboxState = .idle
     var stubMessages: [VisualInboxMessageSnapshot] = []

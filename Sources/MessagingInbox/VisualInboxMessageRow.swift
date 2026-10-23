@@ -7,9 +7,7 @@ import SwiftUI
 
 /// A single inbox message rendered via Jist (item 7).
 ///
-/// Jist (`JistView`) is available at the iOS 13 floor: the renderer handles its iOS-15-only needs
-/// internally via runtime backports (AsyncImage / AttributedString), so no host-side gating is needed.
-@available(iOS 13.0, *)
+/// Jist (`JistView`) is available at the SDK's iOS 15 floor, so no host-side gating is needed.
 struct VisualInboxMessageRow: View {
     let message: VisualInboxMessageSnapshot
     /// The message's `properties` already decoded into Jist data by `VisualInboxModel` (decoded once

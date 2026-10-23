@@ -142,7 +142,7 @@ final class VisualInboxProviderImpl: VisualInboxProvider, @unchecked Sendable {
                 let loadStateChanges = await repository.loadStateChanges()
                 // Bridge store subscription callbacks into this task via a local continuation.
                 // (`makeStream()` is iOS 17+, so capture the continuation from the builder instead to
-                // stay within the SDK's iOS-13-compatible source floor.)
+                // stay within the SDK's iOS 15 deployment target.)
                 var storeContinuation: AsyncStream<Void>.Continuation!
                 let storeTicks = AsyncStream<Void> { storeContinuation = $0 }
                 let subscriber = InAppMessageStoreSubscriber { _ in

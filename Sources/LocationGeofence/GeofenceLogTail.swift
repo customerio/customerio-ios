@@ -185,7 +185,7 @@ enum GeofenceLog {
         if location.verticalAccuracy > 0 {
             fields.append(("vacc", num(location.verticalAccuracy)))
         }
-        if #available(iOS 15.0, *), let info = location.sourceInformation {
+        if let info = location.sourceInformation {
             fields.append(("sim", bool(info.isSimulatedBySoftware)))
             if info.isProducedByAccessory {
                 fields.append(("accessory", "true"))
