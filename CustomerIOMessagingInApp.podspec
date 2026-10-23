@@ -26,6 +26,6 @@ Pod::Spec.new do |spec|
   spec.module_name = "CioMessagingInApp"  # the `import X` name when using SDK in Swift files
   
   spec.dependency "CustomerIOCommon", "= #{spec.version.to_s}"
-  # Pinned exactly, for the same reason as Package.swift.
-  spec.dependency "LDSwiftEventSource", "= 3.3.0"
+  # Kept below 3.4.0, for the same reason as Package.swift.
+  spec.dependency "LDSwiftEventSource", "~> 3.3.0"
  end
