@@ -2573,6 +2573,27 @@ struct GeofenceDwellCoordinatorTests {
         #expect(await setup.storage.getDwellVisit(geofenceId: id)?.visitId == visitId)
     }
 
+    /// Between a polygon's covering-circle correction callback and its routed ENTER, the correction
+    /// is no mark: it says nothing about the shape, so a read in that window neither ends the stay
+    /// nor refuses its first DWELL. (The routed ENTER would withdraw such a mark, but only later.)
+    @Test
+    func coveringCircleCorrection_beforeItsRouting_isNotNoted() async throws {
+        let clock = ManualGeofenceClock(wall: Date(timeIntervalSince1970: 1000))
+        let setup = await makeSetup(clock: clock)
+        try #require(await settleOnMain { setup.coordinator.polygonIdsLoaded })
+        let id = setup.geofence.id
+        await setup.coordinator.handleBoundary(geofence: setup.geofence, transition: .enter, occurredAt: clock.wall)
+        let visit = try #require(await setup.storage.getDwellVisit(geofenceId: id))
+        setup.coordinator.cancelEvidence(for: id)
+        clock.advance(30)
+
+        setup.coordinator.noteEnter(geofenceId: id, occurredAt: clock.wall, crossing: false)
+
+        #expect(setup.coordinator.enterMarks[id]?.correction == nil)
+        #expect(!setup.coordinator.correctionRefusesAdmission(of: visit, geofenceId: id))
+        #expect(await setup.coordinator.currentVisit(geofence: setup.geofence, userId: "user-1")?.visitId == visit.visitId)
+    }
+
     /// A crossing held for a polygon is released when a refresh replaces that fence: circle routing
     /// never judges a held crossing, so kept it would refuse every later first DWELL for the id. It is
     /// noted as the circle's crossing, or dropped with a fence the refresh removed.
