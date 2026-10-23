@@ -298,6 +298,22 @@ struct GeofenceDwellProofBudgetTests {
         #expect(rig.coordinator.unsavedProofCharges.isEmpty)
     }
 
+    /// The charge is saved off the main actor: a process whose main actor stays busy from the moment
+    /// it asks until it is killed still leaves the charge on disk for the next launch to read.
+    @Test
+    func charge_isSavedWhileTheMainActorStaysBusy() async throws {
+        let rig = await BudgetRig.make(polygon: false)
+        defer { rig.close() }
+        rig.holdAnswers = true
+        await rig.enterCircle()
+        var savedWhileBusy: Bool?
+        rig.onRequest = { savedWhileBusy = rig.blockMainThread(untilStoredAttempts: 1) }
+        rig.advance(to: 60)
+        try #require(await settleOnMain { savedWhileBusy != nil })
+        #expect(rig.requestTimes == [60])
+        #expect(savedWhileBusy == true, "the charge waited for the main actor to be saved")
+    }
+
     /// Wakes that re-arm the visit within the spacing run checks whose request is refused as too
     /// soon: they buy no fix, so they spend none of the visit's checks, and the four requests still
     /// go out once the spacing allows.
@@ -494,6 +510,8 @@ private final class BudgetRig {
     var holdAnswers = false
     /// Runs at each deadline `drive` reaches, once the clock reads it and before it fires.
     var beforeEachDeadline: ((TimeInterval) -> Void)?
+    /// Runs as each request goes to Core Location, on the main actor, right after its admission.
+    var onRequest: (() -> Void)?
     private(set) var requestTimes: [TimeInterval] = []
     private var now: TimeInterval = 0
     private var exhaustionLogsBeforeRelaunch = 0
@@ -536,6 +554,7 @@ private final class BudgetRig {
         provider.requestFreshFix = { [weak self, weak provider] in
             guard let self, let provider else { return }
             requestTimes.append(now)
+            onRequest?()
             guard !holdAnswers else { return }
             guard !answers.isEmpty, let fix = answers.removeFirst() else {
                 provider.handleRequestFailure()
@@ -609,6 +628,26 @@ private final class BudgetRig {
         dateUtil.givenNow = clock.wall
         before?(now)
         scheduler.advance(to: now)
+    }
+
+    /// A fix at the fence's centre whose accuracy circle is far wider than it: it decides nothing.
+    /// Holds the main thread, as a main actor kept busy would, until the stored visit has spent
+    /// `attempts` requests or 10 s pass. Whether it had.
+    func blockMainThread(untilStoredAttempts attempts: Int) -> Bool {
+        let stored = DispatchSemaphore(value: 0)
+        let storage = storage
+        let geofenceId = polygon ? Self.polygon.id : Self.circle.id
+        let poll = Task.detached {
+            while !Task.isCancelled {
+                if let spent = await storage.getDwellVisit(geofenceId: geofenceId)?.dwellProofAttempts, spent >= attempts {
+                    stored.signal()
+                    return
+                }
+                try? await Task.sleep(nanoseconds: 1000000)
+            }
+        }
+        defer { poll.cancel() }
+        return stored.wait(timeout: .now() + 10) == .success
     }
 
     /// A fix at the fence's centre whose accuracy circle is far wider than it: it decides nothing.

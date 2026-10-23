@@ -32,11 +32,26 @@ final class TrackingTaskSpawner: GeofenceTaskSpawning, @unchecked Sendable {
     ) -> Task<Success, Never> {
         update { $0.inFlight += 1 }
         let task = Self.$current.withValue(ObjectIdentifier(self)) { Task(operation: operation) }
+        countUntilFinished(task)
+        return task
+    }
+
+    /// Counted as `spawn` counts. Unmarked as `current`: a detached task inherits no task-local.
+    @discardableResult
+    func spawnDetached<Success: Sendable>(
+        _ operation: sending @escaping @isolated(any) () async -> Success
+    ) -> Task<Success, Never> {
+        update { $0.inFlight += 1 }
+        let task = Task.detached(operation: operation)
+        countUntilFinished(task)
+        return task
+    }
+
+    private func countUntilFinished<Success: Sendable>(_ task: Task<Success, Never>) {
         Task { [weak self] in
             _ = await task.value
             self?.update { $0.inFlight -= 1 }
         }
-        return task
     }
 
     func workStarted() {

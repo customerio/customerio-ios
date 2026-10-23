@@ -100,6 +100,39 @@ struct GeofenceTaskSpawningTests {
         #expect(await log.snapshot() == Array(0 ..< 20))
     }
 
+    /// The closure doesn't inherit the caller's main actor: it runs while the main thread is held.
+    @Test(arguments: Kind.allCases)
+    func spawnDetached_givenBusyMainActor_expectOperationStillRuns(_ kind: Kind) async {
+        let ran = DispatchSemaphore(value: 0)
+
+        let task = kind.make().spawnDetached { ran.signal() }
+
+        #expect(Self.holdMainThread(until: ran), "the detached work waited for the main actor")
+        await task.value
+    }
+
+    /// Holds the calling thread until `semaphore` is signalled or 10 s pass. Whether it was.
+    private nonisolated static func holdMainThread(until semaphore: DispatchSemaphore) -> Bool {
+        semaphore.wait(timeout: .now() + 10) == .success
+    }
+
+    @Test
+    func trackingSpawner_givenDetachedWork_expectCountedUntilItFinishes() async {
+        let spawner = TrackingTaskSpawner()
+        let gate = AsyncStream<Void>.makeStream()
+
+        let task = spawner.spawnDetached {
+            for await _ in gate.stream {}
+        }
+        #expect(spawner.inFlight == 1)
+
+        gate.continuation.finish()
+        await task.value
+        await spawner.awaitIdle()
+
+        #expect(spawner.inFlight == 0)
+    }
+
     @Test
     func trackingSpawner_givenSuspendedWork_expectCountedUntilItFinishes() async {
         let spawner = TrackingTaskSpawner()
