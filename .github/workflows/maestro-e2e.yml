@@ -125,7 +125,7 @@ jobs:
           path: .e2e-harness
 
       - name: Install Maestro and evidence dependencies
-        timeout-minutes: 8
+        timeout-minutes: 5
         run: |
           curl -Ls https://get.maestro.mobile.dev | bash
           echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
@@ -173,7 +173,7 @@ jobs:
           done
 
       - name: Run SDK to backend E2E
-        timeout-minutes: 35
+        timeout-minutes: 40
         env:
           SUITE: ${{ matrix.suite }}
           MAESTRO_APP_API_KEY: ${{ secrets.MOBILE_E2E_APP_API_KEY }}
@@ -188,7 +188,7 @@ jobs:
             --headless
 
       - name: Sanitize E2E evidence
-        timeout-minutes: 2
+        timeout-minutes: 1
         id: sanitize
         if: always()
         env:
@@ -203,7 +203,7 @@ jobs:
           fi
 
       - name: Upload E2E evidence
-        timeout-minutes: 3
+        timeout-minutes: 2
         if: ${{ always() && steps.sanitize.outcome == 'success' }}
         uses: actions/upload-artifact@v4
         with:
