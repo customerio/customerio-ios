@@ -3,13 +3,23 @@ import CoreLocation
 import Foundation
 
 /// Args: identifier, transition, location, `occurredAt` (OS event date; receipt time on the classic
-/// path, fix time for a heal), `locationIsFresh` (a fix obtained for THIS event), and the circle the
-/// OS was monitoring when it RAISED the event. Invoked on the main actor but not statically isolated.
-typealias GeofenceTransitionHandler = @Sendable (String, GeofenceTransition, LocationData?, Date, Bool, GeofenceEventCircle) -> Void
+/// path, fix time for a heal), `locationIsFresh` (a fix obtained for this event), the circle the
+/// OS monitored when it raised the event, and `crossingObserved`. Invoked on the main actor but
+/// not statically isolated.
+///
+/// `crossingObserved` says the OS observed a crossing, so the visit may be timed from `occurredAt`.
+/// False for corrections of an assumed state and for heals dated when the SDK noticed a crossing.
+/// The transition is delivered either way; only its visit's timing differs.
+typealias GeofenceTransitionHandler = @Sendable (String, GeofenceTransition, LocationData?, Date, Bool, GeofenceEventCircle, Bool) -> Void
 
 typealias GeofenceAuthorizationChangedHandler = @MainActor () -> Void
 
 typealias GeofenceReconciledHandler = @MainActor () -> Void
+
+/// Called when the OS stops monitoring one condition, or when the monitor's event stream is
+/// interrupted globally or location access drops (Always or precise location lost). A nil
+/// identifier means continuity is unknown for every active visit.
+typealias GeofenceMonitoringInterruptedHandler = @MainActor (String?) -> Void
 
 /// `unknown` (cold wake, never recorded) must be taken as current or real crossings are dropped.
 /// `expired`: the circle is known to be gone, so the event proves nothing about current geometry.
@@ -44,6 +54,13 @@ struct MonitoredCircle: Equatable, Sendable {
         abs(center.latitude - geofence.latitude) < Self.coordinateTolerance
             && abs(center.longitude - geofence.longitude) < Self.coordinateTolerance
             && abs(radius - min(geofence.radius, maximumRadius)) < Self.radiusTolerance
+    }
+
+    /// Whether both are the same circle as registered, both already clamped; same tolerances.
+    func isSameCircle(as other: MonitoredCircle) -> Bool {
+        abs(center.latitude - other.center.latitude) < Self.coordinateTolerance
+            && abs(center.longitude - other.center.longitude) < Self.coordinateTolerance
+            && abs(radius - other.radius) < Self.radiusTolerance
     }
 
     /// Keep in step with `GeofenceRegionRequest`'s tolerances.
@@ -87,6 +104,11 @@ struct GeofenceRegionDiff: Equatable, Sendable {
 /// registrations only; callers decide which regions to monitor.
 @MainActor
 protocol GeofenceRegionMonitoring: AnyObject, Sendable {
+    /// Whether the `occurredAt` this monitor hands a transition is when the app received it rather
+    /// than when the OS dated the event: the classic monitor's region callbacks carry no date. An
+    /// EXIT so dated can only bound the departure by the whole stay (`GeofenceExitContext`).
+    var datesEventsAtReceipt: Bool { get }
+
     func setOnTransition(_ handler: GeofenceTransitionHandler?)
 
     /// Fires on every status change, in either direction.
@@ -94,6 +116,10 @@ protocol GeofenceRegionMonitoring: AnyObject, Sendable {
 
     /// Fires when reconciling against the OS's live conditions found drift. CLMonitor only.
     func setOnReconciled(_ handler: GeofenceReconciledHandler?)
+
+    /// Fires when the OS stops monitoring a condition; nil when continuity is lost for all of them,
+    /// including on a drop in `locationAccess`. Never for a repeated or increased authorization.
+    func setOnMonitoringInterrupted(_ handler: GeofenceMonitoringInterruptedHandler?)
 
     /// `radius` is clamped to the OS maximum.
     func startMonitoring(identifier: String, center: LocationData, radius: Double, transitionTypes: Set<GeofenceTransition>)
@@ -122,8 +148,15 @@ protocol GeofenceRegionMonitoring: AnyObject, Sendable {
 
     /// Logs only when the tier changed since the last report.
     func reportPermissionTier()
+
+    /// What the current location permission lets region monitoring observe.
+    var locationAccess: GeofenceLocationAccess { get }
 }
 
 extension GeofenceRegionMonitoring {
+    /// Dated by the OS unless the monitor says otherwise.
+    var datesEventsAtReceipt: Bool { false }
+
     func setOnReconciled(_ handler: GeofenceReconciledHandler?) {}
+    func setOnMonitoringInterrupted(_ handler: GeofenceMonitoringInterruptedHandler?) {}
 }

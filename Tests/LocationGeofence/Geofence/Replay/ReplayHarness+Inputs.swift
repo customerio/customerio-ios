@@ -49,7 +49,7 @@ extension ReplayHarness {
         let envelope = #"{"geofences":\#(bodyJSON)}"#
         let response = try JSONDecoder().decode(GeofenceApiResponse.self, from: Data(envelope.utf8))
         fetchQueue.append(.success(response))
-        installFetchQueue()
+        fetchFixtureEnqueued = true
     }
 
     func enqueueFetchFailure(why: String?) {
@@ -65,10 +65,11 @@ extension ReplayHarness {
         default: .transport
         }
         fetchQueue.append(.failure(error))
-        installFetchQueue()
+        fetchFixtureEnqueued = true
     }
 
-    private func installFetchQueue() {
+    /// Called once, from `init`: `api` survives `reenterProcess()`. An empty queue answers at once.
+    func installFetchHandler() {
         api.fetchNearbyGeofencesClosure = { [weak self] _, _, completion in
             guard let self else {
                 // Answered anyway: an unanswered completion hangs the coordinator silently.
@@ -94,9 +95,8 @@ extension ReplayHarness {
     }
 
     func fetchAccounting() -> String? {
-        // With no fixture enqueued there is no stub; only the mock counts fetches.
-        if fetchQueue.isEmpty, fetchCount == 0, api.fetchNearbyGeofencesCallsCount > 0 {
-            return "\(api.fetchNearbyGeofencesCallsCount) fetch(es) with no recorded fixture — the drive captured no response for them"
+        if starvedFetchCount > 0, !fetchFixtureEnqueued {
+            return "\(starvedFetchCount) fetch(es) with no recorded fixture — the drive captured no response for them"
         }
         if starvedFetchCount > 0 {
             return "\(fetchCount) fetches, \(starvedFetchCount) unanswered — replay synced more often than the drive"

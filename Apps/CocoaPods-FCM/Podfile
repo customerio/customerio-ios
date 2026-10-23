@@ -3,6 +3,9 @@ use_frameworks!
 
 require_relative '../../scripts/cocoapods_deployment_target'
 
+# The "test cocoapods FID" scheme builds these to register with the Firebase Installation ID
+project 'test cocoapods', 'Debug-FID' => :debug, 'Release-FID' => :release
+
 # Always install the SDK from the local source code so the sample app tests this specific commit of the code. 
 sdk_local_path = File.join(File.dirname(__FILE__), '../../')
 

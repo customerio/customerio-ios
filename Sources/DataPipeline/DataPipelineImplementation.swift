@@ -2,7 +2,7 @@ import CioAnalytics
 import CioInternalCommon
 
 class DataPipelineImplementation: DataPipelineInstance, DataPipelineTracking, BackgroundDeliveryCdpApiKeyProvider {
-    private let moduleConfig: DataPipelineConfigOptions
+    let moduleConfig: DataPipelineConfigOptions
     private let logger: Logger
     private let dataPipelinesLogger: DataPipelinesLogger
     let analytics: Analytics
@@ -28,6 +28,8 @@ class DataPipelineImplementation: DataPipelineInstance, DataPipelineTracking, Ba
         self.moduleConfig = moduleConfig
         self.logger = diGraph.logger
         self.dataPipelinesLogger = diGraph.dataPipelinesLogger
+        // Keep identity and queued events when the app switches to a `pk_` key.
+        AnalyticsStorageMigration.run(for: moduleConfig.cdpApiKey, diGraph: diGraph)
         self.analytics = .init(configuration: moduleConfig.toSegmentConfiguration())
 
         self.eventBusHandler = diGraph.eventBusHandler

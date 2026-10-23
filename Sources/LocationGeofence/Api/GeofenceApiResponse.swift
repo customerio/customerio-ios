@@ -73,6 +73,7 @@ struct GeofenceApiRegion: Decodable {
     let lastUpdated: Double?
     let geosetIds: [String]?
     let metadata: [String: GeofenceMetadataValue]?
+    var dwellThresholdSeconds: Int?
 }
 
 struct GeofenceApiGeometry: Decodable, Equatable {
@@ -92,7 +93,7 @@ struct GeofenceApiEnclosingCircle: Decodable, Equatable {
 extension GeofenceApiRegion {
     private enum CodingKeys: String, CodingKey {
         case id, name, shape, latitude, longitude, radius, geometry, enclosingCircle, externalId,
-             transitionTypes, lastUpdated, geosetIds, metadata
+             transitionTypes, lastUpdated, geosetIds, metadata, dwellThresholdSeconds
     }
 
     /// `id` and `geoset_ids` are `int64` on the wire but strings in some legacy payloads. In an
@@ -113,6 +114,22 @@ extension GeofenceApiRegion {
         self.lastUpdated = try container.decodeIfPresent(Double.self, forKey: .lastUpdated)
         self.geosetIds = try container.decodeStringOrIntArrayIfPresent(forKey: .geosetIds)
         self.metadata = try container.decodeMetadataIfPresent(forKey: .metadata)
+        self.dwellThresholdSeconds = Self.decodeDwellThreshold(from: container)
+    }
+
+    /// Lenient, like the polygon fields: a malformed threshold must not drop the region. An integer
+    /// is taken as is, a whole-numbered double too; anything else reads as absent, so dwell is off
+    /// for the fence and its ENTER and EXIT still arrive. Out-of-range values are left to
+    /// `validDwellThreshold`.
+    private static func decodeDwellThreshold(from container: KeyedDecodingContainer<CodingKeys>) -> Int? {
+        if let seconds = try? container.decodeIfPresent(Int.self, forKey: .dwellThresholdSeconds) {
+            return seconds
+        }
+        guard let seconds = try? container.decodeIfPresent(Double.self, forKey: .dwellThresholdSeconds),
+              seconds.isFinite, seconds.rounded(.towardZero) == seconds,
+              seconds.magnitude < Double(Int32.max)
+        else { return nil }
+        return Int(seconds)
     }
 }
 
@@ -253,7 +270,8 @@ extension GeofenceApiRegion {
             lastUpdated: lastUpdated.map { Date(timeIntervalSince1970: $0 / 1000) } ?? Date(timeIntervalSince1970: 0),
             geosetIds: geosetIds ?? [],
             metadata: Self.cappedMetadata(metadata),
-            vertices: resolved.vertices
+            vertices: resolved.vertices,
+            dwellThresholdSeconds: Self.validDwellThreshold(dwellThresholdSeconds)
         ))
     }
 
@@ -303,8 +321,16 @@ extension GeofenceApiRegion {
     private static func resolveTransitionTypes(_ raw: [String]?) -> Set<GeofenceTransition> {
         let defaults: Set<GeofenceTransition> = [.enter, .exit]
         guard let raw, !raw.isEmpty else { return defaults }
-        let parsed = Set(raw.compactMap { GeofenceTransition(rawValue: $0.lowercased()) })
+        let parsed = Set(raw.compactMap { value -> GeofenceTransition? in
+            let transition = GeofenceTransition(rawValue: value.lowercased())
+            return transition == .enter || transition == .exit ? transition : nil
+        })
         return parsed.isEmpty ? defaults : parsed
+    }
+
+    private static func validDwellThreshold(_ seconds: Int?) -> Int {
+        guard let seconds, (1 ... GeofenceDwellLimits.maxThresholdSeconds).contains(seconds) else { return 0 }
+        return seconds
     }
 
     /// Safety net for the short background wake. Per-value size is left to the server.

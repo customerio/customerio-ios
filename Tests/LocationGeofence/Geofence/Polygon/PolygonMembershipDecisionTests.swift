@@ -171,6 +171,52 @@ struct PolygonMembershipDecisionTests {
         ) == nil)
     }
 
+    // MARK: - A deep body under a spur's scale
+
+    /// ~300 m square with a ~1 km × 10 m spur off its east side, at the equator: scale ~63 m, centre ~150 m deep.
+    private func spurredSquare() -> PolygonRegion? {
+        PolygonRegion(validating: [
+            LocationData(latitude: 0, longitude: 0),
+            LocationData(latitude: 0, longitude: 0.0027),
+            LocationData(latitude: 0.001305, longitude: 0.0027),
+            LocationData(latitude: 0.001305, longitude: 0.0117),
+            LocationData(latitude: 0.001395, longitude: 0.0117),
+            LocationData(latitude: 0.001395, longitude: 0.0027),
+            LocationData(latitude: 0.0027, longitude: 0.0027),
+            LocationData(latitude: 0.0027, longitude: 0)
+        ])
+    }
+
+    private let bodyCentre = LocationData(latitude: 0.00135, longitude: 0.00135)
+
+    @Test
+    func resolvedOutcome_givenAWholeCircleInsideASpurredBody_expectDecidedInsideButStrict() throws {
+        let body = try #require(square(sideDegrees: 0.0027))
+        let bodyDepth = body.signedEdgeDistance(to: bodyCentre)
+        try #require(bodyDepth > 140)
+        #expect(PolygonMembershipDecision.resolvedOutcome(
+            signedEdgeDistance: bodyDepth, horizontalAccuracy: 100, fixAge: freshAge, venueScale: body.scale
+        ) == .decided(.inside))
+
+        let region = try #require(spurredSquare())
+        let depth = region.signedEdgeDistance(to: bodyCentre)
+        // The premise: deep at the centre, yet a scale under every accuracy used below.
+        try #require(depth > 140)
+        try #require(region.scale < 70)
+
+        #expect(PolygonMembershipDecision.resolvedOutcome(
+            signedEdgeDistance: depth, horizontalAccuracy: 100, fixAge: freshAge, venueScale: region.scale
+        ) == .decided(.inside))
+        // Clear by only 10 m still decides: no margin on top of the accuracy.
+        #expect(PolygonMembershipDecision.resolvedOutcome(
+            signedEdgeDistance: depth, horizontalAccuracy: depth - 10, fixAge: freshAge, venueScale: region.scale
+        ) == .decided(.inside))
+        // A circle that only reaches the ring has not shown the side, so the ceiling still applies.
+        #expect(PolygonMembershipDecision.resolvedOutcome(
+            signedEdgeDistance: depth, horizontalAccuracy: depth, fixAge: freshAge, venueScale: region.scale
+        ) == .undecided(.accuracyTooLow))
+    }
+
     // MARK: - PolygonRegion.scale (the per-fence ceiling)
 
     /// At the equator, so tests can use a fixed metres-per-degree.

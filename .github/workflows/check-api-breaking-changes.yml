@@ -20,7 +20,7 @@ jobs:
   check-api-breaking-changes:
     runs-on: macos-26
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       
       - uses: customerio/mobile-ci-tools/github-actions/ios/setup-ios/v1@main
       
