@@ -37,6 +37,22 @@ class MessagingPushImplementationTest: UnitTest {
         )
     }
 
+    // MARK: - deleteDeviceToken
+
+    func test_deleteDeviceToken_expectDeviceDeletedAndEventPosted() {
+        let customerIOMock = CustomerIOInstanceMock()
+        _ = CustomerIO.setUpSharedInstanceForUnitTest(implementation: customerIOMock)
+        defer { CustomerIO.resetSharedTestEnvironment() }
+        let eventBusHandlerMock = EventBusHandlerMock()
+        diGraphShared.override(value: eventBusHandlerMock, forType: EventBusHandler.self)
+        let implementation = MessagingPushImplementation(diGraph: diGraphShared, moduleConfig: MessagingPushConfigBuilder().build())
+
+        implementation.deleteDeviceToken()
+
+        XCTAssertEqual(customerIOMock.deleteDeviceTokenCallsCount, 1)
+        XCTAssertTrue(eventBusHandlerMock.postEventReceivedInvocations.contains { $0 is DeleteDeviceTokenEvent })
+    }
+
     // MARK: - NSE didReceive / coordinator
 
     func test_didReceive_whenNonCIOPush_returnsFalse() {

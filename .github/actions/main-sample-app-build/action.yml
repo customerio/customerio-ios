@@ -50,7 +50,7 @@ runs:
     - name: Download latest main sample app build to compare against 
       id: restore-build
       if: ${{ inputs.set-latest-main-build == '' }}
-      uses: actions/cache/restore@v4
+      uses: actions/cache/restore@v6
       with:
         # The key input is required for this action to run. But whatever value we pass in, it will not work for our use case. Therefore, this value is a placeholder value. 
         # The restore-keys param is what will download the latest cache version for us.
@@ -85,7 +85,7 @@ runs:
     # So we checkout the main branch and build the sample app.
     - name: Checkout exact baseline commit
       if: ${{ env.BUILD_CACHE_HIT == 'false' }}
-      uses: actions/checkout@v4
+      uses: actions/checkout@v7
       with:
         ref: ${{ env.BASELINE_REF }}
 
@@ -127,7 +127,7 @@ runs:
 
     - name: Save latest main sample app build
       if: ${{ inputs.set-latest-main-build != '' || env.BUILD_CACHE_HIT == 'false' }}
-      uses: actions/cache/save@v4
+      uses: actions/cache/save@v6
       with:
         # the key must be unique. caches are immutable so the key must always be unique. 
         # https://github.com/actions/cache/blob/main/tips-and-workarounds.md#update-a-cache

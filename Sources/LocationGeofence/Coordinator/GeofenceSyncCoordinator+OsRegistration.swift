@@ -54,7 +54,9 @@ extension GeofenceSyncCoordinatorImpl {
                 center: LocationData(latitude: region.latitude, longitude: region.longitude),
                 radius: region.radius,
                 // Both edges so membership can advance; the customer's filter applies to the verdict.
-                transitionTypes: region.vertices == nil ? region.transitionTypes : [.enter, .exit]
+                // A visit-tracking circle is widened too; `recordRegistrationIntent` records its extra
+                // edges before this runs.
+                transitionTypes: region.osTransitionTypes
             )
         })
         let diff = monitor.setMonitoredRegions(desired)
@@ -65,9 +67,24 @@ extension GeofenceSyncCoordinatorImpl {
             removed: diff.removed.count,
             unchanged: registeredIds.count - diff.added.count
         )
+        endDwellContinuity(unregistered: diff.removed)
         return GeofenceOsRegistration(
             registeredIds: registeredIds,
             maxMonitoringRadius: monitor.maximumMonitoringRadius
         )
+    }
+
+    /// A fence the SDK stops monitoring gets no EXIT, so nothing would ever close its visit. Left
+    /// in place, the ENTER synthesized when a later re-rank registers it again would adopt that
+    /// visit, and its dwell and EXIT would report a stay spanning all the time nothing watched the
+    /// fence. Its continuity ends with the registration, as Android's registration incarnation does.
+    /// Dated now, so the initial ENTER a re-register synthesizes later keeps the visit it opens.
+    @MainActor
+    private func endDwellContinuity(unregistered identifiers: Set<String>) {
+        let geofenceIds = identifiers.subtracting([GeofenceConstants.movementTriggerIdentifier])
+        guard let dwellCoordinator, !geofenceIds.isEmpty else { return }
+        for geofenceId in geofenceIds {
+            dwellCoordinator.interruptContinuity(geofenceId: geofenceId)
+        }
     }
 }

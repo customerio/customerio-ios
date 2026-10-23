@@ -14,23 +14,33 @@ struct ReplayHarnessTests {
     /// Past `contradictionGateReplayWindow`: inside it an enter while still outside is refused.
     private static let arrivalAt: TimeInterval = 30
 
-    private func catalogue(_ fenceId: String) -> String {
-        """
-        [{"id":"\(fenceId)","name":"F","latitude":\(Self.latitude),"longitude":\(Self.longitude),"radius":250,"transitionTypes":["enter","exit"],"geosetIds":["7"]}]
+    private func catalogue(_ fenceId: String, dwellThresholdSeconds: Int? = nil) -> String {
+        let dwell = dwellThresholdSeconds.map { ",\"dwellThresholdSeconds\":\($0)" } ?? ""
+        return """
+        [{"id":"\(fenceId)","name":"F","latitude":\(Self.latitude),"longitude":\(Self.longitude),"radius":250,"transitionTypes":["enter","exit"],"geosetIds":["7"]\(dwell)}]
         """
     }
 
+    /// `registrationFixAge` is how old the cached position the registration reads is; nil for none
+    /// at all, which leaves the SDK assuming the device is outside rather than knowing it.
     @available(iOS 17.0, *)
-    private func registered(_ harness: ReplayHarness, fenceId: String) async throws {
-        try harness.enqueueFetch(bodyJSON: catalogue(fenceId))
+    private func registered(
+        _ harness: ReplayHarness,
+        fenceId: String,
+        dwellThresholdSeconds: Int? = nil,
+        registrationFixAge: TimeInterval? = 0
+    ) async throws {
+        try harness.enqueueFetch(bodyJSON: catalogue(fenceId, dwellThresholdSeconds: dwellThresholdSeconds))
         harness.loadPulledFixes(stimuli: [0, Self.arrivalAt], samples: [
-            harness.pulledFix(
-                latitude: Self.awayLatitude,
-                longitude: Self.longitude,
-                accuracy: 10,
-                age: 0,
-                at: 0
-            ),
+            registrationFixAge.map {
+                harness.pulledFix(
+                    latitude: Self.awayLatitude,
+                    longitude: Self.longitude,
+                    accuracy: 10,
+                    age: $0,
+                    at: 0
+                )
+            } ?? harness.emptyPull(at: 0),
             harness.pulledFix(
                 latitude: Self.latitude,
                 longitude: Self.longitude,
@@ -52,7 +62,7 @@ struct ReplayHarnessTests {
             age: 0,
             source: .bus
         )
-        try await harness.settleBoundaries()
+        await harness.settleBoundaries()
         #expect(
             await settleOnMain { harness.emitted(ev: "registration.applied").count == 1 },
             "setup did not reach a registered state: \(harness.emitted.map { $0["ev"] ?? "?" })"
@@ -91,7 +101,7 @@ struct ReplayHarnessTests {
                 age: 0,
                 source: .resolver
             )
-            try await harness.settleBoundaries()
+            await harness.settleBoundaries()
             #expect(harness.fetchCount == 0, "a cache read started a sync")
             #expect(harness.emitted(ev: "registration.applied").isEmpty)
 
@@ -102,10 +112,47 @@ struct ReplayHarnessTests {
                 age: 0,
                 source: .bus
             )
-            try await harness.settleBoundaries()
+            await harness.settleBoundaries()
             #expect(
                 await settleOnMain { harness.emitted(ev: "registration.applied").count == 1 },
                 "the bus fix did not drive the sync: \(harness.emitted.map { $0["ev"] ?? "?" })"
+            )
+        }
+    }
+
+    /// Left unanswered, the fetch keeps its task in flight and `awaitIdle()` never returns.
+    @Test
+    @available(iOS 17.0, *)
+    func awaitIdle_givenFetchWithNoRecordedFixture_expectAnsweredAndReported() async {
+        await ReplayHarness.withTail {
+            let harness = ReplayHarness()
+            harness.loadPulledFixes(stimuli: [0], samples: [
+                harness.pulledFix(
+                    latitude: Self.awayLatitude,
+                    longitude: Self.longitude,
+                    accuracy: 10,
+                    age: 0,
+                    at: 0
+                )
+            ])
+            harness.setIdentified(true)
+            await harness.awaitIdle()
+            #expect(harness.acquireFixCallCount == 1, "identify did not arm for a fix")
+
+            harness.feedFix(
+                latitude: Self.awayLatitude,
+                longitude: Self.longitude,
+                accuracy: nil,
+                age: 0,
+                source: .bus
+            )
+            await harness.awaitIdle()
+
+            // The control: with no fetch, `awaitIdle()` returning proves nothing.
+            #expect(harness.fetchCount == 1, "the bus fix did not start a fetch")
+            #expect(
+                harness.fetchAccounting()?.hasPrefix("1 fetch(es) with no recorded fixture") == true,
+                "fetch accounting: \(harness.fetchAccounting() ?? "nil")"
             )
         }
     }
@@ -128,6 +175,254 @@ struct ReplayHarnessTests {
         }
     }
 
+    /// Replay composes dwell as production does. Left to the DI default, bootstrap resolved
+    /// `GeofenceDwellCoordinator.shared` — built from whichever harness touched it first — and
+    /// awaited it inside the process-global run chain, while this composition's resolver and
+    /// coordinator ran the pre-dwell paths production no longer takes.
+    @Test
+    @available(iOS 17.0, *)
+    func deliverCrossing_givenArmedDwellCircle_expectVisitRecordedByThisComposition() async throws {
+        try await ReplayHarness.withTail {
+            let harness = ReplayHarness()
+            defer { harness.detachFromBootstrap() }
+            #expect(harness.bootstrapResolvesOwnDwellCoordinator)
+            try await registered(harness, fenceId: "A", dwellThresholdSeconds: 60)
+
+            harness.deliverCrossing(fence: "A", transition: .enter)
+            await Task.yield()
+            await settleOnMain { harness.emitted(ev: "transition.accepted").count == 1 }
+
+            #expect(harness.emitted(ev: "transition.accepted").first?["t"] == "enter")
+            // Recorded after the ENTER is tracked, so it can trail the acceptance by a hop or two.
+            var visit = await harness.storedVisit(fence: "A")
+            for _ in 0 ..< 200 where visit == nil {
+                try await Task.sleep(nanoseconds: 10000000)
+                visit = await harness.storedVisit(fence: "A")
+            }
+            #expect(visit?.entryObserved == true)
+        }
+    }
+
+    /// Registered with no fix, or one too old to settle the side, the condition is added ASSUMING
+    /// the device is outside. `CLMonitor` answers a wrong assumption with the real state, so the
+    /// ENTER that follows may describe a device that was inside all along: still delivered, but the
+    /// visit it starts is a candidate whose start is not reported as an entry.
+    @Test(arguments: [nil, 600] as [TimeInterval?])
+    @available(iOS 17.0, *)
+    func deliverCrossing_givenAssumedOutsideBaseline_expectEnterDeliveredAndVisitCandidate(
+        registrationFixAge: TimeInterval?
+    ) async throws {
+        try await ReplayHarness.withTail {
+            let harness = ReplayHarness()
+            defer { harness.detachFromBootstrap() }
+            try await registered(
+                harness, fenceId: "A", dwellThresholdSeconds: 60, registrationFixAge: registrationFixAge
+            )
+
+            let visit = try await enterAndAwaitVisit(harness, fenceId: "A")
+
+            #expect(harness.emitted(ev: "transition.accepted").first?["t"] == "enter")
+            #expect(visit != nil, "the ENTER started no visit, so this test proves nothing")
+            #expect(visit?.entryObserved == false, "an assumption's correction was dated as an entry")
+        }
+    }
+
+    /// Relaunched by the OS while frozen. The sync the bus fix starts still awaits its fetch, which is
+    /// answered only after the freeze.
+    private func relaunchWhileFrozen() -> Scenario {
+        func record(
+            _ kind: Scenario.Record.Kind, _ at: TimeInterval, _ ev: String, _ fields: [String: String] = [:]
+        ) -> Scenario.Record {
+            Scenario.Record(kind: kind, at: at, ev: ev, fields: fields)
+        }
+        let records = [
+            record(.given, 5, "fixture.api.fetch", ["ok": "true", "body": catalogue("A")]),
+            record(.when, 0, "process.start"),
+            record(.when, 0.5, "identity.changed", ["ok": "true"]),
+            record(.when, 1, "location.fix", [
+                "prov": GeofenceLog.FixSource.bus.rawValue, "lat": "\(Self.awayLatitude)", "lon": "\(Self.longitude)"
+            ]),
+            // The cache read under the bus fix finds no position.
+            record(.when, 1, "location.fix", ["prov": GeofenceLog.FixSource.none.rawValue]),
+            record(.when, 2, "app.suspend"),
+            record(.when, 3, "process.start")
+        ]
+        let header = Scenario.Header(
+            name: "relaunch-while-frozen", platform: "ios", sourceKind: "synthetic", startedAt: "", sdk: nil, device: nil
+        )
+        return Scenario(name: header.name, platform: header.platform, header: header, records: records)
+    }
+
+    /// A frozen process cannot be relaunched in replay: dropping the fetch reply its SDK still awaits
+    /// would leave that await suspended, and delivering it would hand the old process's answer to the
+    /// new one. So the relaunch is reported unsupported, and the run ends frozen with the reply held.
+    @Test
+    @available(iOS 17.0, *)
+    func run_givenProcessStartWhileSuspended_expectUnsupportedAndReplyStillHeld() async throws {
+        try await ReplayHarness.withTail {
+            let harness = ReplayHarness()
+            defer { harness.detachFromBootstrap() }
+            let frozenProcess = harness.dwellCoordinator
+
+            let result = try await ReplayRunner.run(relaunchWhileFrozen(), on: harness)
+
+            #expect(
+                harness.gate.abandonedAtEnd.contains { $0.hasSuffix("(held: process suspended)") },
+                "no reply still held: \(harness.gate.abandonedAtEnd); \(harness.emitted.map { $0["ev"] ?? "?" })"
+            )
+            #expect(result.unsupported.contains { $0.hasPrefix("when process.start@3.0") }, "\(result.unsupported)")
+            #expect(harness.isExecutionSuspended, "the relaunch thawed the frozen process")
+            #expect(harness.dwellCoordinator === frozenProcess, "a new process was composed while frozen")
+            #expect(harness.emitted(ev: "registration.applied").isEmpty, "the held fetch reply was delivered")
+            // Cleanup only, after the frozen contract was asserted: thaw this same process so the fetch it
+            // parked is answered and its continuation resumes, rather than outliving the test.
+            await harness.resumeExecution()
+            await harness.settleBoundaries()
+        }
+    }
+
+    /// When the device is next seen, well after it left the fence the OS entered it for.
+    private static let leftAt: TimeInterval = 600
+
+    /// The OS saw the device arrive and missed it leaving; a later sync's heal finds it outside and
+    /// synthesizes the EXIT, dated to the fix that noticed. The EXIT is still delivered and ends the
+    /// visit, but its date is when the SDK looked, not when the device left: a duration measured to
+    /// it would report a stay as long as the gap between the crossing and the next sync.
+    @Test
+    @available(iOS 17.0, *)
+    func baselineHeal_givenObservedVisitAndMissedOsExit_expectExitClosesVisitWithoutDuration() async throws {
+        try await ReplayHarness.withTail {
+            let harness = ReplayHarness()
+            defer { harness.detachFromBootstrap() }
+            try await registered(harness, fenceId: "A")
+            let visit = try await enterAndAwaitVisit(harness, fenceId: "A")
+            #expect(visit?.entryObserved == true, "the stay must be timed for its EXIT to be able to report one")
+            await moveAway(harness)
+
+            // What a sync leaving the fence registered-unchanged enqueues behind its own ops.
+            harness.monitor.enqueueBaselineHeal(candidates: ["A"])
+            let exit = try await awaitExit(harness, fenceId: "A")
+
+            #expect(harness.emitted(ev: "baseline.healed").count == 1, "\(harness.emitted.map { $0["ev"] ?? "?" })")
+            #expect(exit != nil, "the healed EXIT was not delivered")
+            // A healed EXIT discovers the departure: timed to the heal, the whole stay since the
+            // device was last proven inside as its uncertainty.
+            #expect(exit?.visitId == visit?.visitId)
+            #expect(exit?.enteredAt != nil)
+            #expect(exit?.visitDurationSeconds != nil)
+            #expect(exit?.visitDurationUncertaintySeconds == exit?.visitDurationSeconds)
+            #expect(exit?.detectionSource == "native")
+            #expect(await harness.storedVisit(fence: "A") == nil, "the healed EXIT left the visit open")
+        }
+    }
+
+    /// The control for the heal above: the same stay ended by an EXIT the OS delivered is a timed
+    /// crossing, and reports its duration as a native one.
+    @Test
+    @available(iOS 17.0, *)
+    func deliverCrossing_givenObservedVisitAndOsExit_expectExitReportsNativeDuration() async throws {
+        try await ReplayHarness.withTail {
+            let harness = ReplayHarness()
+            defer { harness.detachFromBootstrap() }
+            try await registered(harness, fenceId: "A")
+            let visit = try await enterAndAwaitVisit(harness, fenceId: "A")
+            await moveAway(harness)
+
+            harness.deliverCrossing(fence: "A", transition: .exit)
+            let exit = try await awaitExit(harness, fenceId: "A")
+
+            #expect(exit?.visitId == visit?.visitId)
+            #expect(exit?.visitDurationSeconds == Int(Self.leftAt - Self.arrivalAt))
+            #expect(exit?.detectionSource == "native")
+            #expect(await harness.storedVisit(fence: "A") == nil)
+        }
+    }
+
+    /// The device, now well outside the fence, as the cache reads it from `leftAt` on.
+    @available(iOS 17.0, *)
+    private func moveAway(_ harness: ReplayHarness) async {
+        harness.loadPulledFixes(stimuli: [Self.leftAt], samples: [
+            harness.pulledFix(latitude: Self.awayLatitude, longitude: Self.longitude, accuracy: 10, age: 0, at: Self.leftAt)
+        ])
+        await harness.advance(to: Self.leftAt)
+    }
+
+    /// The EXIT row the tracker sent for `fenceId`, once it has.
+    @available(iOS 17.0, *)
+    private func awaitExit(_ harness: ReplayHarness, fenceId: String) async throws -> PendingGeofenceMetric? {
+        func sent() -> PendingGeofenceMetric? {
+            harness.deliveredMetrics.first { $0.geofenceId == fenceId && $0.transition == .exit }
+        }
+        for _ in 0 ..< 200 where sent() == nil {
+            try await Task.sleep(nanoseconds: 10000000)
+        }
+        return sent()
+    }
+
+    /// `.unmonitored` means the OS stopped watching the fence, so the stored entry can no longer
+    /// vouch for a continuous stay. Kept, a later EXIT or dwell would measure across the gap.
+    @Test
+    @available(iOS 17.0, *)
+    func deliverMonitorStopped_givenOpenDwellVisit_expectVisitInvalidated() async throws {
+        try await ReplayHarness.withTail {
+            let harness = ReplayHarness()
+            defer { harness.detachFromBootstrap() }
+            try await registered(harness, fenceId: "A", dwellThresholdSeconds: 60)
+            try await enterAndAwaitVisit(harness, fenceId: "A")
+
+            harness.deliverMonitorStopped(fence: "A")
+
+            var visit = await harness.storedVisit(fence: "A")
+            for _ in 0 ..< 200 where visit != nil {
+                try await Task.sleep(nanoseconds: 10000000)
+                visit = await harness.storedVisit(fence: "A")
+            }
+            #expect(visit == nil, "an unmonitored fence kept its visit")
+        }
+    }
+
+    /// The movement trigger carries no visit; its loss must not end a business fence's stay.
+    @Test
+    @available(iOS 17.0, *)
+    func deliverMonitorStopped_givenMovementTrigger_expectBusinessVisitKept() async throws {
+        try await ReplayHarness.withTail {
+            let harness = ReplayHarness()
+            defer { harness.detachFromBootstrap() }
+            try await registered(harness, fenceId: "A", dwellThresholdSeconds: 60)
+            let visit = try await enterAndAwaitVisit(harness, fenceId: "A")
+
+            harness.deliverMonitorStopped(fence: GeofenceConstants.movementTriggerIdentifier)
+            #expect(
+                await settleOnMain {
+                    harness.emitted(ev: "os.monitor.stopped")
+                        .contains { $0["id"] == GeofenceConstants.movementTriggerIdentifier }
+                },
+                "the trigger's stop was never processed, so this test proves nothing"
+            )
+            await harness.settleBoundaries()
+            for _ in 0 ..< 10 {
+                await Task.yield()
+            }
+
+            #expect(await harness.storedVisit(fence: "A") == visit)
+        }
+    }
+
+    @discardableResult
+    @available(iOS 17.0, *)
+    private func enterAndAwaitVisit(_ harness: ReplayHarness, fenceId: String) async throws -> GeofenceDwellVisit? {
+        harness.deliverCrossing(fence: fenceId, transition: .enter)
+        await Task.yield()
+        await settleOnMain { harness.emitted(ev: "transition.accepted").count == 1 }
+        var visit = await harness.storedVisit(fence: fenceId)
+        for _ in 0 ..< 200 where visit == nil {
+            try await Task.sleep(nanoseconds: 10000000)
+            visit = await harness.storedVisit(fence: fenceId)
+        }
+        #expect(visit != nil, "the ENTER never recorded a visit")
+        return visit
+    }
+
     /// Each `enter` follows an `exit`, or dedup discards it before the cooldown is consulted. Each
     /// crossing needs its own instant, or it reads as a re-delivery.
     @Test
@@ -141,7 +436,7 @@ struct ReplayHarnessTests {
                 await harness.advance(to: at)
                 let accepted = harness.emitted(ev: "transition.accepted").count
                 harness.deliverCrossing(fence: "A", transition: transition)
-                try await harness.settleBoundaries()
+                await harness.settleBoundaries()
                 await settleOnMain { harness.emitted(ev: "transition.accepted").count > accepted }
             }
 
@@ -177,7 +472,7 @@ struct ReplayHarnessTests {
 
             harness.deliverCrossing(fence: "A", transition: .enter)
             harness.deliverCrossing(fence: "A", transition: .enter)
-            try await harness.settleBoundaries()
+            await harness.settleBoundaries()
             await settleOnMain { harness.emitted(ev: "os.callback.dropped").count == 1 }
 
             #expect(harness.emitted(ev: "transition.accepted").count == 1)
@@ -195,11 +490,11 @@ struct ReplayHarnessTests {
             try await registered(harness, fenceId: "A")
 
             harness.deliverCrossing(fence: "A", transition: .enter)
-            try await harness.settleBoundaries()
+            await harness.settleBoundaries()
             await settleOnMain { harness.emitted(ev: "transition.accepted").count == 1 }
             await harness.advance(to: Self.arrivalAt + 120)
             harness.deliverCrossing(fence: "A", transition: .exit)
-            try await harness.settleBoundaries()
+            await harness.settleBoundaries()
             await settleOnMain { harness.emitted(ev: "transition.accepted").count == 2 }
 
             #expect(harness.emitted(ev: "os.callback.dropped").isEmpty)
@@ -216,14 +511,14 @@ struct ReplayHarnessTests {
             try await registered(harness, fenceId: "A")
 
             harness.deliverCrossing(fence: "A", transition: .enter, identity: Self.arrivalAt)
-            try await harness.settleBoundaries()
+            await harness.settleBoundaries()
             await settleOnMain { harness.emitted(ev: "transition.accepted").count == 1 }
             await harness.advance(to: Self.arrivalAt + 60)
             harness.deliverCrossing(fence: "A", transition: .exit, identity: Self.arrivalAt + 60)
-            try await harness.settleBoundaries()
+            await harness.settleBoundaries()
             await settleOnMain { harness.emitted(ev: "transition.accepted").count == 2 }
             harness.deliverCrossing(fence: "A", transition: .enter, identity: Self.arrivalAt)
-            try await harness.settleBoundaries()
+            await harness.settleBoundaries()
             await settleOnMain { harness.emitted(ev: "os.callback.dropped").count == 1 }
 
             #expect(harness.emitted(ev: "transition.accepted").count == 2)
@@ -259,13 +554,13 @@ struct ReplayHarnessTests {
 
             harness.reenterProcess()
             await harness.wireMonitor()
-            try await harness.settleBoundaries()
+            await harness.settleBoundaries()
             _ = await settleOnMain { harness.emitted(ev: "registration.adopted").count == 1 }
             let armedOnce = harness.conditionMonitor.operations.count
             #expect(armedOnce > armedBeforeRelaunch, "the first adopt re-armed nothing")
 
             await harness.wireMonitor()
-            try await harness.settleBoundaries()
+            await harness.settleBoundaries()
 
             #expect(harness.emitted(ev: "registration.adopted").count == 1, "the second run adopted again")
             #expect(harness.conditionMonitor.operations.count == armedOnce, "the second run drove the OS: \(harness.conditionMonitor.operations[armedOnce...])")

@@ -18,7 +18,7 @@ class MessagingInAppAPITest: UnitTest {
     func test_allPublicFunctions() throws {
         try skipRunningTest()
 
-        MessagingInApp.initialize(withConfig: MessagingInAppConfigBuilder(siteId: "", region: .US).build())
+        MessagingInApp.initialize(withConfig: MessagingInAppConfigBuilder(siteId: "").build())
         MessagingInApp.shared.setEventListener(self)
         MessagingInApp.shared.setInboxEventListener(self)
 
@@ -29,7 +29,7 @@ class MessagingInAppAPITest: UnitTest {
     func test_allPublicModuleConfigOptions() throws {
         try skipRunningTest()
 
-        _ = MessagingInAppConfigBuilder(siteId: "", region: .US)
+        _ = MessagingInAppConfigBuilder(siteId: "")
             .setColorScheme(.auto)
             .setNotificationInboxAccessibilityLabels(NotificationInboxAccessibilityLabels(
                 bell: "",

@@ -1,0 +1,324 @@
+import CioInternalCommon
+import CoreLocation
+import Foundation
+
+/// Applying verdicts and routing circle events to the dwell coordinator and the tracker, split
+/// from the resolver's core so both stay under the file cap. The members it reads are `internal`
+/// rather than `private` only because of this split; they remain implementation detail.
+@MainActor
+extension PolygonMembershipResolver {
+    /// The write is refused if the fence moved off `evaluatedRing`/`evaluatedCircle`. Only the
+    /// emit and dwell evidence check `isStillCurrent`: a belief is geometry, true whoever is signed in.
+    /// `crossingObserved` is false for a discovered covering-circle EXIT: it still delivers EXIT
+    /// with its visit, the evidence dating discovery rather than departure.
+    func apply(
+        _ membership: PolygonMembership,
+        to geofence: Geofence,
+        evidence: Date,
+        confirmedByFix: Bool,
+        evaluatedRing: [LocationData]? = nil,
+        evaluatedCircle: MonitoredCircle? = nil,
+        crossingObserved: Bool = true,
+        isStillCurrent: (@Sendable () -> Bool)? = nil,
+        receivedForUserId: String? = nil,
+        qualifiesDwell: Bool = true
+    ) async {
+        // Before the write: a visit a newer pass records while this one is suspended must read as
+        // later than this pass, whatever the wall clock does meanwhile (`endVisitLeftOutside`).
+        let processedAt = dwellCoordinator?.readClock()
+        let write = await storage.recordPolygonMembershipWrite(
+            membership,
+            forIdentifier: geofence.id,
+            onlyIfBeliefPredates: evidence,
+            onlyIfRingMatches: evaluatedRing,
+            onlyIfCircleMatches: evaluatedCircle,
+            decisiveInside: membership == .inside && qualifiesDwell,
+            reading: processedAt
+        )
+        let outcome = write.outcome
+        var exitContext: GeofenceExitContext?
+        // OS crossings retain their receiving identity through the storage await. Membership is
+        // geometry and still advances when that user has since changed.
+        let expectedUserId = receivedForUserId ?? contextStore.currentUserId
+        if isStillCurrent?() ?? true {
+            let visitContext = await forwardDwellEvidence(
+                PolygonDwellEvidence(membership: membership, outcome: outcome),
+                geofence: geofence, at: evidence, confirmedByFix: confirmedByFix,
+                insideProvenAt: write.previousProvenAt, processedAt: processedAt,
+                expectedUserId: expectedUserId, qualifiesDwell: qualifiesDwell
+            )
+            exitContext = visitContext
+        }
+        guard let transition = outcome.deliveredTransition else {
+            logger.geofencePolygonNotDelivered(identifier: geofence.id, reason: .outcome(outcome))
+            return
+        }
+        guard geofence.transitionTypes.contains(transition) else {
+            logger.geofencePolygonNotDelivered(identifier: geofence.id, reason: .transitionNotRegistered)
+            return
+        }
+        if let isStillCurrent, !isStillCurrent() {
+            logger.geofencePolygonNotDelivered(identifier: geofence.id, reason: .userChanged)
+            return
+        }
+        logger.geofencePolygonTransition(identifier: geofence.id, transition: transition, confirmedByFix: confirmedByFix)
+        await emitPolygonTransition(
+            transition, geofenceId: geofence.id, occurredAt: evidence,
+            exitContext: exitContext, expectedUserId: expectedUserId
+        )
+    }
+
+    /// Read synchronously by the OS callback, so crossings are attributed to whoever was
+    /// identified when they were delivered rather than when their dispatch task ran. Nonisolated
+    /// because that callback is not main-actor isolated; the context store is thread-safe.
+    nonisolated var identifiedUserId: String? {
+        contextStore.currentUserId
+    }
+
+    /// A polygon's covering-circle EXIT. The crossed circle is checked in the write, not here:
+    /// a refresh may replace the fence first.
+    func applyCoveringCircleExit(
+        geofence: Geofence,
+        eventCircle: GeofenceEventCircle,
+        occurredAt: Date,
+        crossingObserved: Bool = true,
+        receivedForUserId: String? = nil
+    ) async {
+        switch eventCircle {
+        case .circle(let crossed):
+            await apply(
+                .outside, to: geofence, evidence: occurredAt, confirmedByFix: false,
+                evaluatedCircle: crossed, crossingObserved: crossingObserved,
+                receivedForUserId: receivedForUserId
+            )
+        case .unknown:
+            await apply(
+                .outside, to: geofence, evidence: occurredAt, confirmedByFix: false,
+                evaluatedCircle: nil, crossingObserved: crossingObserved,
+                receivedForUserId: receivedForUserId
+            )
+        case .expired:
+            logger.geofencePolygonUndecided(identifier: geofence.id, reason: .circleExpired, pass: nil)
+        }
+    }
+
+    /// A circle fence's OS event, forwarded untouched apart from the visit it opens or closes.
+    /// `receivedForUserId` is who was identified when the OS delivered it; see `handleTransition`.
+    ///
+    /// An ENTER's visit is written ALONGSIDE its delivery, neither awaiting the other. Awaiting the
+    /// visit first put a storage round trip before the user check, and a sign-out landing in it
+    /// dropped the crossing itself. Awaiting the delivery first put the whole send — HTTP, backlog
+    /// flush, an offline timeout — before the write, so an EXIT in that window found no visit and a
+    /// write landing after it left one open for a device already outside. The child task needs the
+    /// main actor, which this function holds until `forwardEnter` suspends inside the tracker, so the
+    /// ENTER's user check still runs first. An EXIT overtaking the write is caught by the dwell
+    /// coordinator, which refuses a visit that started before an EXIT it has seen.
+    ///
+    /// An EXIT reads and ends its visit before delivery because the duration travels on the event.
+    /// A user switch meanwhile drops rather than misattributes it. A transition that is not
+    /// `crossingObserved` is still delivered: an ENTER's visit is a candidate that reports no entry,
+    /// and an EXIT ends its visit without reporting a duration.
+    ///
+    /// `raisedByCurrentCircle` is false for an event an older generation of the circle raised, or
+    /// one whose circle is known gone (`circle(_:raisedEventsOf:)`). It crossed another circle than
+    /// the one a dwell is measured against, so it is still delivered but touches no visit: its ENTER
+    /// starts none, and its EXIT neither records an EXIT nor ends one, and carries no duration.
+    /// Ending a qualified visit would let the same unbroken stay qualify again.
+    func forwardCircleTransition(
+        geofence: Geofence,
+        transition: GeofenceTransition,
+        occurredAt: Date,
+        receivedForUserId: String,
+        crossingObserved: Bool = true,
+        raisedByCurrentCircle: Bool = true
+    ) async {
+        switch transition {
+        case .enter:
+            let dwellCoordinator = raisedByCurrentCircle ? dwellCoordinator : nil
+            async let visitRecorded: GeofenceExitContext? = dwellCoordinator?.handleBoundary(
+                geofence: geofence, transition: .enter, occurredAt: occurredAt, expectedUserId: receivedForUserId,
+                crossingObserved: crossingObserved
+            )
+            if geofence.transitionTypes.contains(.enter) {
+                await forwardEnter(identifier: geofence.id, occurredAt: occurredAt, receivedForUserId: receivedForUserId)
+            }
+            _ = await visitRecorded
+        case .exit:
+            let exitContext = raisedByCurrentCircle
+                ? await dwellCoordinator?.handleBoundary(
+                    geofence: geofence, transition: .exit, occurredAt: occurredAt, expectedUserId: receivedForUserId,
+                    crossingObserved: crossingObserved
+                )
+                : nil
+            guard geofence.transitionTypes.contains(.exit) else { return }
+            await transitionEmitter.trackExit(
+                geofenceId: geofence.id, occurredAt: occurredAt, context: exitContext,
+                expectedUserId: receivedForUserId
+            )
+        case .dwell:
+            // Core Location never produces one; dwell is the coordinator's own decision.
+            return
+        }
+    }
+
+    /// Whether an event attributed to `eventCircle` was raised by `geofence`'s current circle, as
+    /// registered: clamped to the cap, matched as registration matches it. A cold-wake event with
+    /// no recorded generation is taken as current, as its producer requires; one whose circle is
+    /// known gone proves nothing about the current geometry.
+    static func circle(_ eventCircle: GeofenceEventCircle, raisedEventsOf geofence: Geofence) -> Bool {
+        switch eventCircle {
+        case .circle(let raised): return raised.matches(geofence)
+        case .unknown: return true
+        case .expired: return false
+        }
+    }
+
+    /// An OS event for a fence the cache no longer holds, forwarded as the circle it predates
+    /// polygons as. No visit: there is no fence to measure against.
+    ///
+    /// `unconfigured` is the one piece of configuration that outlives the cache: the edges the
+    /// circle was registered for only as visit bookkeeping (an exit-only or dwell-only circle is
+    /// registered for ENTER too). Those are dropped — the customer never asked for them. Every
+    /// other edge is forwarded unfiltered, as before, so a configured ENTER still arrives.
+    func forwardUncachedTransition(
+        identifier: String,
+        transition: GeofenceTransition,
+        occurredAt: Date,
+        receivedForUserId: String,
+        unconfigured: Set<GeofenceTransition> = []
+    ) async {
+        guard !unconfigured.contains(transition) else {
+            logger.geofenceCallbackDropped(identifier: identifier, transition: transition, reason: "transition_not_configured")
+            return
+        }
+        switch transition {
+        case .enter:
+            await forwardEnter(identifier: identifier, occurredAt: occurredAt, receivedForUserId: receivedForUserId)
+        case .exit:
+            await transitionEmitter.trackExit(
+                geofenceId: identifier, occurredAt: occurredAt, context: nil, expectedUserId: receivedForUserId
+            )
+        case .dwell:
+            return
+        }
+    }
+
+    /// ENTER carries no visit context, so the receiving user is checked here rather than by the
+    /// tracker: a switch since the OS delivered it must not stamp the crossing to the next user.
+    private func forwardEnter(identifier: String, occurredAt: Date, receivedForUserId: String) async {
+        guard (contextStore.currentUserId ?? "") == receivedForUserId else {
+            logger.geofenceCallbackDropped(identifier: identifier, transition: .enter, reason: "user_changed")
+            return
+        }
+        await transitionEmitter.trackTransition(geofenceId: identifier, transition: .enter, occurredAt: occurredAt)
+    }
+
+    /// Hands a real-shape verdict to the dwell coordinator. Returns the visit an EXIT closed, to
+    /// travel with that EXIT; nil for every other verdict. `insideProvenAt` is when the device was
+    /// last known inside before this write, from the membership record.
+    private func forwardDwellEvidence(
+        _ dwellEvidence: PolygonDwellEvidence,
+        geofence: Geofence,
+        at evidence: Date,
+        confirmedByFix: Bool,
+        insideProvenAt: Date? = nil,
+        processedAt: GeofenceClockReading? = nil,
+        expectedUserId: String?,
+        qualifiesDwell: Bool = true
+    ) async -> GeofenceExitContext? {
+        switch dwellEvidence {
+        case .entered, .discoveredInside, .stillInside:
+            // Only an observed crossing begins a visit with a known start. Discovery and
+            // confirmation start at most a candidate, which supports dwell but no EXIT duration.
+            await dwellCoordinator?.recordInsideEvidence(
+                geofence: geofence,
+                at: evidence,
+                source: "location_evidence",
+                expectedUserId: expectedUserId,
+                beginsNewVisit: dwellEvidence == .entered,
+                qualifiesDwell: qualifiesDwell
+            )
+            return nil
+        case .exited:
+            return await dwellCoordinator?.handleBoundary(
+                geofence: geofence,
+                transition: .exit,
+                occurredAt: evidence,
+                expectedUserId: expectedUserId,
+                detectionSource: confirmedByFix ? "location_evidence" : "covering_circle",
+                // Neither a covering-circle EXIT nor an outside fix dates the polygon crossing
+                // itself; the duration runs to the evidence, and the time since the device was last
+                // decisively proven inside travels with it as the uncertainty.
+                crossingObserved: confirmedByFix,
+                insideProvenAt: insideProvenAt
+            )
+        case .stillOutside:
+            // Outside, and nothing to deliver: the belief was already outside. A visit the store
+            // still holds was left behind by an EXIT whose removal never ran, and must not resume.
+            await dwellCoordinator?.endVisitLeftOutside(
+                geofence: geofence, outsideAt: evidence, processedAt: processedAt, expectedUserId: expectedUserId
+            )
+            return nil
+        case .none:
+            return nil
+        }
+    }
+
+    private func emitPolygonTransition(
+        _ transition: GeofenceTransition,
+        geofenceId: String,
+        occurredAt: Date,
+        exitContext: GeofenceExitContext?,
+        expectedUserId: String?
+    ) async {
+        if transition == .exit {
+            await transitionEmitter.trackExit(
+                geofenceId: geofenceId, occurredAt: occurredAt, context: exitContext,
+                expectedUserId: expectedUserId
+            )
+        } else {
+            await transitionEmitter.trackTransition(
+                geofenceId: geofenceId, transition: transition, occurredAt: occurredAt
+            )
+        }
+    }
+}
+
+/// What a membership write means for the dwell visit. Only a write that established or confirmed
+/// inside, or delivered an EXIT, is evidence; every other outcome leaves the visit alone.
+private enum PolygonDwellEvidence: Equatable {
+    /// An observed outside → inside crossing.
+    case entered
+    /// Inside with no observed crossing: the device was already there when first judged.
+    case discoveredInside
+    case stillInside
+    case exited
+    /// Outside, as the belief already was: nothing to deliver, and no visit should remain.
+    case stillOutside
+    case none
+
+    init(membership: PolygonMembership, outcome: PolygonMembershipOutcome) {
+        switch (membership, outcome) {
+        case (.inside, .deliver(.enter)): self = .entered
+        case (.inside, .discoveredInside): self = .discoveredInside
+        case (.inside, .suppressedNoChange): self = .stillInside
+        case (.outside, .deliver(.exit)): self = .exited
+        case (.outside, .suppressedNoChange): self = .stillOutside
+        default: self = .none
+        }
+    }
+}
+
+extension PolygonMembershipOutcome {
+    /// The transition this outcome delivers, nil when it delivers none. A discovered inside still
+    /// owes its ENTER; it differs from a crossing only in what it tells the dwell visit.
+    var deliveredTransition: GeofenceTransition? {
+        switch self {
+        case .deliver(let transition): return transition
+        case .discoveredInside: return .enter
+        case .suppressedNoChange, .suppressedNewerDecision, .suppressedInitialOutside,
+             .suppressedUnmonitored, .suppressedGeometryChanged:
+            return nil
+        }
+    }
+}

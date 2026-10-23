@@ -18,10 +18,9 @@ open class UnitTest: SharedTests.UnitTestBase<MessagingInAppInstance> {
     open func setUp(
         enableLogs: Bool = false,
         siteId: String? = nil,
-        region: Region = .US,
         modifyModuleConfig: ((MessagingInAppConfigBuilder) -> Void)?
     ) {
-        let moduleConfigBuilder = MessagingInAppConfigBuilder(siteId: siteId ?? testSiteId, region: region)
+        let moduleConfigBuilder = MessagingInAppConfigBuilder(siteId: siteId ?? testSiteId)
         modifyModuleConfig?(moduleConfigBuilder)
         messagingInAppConfigOptions = moduleConfigBuilder.build()
 

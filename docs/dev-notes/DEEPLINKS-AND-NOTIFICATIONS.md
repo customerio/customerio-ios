@@ -230,7 +230,7 @@ Token lifecycle is handled by `CioProviderAgnosticAppDelegate`:
 | Callback | SDK Action | Result |
 |----------|-----------|--------|
 | `didRegisterForRemoteNotificationsWithDeviceToken(_:)` | `MessagingPushImplementation.registerDeviceToken(_:)` → fires `RegisterDeviceTokenEvent` on EventBus | DataPipeline calls `addDeviceAttributes(token:)` → tracks `"Device Created or Updated"` event |
-| `didFailToRegisterForRemoteNotificationsWithError(_:)` | `messagingPush.deleteDeviceToken()` → fires `DeleteDeviceTokenEvent` on EventBus | DataPipeline removes device token from profile |
+| `didFailToRegisterForRemoteNotificationsWithError(_:)` | `MessagingPush.didFailToRegisterForRemoteNotifications(error:)` logs the error | Device stays on the profile |
 
 Token registration with the OS is triggered by calling `UIApplication.registerForRemoteNotifications()`, which happens automatically in `didFinishLaunchingWithOptions` when `autoFetchDeviceToken` is enabled.
 

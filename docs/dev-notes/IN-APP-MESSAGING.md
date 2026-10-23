@@ -45,30 +45,28 @@ This document describes the Customer.io In-App Messaging subsystem. It covers in
 ```swift
 // Initialize the module after CustomerIO.initialize(...)
 MessagingInApp
-    .initialize(withConfig: MessagingInAppConfigBuilder(siteId: "your-site-id", region: .US).build())
+    .initialize(withConfig: MessagingInAppConfigBuilder(siteId: "your-site-id").build())
     .setEventListener(self) // optional — register lifecycle callbacks
 ```
 
 ### 2a. `MessagingInAppConfigBuilder` Options
 
-`MessagingInAppConfigBuilder` has two required parameters and no optional ones:
+`MessagingInAppConfigBuilder` has one required parameter. In-app uses the API key and region `CustomerIO` is set up with, so `CustomerIO.initialize(...)` must run first. `init(siteId:region:)` is deprecated and its region is ignored.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | `siteId` | `String` | Yes | Workspace Site ID. **Separate** from the `cdpApiKey` used by `CustomerIO.initialize(...)`. Found in the Customer.io dashboard under Settings → API & Webhooks. |
-| `region` | `Region` | Yes | `.US` (default) or `.EU`. Routes all Gist API requests to the correct regional endpoint. |
 
 ```swift
-let config = MessagingInAppConfigBuilder(siteId: "abc123", region: .US).build()
+let config = MessagingInAppConfigBuilder(siteId: "abc123").build()
 MessagingInApp.initialize(withConfig: config)
 ```
 
 **Wrapper SDK / dictionary-based initialization** (used by React Native and Flutter bridges):
 
 ```swift
-// Keys: "inApp.siteId" and top-level "region"
+// Key: "inApp.siteId". Region comes from the SDK setup.
 let config = try MessagingInAppConfigBuilder.build(from: [
-    "region": "EU",
     "inApp": ["siteId": "abc123"]
 ])
 ```
