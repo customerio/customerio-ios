@@ -132,6 +132,11 @@ struct GeofenceDwellVisit: Codable, Equatable, Sendable {
     /// (`GeofenceDwellCoordinator.maxDwellProofChecks`). Persisted for the same reason. Zero on
     /// visits persisted before the field.
     var dwellProofChecks = 0
+    /// Checks a refused request answered with nothing — too soon after the last request, or its
+    /// charge not yet saved (`GeofenceDwellCoordinator.maxRefusedDwellProofChecks`). Not charged to
+    /// `dwellProofChecks`, but capped of their own, so a parked device's wakes stay bounded.
+    /// Persisted for the same reason. Zero on visits persisted before the field.
+    var dwellProofRefusedChecks = 0
 
     /// Equal when they are the same stay with the same facts. `lastDecisiveInsideAt`, the
     /// dwell-proof bookkeeping and a staged reservation are left out: they record evidence sought
@@ -188,7 +193,7 @@ extension GeofenceDwellVisit {
         /// `closedByObservedBoundary`, as the decimal bit pattern of its `timeIntervalSinceReferenceDate`.
         case closedByObservedBoundaryReferenceBits
         case lastDecisiveInsideAt
-        case dwellProofAttempts, lastDwellProofRequest, dwellProofChecks
+        case dwellProofAttempts, lastDwellProofRequest, dwellProofChecks, dwellProofRefusedChecks
     }
 
     /// Custom decode so visits persisted before `entryObserved` still decode; those were only ever
@@ -213,6 +218,7 @@ extension GeofenceDwellVisit {
         self.dwellProofAttempts = try container.decodeIfPresent(Int.self, forKey: .dwellProofAttempts) ?? 0
         self.lastDwellProofRequest = try container.decodeIfPresent(GeofenceClockReading.self, forKey: .lastDwellProofRequest)
         self.dwellProofChecks = try container.decodeIfPresent(Int.self, forKey: .dwellProofChecks) ?? 0
+        self.dwellProofRefusedChecks = try container.decodeIfPresent(Int.self, forKey: .dwellProofRefusedChecks) ?? 0
         let unqualified = !emitted && dwellReservation == nil
         guard container.contains(.identityVersion) else {
             // Written before identity provenance: nothing says which identities the visit spanned,
@@ -253,6 +259,7 @@ extension GeofenceDwellVisit {
         if dwellProofAttempts > 0 { try container.encode(dwellProofAttempts, forKey: .dwellProofAttempts) }
         try container.encodeIfPresent(lastDwellProofRequest, forKey: .lastDwellProofRequest)
         if dwellProofChecks > 0 { try container.encode(dwellProofChecks, forKey: .dwellProofChecks) }
+        if dwellProofRefusedChecks > 0 { try container.encode(dwellProofRefusedChecks, forKey: .dwellProofRefusedChecks) }
     }
 
     /// The closure exactly as encoded; nil when the key is absent. Bits that are not a finite

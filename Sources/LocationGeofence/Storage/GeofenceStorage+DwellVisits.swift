@@ -166,11 +166,12 @@ extension GeofenceStorage {
         guard var stored = state.dwellVisits?[geofenceId], stored.visitId == visitId else { return true }
         let merged = ledger.merged(with: stored)
         guard merged.attempts != stored.dwellProofAttempts || merged.checks != stored.dwellProofChecks
-            || merged.lastRequest != stored.lastDwellProofRequest
+            || merged.refusedChecks != stored.dwellProofRefusedChecks || merged.lastRequest != stored.lastDwellProofRequest
         else { return true }
         guard !ledgerSaveFails else { return false }
         stored.dwellProofAttempts = merged.attempts
         stored.dwellProofChecks = merged.checks
+        stored.dwellProofRefusedChecks = merged.refusedChecks
         stored.lastDwellProofRequest = merged.lastRequest
         state.dwellVisits?[geofenceId] = stored
         return saveToDisk(state)

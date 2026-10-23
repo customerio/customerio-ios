@@ -54,6 +54,8 @@ final class MovementFixResolver: NSObject, @preconcurrency CLLocationManagerDele
 
     private var deliveredFix: CLLocation?
     private var pendingCompletions: [(LocationData?, Bool) -> Void] = []
+    /// Callers waiting on the request in flight, the one that issued it included.
+    var waitingCallers: Int { pendingCompletions.count }
     private var fallbackFix: CLLocation?
     private var pendingPurpose: GeofenceFixPurpose?
     private var timeoutTask: Task<Void, Never>?

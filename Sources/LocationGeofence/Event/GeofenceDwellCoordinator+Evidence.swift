@@ -88,11 +88,12 @@ extension GeofenceDwellCoordinator {
             cancelEvidence(for: geofenceId)
             return
         }
-        // A check that needs a location, at or after the threshold, is counted, answered by a
-        // request or not; with none left the chain stops. One before the threshold cannot qualify
-        // and is not counted. A reserved dwell's delivery is never held back.
-        if visit.dwellReservation == nil, thresholdRemaining(for: visit, geofence: geofence, at: readClock()) == 0,
-           !countDwellProofCheck(geofenceId: geofence.id, visit: visit) {
+        // A check that needs a location, at or after the threshold, is counted once it has run,
+        // answered by a request or not; with none left the chain stops. One whose request was
+        // refused and bought no fix is counted apart, under a cap of its own. One before the
+        // threshold cannot qualify and is not counted. A reserved dwell's delivery is never held back.
+        let counted = visit.dwellReservation == nil && thresholdRemaining(for: visit, geofence: geofence, at: readClock()) == 0
+        if counted, proofSpent(visit) {
             proofBudgetExhausted(geofenceId: geofence.id, visit: visit)
             return
         }
@@ -100,7 +101,10 @@ extension GeofenceDwellCoordinator {
         await persistProofLedger(geofenceId: geofence.id, visitId: visit.visitId)
         guard !Task.isCancelled else { return }
         guard let request = beginEvidenceRequest(geofenceId: geofence.id, visit: visit) else { return }
-        defer { finishEvidenceRequest(request) }
+        defer {
+            if counted { countDwellProofCheck(geofenceId: geofence.id, visit: visit, refused: refusedWithoutFix(request)) }
+            finishEvidenceRequest(request)
+        }
         await GeofenceDwellEvidenceScope.$request.withValue(request) {
             if visit.dwellReservation != nil {
                 // Delivering a reservation needs no location, so nothing here needs the process kept alive.
@@ -118,6 +122,14 @@ extension GeofenceDwellCoordinator {
                 )
             }
         }
+    }
+
+    /// Whether `request`'s admission was refused, so that it asked for nothing and got no fix: too
+    /// soon after the last request, or the last charge not yet saved. A spent budget ends the chain
+    /// instead.
+    private func refusedWithoutFix(_ request: GeofenceDwellEvidenceRequest) -> Bool {
+        guard let state = evidenceRetries[request.geofenceId], state.activeRequest == request.token else { return false }
+        return state.refusal == .tooSoon || state.refusal == .chargeUnsaved
     }
 
     /// A polygon's membership is decided by the resolver against the real shape; its verdict

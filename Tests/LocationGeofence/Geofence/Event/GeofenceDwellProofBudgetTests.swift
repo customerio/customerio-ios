@@ -155,9 +155,8 @@ struct GeofenceDwellProofBudgetTests {
         try #require(await settleOnMain { rig.requestTimes.count == entryRequests + 1 })
 
         rig.advance(to: 60)
-        // The deadline's check has run and is waiting on the shared request.
-        try #require(await settleOnMain { rig.coordinator.proofLedgers.values.first?.checks == 1 })
-        await settleQuietly(0.1)
+        // The deadline's check is running and has joined the shared request.
+        try #require(await settleOnMain { rig.provider.waitingCallers == 2 })
         rig.provider.handleDeliveredFix(rig.insideFix(at: 60))
         _ = await membership.value
 
@@ -297,6 +296,44 @@ struct GeofenceDwellProofBudgetTests {
         let visitId = try #require(await rig.visit()?.visitId)
         await rig.coordinator.persistProofLedger(geofenceId: BudgetRig.circle.id, visitId: visitId)
         #expect(rig.coordinator.unsavedProofCharges.isEmpty)
+    }
+
+    /// Wakes that re-arm the visit within the spacing run checks whose request is refused as too
+    /// soon: they buy no fix, so they spend none of the visit's checks, and the four requests still
+    /// go out once the spacing allows.
+    @Test
+    func spacingRefusals_spendNoChecks() async throws {
+        let rig = await BudgetRig.make(polygon: false)
+        defer { rig.close() }
+        await rig.enterCircle()
+        await rig.drive(to: 60)
+        try #require(rig.requestTimes == [60])
+        try await rig.rearmWithinSpacing(times: 5, from: 70)
+        #expect(rig.coordinator.proofLedgers.values.first?.checks == 1)
+        #expect(rig.coordinator.proofLedgers.values.first?.refusedChecks == 5)
+
+        await rig.drive(to: 2000)
+        #expect(rig.requestTimes == [60, 180, 300, 420])
+    }
+
+    /// A parked device keeps waking within the spacing: refused checks are capped of their own, so
+    /// the chain still ends, with no request beyond the first.
+    @Test
+    func spacingRefusals_areCappedOnAParkedDevice() async throws {
+        let rig = await BudgetRig.make(polygon: false)
+        defer { rig.close() }
+        await rig.enterCircle()
+        await rig.drive(to: 60)
+        try await rig.rearmWithinSpacing(times: rig.coordinator.maxRefusedDwellProofChecks, from: 70)
+        let ledger = try #require(rig.coordinator.proofLedgers.values.first)
+        #expect(ledger.refusedChecks == rig.coordinator.maxRefusedDwellProofChecks)
+
+        await rig.coordinator.rearmPendingEvidence(includePolygons: false)
+        #expect(rig.coordinator.deadlineTasks[BudgetRig.circle.id] == nil, "a spent visit is not re-armed")
+        #expect(rig.coordinator.proofLedgers.values.first == ledger, "and runs no further check")
+        #expect(rig.requestTimes == [60])
+        #expect(rig.exhaustionLogs() == 1)
+        #expect(await rig.visit()?.dwellProofRefusedChecks == rig.coordinator.maxRefusedDwellProofChecks)
     }
 
     /// Each refused request is recorded with its own reason, apart from a request that came back
@@ -599,6 +636,17 @@ private final class BudgetRig {
 
     func exhaustionLogs() -> Int {
         exhaustionLogsBeforeRelaunch + logger.infoReceivedInvocations.filter { $0.message.contains("dwell proof budget exhausted") }.count
+    }
+
+    /// Re-arms the visit `times` times, a second apart from `from`, each well within the spacing
+    /// since the last request, and waits for each re-armed check to be refused and counted.
+    func rearmWithinSpacing(times: Int, from start: TimeInterval) async throws {
+        for index in 0 ..< times {
+            let before = coordinator.proofLedgers.values.first?.refusedChecks ?? 0
+            advance(to: start + TimeInterval(index))
+            await coordinator.rearmPendingEvidence(includePolygons: false)
+            try #require(await settleOnMain(timeout: 30) { self.coordinator.proofLedgers.values.first?.refusedChecks == before + 1 })
+        }
     }
 
     /// The reasons of the rejections the journal holds, oldest first.

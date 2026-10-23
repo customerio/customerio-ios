@@ -14,11 +14,13 @@ enum GeofenceDwellEvidenceScope {
     @TaskLocal static var request: GeofenceDwellEvidenceRequest?
 }
 
-/// What one visit has spent proving its dwell: location requests issued, evidence checks run, and
-/// when the last request was issued. Each count only grows.
+/// What one visit has spent proving its dwell: location requests issued, evidence checks run, the
+/// checks a refused request answered with nothing, and when the last request was issued. Each count
+/// only grows.
 struct GeofenceDwellProofLedger: Equatable, Sendable {
     var attempts = 0
     var checks = 0
+    var refusedChecks = 0
     var lastRequest: GeofenceClockReading?
 
     /// This ledger with whatever `visit` persisted that it has not seen: the higher count, and the
@@ -27,6 +29,7 @@ struct GeofenceDwellProofLedger: Equatable, Sendable {
         var merged = self
         merged.attempts = max(attempts, visit.dwellProofAttempts)
         merged.checks = max(checks, visit.dwellProofChecks)
+        merged.refusedChecks = max(refusedChecks, visit.dwellProofRefusedChecks)
         if let persisted = visit.lastDwellProofRequest {
             if let last = lastRequest, last.boot.isSameBoot(as: persisted.boot) {
                 merged.lastRequest = persisted.uptime > last.uptime ? persisted : last
@@ -118,6 +121,13 @@ extension GeofenceDwellCoordinator {
         2 * dwellProofBudget
     }
 
+    /// Checks a refused request may answer with nothing — too soon after the visit's last request,
+    /// or its charge not yet saved — on top of `maxDwellProofChecks`: such a check buys no fix and
+    /// is not charged to those, but wakes on a parked device must still end.
+    var maxRefusedDwellProofChecks: Int {
+        maxDwellProofChecks
+    }
+
     /// What `visit` has spent, as this process counts it, merged with what was persisted.
     func proofLedger(for visit: GeofenceDwellVisit) -> GeofenceDwellProofLedger {
         (proofLedgers[visit.visitId] ?? GeofenceDwellProofLedger()).merged(with: visit)
@@ -129,6 +139,7 @@ extension GeofenceDwellCoordinator {
         guard visit.dwellReservation == nil else { return false }
         let ledger = proofLedger(for: visit)
         return ledger.attempts >= dwellProofBudget || ledger.checks >= maxDwellProofChecks
+            || ledger.refusedChecks >= maxRefusedDwellProofChecks
     }
 
     /// What is left of `geofence`'s threshold for `visit` at `reading`, by elapsed time as qualifying
@@ -141,13 +152,12 @@ extension GeofenceDwellCoordinator {
         return min(TimeInterval(GeofenceDwellLimits.maxThresholdSeconds), max(0, TimeInterval(geofence.dwellThresholdSeconds) - elapsed))
     }
 
-    /// Counts one evidence check for `visit`. False, counting nothing, when it has none left.
-    func countDwellProofCheck(geofenceId: String, visit: GeofenceDwellVisit) -> Bool {
-        guard !proofSpent(visit) else { return false }
+    /// Counts the evidence check `visit` just ran: as a refused one when its request was refused and
+    /// it bought no fix (`refused`), else as a check.
+    func countDwellProofCheck(geofenceId: String, visit: GeofenceDwellVisit, refused: Bool) {
         var ledger = proofLedger(for: visit)
-        ledger.checks += 1
+        if refused { ledger.refusedChecks += 1 } else { ledger.checks += 1 }
         updateProofLedger(ledger, geofenceId: geofenceId, visitId: visit.visitId)
-        return true
     }
 
     /// The admission a fix resolver calls at the moment it would issue a request for the dwell
