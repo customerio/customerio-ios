@@ -12,12 +12,25 @@ class QueueManager {
     private let visualInboxRepository: VisualInboxRepository
     private let logger: Logger
 
+    // The cached body and its owner are read and written as a pair, so two overlapping responses
+    // can't leave one response's body stored under the other's owner.
+    private let cachedResponseLock = NSLock()
+
     private var cachedFetchUserQueueResponse: Data? {
         get {
             keyValueStore.data(.inAppUserQueueFetchCachedResponse)
         }
         set {
             keyValueStore.setData(newValue, forKey: .inAppUserQueueFetchCachedResponse)
+        }
+    }
+
+    private var cachedFetchUserQueueResponseOwner: String? {
+        get {
+            keyValueStore.string(.inAppUserQueueFetchCachedResponseOwner)
+        }
+        set {
+            keyValueStore.setString(newValue, forKey: .inAppUserQueueFetchCachedResponseOwner)
         }
     }
 
@@ -40,11 +53,15 @@ class QueueManager {
     }
 
     func clearCachedUserQueue() {
+        cachedResponseLock.lock()
         cachedFetchUserQueueResponse = nil
+        cachedFetchUserQueueResponseOwner = nil
+        cachedResponseLock.unlock()
         inboxMessageCache.clearAll()
     }
 
     func fetchUserQueue(state: InAppMessageState, completionHandler: @escaping (Result<[Message]?, Error>) -> Void) {
+        let requestKey = QueueFetchKey(state: state)
         do {
             try gistQueueNetwork.request(state: state, request: QueueEndpoint.getUserQueue, completionHandler: { response in
                 switch response {
@@ -53,44 +70,21 @@ class QueueManager {
                     self.updateSseFlag(headers: response.allHeaderFields)
                     let inboxEnabledHeader = self.readInboxEnabledHeader(response: response)
                     self.logger.logWithModuleTag("Gist queue fetch response: \(response.statusCode)", level: .debug)
-                    switch response.statusCode {
-                    case 304:
-                        guard let lastCachedResponse = self.cachedFetchUserQueueResponse else {
-                            return completionHandler(.success(nil))
+                    // Everything below caches or publishes the response, so it must still belong to the
+                    // current identity: after a logout or another user identifying, it is the previous one's.
+                    self.inAppMessageManager.fetchState { currentState in
+                        guard QueueFetchKey(state: currentState) == requestKey else {
+                            self.logger.logWithModuleTag("Gist: Discarding queue response for a previous user", level: .info)
+                            return completionHandler(.failure(QueueFetchError.identityChanged))
                         }
 
-                        do {
-                            let userQueue = try self.parseResponseBody(lastCachedResponse, fromCache: true, inboxEnabledHeader: inboxEnabledHeader)
-                            let processedQueue = self.processAnonymousMessages(userQueue)
-
-                            completionHandler(.success(processedQueue))
-                        } catch {
-                            completionHandler(.failure(error))
-                        }
-                    case 204:
-                        // An authoritative empty queue, not a failure: parsing the empty body would
-                        // throw, stranding stale rows on screen and skipping the inbox pipeline.
-                        // The cached 200 body goes too, so a later 304 cannot re-parse it and
-                        // republish the rows this response just cleared.
-                        self.clearCachedUserQueue()
-                        self.publishInboxMessages([], inboxEnabledHeader: inboxEnabledHeader)
-                        completionHandler(.success([]))
-                    default:
-                        do {
-                            let userQueue = try self.parseResponseBody(data, fromCache: false, inboxEnabledHeader: inboxEnabledHeader)
-
-                            // Clear cache only on successful 200 response after successful parsing
-                            if response.statusCode == 200 {
-                                self.inboxMessageCache.clearAll()
-                            }
-
-                            self.cachedFetchUserQueueResponse = data
-                            let processedQueue = self.processAnonymousMessages(userQueue)
-
-                            completionHandler(.success(processedQueue))
-                        } catch {
-                            completionHandler(.failure(error))
-                        }
+                        self.processQueueResponse(
+                            statusCode: response.statusCode,
+                            body: data,
+                            owner: requestKey?.cacheOwner,
+                            inboxEnabledHeader: inboxEnabledHeader,
+                            completionHandler: completionHandler
+                        )
                     }
                 case .failure(let error):
                     self.logger.logWithModuleTag("Gist queue fetch response failure: \(error)", level: .debug)
@@ -101,6 +95,80 @@ class QueueManager {
             logger.logWithModuleTag("Gist queue fetch response error: \(error)", level: .debug)
             completionHandler(.failure(error))
         }
+    }
+
+    private func processQueueResponse(
+        statusCode: Int,
+        body: Data,
+        owner: String?,
+        inboxEnabledHeader: Bool?,
+        completionHandler: @escaping (Result<[Message]?, Error>) -> Void
+    ) {
+        switch statusCode {
+        case 304:
+            guard let lastCachedResponse = cachedResponse(for: owner) else {
+                return completionHandler(.success(nil))
+            }
+
+            do {
+                let userQueue = try parseResponseBody(lastCachedResponse, fromCache: true, inboxEnabledHeader: inboxEnabledHeader)
+                let processedQueue = processAnonymousMessages(userQueue)
+
+                completionHandler(.success(processedQueue))
+            } catch {
+                completionHandler(.failure(error))
+            }
+        case 204:
+            // An authoritative empty queue, not a failure: parsing the empty body would
+            // throw, stranding stale rows on screen and skipping the inbox pipeline.
+            // The cached 200 body goes too, so a later 304 cannot re-parse it and
+            // republish the rows this response just cleared.
+            clearCachedUserQueue()
+            publishInboxMessages([], inboxEnabledHeader: inboxEnabledHeader)
+            completionHandler(.success([]))
+        default:
+            do {
+                let userQueue = try parseResponseBody(body, fromCache: false, inboxEnabledHeader: inboxEnabledHeader)
+
+                // Clear cache only on successful 200 response after successful parsing
+                if statusCode == 200 {
+                    inboxMessageCache.clearAll()
+                }
+
+                cacheResponse(body, owner: owner)
+                let processedQueue = processAnonymousMessages(userQueue)
+
+                completionHandler(.success(processedQueue))
+            } catch {
+                completionHandler(.failure(error))
+            }
+        }
+    }
+
+    /// The cached body a 304 may replay for `owner`. The server answers 304 per user ("nothing changed
+    /// since this user was last sent their queue"), so a body fetched for anyone else is never the
+    /// answer. A body cached before owners were recorded (an older SDK version) is taken as the
+    /// requester's, the way it was always replayed, and stamped with them.
+    private func cachedResponse(for owner: String?) -> Data? {
+        guard let owner else { return nil }
+
+        cachedResponseLock.lock()
+        defer { cachedResponseLock.unlock() }
+
+        guard let body = cachedFetchUserQueueResponse else { return nil }
+        guard let storedOwner = cachedFetchUserQueueResponseOwner else {
+            cachedFetchUserQueueResponseOwner = owner
+            return body
+        }
+        return storedOwner == owner ? body : nil
+    }
+
+    private func cacheResponse(_ body: Data, owner: String?) {
+        cachedResponseLock.lock()
+        defer { cachedResponseLock.unlock() }
+
+        cachedFetchUserQueueResponse = body
+        cachedFetchUserQueueResponseOwner = owner
     }
 
     /// Processes anonymous messages from the server response.
