@@ -264,8 +264,10 @@ struct SynchronizedEquatableTests {
         forward.start()
         backward.start()
 
-        #expect(finished.wait(timeout: .now() + 60) == .success)
-        #expect(finished.wait(timeout: .now() + 60) == .success)
+        // One deadline for both threads, so a real deadlock fails in 60s, not 120s.
+        let deadline = DispatchTime.now() + 60
+        #expect(finished.wait(timeout: deadline) == .success)
+        #expect(finished.wait(timeout: deadline) == .success)
     }
 }
 
