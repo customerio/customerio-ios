@@ -157,6 +157,18 @@ public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, Messagi
     @discardableResult
     public static func initializeForExtension(withConfig config: MessagingPushConfigOptions)
         -> MessagingPushInstance {
+        initializeExtensionModule(config: config)
+    }
+
+    /// Body of ``initializeForExtension(withConfig:)`` without its availability limits, so tests can call it.
+    @discardableResult
+    static func initializeExtensionModule(config: MessagingPushConfigOptions) -> MessagingPushInstance {
+        // Secret keys must not ship in apps. `MessagingPushConfigBuilder` already logged the error.
+        // Without an implementation, `didReceive` passes the notification through and sends nothing.
+        guard !ApiKey.isSecret(config.cdpApiKey) else {
+            return shared
+        }
+
         shared.initializeModuleIfNotAlready {
             // set moduleConfig before creating implementation instance as dependencies inside instance may directly use moduleConfig from MessagingPush.
             Self.moduleConfig = config
@@ -178,19 +190,26 @@ public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, Messagi
      is no active customer, this will fail to register the device
      */
     public func registerDeviceToken(_ deviceToken: String) {
-        // Compare the new deviceToken with the one stored in globalDataStore.
-        // If they are different, proceed with registering the device token.
-        // This check helps to avoid duplicate requests, as registerDeviceToken is already called on SDK initialization.
-        if deviceToken != globalDataStore.pushDeviceToken {
-            // Call the registerDeviceToken method on the implementation.
-            // This method is responsible for registering the device token and updating the globalDataStore as well.
-            if let implementation = implementation {
-                implementation.registerDeviceToken(deviceToken)
+        registerDeviceToken(deviceToken, tokenType: nil)
+    }
+
+    /// Registers a token the SDK fetched from Firebase, along with its type.
+    @_spi(Internal)
+    public func registerDeviceToken(_ deviceToken: String, tokenType: DeviceTokenType?) {
+        // Skip tokens already registered, as registerDeviceToken is already called on SDK initialization.
+        guard !globalDataStore.isPushDeviceTokenStored(deviceToken, type: tokenType) else { return }
+
+        // The implementation registers the token and updates the globalDataStore as well.
+        if let implementation = implementation {
+            // The typed call isn't on the public MessagingPushInstance protocol
+            if let implementation = implementation as? MessagingPushImplementation {
+                implementation.registerDeviceToken(deviceToken, tokenType: tokenType)
             } else {
-                // Update the globalDataStore with the new device token.
-                // The implementation may be nil due to lifecycle issues in wrappers SDKs.
-                globalDataStore.pushDeviceToken = deviceToken
+                implementation.registerDeviceToken(deviceToken)
             }
+        } else {
+            // The implementation may be nil due to lifecycle issues in wrappers SDKs.
+            globalDataStore.savePushDeviceToken(deviceToken, type: tokenType)
         }
     }
 
@@ -199,6 +218,13 @@ public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, Messagi
      */
     public func deleteDeviceToken() {
         implementation?.deleteDeviceToken()
+    }
+
+    /// Handles a failed registration for remote notifications, from every integration path.
+    /// Only logs, so the device stays on the profile.
+    @_spi(Internal)
+    public func didFailToRegisterForRemoteNotifications(error: Error) {
+        logger.error("CIO: Failed to register for remote notifications: \(error.localizedDescription)")
     }
 
     /**

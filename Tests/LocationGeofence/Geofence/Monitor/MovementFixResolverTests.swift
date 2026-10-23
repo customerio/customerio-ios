@@ -9,6 +9,48 @@ import Testing
 @Suite("MovementFixResolver")
 @MainActor
 struct MovementFixResolverTests {
+    @Test
+    func diagnostics_whenRequestIsCoalescedThenReturnsStaleAndCoarseFixes_thenReportsActualQualityAndDropsRetiredAnswers() async throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let journal = DwellDiagnosticJournal(directory: directory, isEnabled: { true })
+        let recorder = DwellDiagnosticRecorder(journal: journal, isEnabled: true, now: { 10 })
+        let resolver = MovementFixResolver(
+            logger: LoggerMock(), desiredAccuracy: kCLLocationAccuracyNearestTenMeters, diagnosticRecorder: recorder
+        )
+        resolver.systemCachedFix = { nil }
+        var requests = 0, completions = 0
+        resolver.requestFreshFix = { requests += 1 }
+        resolver.resolve(cached: nil, purpose: .polygon) { _, fresh in
+            #expect(fresh)
+            completions += 1
+        }
+        resolver.resolve(cached: nil, purpose: .polygon) { _, fresh in
+            #expect(fresh)
+            completions += 1
+        }
+        #expect(requests == 1)
+        resolver.handleDeliveredFix(makeFix(ageSeconds: 120, accuracy: 100))
+        #expect(completions == 0)
+        resolver.handleResolvedFix(makeFix(ageSeconds: 0, accuracy: 100))
+        #expect(completions == 2)
+        await recorder.drain()
+        let records = try #require(await journal.snapshot())
+        #expect(records.map(\.event) == [.fixRequested, .fixReceived, .fixReceived])
+        #expect(records.map(\.requestedAccuracy) == Array(repeating: "nearest_ten_meters", count: 3))
+        #expect(records[1].reason == .staleFix)
+        #expect(records[1].fixAge.map { $0 >= 119 } == true)
+        #expect(records.last?.returnedAccuracy == 100, "a precise request must not relabel a coarse answer")
+
+        resolver.resolve(cached: nil, purpose: .polygon) { _, _ in completions += 1 }
+        #expect(requests == 2)
+        recorder.invalidateAndClear()
+        resolver.handleResolvedFix(makeFix(ageSeconds: 0, accuracy: 5))
+        await recorder.drain()
+        #expect(completions == 3, "diagnostics must leave the resolver's completion contract unchanged")
+        #expect(await journal.snapshot() == [])
+    }
+
     private func makeResolver(
         maxAge: TimeInterval = 30,
         requestTimeout: TimeInterval = 30,

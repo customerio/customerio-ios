@@ -37,6 +37,8 @@ protocol GeofenceConditionMonitoring: AnyObject, Sendable {
 protocol GeofenceLocationAuthority: AnyObject {
     /// Never prompts.
     var authorizationStatus: CLAuthorizationStatus { get }
+    /// Precise rather than approximate location.
+    var isFullAccuracy: Bool { get }
     var maximumRegionMonitoringDistance: CLLocationDistance { get }
     var currentLocation: CLLocation? { get }
     /// **Must be invoked on the main actor**: the handler calls `MainActor.assumeIsolated`, which
@@ -82,6 +84,8 @@ final class CoreLocationConditionMonitor: GeofenceConditionMonitoring, @unchecke
         get async {
             let underlying = await monitor.events
             return AsyncThrowingStream { continuation in
+                // Relays for the stream's life; the consumer counts each event it receives.
+                // swiftlint:disable:next geofence_untracked_task
                 let task = Task {
                     do {
                         for try await event in underlying {
@@ -134,6 +138,7 @@ final class CoreLocationAuthority: NSObject, GeofenceLocationAuthority, CLLocati
     }
 
     var authorizationStatus: CLAuthorizationStatus { manager.authorizationStatus }
+    var isFullAccuracy: Bool { manager.accuracyAuthorization == .fullAccuracy }
     var maximumRegionMonitoringDistance: CLLocationDistance { manager.maximumRegionMonitoringDistance }
     var currentLocation: CLLocation? { manager.location }
 

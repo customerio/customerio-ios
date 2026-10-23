@@ -31,23 +31,12 @@ extension MessagingPushFCM {
     }
 
     // Swizzled method for APN device token.
-    // Fetch the FCM token using the Firebase delegate method when the APN token is set.
+    // Fetch the FCM registration when the APN token is set.
     @objc
     func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
         // Use Self.shared because after swizzling, `self` is the AppDelegate, not MessagingPushFCM
-        guard let firebaseService = Self.shared.firebaseMessaging() else {
-            DIGraphShared.shared.logger.error("CIO: firebaseService is nil. Make sure to initialize the MessagingPushFCM SDK before use.")
-            return
+        Self.shared.fetchFirebaseRegistration(apnsToken: deviceToken) { registration, tokenType in
+            Self.shared.registerFirebaseDeviceToken(registration, tokenType: tokenType)
         }
-
-        firebaseService.apnsToken = deviceToken
-        // Registers listener with FCM SDK to always have the latest FCM token.
-        // Used to automatically register it with the SDK.
-        firebaseService.fetchToken(completion: { token, _ in
-            guard let token = token else {
-                return
-            }
-            Self.shared.registerDeviceToken(fcmToken: token)
-        })
     }
 }

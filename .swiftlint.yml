@@ -15,3 +15,21 @@ excluded: # paths or files to ignore during linting. Takes precedence over `incl
   - Sources/MessagingInbox/Vendor # third-party code vendored verbatim (SVGPath, MIT)
 
 reporter: "emoji" # reporter type (xcode, json, csv, checkstyle, codeclimate, junit, html, emoji, sonarqube, markdown, github-actions-logging)
+
+custom_rules:
+  # The replay harness knows the SDK is idle only if it sees every task the geofence module starts.
+  geofence_untracked_task:
+    name: "Geofence task outside the spawner"
+    included: "Sources/LocationGeofence/.*\\.swift$"
+    excluded: "Sources/LocationGeofence/GeofenceTaskSpawning\\.swift$"
+    # Not after `-> ` or `: `, so a `Task<…>` return type or annotation before `{` isn't a spawn.
+    regex: "(?<!->\\s)(?<!:\\s)\\bTask(\\s*<(?:->|[^<>{};=]|<(?:->|[^<>{};=])*>)*>)?\\s*(\\.\\s*(detached|init|immediate)\\s*)?(\\{|\\()"
+    excluded_match_kinds:
+      - comment
+      - comment.mark
+      - comment.url
+      - doccomment
+      - doccomment.field
+      - string
+    message: "Start geofence work with `taskSpawner.spawn { }` so the replay harness can tell when it has finished. A task that never finishes opts out with `// swiftlint:disable:next geofence_untracked_task` and a reason."
+    severity: error

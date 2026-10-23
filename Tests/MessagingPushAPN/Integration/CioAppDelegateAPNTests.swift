@@ -26,7 +26,8 @@ class CioAppDelegateAPNTests: XCTestCase {
             autoFetchDeviceToken: autoFetchDeviceToken,
             autoTrackPushEvents: autoTrackPushEvents,
             showPushAppInForeground: false,
-            appGroupId: nil
+            appGroupId: nil,
+            apiHost: nil
         )
     }
 
@@ -114,6 +115,6 @@ class CioAppDelegateAPNTests: XCTestCase {
         // Verify behavior
         XCTAssertTrue(mockAppDelegate.didFailToRegisterForRemoteNotificationsCalled)
         XCTAssertEqual((mockAppDelegate.errorReceived as NSError?)?.domain, "test")
-        XCTAssertTrue(mockMessagingPush?.deleteDeviceTokenCalled == true)
+        XCTAssertEqual(mockMessagingPush?.deleteDeviceTokenCalled, false)
     }
 }
