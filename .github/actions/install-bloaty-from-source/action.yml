@@ -33,7 +33,7 @@ runs:
 
     - name: Restore Bloaty binary from cache
       id: restore-bloaty-cache
-      uses: actions/cache/restore@v4
+      uses: actions/cache/restore@v6
       with:
         path: ${{ runner.temp }}/bloaty-bin
         key: bloaty-${{ runner.os }}${{ steps.macos.outputs.major }}-${{ runner.arch }}-${{ inputs.bloaty-commit }}
@@ -65,7 +65,7 @@ runs:
 
     - name: Save Bloaty binary to cache
       if: steps.restore-bloaty-cache.outputs.cache-hit != 'true'
-      uses: actions/cache/save@v4
+      uses: actions/cache/save@v6
       with:
         path: ${{ runner.temp }}/bloaty-bin
         key: bloaty-${{ runner.os }}${{ steps.macos.outputs.major }}-${{ runner.arch }}-${{ inputs.bloaty-commit }}

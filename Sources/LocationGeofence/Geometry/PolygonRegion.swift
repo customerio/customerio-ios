@@ -145,8 +145,8 @@ struct PolygonRegion {
         return isInside(p) ? minDistance : -minDistance
     }
 
-    /// Venue depth in metres, `2 × area / perimeter`. Errs HIGH against the inradius, the safe
-    /// direction: it widens the accuracy accepted.
+    /// Whole-ring depth estimate in metres, `2 × area / perimeter`, not a bound on local depth.
+    /// A thin appendage can lower it below the depth of the broad part of a non-convex ring.
     var scale: Double {
         var twiceArea = 0.0
         var perimeter = 0.0

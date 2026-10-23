@@ -76,7 +76,7 @@ jobs:
     runs-on: xcode-27
     timeout-minutes: 45
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Read corpus pin
         id: pin
@@ -91,7 +91,7 @@ jobs:
       - name: Fetch corpus
         id: corpus
         continue-on-error: true
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           repository: customerio/mobile-replay-harness
           ref: ${{ steps.pin.outputs.sha }}

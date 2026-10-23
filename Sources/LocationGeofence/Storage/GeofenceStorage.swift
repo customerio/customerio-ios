@@ -13,7 +13,59 @@ actor GeofenceStorage {
     private let fileManager: FileManager
     private let directoryURL: URL?
     /// `lastStateChangedAt` is weighed against fix timestamps, so it must come from the same clock.
-    private let dateUtil: DateUtil
+    /// Internal for the `+MonitorRegionRecords` extension.
+    let dateUtil: DateUtil
+    /// Test seam: runs inside `stageDwellReservation` before its load, so a test can interleave
+    /// main-actor work with the reservation write. Nil in production.
+    private var beforeReservationWrite: (@Sendable () async -> Void)?
+
+    func setBeforeReservationWrite(_ hook: (@Sendable () async -> Void)?) {
+        beforeReservationWrite = hook
+    }
+
+    func runBeforeReservationWrite() async {
+        await beforeReservationWrite?()
+    }
+
+    /// Test seam, as `beforeReservationWrite`: runs inside `admitStagedDwellReservation` before its
+    /// load.
+    private var beforeAdmission: (@Sendable () async -> Void)?
+
+    func setBeforeAdmission(_ hook: (@Sendable () async -> Void)?) {
+        beforeAdmission = hook
+    }
+
+    func runBeforeAdmission() async {
+        await beforeAdmission?()
+    }
+
+    /// Test seam, as `beforeReservationWrite`: runs inside `isPolygon(id:)` before its load.
+    private var beforeShapeRead: (@Sendable () async -> Void)?
+
+    func setBeforeShapeRead(_ hook: (@Sendable () async -> Void)?) {
+        beforeShapeRead = hook
+    }
+
+    func runBeforeShapeRead() async {
+        await beforeShapeRead?()
+    }
+
+    /// Test seam: makes `retractDwellReservation` report a failed persist without writing.
+    private var retractionFails = false
+
+    func setRetractionFails(_ fails: Bool) {
+        retractionFails = fails
+    }
+
+    var retractionFailsForTesting: Bool { retractionFails }
+
+    /// Test seam: makes `recordDwellProofLedger` report a failed persist without writing.
+    private(set) var ledgerSaveFails = false
+
+    func setLedgerSaveFails(_ fails: Bool) {
+        ledgerSaveFails = fails
+    }
+
     init(
         fileManager: FileManager = .default,
         directoryURL: URL? = nil,
@@ -22,171 +74,6 @@ actor GeofenceStorage {
         self.fileManager = fileManager
         self.directoryURL = directoryURL
         self.dateUtil = dateUtil
-    }
-
-    // MARK: - Event Cooldowns
-
-    func getEventCooldowns() -> [String: Date] {
-        loadFromDisk()?.eventCooldowns ?? [:]
-    }
-
-    func recordEventCooldown(key: String, timestamp: Date) {
-        var state = loadFromDisk() ?? GeofenceState()
-        var cooldowns = state.eventCooldowns ?? [:]
-        cooldowns[key] = timestamp
-        state.eventCooldowns = cooldowns
-        saveToDisk(state)
-    }
-
-    /// Checks and records in one step, so concurrent callers can't both fire.
-    /// - Returns: `nil` when acquired, otherwise the seconds still left on the cooldown.
-    func tryAcquireCooldown(key: String, now: Date, interval: TimeInterval) -> TimeInterval? {
-        var state = loadFromDisk() ?? GeofenceState()
-        var cooldowns = state.eventCooldowns ?? [:]
-        if let last = cooldowns[key] {
-            let elapsed = now.timeIntervalSince(last)
-            if elapsed < interval { return interval - elapsed }
-        }
-        cooldowns[key] = now
-        state.eventCooldowns = cooldowns
-        saveToDisk(state)
-        return nil
-    }
-
-    /// Filtered inside the actor so a concurrent `tryAcquireCooldown` write can't be lost.
-    func purgeExpiredCooldowns(now: Date, interval: TimeInterval) {
-        var state = loadFromDisk() ?? GeofenceState()
-        guard var cooldowns = state.eventCooldowns, !cooldowns.isEmpty else { return }
-        let beforeCount = cooldowns.count
-        cooldowns = cooldowns.filter { now.timeIntervalSince($0.value) < interval }
-        if cooldowns.count == beforeCount { return }
-        state.eventCooldowns = cooldowns
-        saveToDisk(state)
-    }
-
-    /// For when persisting fails after the claim, so the next transition isn't suppressed.
-    func releaseCooldown(key: String) {
-        var state = loadFromDisk() ?? GeofenceState()
-        guard var cooldowns = state.eventCooldowns, cooldowns.removeValue(forKey: key) != nil else { return }
-        state.eventCooldowns = cooldowns
-        saveToDisk(state)
-    }
-
-    func clearEventCooldowns() {
-        var state = loadFromDisk() ?? GeofenceState()
-        state.eventCooldowns = nil
-        saveToDisk(state)
-    }
-
-    // MARK: - Monitor Region Records (CLMonitor path)
-
-    /// The baseline is preserved on a re-register with unchanged geometry, so a CLMonitor
-    /// re-evaluation isn't a duplicate. `forceReseed` after the OS stopped monitoring: the device may
-    /// have crossed meanwhile.
-    func recordMonitorRegistration(
-        identifier: String,
-        transitionTypes: Set<GeofenceTransition>,
-        initialState: GeofenceTransition,
-        center: LocationData,
-        radius: Double,
-        forceReseed: Bool = false,
-        now: Date? = nil // nil rather than `Date()`: a default expression cannot reach `dateUtil`.
-    ) {
-        var state = loadFromDisk() ?? GeofenceState()
-        var records = state.monitorRegionRecords ?? [:]
-        let existing = records[identifier]
-        let unchangedGeometry = existing?.center == center && existing?.radius == radius
-        let preserved = unchangedGeometry && !forceReseed
-        let stamp = now ?? dateUtil.now
-        records[identifier] = MonitorRegionRecord(
-            lastState: preserved ? (existing?.lastState ?? initialState) : initialState,
-            transitionTypes: transitionTypes,
-            center: center,
-            radius: radius,
-            lastStateChangedAt: preserved ? existing?.lastStateChangedAt : stamp,
-            // An OS event dated before this was computed against the old circle (see `recordMonitorEvent`).
-            registeredAt: preserved ? existing?.registeredAt : stamp,
-            // The trigger keeps its identity across radius changes, so its OS event dedup survives.
-            lastEventDate: (preserved || identifier == GeofenceConstants.movementTriggerIdentifier) ? existing?.lastEventDate : nil
-        )
-        state.monitorRegionRecords = records
-        saveToDisk(state)
-    }
-
-    /// The baseline advances on filtered transitions too, so an exit-only region sees the next exit
-    /// as a change. `osEventDate` is judged against OS-dated history only, never SDK write times.
-    func recordMonitorEvent(
-        _ transition: GeofenceTransition,
-        forIdentifier identifier: String,
-        onlyIfBaselinePredates evidenceTimestamp: Date? = nil,
-        osEventDate: Date? = nil,
-        now: Date? = nil
-    ) -> GeofenceMonitorEventOutcome {
-        var state = loadFromDisk() ?? GeofenceState()
-        var records = state.monitorRegionRecords ?? [:]
-        guard var record = records[identifier] else {
-            // Condition predates this bookkeeping. Silent, like classic registration's initial state.
-            records[identifier] = MonitorRegionRecord(
-                lastState: transition, transitionTypes: [.enter, .exit], lastStateChangedAt: now ?? dateUtil.now, lastEventDate: osEventDate
-            )
-            state.monitorRegionRecords = records
-            saveToDisk(state)
-            return .suppressedNoBaseline
-        }
-        // A trigger exit can arrive just after a re-plant, carrying the old circle's date. Only the
-        // untouched re-plant baseline is exempt; later evidence keeps the ordering guard.
-        let delayedMovementExit: Bool
-        if identifier == GeofenceConstants.movementTriggerIdentifier, transition == .exit,
-           let osEventDate, let registeredAt = record.registeredAt,
-           let changedAt = record.lastStateChangedAt {
-            delayedMovementExit = osEventDate < registeredAt && changedAt == registeredAt
-        } else {
-            delayedMovementExit = false
-        }
-        if let osEventDate {
-            if !delayedMovementExit,
-               let registeredAt = record.registeredAt, osEventDate < registeredAt { return .suppressedPredatesRegistration }
-            if let lastEventDate = record.lastEventDate, osEventDate <= lastEventDate { return .suppressedRedelivery }
-            record.lastEventDate = osEventDate
-        }
-        if !delayedMovementExit,
-           let evidenceTimestamp, let changedAt = record.lastStateChangedAt, changedAt > evidenceTimestamp {
-            return .suppressedNewerBaseline
-        }
-        if delayedMovementExit {
-            // Keep the new circle's seeded state, or its next real exit would look unchanged.
-            records[identifier] = record
-            state.monitorRegionRecords = records
-            saveToDisk(state)
-            return record.transitionTypes.contains(transition) ? .deliver : .suppressedFilteredType
-        }
-        guard record.lastState != transition else {
-            // Persist the date so a later copy is refused.
-            if osEventDate != nil {
-                records[identifier] = record
-                state.monitorRegionRecords = records
-                saveToDisk(state)
-            }
-            return .suppressedNoChange
-        }
-        record.lastState = transition
-        record.lastStateChangedAt = now ?? dateUtil.now
-        records[identifier] = record
-        state.monitorRegionRecords = records
-        saveToDisk(state)
-        return record.transitionTypes.contains(transition) ? .deliver : .suppressedFilteredType
-    }
-
-    func getMonitorRegionRecords() -> [String: MonitorRegionRecord] {
-        loadFromDisk()?.monitorRegionRecords ?? [:]
-    }
-
-    /// Polygon belief deliberately SURVIVES: dropping it would re-deliver an enter for a device that
-    /// stayed inside.
-    func clearMonitorRegionRecord(identifier: String) {
-        var state = loadFromDisk() ?? GeofenceState()
-        guard state.monitorRegionRecords?.removeValue(forKey: identifier) != nil else { return }
-        saveToDisk(state)
     }
 
     /// Keeps the workspace's cached geofences and config. Clearing the last sync stops the freshness
@@ -200,6 +87,10 @@ actor GeofenceStorage {
         state.monitoredGeofenceIds = nil
         state.monitorRegionRecords = nil
         state.polygonMembership = nil
+        state.dwellVisits = nil
+        // User-scoped like the visits: another user's dwell is never delivered.
+        state.orphanedDwells = nil
+        state.unconfiguredOsTransitions = nil
         saveToDisk(state)
     }
 
@@ -209,9 +100,13 @@ actor GeofenceStorage {
         loadFromDisk()?.cachedGeofences ?? []
     }
 
+    /// Takes only regions decoded by the current model from a server response: it marks the
+    /// catalog current, which ends the one-time refetch of a catalog cached before dwell support.
     func setCachedGeofences(_ geofences: [Geofence]) {
         var state = loadFromDisk() ?? GeofenceState()
         state.cachedGeofences = geofences
+        state.catalogVersion = GeofenceState.currentCatalogVersion
+        state.dwellVisits = Self.dwellVisits(state.dwellVisits, retainedFor: geofences)
         saveToDisk(state)
     }
 
@@ -248,6 +143,13 @@ actor GeofenceStorage {
 
     // MARK: - Private (file persistence)
 
+    /// Whether no state has been written at all, as opposed to a state file that cannot be read
+    /// now (e.g. Data Protection before first unlock, or an undecodable file).
+    func stateIsAbsent() -> Bool {
+        guard let url = stateFileURL() else { return false }
+        return !fileManager.fileExists(atPath: url.path)
+    }
+
     func loadFromDisk() -> GeofenceState? {
         guard let url = stateFileURL() else { return nil }
         guard fileManager.fileExists(atPath: url.path),
@@ -258,11 +160,12 @@ actor GeofenceStorage {
         return try? Self.makeDecoder().decode(GeofenceState.self, from: data)
     }
 
-    func saveToDisk(_ state: GeofenceState) {
+    @discardableResult
+    func saveToDisk(_ state: GeofenceState) -> Bool {
         guard let data = try? Self.makeEncoder().encode(state),
               let url = stateFileURL()
         else {
-            return
+            return false
         }
         let directory = url.deletingLastPathComponent()
         try? fileManager.createDirectory(
@@ -278,8 +181,9 @@ actor GeofenceStorage {
                 ofItemAtPath: url.path
             )
             setExcludedFromBackup(on: url)
+            return true
         } catch {
-            // Persistence is best-effort.
+            return false
         }
     }
 

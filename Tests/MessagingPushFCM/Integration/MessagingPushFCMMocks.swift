@@ -59,6 +59,33 @@ class MessagingPushFCMMock: MessagingPushInstanceMock, MessagingPushFCMInstance 
         didReceiveRegistrationTokenClosure?(messaging, fcmToken)
     }
 
+    // MARK: - messaging
+
+    /// Number of times the function was called.
+    @Atomic public private(set) var didReceiveRegistrationCallsCount = 0
+    /// `true` if the function was ever called.
+    public var didReceiveRegistrationCalled: Bool {
+        didReceiveRegistrationCallsCount > 0
+    }
+
+    /// The arguments from the *last* time the function was called.
+    @Atomic public private(set) var didReceiveRegistrationReceivedArguments: (messaging: Any, installationId: String?)?
+    /// Arguments from *all* of the times that the function was called.
+    @Atomic public private(set) var didReceiveRegistrationReceivedInvocations: [(messaging: Any, installationId: String?)] = []
+    /**
+     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
+     */
+    public var didReceiveRegistrationClosure: ((Any, String?) -> Void)?
+
+    /// Mocked function for `messaging(_ messaging: Any, didReceiveRegistration installationId: String?)`. Your opportunity to return a mocked value and check result of mock in test code.
+    public func messaging(_ messaging: Any, didReceiveRegistration installationId: String?) {
+        mockCalled = true
+        didReceiveRegistrationCallsCount += 1
+        didReceiveRegistrationReceivedArguments = (messaging: messaging, installationId: installationId)
+        didReceiveRegistrationReceivedInvocations.append((messaging: messaging, installationId: installationId))
+        didReceiveRegistrationClosure?(messaging, installationId)
+    }
+
     // MARK: - application
 
     /// Number of times the function was called.

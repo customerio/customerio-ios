@@ -42,7 +42,7 @@ extension GeofenceSyncCoordinatorImpl {
     /// been dropped on the gate this operation held.
     func retryForCurrentUser(latitude: Double, longitude: Double, anchorIsLiveFix: Bool) {
         guard identifiedUserId != nil else { return }
-        Task { [weak self] in
+        taskSpawner.spawn { [weak self] in
             _ = await self?.refresh(
                 latitude: latitude, longitude: longitude, anchorIsLiveFix: anchorIsLiveFix
             )
@@ -58,7 +58,7 @@ extension GeofenceSyncCoordinatorImpl {
         }
         guard let pending, !userChanged, identifiedUserId != nil else { return }
         // Don't check staleness here; only `acquireGateOrDefer` can judge it atomically.
-        Task { [weak self] in
+        taskSpawner.spawn { [weak self] in
             _ = await self?.handleMovement(
                 latitude: pending.latitude, longitude: pending.longitude,
                 anchorIsLiveFix: pending.anchorIsLiveFix, replaySequence: pending.sequence,
