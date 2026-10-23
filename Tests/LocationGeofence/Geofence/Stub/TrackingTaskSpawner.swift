@@ -33,6 +33,9 @@ final class TrackingTaskSpawner: GeofenceTaskSpawning, @unchecked Sendable {
 
     var inFlight: Int { state.wrappedValue.inFlight }
     var idleWaiterCount: Int { state.wrappedValue.idleWaiters.count }
+    /// Called each time `awaitIdle()` starts waiting, so a test can await that instead of polling.
+    /// Set before any waiter.
+    var onWaiterRegistered: (@Sendable () -> Void)?
 
     /// The spawner that started the running task, inherited by any task it creates. Tells a boundary
     /// the work this spawner counts from a test's own tasks, which it must not count as parked.
@@ -106,6 +109,7 @@ final class TrackingTaskSpawner: GeofenceTaskSpawning, @unchecked Sendable {
                 continuation.resume(returning: nil)
             } else {
                 DispatchQueue.global().asyncAfter(deadline: idleDeadline, execute: deadline)
+                onWaiterRegistered?()
             }
         }
     }
