@@ -6,11 +6,25 @@ import Foundation
 /// of sleeping. Starts each task exactly as the live spawner does and watches it from a second task,
 /// so tracking can't change where or when the work runs.
 final class TrackingTaskSpawner: GeofenceTaskSpawning, @unchecked Sendable {
+    struct IdleTimeout: Error, Equatable, CustomStringConvertible {
+        let inFlight: Int
+        let parked: Int
+
+        var description: String {
+            "Geofence replay idle deadline exceeded: inFlight=\(inFlight), parked=\(parked)"
+        }
+    }
+
+    private struct Waiter {
+        let continuation: CheckedContinuation<IdleTimeout?, Never>
+        let deadline: DispatchWorkItem
+    }
+
     private struct State {
         var inFlight = 0
         /// Work suspended at a boundary only the test releases.
         var parked = 0
-        var idleWaiters: [CheckedContinuation<Void, Never>] = []
+        var idleWaiters: [UUID: Waiter] = [:]
 
         var isIdle: Bool { inFlight == parked }
     }
@@ -68,35 +82,52 @@ final class TrackingTaskSpawner: GeofenceTaskSpawning, @unchecked Sendable {
         update { $0.parked = count }
     }
 
-    /// Returns once everything started is finished or parked at a boundary the test controls, and
-    /// still is when rechecked on the main actor. Parked work is published there, sometimes in the
-    /// middle of a job that goes on to start the work it waits on: idle reads true until that job
-    /// ends, so a waiter it woke only trusts a reading taken after it.
+    /// Rechecks idle on the main actor after the job that published parked work has finished.
+    /// Uses one monotonic real-time deadline across rechecks, independent of the replay clock.
     @MainActor
-    func awaitIdle() async {
+    func awaitIdle(timeout: TimeInterval = 10) async -> IdleTimeout? {
+        let deadline = DispatchTime.now() + timeout
         repeat {
-            await waitForIdle()
+            if let timeout = await waitForIdle(until: deadline) { return timeout }
         } while !state.wrappedValue.isIdle
+        return nil
     }
 
-    private func waitForIdle() async {
+    private func waitForIdle(until idleDeadline: DispatchTime) async -> IdleTimeout? {
         await withCheckedContinuation { continuation in
+            let id = UUID()
+            let deadline = DispatchWorkItem { [weak self] in self?.expireWaiter(id) }
             let idleNow = state.mutating { state -> Bool in
                 if state.isIdle { return true }
-                state.idleWaiters.append(continuation)
+                state.idleWaiters[id] = Waiter(continuation: continuation, deadline: deadline)
                 return false
             }
-            if idleNow { continuation.resume() }
+            if idleNow {
+                continuation.resume(returning: nil)
+            } else {
+                DispatchQueue.global().asyncAfter(deadline: idleDeadline, execute: deadline)
+            }
         }
+    }
+
+    private func expireWaiter(_ id: UUID) {
+        let expired = state.mutating { state -> (Waiter, IdleTimeout)? in
+            guard let waiter = state.idleWaiters.removeValue(forKey: id) else { return nil }
+            return (waiter, IdleTimeout(inFlight: state.inFlight, parked: state.parked))
+        }
+        if let (waiter, counts) = expired { waiter.continuation.resume(returning: counts) }
     }
 
     private func update(_ change: (inout State) -> Void) {
-        let waiters = state.mutating { state -> [CheckedContinuation<Void, Never>] in
+        let waiters = state.mutating { state -> [Waiter] in
             change(&state)
             guard state.isIdle else { return [] }
-            defer { state.idleWaiters = [] }
-            return state.idleWaiters
+            defer { state.idleWaiters = [:] }
+            return Array(state.idleWaiters.values)
         }
-        waiters.forEach { $0.resume() }
+        waiters.forEach {
+            $0.deadline.cancel()
+            $0.continuation.resume(returning: nil)
+        }
     }
 }

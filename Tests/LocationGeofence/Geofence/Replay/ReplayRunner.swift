@@ -17,7 +17,6 @@ enum ReplayRunner {
 
     static func run(_ scenario: Scenario, on harness: ReplayHarness) async throws -> Result {
         var unsupported: [String] = []
-        var seen: Set<String> = []
 
         let pulled = pulledReads(scenario, on: harness)
         unsupported.append(contentsOf: pulled.unsupported)
@@ -43,20 +42,7 @@ enum ReplayRunner {
             unsupported.append("\(record.kind) \(record.ev)@\(record.at)")
         }
 
-        for record in Self.stableByTime(scenario.when) {
-            await harness.advance(to: record.at) { await settle(harness) }
-            let isFirst = seen.insert(record.ev).inserted
-            let handled: Bool
-            if let execution = await deliverExecutionInput(record, on: harness) {
-                handled = execution
-            } else {
-                handled = deliver(record, on: harness, isFirst: isFirst, scenarioEpoch: scenario.startedAt)
-            }
-            if let reason = await unsupportedReason(record, handled: handled, on: harness) {
-                unsupported.append(reason)
-            }
-            await settle(harness)
-        }
+        try unsupported.append(contentsOf: await replayInputs(scenario, on: harness))
 
         try await settleFinalAnswers(on: harness)
         return Result(emitted: harness.emitted, unsupported: unsupported, stimuli: stimuli)
@@ -106,6 +92,7 @@ enum ReplayRunner {
         if harness.isExecutionSuspended {
             await harness.releaseRemainingBoundaries {}
         }
+        if let timeout = harness.idleTimeout { throw timeout }
     }
 
     /// A `note`, not a stimulus: the OS's reply to work the SDK started.
@@ -159,6 +146,29 @@ enum ReplayRunner {
     /// Waits for the SDK to finish what the last input started, not for a stretch of real time.
     private static func settle(_ harness: ReplayHarness) async {
         await harness.awaitIdle()
+    }
+
+    private static func replayInputs(_ scenario: Scenario, on harness: ReplayHarness) async throws -> [String] {
+        var unsupported: [String] = []
+        var seen: Set<String> = []
+        for record in Self.stableByTime(scenario.when) {
+            await harness.advance(to: record.at) { await settle(harness) }
+            if let timeout = harness.idleTimeout { throw timeout }
+            let isFirst = seen.insert(record.ev).inserted
+            let handled: Bool
+            if let execution = await deliverExecutionInput(record, on: harness) {
+                handled = execution
+            } else {
+                handled = deliver(record, on: harness, isFirst: isFirst, scenarioEpoch: scenario.startedAt)
+            }
+            if let reason = await unsupportedReason(record, handled: handled, on: harness) {
+                unsupported.append(reason)
+            }
+            await settle(harness)
+            if let timeout = harness.idleTimeout { throw timeout }
+        }
+
+        return unsupported
     }
 
     /// A false boundary moves reads and decisions into a phase the drive never ran. `app.foreground`

@@ -5,6 +5,7 @@
 import CoreLocation
 import Foundation
 import SharedTests
+import Testing
 #if canImport(UIKit)
 import UIKit
 #endif
@@ -32,6 +33,7 @@ final class ReplayHarness {
     let gate = ReplayBoundaryGate()
     /// Everything the SDK starts goes through this, so the runner waits for idle instead of sleeping.
     let taskSpawner = TrackingTaskSpawner()
+    private(set) var idleTimeout: TrackingTaskSpawner.IdleTimeout?
     private(set) var dwellScheduler = ReplayDwellScheduler()
     private var processGeneration = UUID()
     /// Lifecycle delivery belongs to one process, even when a test retains its old graph.
@@ -294,7 +296,11 @@ final class ReplayHarness {
     /// Returns once everything the SDK started is finished or waits on drive time: a reply parked on
     /// `gate`, a sleep on `dwellScheduler`, or a replay fix request.
     func awaitIdle() async {
-        await taskSpawner.awaitIdle()
+        guard idleTimeout == nil else { return }
+        if let timeout = await taskSpawner.awaitIdle() {
+            idleTimeout = timeout
+            Issue.record(timeout)
+        }
     }
 
     /// Call after `trigger.onModuleInit()`, as `GeofenceModuleState.setup` does.
