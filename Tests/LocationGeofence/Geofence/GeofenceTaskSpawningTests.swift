@@ -133,6 +133,40 @@ struct GeofenceTaskSpawningTests {
         #expect(spawner.inFlight == 0)
     }
 
+    /// The sequence a replay fix request runs in one main-actor job: its caller is published as
+    /// parked, which reads idle, and the job then starts the timeout and answer it waits on. The
+    /// waiter woken in between must keep waiting until that work is done.
+    @Test
+    func trackingSpawner_givenParkedPublishedBeforeTheWorkItAwaits_expectWaiterKeepsWaiting() async throws {
+        let spawner = TrackingTaskSpawner()
+        let log = OrderLog()
+        let callerHeld = AsyncStream<Void>.makeStream()
+        let startedHeld = AsyncStream<Void>.makeStream()
+        let caller = spawner.spawn {
+            for await _ in callerHeld.stream {}
+        }
+        let waiter = Task {
+            await spawner.awaitIdle()
+            log.entries.append(0)
+        }
+        try #require(await settleOnMain { spawner.idleWaiterCount == 1 })
+
+        spawner.setParked(1)
+        let started = spawner.spawn {
+            for await _ in startedHeld.stream {}
+            log.entries.append(1)
+        }
+
+        #expect(await settleOnMain { !log.entries.isEmpty || spawner.idleWaiterCount == 1 })
+        #expect(log.entries.isEmpty, "the waiter returned while the work its caller waits on still ran")
+        startedHeld.continuation.finish()
+        await started.value
+        await waiter.value
+        #expect(log.entries == [1, 0])
+        callerHeld.continuation.finish()
+        await caller.value
+    }
+
     @Test
     func trackingSpawner_givenSuspendedWork_expectCountedUntilItFinishes() async {
         let spawner = TrackingTaskSpawner()
