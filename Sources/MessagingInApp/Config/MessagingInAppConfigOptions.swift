@@ -5,6 +5,7 @@ import CioInternalCommon
 /// Use `MessagingInAppConfigBuilder` for constructing its instances. For detailed usage, see builder class documentation.
 public struct MessagingInAppConfigOptions {
     public let siteId: String
+    @available(*, deprecated, message: "Ignored, in-app uses the region CustomerIO is set up with.")
     public let region: Region
     public let colorScheme: ColorScheme
     /// Host-provided VoiceOver labels for the Visual Notification Inbox UI. All nil by default (the SDK

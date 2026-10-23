@@ -1,7 +1,7 @@
 import Foundation
 
 /// No margin floor, unlike `BaselineHealDecision`: a floor would refuse most of a shallow venue. The
-/// margin is the fix's own accuracy, capped per fence by `venueScale`.
+/// margin is the fix's own accuracy; `venueScale` caps fixes whose accuracy reaches the ring.
 enum PolygonMembershipDecision {
     enum Outcome: Equatable {
         case decided(PolygonMembership)
@@ -44,8 +44,9 @@ enum PolygonMembershipDecision {
         if signedEdgeDistance < 0, -signedEdgeDistance > horizontalAccuracy {
             return .decided(.outside)
         }
-        guard horizontalAccuracy < venueScale else { return .undecided(.accuracyTooLow) }
+        // The actual edge clearance settles this fix even if a thin appendage lowers `venueScale`.
         if signedEdgeDistance > horizontalAccuracy { return .decided(.inside) }
+        guard horizontalAccuracy < venueScale else { return .undecided(.accuracyTooLow) }
         return signedEdgeDistance > 0 ? .needsCorroboration(.inside) : .undecided(.withinAccuracy)
     }
 }

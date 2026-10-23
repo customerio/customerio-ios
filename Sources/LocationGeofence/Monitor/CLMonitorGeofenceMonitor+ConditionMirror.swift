@@ -8,6 +8,8 @@ extension CLMonitorGeofenceMonitor {
     /// with no `condition_mirror` after it means the monitor pipeline is wedged.
     func startConditionMirrorSampling() {
         guard GeofenceDiagnostics.isEnabled else { return }
+        // Samples until cancelled, so it never finishes and can't count as pending work.
+        // swiftlint:disable:next geofence_untracked_task
         Task { [weak self] in
             // Monotonic: `Date()` steps under NTP. This also counts suspended time, which `since`
             // measures.

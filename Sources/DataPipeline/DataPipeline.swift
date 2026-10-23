@@ -59,7 +59,9 @@ public class DataPipeline: ModuleTopLevelObject<DataPipelineInstance>, DataPipel
         shared.initializeModuleIfNotAlready {
             Self.moduleConfig = moduleConfig
 
-            return DataPipelineImplementation(diGraph: DIGraphShared.shared, moduleConfig: moduleConfig)
+            let implementation = DataPipelineImplementation(diGraph: DIGraphShared.shared, moduleConfig: moduleConfig)
+            implementation.replayMissedLaunchLifecycleEvents(enabled: moduleConfig.trackApplicationLifecycleEvents)
+            return implementation
         }
 
         return shared

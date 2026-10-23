@@ -16,6 +16,7 @@ final class GeofenceRefreshTrigger {
     private let lastSkippedForNoLocation = Synchronized<Bool>(false)
     /// Guards the flag *pair*: a reset between the two reads could let a signed-out user's refresh run.
     private let armingLock = NSRecursiveLock()
+    private let taskSpawner: GeofenceTaskSpawning
 
     init(
         storage: GeofenceStorage,
@@ -25,7 +26,8 @@ final class GeofenceRefreshTrigger {
         locationMode: GeofenceLocationMode,
         explicitRefreshRequested: Synchronized<Bool>,
         lastKnownLocation: @escaping () async -> LocationData?,
-        acquireFix: @escaping () -> Void
+        acquireFix: @escaping () -> Void,
+        taskSpawner: GeofenceTaskSpawning = LiveGeofenceTaskSpawner()
     ) {
         self.storage = storage
         self.contextStore = contextStore
@@ -35,6 +37,7 @@ final class GeofenceRefreshTrigger {
         self.explicitRefreshRequested = explicitRefreshRequested
         self.lastKnownLocation = lastKnownLocation
         self.acquireFix = acquireFix
+        self.taskSpawner = taskSpawner
     }
 
     // MARK: - Inputs
@@ -56,7 +59,7 @@ final class GeofenceRefreshTrigger {
             explicitRefreshRequested.wrappedValue = false
             lastSkippedForNoLocation.wrappedValue = false
         }
-        Task { @MainActor [coordinator] in
+        taskSpawner.spawn { @MainActor [coordinator] in
             _ = await coordinator().reset()
         }
     }
@@ -78,7 +81,7 @@ final class GeofenceRefreshTrigger {
         }
         guard wasArmed else { return }
         logger.geofenceFirstRunRearm()
-        Task { @MainActor [weak self] in
+        taskSpawner.spawn { @MainActor [weak self] in
             guard let self else { return }
             // A racing sign-out/switch must win: the coordinator's reset is skipped while anyone is
             // signed in, so it wouldn't undo this refresh.
@@ -91,7 +94,7 @@ final class GeofenceRefreshTrigger {
 
     private func refreshIfPossible() {
         guard let startedForUser = contextStore.currentUserId, !startedForUser.isEmpty else { return }
-        Task { @MainActor [weak self] in
+        taskSpawner.spawn { @MainActor [weak self] in
             guard let self else { return }
             // Registration centre first: movement EXITs move it but not the Location cache.
             let registrationCenter = await self.storage.getLastRegistrationCenter()

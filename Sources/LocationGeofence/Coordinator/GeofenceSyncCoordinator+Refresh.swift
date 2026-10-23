@@ -37,6 +37,9 @@ extension GeofenceSyncCoordinatorImpl {
         let nearestIds = Set(nearest.map(\.id))
         let wakeRadius = wakeRadius(at: anchor, polygons: nearest, config: effectiveConfig, anchorIsLiveFix: anchorIsLiveFix)
         logRanking(candidates: regions, nearest: nearest, nearestIds: nearestIds, anchor: anchor)
+        // Before registering: the OS can report a newly added fence before the cache below holds
+        // it, and a widened edge must already be known as bookkeeping when it does.
+        await storage.recordRegistrationIntent(for: regions, pruningToCache: true)
         let osRegistration = await MainActor.run {
             registerWithOsSync(
                 businessRegions: nearest,
@@ -91,7 +94,12 @@ extension GeofenceSyncCoordinatorImpl {
         anchor: LocationData,
         registeredIds: Set<String>
     ) async {
+        // Bracketed: the bump before the write retires every polygon-shape read begun on the old
+        // catalog, and `rememberCatalog` right after it retires any begun during the write, before
+        // anything else here awaits. See `GeofenceDwellCoordinator.polygonIds`.
+        await MainActor.run { dwellCoordinator?.beginCatalogReplacement() }
         await storage.setCachedGeofences(regions)
+        await MainActor.run { dwellCoordinator?.rememberCatalog(regions) }
         if let parsedConfig {
             await storage.setCachedConfig(parsedConfig)
             onConfigPersisted.wrappedValue?()
@@ -99,6 +107,9 @@ extension GeofenceSyncCoordinatorImpl {
         await storage.recordSync(timestamp: dateUtil.now, location: anchor)
         // Only what the OS accepted, or the resolver could emit an enter no exit can balance.
         await storage.recordRegistration(center: anchor, businessIds: registeredIds)
+        // Against what this refresh just wrote: a lease for a fence it unregistered or replaced must not
+        // keep the session running until its cap.
+        await MainActor.run { dwellCoordinator?.reconcileCollection(geofences: regions, registeredIds: registeredIds) }
     }
 
     /// No `lastSync` write: the refetch decision measures from the fetch anchor.
@@ -119,6 +130,9 @@ extension GeofenceSyncCoordinatorImpl {
         let nearestIds = Set(nearest.map(\.id))
         logRanking(candidates: cachedRegions, nearest: nearest, nearestIds: nearestIds, anchor: anchor)
         let wakeRadius = wakeRadius(at: anchor, polygons: nearest, config: config, anchorIsLiveFix: anchorIsLiveFix)
+        // Additive only: the cache is what is registered here, and a cache written before this
+        // record existed must not register a widened edge that nothing marks as bookkeeping.
+        await storage.recordRegistrationIntent(for: cachedRegions, pruningToCache: false)
         let osRegistration = await MainActor.run {
             registerWithOsSync(
                 businessRegions: nearest,

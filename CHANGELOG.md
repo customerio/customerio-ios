@@ -1,3 +1,39 @@
+## [4.13.0](https://github.com/customerio/customerio-ios/compare/4.12.3...4.13.0) (2026-10-23)
+
+### Features
+
+* **geofence:** add dwell and observed exit duration (MBL-2493, MBL-2495) ([#1346](https://github.com/customerio/customerio-ios/issues/1346)) ([6b45f0e](https://github.com/customerio/customerio-ios/commit/6b45f0e0a5c05c91aae05638331e067a9fca8618))
+
+## [4.12.3](https://github.com/customerio/customerio-ios/compare/4.12.2...4.12.3) (2026-10-22)
+
+### Bug Fixes
+
+* **MBL-2604:** refuse sk_ keys in the notification service extension ([#1362](https://github.com/customerio/customerio-ios/issues/1362)) ([d98314e](https://github.com/customerio/customerio-ios/commit/d98314e3192a66809097b36128a24c88f5bfbc96))
+
+## [4.12.2](https://github.com/customerio/customerio-ios/compare/4.12.1...4.12.2) (2026-10-22)
+
+### Bug Fixes
+
+* track launch lifecycle events when the SDK initializes after app launch ([#1354](https://github.com/customerio/customerio-ios/issues/1354)) ([b88d612](https://github.com/customerio/customerio-ios/commit/b88d612433ab68239cf43d6adf5875f1916ce4b4))
+
+## [4.12.1](https://github.com/customerio/customerio-ios/compare/4.12.0...4.12.1) (2026-10-22)
+
+### Bug Fixes
+
+* **messagingpush:** support apiHost in Notification Service Extension ([#1357](https://github.com/customerio/customerio-ios/issues/1357)) ([eca12ff](https://github.com/customerio/customerio-ios/commit/eca12ff8ae0d1f239d0169c2953d2194d5cb4953))
+
+## [4.12.0](https://github.com/customerio/customerio-ios/compare/4.11.0...4.12.0) (2026-10-21)
+
+### Features
+
+* **MBL-2604:** support pk_ public keys, refuse sk_ keys and move storage to the new key ([#1342](https://github.com/customerio/customerio-ios/issues/1342)) ([34592d8](https://github.com/customerio/customerio-ios/commit/34592d846e53ecb5c42a4fd8de532ed37e30d5ef))
+
+## [4.11.0](https://github.com/customerio/customerio-ios/compare/4.10.0...4.11.0) (2026-10-21)
+
+### Features
+
+* **messagingpush:** register with Firebase Installation ID ([#1334](https://github.com/customerio/customerio-ios/issues/1334)) ([136f01c](https://github.com/customerio/customerio-ios/commit/136f01c7b77ebbdc7df20da8da72550a84df8ccb))
+
 ## [4.10.0](https://github.com/customerio/customerio-ios/compare/4.9.0...4.10.0) (2026-10-08)
 
 ### Features

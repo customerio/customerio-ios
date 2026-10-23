@@ -1,3 +1,4 @@
+@_spi(Internal) import CioMessagingPush
 import Foundation
 import UIKit
 
@@ -45,6 +46,6 @@ extension MessagingPushAPN {
     // Swizzled method for `didFailToRegisterForRemoteNotificationsWithError'
     @objc
     func application(_ application: UIApplication, didFailToRegisterForRemoteNotificationsWithError error: Error) {
-        MessagingPushAPN.shared.deleteDeviceToken()
+        MessagingPush.shared.didFailToRegisterForRemoteNotifications(error: error)
     }
 }

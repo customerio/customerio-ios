@@ -72,7 +72,7 @@ class AppDelegate: NSObject, UIApplicationDelegate {
 
         // Initialize messaging features after initializing Customer.io SDK
         MessagingInApp
-            .initialize(withConfig: MessagingInAppConfigBuilder(siteId: siteId, region: .US).build())
+            .initialize(withConfig: MessagingInAppConfigBuilder(siteId: siteId).build())
             .setEventListener(self)
         MessagingPushFCM.initialize(
             withConfig: MessagingPushConfigBuilder()
