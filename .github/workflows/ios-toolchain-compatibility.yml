@@ -76,7 +76,7 @@ jobs:
                 # The APN SwiftPM fixture compiles the shared SDK graph,
                 # including Migration. FCM sources require the CocoaPods FCM
                 # fixture because they are not part of the APN package graph.
-                Sources/MessagingPushFCM/*)
+                Sources/MessagingPushFCM/*|Sources/FirebaseWrapper/*)
                   fcm=true
                   ;;
                 Sources/*)

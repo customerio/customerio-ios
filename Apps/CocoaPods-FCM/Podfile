@@ -31,11 +31,12 @@ target 'test cocoapods' do
   pod 'CustomerIOMessagingPushAPN', :path => sdk_local_path
   pod 'CustomerIOTrackingMigration', :path => sdk_local_path
 
-  pod 'CioFirebaseWrapper', '~> 1.1.0'
+  # Firebase adapter, now part of this repo. Its default subspec installs FirebaseMessaging from CocoaPods.
+  pod 'CioFirebaseWrapper', :path => sdk_local_path
 
-  # The "CustomerIOMessagingPushFCM" SDK installs the FCM SDK for you, defaulting to the latest version. 
+  # "CioFirebaseWrapper" installs the FCM SDK for you, defaulting to the latest version on CocoaPods. 
   # If your app needs to use a specific version of the FCM SDK, you can add the line below to your app's Podfile 
-  # and the version you specify will override the version in the "CustomerIOMessagingPushFCM" SDK. 
+  # and the version you specify will override the version in "CioFirebaseWrapper". 
   # 
   # pod 'FirebaseMessaging', '~> 10.6'
   # 

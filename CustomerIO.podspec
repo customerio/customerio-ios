@@ -47,6 +47,11 @@ Pod::Spec.new do |spec|
     ss.dependency "CustomerIOMessagingPushFCM", "= #{spec.version.to_s}"
   end
 
+  # Firebase adapter for MessagingPushFCM (installs FirebaseMessaging from CocoaPods).
+  spec.subspec "FirebaseWrapper" do |ss|
+    ss.dependency "CioFirebaseWrapper", "= #{spec.version.to_s}"
+  end
+
   spec.subspec "MessagingInApp" do |ss|
     ss.dependency "CustomerIOMessagingInApp", "= #{spec.version.to_s}"
   end
