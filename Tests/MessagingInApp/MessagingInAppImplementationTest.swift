@@ -110,17 +110,63 @@ class MessagingInAppImplementationTest: IntegrationTest {
         inAppMessageManagerMock.subscribeReturnValue = Task {}
 
         if let dispatchArgs = inAppMessageManagerMock.dispatchReceivedArguments?.action {
-            if case .initialize(let siteId, let dataCenter, let environment, let colorScheme) = dispatchArgs {
+            if case .initialize(let siteId, let dataCenter, let environment, let colorScheme, let publicKey) = dispatchArgs {
                 XCTAssertEqual(siteId, messagingInAppConfigOptions.siteId)
-                XCTAssertEqual(dataCenter, messagingInAppConfigOptions.region.rawValue)
+                // CustomerIO isn't set up in this test, so the default region is used.
+                XCTAssertEqual(dataCenter, Region.US.rawValue)
                 XCTAssertEqual(environment, GistEnvironment.production)
                 XCTAssertEqual(colorScheme, messagingInAppConfigOptions.colorScheme)
+                XCTAssertNil(publicKey)
             } else {
                 XCTFail("Expected dispatch action to be .initialize")
             }
         } else {
             XCTFail("dispatchReceivedArguments is nil")
         }
+    }
+
+    func test_initialize_givenSdkSetUpWithPublicKey_expectKeyAndRegionFromSdk() async {
+        await waitForExpectations(initializeModule())
+        let givenKey = "pk_eu_\(String.random)"
+        diGraphShared.register(DataPipelineTrackingMock(apiKey: givenKey, region: .EU), forType: DataPipelineTracking.self)
+
+        _ = MessagingInAppImplementation(diGraph: diGraphShared, moduleConfig: MessagingInAppConfigBuilder(siteId: "test-site").build())
+
+        guard case .initialize(let siteId, let dataCenter, _, _, let publicKey) = inAppMessageManagerMock.dispatchReceivedArguments?.action else {
+            return XCTFail("Expected dispatch action to be .initialize")
+        }
+        XCTAssertEqual(siteId, "test-site")
+        XCTAssertEqual(dataCenter, Region.EU.rawValue)
+        XCTAssertEqual(publicKey, givenKey)
+    }
+
+    func test_initialize_givenSdkSetUpWithLegacyKey_expectNoPublicKey() async {
+        await waitForExpectations(initializeModule())
+        diGraphShared.register(DataPipelineTrackingMock(apiKey: String.random, region: .US), forType: DataPipelineTracking.self)
+
+        _ = MessagingInAppImplementation(diGraph: diGraphShared, moduleConfig: MessagingInAppConfigBuilder(siteId: "test-site").build())
+
+        guard case .initialize(_, _, _, _, let publicKey) = inAppMessageManagerMock.dispatchReceivedArguments?.action else {
+            return XCTFail("Expected dispatch action to be .initialize")
+        }
+        XCTAssertNil(publicKey)
+    }
+
+    @available(*, deprecated)
+    func test_initialize_givenStaleSavedKeyAndDeprecatedRegion_expectSdkSetupDecides() async {
+        await waitForExpectations(initializeModule())
+        // Saved by an earlier launch that used a different key.
+        diGraphShared.backgroundDeliveryContextStore.setCdpApiKey("pk_eu_\(String.random)")
+        defer { diGraphShared.backgroundDeliveryContextStore.setCdpApiKey(nil) }
+        diGraphShared.register(DataPipelineTrackingMock(apiKey: String.random, region: .US), forType: DataPipelineTracking.self)
+
+        _ = MessagingInAppImplementation(diGraph: diGraphShared, moduleConfig: MessagingInAppConfigBuilder(siteId: "test-site", region: .EU).build())
+
+        guard case .initialize(_, let dataCenter, _, _, let publicKey) = inAppMessageManagerMock.dispatchReceivedArguments?.action else {
+            return XCTFail("Expected dispatch action to be .initialize")
+        }
+        XCTAssertEqual(dataCenter, Region.US.rawValue)
+        XCTAssertNil(publicKey)
     }
 
     // MARK: initialize given an existing identifier

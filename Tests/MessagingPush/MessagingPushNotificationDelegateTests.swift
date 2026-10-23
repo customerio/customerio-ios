@@ -202,7 +202,8 @@ class MessagingPushNotificationDelegateTests: XCTestCase {
             autoFetchDeviceToken: true,
             autoTrackPushEvents: autoTrackPushEvents,
             showPushAppInForeground: showPushAppInForeground,
-            appGroupId: nil
+            appGroupId: nil,
+            apiHost: nil
         )
     }
 

@@ -21,7 +21,8 @@ class CioNotificationCenterDelegateTests: XCTestCase {
             autoFetchDeviceToken: true,
             autoTrackPushEvents: true,
             showPushAppInForeground: showPushAppInForeground,
-            appGroupId: nil
+            appGroupId: nil,
+            apiHost: nil
         )
     }
 

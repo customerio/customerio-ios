@@ -68,7 +68,7 @@ struct GeofenceClassicPolygonPathTests {
         onTransition: @escaping (Delivered) -> Void
     ) -> CoreLocationGeofenceMonitor {
         let monitor = CoreLocationGeofenceMonitor(logger: SilentLogger())
-        monitor.setOnTransition { identifier, transition, _, _, _, circle in
+        monitor.setOnTransition { identifier, transition, _, _, _, circle, _ in
             onTransition(Delivered(identifier: identifier, transition: transition, circle: circle))
         }
         return monitor
@@ -127,7 +127,7 @@ struct GeofenceClassicPolygonPathTests {
         monitor.locationManager(CLLocationManager(), didEnterRegion: coveringRegion())
         // A refresh reshapes the fence under the same id before the buffered event drains.
         monitor.locationManager(CLLocationManager(), didExitRegion: coveringRegion(radius: 900))
-        monitor.setOnTransition { identifier, transition, _, _, _, circle in
+        monitor.setOnTransition { identifier, transition, _, _, _, circle, _ in
             delivered.append(Delivered(identifier: identifier, transition: transition, circle: circle))
         }
 
@@ -159,7 +159,7 @@ struct GeofenceClassicPolygonPathTests {
         try DiagnosticsGateTesting.withDiagnostics(true) {
             let logger = CapturingLogger()
             let monitor = CoreLocationGeofenceMonitor(logger: logger)
-            monitor.setOnTransition { _, _, _, _, _, _ in }
+            monitor.setOnTransition { _, _, _, _, _, _, _ in }
             monitor.ownedRegionIdentifiers.insert(Self.polygonId)
 
             monitor.locationManager(CLLocationManager(), didEnterRegion: coveringRegion())

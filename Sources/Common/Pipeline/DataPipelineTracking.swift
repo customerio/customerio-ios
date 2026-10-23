@@ -12,6 +12,12 @@ public protocol DataPipelineTracking: AnyObject {
     /// True when a user is currently identified (non-anonymous); false when anonymous or after clearIdentify.
     var isUserIdentified: Bool { get }
 
+    /// API key the SDK was set up with, so modules use the same one.
+    var apiKey: String { get }
+
+    /// Region the SDK was set up with, so modules use the same one.
+    var region: Region { get }
+
     /// Sends a track event with the given name and properties.
     func track(name: String, properties: [String: Any])
 

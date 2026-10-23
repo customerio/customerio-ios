@@ -9,6 +9,9 @@ public struct DataPipelineConfigOptions {
     /// Server key
     public let cdpApiKey: String
 
+    /// Region the SDK is set up with, given or read from the key prefix.
+    let region: Region
+
     /// Host settings
     public let apiHost: String
     public let cdnHost: String
