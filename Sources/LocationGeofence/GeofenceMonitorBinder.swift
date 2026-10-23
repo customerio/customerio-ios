@@ -9,7 +9,8 @@ enum GeofenceMonitorBinder {
         resolver: PolygonMembershipResolver,
         coordinator: GeofenceSyncCoordinator,
         logger: Logger,
-        backgroundTaskRunner: BackgroundTaskRunner = GeofenceBackgroundTime.runner(name: "io.customer.geofence.movement-pass")
+        backgroundTaskRunner: BackgroundTaskRunner = GeofenceBackgroundTime.runner(name: "io.customer.geofence.movement-pass"),
+        taskSpawner: GeofenceTaskSpawning = LiveGeofenceTaskSpawner()
     ) {
         monitor.setOnTransition { [weak resolver, weak coordinator] identifier, transition, location, occurredAt, locationIsFresh, eventCircle in
             if identifier == GeofenceConstants.movementTriggerIdentifier {
@@ -22,7 +23,7 @@ enum GeofenceMonitorBinder {
                     return
                 }
                 // Background time: the EXIT is consumed once dispatched and never retried.
-                Task {
+                taskSpawner.spawn {
                     await backgroundTaskRunner.withBackgroundTime {
                         _ = await coordinator?.handleMovement(
                             latitude: location.latitude,
@@ -35,7 +36,7 @@ enum GeofenceMonitorBinder {
                 return
             }
             // One Task: parallel dispatch would lose the coordinator's gate.
-            Task {
+            taskSpawner.spawn {
                 let outcome = await resolver?.handleTransition(
                     identifier: identifier, transition: transition,
                     occurredAt: occurredAt, eventCircle: eventCircle
@@ -97,12 +98,13 @@ enum GeofenceMonitorBinder {
         visitMonitor: GeofenceVisitMonitoring,
         resolver: PolygonMembershipResolver,
         contextStore: BackgroundDeliveryContextStore,
-        backgroundTaskRunner: BackgroundTaskRunner = GeofenceBackgroundTime.runner(name: "io.customer.geofence.visit-pass")
+        backgroundTaskRunner: BackgroundTaskRunner = GeofenceBackgroundTime.runner(name: "io.customer.geofence.visit-pass"),
+        taskSpawner: GeofenceTaskSpawning = LiveGeofenceTaskSpawner()
     ) {
         visitMonitor.setOnVisit { [weak resolver] _ in
             // Read before the Task: the return value must reflect identity at the wake.
             guard let expectedUserId = contextStore.currentUserId else { return false }
-            Task {
+            taskSpawner.spawn {
                 await backgroundTaskRunner.withBackgroundTime {
                     // Forced fresh: the cached fix predates the arrival. Also bypasses the
                     // already-running short-circuit, as a visit may be the only wake.

@@ -15,7 +15,12 @@ final class ReplayBoundaryGate {
         let answer: () async -> Void
     }
 
-    private var parked: [Parked] = []
+    private var parked: [Parked] = [] {
+        didSet { onParkedCountChanged?(parked.count) }
+    }
+
+    /// So the harness can tell work parked here from work still running.
+    var onParkedCountChanged: ((Int) -> Void)?
     private var nextId = 0
 
     private var virtualNow: TimeInterval = 0

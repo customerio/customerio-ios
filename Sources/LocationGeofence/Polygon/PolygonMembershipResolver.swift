@@ -16,6 +16,7 @@ final class PolygonMembershipResolver {
     let contextStore: BackgroundDeliveryContextStore
     let dateUtil: DateUtil
     let notificationCenter: NotificationCenter
+    let taskSpawner: GeofenceTaskSpawning
     var foregroundObserverToken: NSObjectProtocol?
 
     private var passesInFlight = 0
@@ -33,7 +34,8 @@ final class PolygonMembershipResolver {
         contextStore: BackgroundDeliveryContextStore,
         dateUtil: DateUtil = DIGraphShared.shared.dateUtil,
         fixResolver: MovementFixResolver? = nil,
-        notificationCenter: NotificationCenter = .default
+        notificationCenter: NotificationCenter = .default,
+        taskSpawner: GeofenceTaskSpawning = LiveGeofenceTaskSpawner()
     ) {
         self.storage = storage
         self.transitionEmitter = transitionEmitter
@@ -41,12 +43,14 @@ final class PolygonMembershipResolver {
         self.contextStore = contextStore
         self.dateUtil = dateUtil
         self.notificationCenter = notificationCenter
+        self.taskSpawner = taskSpawner
         // Ten metres, not the circle path's 100: a 100 m fix can't decide a minimum-size polygon.
         self.fixResolver = fixResolver ?? MovementFixResolver(
             logger: logger,
             backgroundTaskRunner: GeofenceBackgroundTime.runner(name: "io.customer.geofence.polygon-fix"),
             dateUtil: dateUtil,
-            desiredAccuracy: kCLLocationAccuracyNearestTenMeters
+            desiredAccuracy: kCLLocationAccuracyNearestTenMeters,
+            taskSpawner: taskSpawner
         )
         registerForegroundEvaluation()
     }

@@ -10,7 +10,7 @@ enum GeofenceBootstrap {
 
     static func wireMonitor(di: DIGraphShared) async {
         let previous = lastRun
-        let run = Task { @MainActor in
+        let run = di.geofenceTaskSpawner.spawn { @MainActor in
             await previous?.value
             await performWireMonitor(di: di)
         }
@@ -47,12 +47,16 @@ enum GeofenceBootstrap {
         let monitor = di.geofenceMonitor
         let coordinator = di.geofenceSyncCoordinator
         let resolver = di.polygonMembershipResolver
-        GeofenceMonitorBinder.bind(monitor: monitor, resolver: resolver, coordinator: coordinator, logger: di.logger)
+        GeofenceMonitorBinder.bind(
+            monitor: monitor, resolver: resolver, coordinator: coordinator, logger: di.logger,
+            taskSpawner: di.geofenceTaskSpawner
+        )
         // Bound now (a cold wake can deliver a visit immediately) but armed at the end.
         GeofenceMonitorBinder.bindVisits(
             visitMonitor: di.geofenceVisitMonitor,
             resolver: resolver,
-            contextStore: di.backgroundDeliveryContextStore
+            contextStore: di.backgroundDeliveryContextStore,
+            taskSpawner: di.geofenceTaskSpawner
         )
 
         // Before adopt/register: CLMonitor's first reconciliation can fire as soon as this yields.
@@ -94,13 +98,13 @@ enum GeofenceBootstrap {
         coordinator: GeofenceSyncCoordinator
     ) {
         let rewire: @MainActor () -> Void = {
-            Task { @MainActor in await GeofenceBootstrap.wireMonitor(di: di) }
+            di.geofenceTaskSpawner.spawn { @MainActor in await GeofenceBootstrap.wireMonitor(di: di) }
         }
         monitor.setOnAuthorizationChanged(rewire)
         monitor.setOnReconciled(rewire)
         // A background refresh can land a new config without reaching `GeofenceModuleState`.
         coordinator.setOnConfigPersisted {
-            Task { @MainActor in await GeofenceBootstrap.armVisitMonitoring(di: di) }
+            di.geofenceTaskSpawner.spawn { @MainActor in await GeofenceBootstrap.armVisitMonitoring(di: di) }
         }
     }
 
@@ -117,7 +121,7 @@ enum GeofenceBootstrap {
     /// The read stays INSIDE the chain, or a stale read could re-arm after a kill-switch disarm.
     static func armVisitMonitoring(di: DIGraphShared) async {
         let previous = lastArm
-        let run = Task { @MainActor in
+        let run = di.geofenceTaskSpawner.spawn { @MainActor in
             await previous?.value
             armVisitMonitoring(di: di, config: await readCachedConfig(di))
         }

@@ -61,7 +61,7 @@ extension CoreLocationGeofenceMonitor {
     func drainPendingEventsIfReady() {
         guard onTransition != nil, !isDrainingPendingEvents, !pendingEvents.isEmpty else { return }
         isDrainingPendingEvents = true
-        Task { @MainActor [weak self] in
+        taskSpawner.spawn { @MainActor [weak self] in
             guard let self else { return }
             while self.onTransition != nil, !self.pendingEvents.isEmpty {
                 let next = self.pendingEvents.removeFirst()

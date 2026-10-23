@@ -18,7 +18,7 @@ extension PolygonMembershipResolver {
                 // Signed out at both ends compares nil to nil and proceeds; safe only because
                 // sign-out clears `monitoredGeofenceIds`.
                 let expectedUserId = self.contextStore.currentUserId
-                Task { [contextStore = self.contextStore] in
+                self.taskSpawner.spawn { [contextStore = self.contextStore] in
                     await self.evaluateAllPolygons(
                         reason: .foreground,
                         isStillCurrent: { contextStore.currentUserId == expectedUserId }

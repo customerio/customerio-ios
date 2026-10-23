@@ -22,43 +22,23 @@ extension ReplayHarness {
     }
 
     func advance(to at: TimeInterval) async {
-        // `try?`: unwinding mid-advance would leave the clock half-moved.
-        await advance(to: at) { try? await ReplayHarness.letAsyncWorkRun() }
+        await advance(to: at) { await self.awaitIdle() }
     }
 
-    /// `quietRounds` resets on every park, so without this bound a park chain would hang, not fail.
+    /// Without this bound a park chain would hang, not fail.
     static let maxSettleRounds = 256
 
-    /// Settles before releasing: the fetch parks a hop after the coordinator issues it. Cancellation
-    /// isn't swallowed: a `try?` would spin this loop instead of unwinding.
-    func settleBoundaries() async throws {
-        var quietRounds = 0
-        var totalRounds = 0
-        while quietRounds < 3 {
-            totalRounds += 1
-            guard totalRounds <= Self.maxSettleRounds else {
-                Issue.record(
-                    "settleBoundaries gave up after \(Self.maxSettleRounds) rounds — answering a boundary keeps parking another"
-                )
-                return
-            }
-            try await ReplayHarness.letAsyncWorkRun()
-            guard gate.hasParked else {
-                quietRounds += 1
-                continue
-            }
-            quietRounds = 0
-            try await releaseRemainingBoundaries { try await ReplayHarness.letAsyncWorkRun() }
+    /// Answers every parked boundary in time order, idling after each, until none is left. Idles
+    /// first: the fetch parks a hop after the coordinator issues it.
+    func settleBoundaries() async {
+        for _ in 0 ..< Self.maxSettleRounds {
+            await awaitIdle()
+            guard gate.hasParked else { return }
+            await releaseRemainingBoundaries { await self.awaitIdle() }
         }
-    }
-
-    /// Real time, the only place the harness spends any. If a scenario diverges only under load,
-    /// suspect this.
-    static let asyncWorkGrace: Duration = .milliseconds(50)
-
-    static func letAsyncWorkRun() async throws {
-        await Task.yield()
-        try await Task.sleep(for: asyncWorkGrace)
+        Issue.record(
+            "settleBoundaries gave up after \(Self.maxSettleRounds) rounds — answering a boundary keeps parking another"
+        )
     }
 
     /// The only writer of virtual time.

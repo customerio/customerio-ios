@@ -27,6 +27,7 @@ public final class CioMessagingPush.MessagingPushConfigOptions {
 	public final val autoTrackPushEvents: Boolean;
 	public final val showPushAppInForeground: Boolean;
 	public final val appGroupId: String?;
+	public final val apiHost: String?;
 }
 public interface CioMessagingPush.MessagingPushInstance {
 	public fun func registerDeviceToken(_ deviceToken: String);

@@ -14,7 +14,7 @@ import Foundation
 ///
 /// ## Usage
 /// ```swift
-/// MessagingInAppConfigBuilder(siteId: siteId, region: .US)
+/// MessagingInAppConfigBuilder(siteId: siteId)
 ///     .setNotificationInboxAccessibilityLabels(NotificationInboxAccessibilityLabels(
 ///         bell: NSLocalizedString("inbox.bell", comment: ""),
 ///         bellWithUnreadCount: { count in
