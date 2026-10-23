@@ -23,6 +23,11 @@ struct GeofenceTaskSpawningTests {
         var entries: [Int] = []
     }
 
+    enum WaiterStep: Sendable {
+        case registered
+        case returned
+    }
+
     actor ActorLog {
         var entries: [Int] = []
 
@@ -142,14 +147,19 @@ struct GeofenceTaskSpawningTests {
         let log = OrderLog()
         let callerHeld = AsyncStream<Void>.makeStream()
         let startedHeld = AsyncStream<Void>.makeStream()
+        // Each step the waiter takes, awaited in order rather than polled against the wall clock.
+        let (waiterSteps, waiterStep) = AsyncStream<WaiterStep>.makeStream()
+        spawner.onWaiterRegistered = { waiterStep.yield(.registered) }
+        var steps = waiterSteps.makeAsyncIterator()
         let caller = spawner.spawn {
             for await _ in callerHeld.stream {}
         }
         let waiter = Task {
             await spawner.awaitIdle()
             log.entries.append(0)
+            waiterStep.yield(.returned)
         }
-        try #require(await settleOnMain { spawner.idleWaiterCount == 1 })
+        try #require(await steps.next() == .registered)
 
         spawner.setParked(1)
         let started = spawner.spawn {
@@ -157,8 +167,8 @@ struct GeofenceTaskSpawningTests {
             log.entries.append(1)
         }
 
-        #expect(await settleOnMain { !log.entries.isEmpty || spawner.idleWaiterCount == 1 })
-        #expect(log.entries.isEmpty, "the waiter returned while the work its caller waits on still ran")
+        #expect(await steps.next() == .registered, "the waiter returned while the work its caller waits on still ran")
+        #expect(log.entries.isEmpty)
         startedHeld.continuation.finish()
         await started.value
         await waiter.value
