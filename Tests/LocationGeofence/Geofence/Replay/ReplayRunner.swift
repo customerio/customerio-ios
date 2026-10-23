@@ -74,7 +74,7 @@ enum ReplayRunner {
         }
 
         // A capture can end mid-sync; answer it so those decisions are graded.
-        try await harness.settleBoundaries()
+        await harness.settleBoundaries()
         return Result(emitted: harness.emitted, unsupported: unsupported, stimuli: stimuli)
     }
 
@@ -121,9 +121,9 @@ enum ReplayRunner {
         return (reads, unsupported)
     }
 
-    /// `try?`: a cancelled run should stop pacing, not abort mid-record.
+    /// Waits for the SDK to finish what the last input started, not for a stretch of real time.
     private static func settle(_ harness: ReplayHarness) async {
-        try? await ReplayHarness.letAsyncWorkRun()
+        await harness.awaitIdle()
     }
 
     /// A false boundary moves reads and decisions into a phase the drive never ran. `app.foreground`
@@ -279,7 +279,7 @@ enum ReplayRunner {
             // Every occurrence: after a `process.start` a second init is the relaunched process.
             harness.trigger.onModuleInit()
             // Launched, not awaited, as in production, so `sync.skipped` logs before `storage.loaded`.
-            Task { @MainActor in await harness.wireMonitor() }
+            harness.taskSpawner.spawn { @MainActor in await harness.wireMonitor() }
             return true
 
         case "device.state":

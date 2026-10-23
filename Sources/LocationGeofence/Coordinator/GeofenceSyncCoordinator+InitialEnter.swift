@@ -29,7 +29,7 @@ extension GeofenceSyncCoordinatorImpl {
         // Read outside the Task: `DateUtil` isn't Sendable, and Swift 5 mode doesn't diagnose it.
         let discoveredAt = dateUtil.now
         // Off the gate: a slow send must not stall the next refresh.
-        Task { [transitionEmitter, contextStore, logger] in
+        taskSpawner.spawn { [transitionEmitter, contextStore, logger] in
             for region in newInside {
                 // Per iteration: an awaited send can span a user switch.
                 guard contextStore.currentUserId == expectedUserId else { return }
@@ -44,7 +44,7 @@ extension GeofenceSyncCoordinatorImpl {
     /// Forced-fresh: a cached fix would re-affirm the old verdict. Pass `heldFix` through; a new
     /// request would fail, as it needs a fix newer than the held one.
     func evaluatePolygonsAfterMovement(expectedUserId: String, heldFix: ResolvedFix? = nil) {
-        Task { @MainActor [contextStore] in
+        taskSpawner.spawn { @MainActor [contextStore] in
             guard contextStore.currentUserId == expectedUserId else { return }
             await DIGraphShared.shared.polygonMembershipResolver.evaluateAllPolygons(
                 reason: .movement,
@@ -56,7 +56,7 @@ extension GeofenceSyncCoordinatorImpl {
     }
 
     private func evaluateNewPolygons(_ polygons: [Geofence], expectedUserId: String) {
-        Task { @MainActor [contextStore] in
+        taskSpawner.spawn { @MainActor [contextStore] in
             guard contextStore.currentUserId == expectedUserId else { return }
             await DIGraphShared.shared.polygonMembershipResolver.evaluateNewlyRegistered(
                 geofenceIds: polygons.map(\.id),

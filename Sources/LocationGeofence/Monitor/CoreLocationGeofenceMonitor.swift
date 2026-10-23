@@ -27,15 +27,22 @@ final class CoreLocationGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @pr
     static let maxPendingEvents = 64
 
     let dateUtil: DateUtil
+    let taskSpawner: GeofenceTaskSpawning
 
-    init(logger: Logger, dateUtil: DateUtil = DIGraphShared.shared.dateUtil) {
+    init(
+        logger: Logger,
+        dateUtil: DateUtil = DIGraphShared.shared.dateUtil,
+        taskSpawner: GeofenceTaskSpawning = LiveGeofenceTaskSpawner()
+    ) {
         self.dateUtil = dateUtil
+        self.taskSpawner = taskSpawner
         self.manager = CLLocationManager()
         self.logger = logger
         self.movementFixResolver = MovementFixResolver(
             logger: logger,
             backgroundTaskRunner: GeofenceBackgroundTime.runner(name: "io.customer.geofence.movement-fix"),
-            dateUtil: dateUtil
+            dateUtil: dateUtil,
+            taskSpawner: taskSpawner
         )
         super.init()
         manager.delegate = self
