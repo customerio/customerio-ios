@@ -19,7 +19,56 @@ enum ReplayRunner {
         var unsupported: [String] = []
         var seen: Set<String> = []
 
-        let pulled = scenario.when.compactMap { record -> ReplayFixProvider.CachedRead? in
+        let pulled = pulledReads(scenario, on: harness)
+        unsupported.append(contentsOf: pulled.unsupported)
+        // Ascending: `ReplayMatcher.groups` uses `lastIndex { $0 <= record.at }`.
+        let stimuli = Self.stableByTime(scenario.when)
+            .filter(Self.isStimulus)
+            .map(\.at)
+        let carried = carriedReads(scenario, on: harness)
+        unsupported.append(contentsOf: carried.unsupported)
+        loadRequestedFixAnswers(scenario, on: harness)
+        harness.loadPulledFixes(
+            stimuli: stimuli,
+            samples: pulled.reads,
+            carried: carried.reads
+        )
+
+        // `fixture.api.fetch` is stamped on arrival, so its `at` is the release time.
+        harness.loadBoundaryAnswers(
+            fetch: scenario.given.filter { $0.ev == "fixture.api.fetch" }.map(\.at).sorted()
+        )
+
+        for record in Self.stableByTime(scenario.given) where !install(record, on: harness) {
+            unsupported.append("\(record.kind) \(record.ev)@\(record.at)")
+        }
+
+        for record in Self.stableByTime(scenario.when) {
+            await harness.advance(to: record.at) { await settle(harness) }
+            let isFirst = seen.insert(record.ev).inserted
+            let handled: Bool
+            if let execution = await deliverExecutionInput(record, on: harness) {
+                handled = execution
+            } else {
+                handled = deliver(record, on: harness, isFirst: isFirst, scenarioEpoch: scenario.startedAt)
+            }
+            if let reason = await unsupportedReason(record, handled: handled, on: harness) {
+                unsupported.append(reason)
+            }
+            await settle(harness)
+        }
+
+        try await settleFinalAnswers(on: harness)
+        return Result(emitted: harness.emitted, unsupported: unsupported, stimuli: stimuli)
+    }
+
+    /// Pull records are read on demand; an incomplete sample remains unsupported.
+    private static func pulledReads(
+        _ scenario: Scenario,
+        on harness: ReplayHarness
+    ) -> (reads: [ReplayFixProvider.CachedRead], unsupported: [String]) {
+        var unsupported: [String] = []
+        let reads = scenario.when.compactMap { record -> ReplayFixProvider.CachedRead? in
             guard record.ev == "location.fix",
                   let source = record.fields["prov"].flatMap(GeofenceLog.FixSource.init(rawValue:)),
                   !source.isArrival, source != .bus
@@ -41,46 +90,27 @@ enum ReplayRunner {
                 at: record.at
             )
         }
-        // Ascending: `ReplayMatcher.groups` uses `lastIndex { $0 <= record.at }`.
-        let stimuli = Self.stableByTime(scenario.when)
-            .filter(Self.isStimulus)
-            .map(\.at)
-        let carried = carriedReads(scenario, on: harness)
-        unsupported.append(contentsOf: carried.unsupported)
-        loadRequestedFixAnswers(scenario, on: harness)
-        harness.loadPulledFixes(
-            stimuli: stimuli,
-            samples: pulled,
-            carried: carried.reads
-        )
+        return (reads, unsupported)
+    }
 
-        // `fixture.api.fetch` is stamped on arrival, so its `at` is the release time.
-        harness.loadBoundaryAnswers(
-            fetch: scenario.given.filter { $0.ev == "fixture.api.fetch" }.map(\.at).sorted()
-        )
-
-        for record in Self.stableByTime(scenario.given) where !install(record, on: harness) {
-            unsupported.append("\(record.kind) \(record.ev)@\(record.at)")
-        }
-
-        for record in Self.stableByTime(scenario.when) {
-            await harness.advance(to: record.at) { await settle(harness) }
-            let isFirst = seen.insert(record.ev).inserted
-            let handled = deliver(record, on: harness, isFirst: isFirst, scenarioEpoch: scenario.startedAt)
-            if let reason = await unsupportedReason(record, handled: handled, on: harness) {
-                unsupported.append(reason)
-            }
-            await settle(harness)
-        }
-
+    private static func settleFinalAnswers(on harness: ReplayHarness) async throws {
         // A capture can end mid-sync; answer it so those decisions are graded.
         await harness.settleBoundaries()
-        return Result(emitted: harness.emitted, unsupported: unsupported, stimuli: stimuli)
+        // A recorded OS reply can follow the last external stimulus. Drive only as far as that
+        // input evidence, allowing the SDK's own deadlines and timeouts to run along the way.
+        if let horizon = harness.fixes.requestedAnswerHorizon {
+            await harness.advance(to: horizon) { await settle(harness) }
+            await harness.settleBoundaries()
+        }
+        // A run that ends frozen keeps its replies held: name them, never wake the process to answer.
+        if harness.isExecutionSuspended {
+            await harness.releaseRemainingBoundaries {}
+        }
     }
 
     /// A `note`, not a stimulus: the OS's reply to work the SDK started.
     private static func loadRequestedFixAnswers(_ scenario: Scenario, on harness: ReplayHarness) {
-        harness.fixes.loadRequestedAnswers(scenario.note.compactMap { record in
+        let answers = scenario.note.compactMap { record -> ReplayFixProvider.CachedRead? in
             guard record.ev == "fix.received", record.fields["prov"] == "movement_resolver",
                   let latitude = record.latitude, let longitude = record.longitude,
                   let accuracy = record.fields["acc"].flatMap(Double.init)
@@ -89,7 +119,12 @@ enum ReplayRunner {
                 latitude: latitude, longitude: longitude, accuracy: accuracy,
                 age: record.fields["age"].flatMap(Double.init) ?? 0, at: record.at
             )
-        })
+        }
+        harness.fixes.loadRequestedAnswers(
+            answers,
+            allowSyntheticFallback: !scenario.isRecorded,
+            processStarts: scenario.when.filter { $0.ev == "process.start" }.map(\.at)
+        )
     }
 
     /// Incomplete shapes fail closed: dropping one would hand the SDK a nil the drive never recorded.
@@ -130,7 +165,8 @@ enum ReplayRunner {
     /// is not inert: it drives `rearmOnForegroundIfStale`.
     private static func isStimulus(_ record: Scenario.Record) -> Bool {
         switch record.ev {
-        case "device.state", "app.background":
+        case "device.state", "app.background", "app.suspend":
+            // A freeze starts no SDK work; what follows `app.resume` belongs to that stimulus.
             false
         case "location.fix":
             // An unreadable `prov` stays a boundary; `deliverFix` reports it as unsupported.
@@ -204,11 +240,33 @@ enum ReplayRunner {
         on harness: ReplayHarness
     ) async -> String? {
         let stamp = "\(record.kind) \(record.ev)@\(record.at)"
-        guard handled else { return stamp }
+        guard handled else {
+            return harness.isExecutionSuspended ? "\(stamp) — process suspended; no app.resume precedes it" : stamp
+        }
         if record.ev == "visit.reported", await harness.hasRegisteredPolygons() {
             return "\(stamp) — polygon pass needs a fresh fix the replay cannot supply"
         }
         return nil
+    }
+
+    /// Explicit OS freeze and thaw, independent of `app.background`. While frozen only a thaw runs:
+    /// replaying another stimulus would invent a callback time the drive never recorded, so it fails
+    /// the run instead. A relaunch fails too: it would have to drop replies the frozen SDK still
+    /// awaits, and those awaits would stay suspended for the rest of the test process. `nil` means
+    /// "not mine".
+    private static func deliverExecutionInput(_ record: Scenario.Record, on harness: ReplayHarness) async -> Bool? {
+        switch record.ev {
+        case "app.suspend":
+            harness.suspendExecution()
+            return true
+        case "app.resume":
+            guard harness.isExecutionSuspended else { return false }
+            await harness.resumeExecution()
+            return true
+        default:
+            // `process.start` too: refused while frozen; awake, `deliverAppInput` relaunches as before.
+            return harness.isExecutionSuspended && isStimulus(record) ? false : nil
+        }
     }
 
     private static func deliverWorldInput(

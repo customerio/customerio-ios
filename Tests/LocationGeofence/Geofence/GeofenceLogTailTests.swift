@@ -334,12 +334,13 @@ struct GeofenceLogTailTests {
     @Test
     func polygonOutcome_expectDistinctPinnedTokenPerCause() {
         let cases: [PolygonMembershipOutcome] = [
-            .deliver(.enter), .suppressedNoChange, .suppressedNewerDecision,
+            .deliver(.enter), .discoveredInside, .suppressedNoChange, .suppressedNewerDecision,
             .suppressedInitialOutside, .suppressedUnmonitored, .suppressedGeometryChanged
         ]
         for outcome in cases {
             switch outcome {
             case .deliver: #expect(outcome.logToken == "deliver")
+            case .discoveredInside: #expect(outcome.logToken == "discovered_inside")
             case .suppressedNoChange: #expect(outcome.logToken == "no_change")
             case .suppressedNewerDecision: #expect(outcome.logToken == "newer_decision")
             case .suppressedInitialOutside: #expect(outcome.logToken == "initial_outside")
@@ -354,7 +355,7 @@ struct GeofenceLogTailTests {
     @Test
     func polygonUndeliveredReason_expectRefusalsDistinctFromOutcomes() {
         let outcomes: [PolygonMembershipOutcome] = [
-            .deliver(.enter), .suppressedNoChange, .suppressedNewerDecision,
+            .deliver(.enter), .discoveredInside, .suppressedNoChange, .suppressedNewerDecision,
             .suppressedInitialOutside, .suppressedUnmonitored, .suppressedGeometryChanged
         ]
         let cases: [PolygonUndeliveredReason] = outcomes.map { .outcome($0) } + [.userChanged, .transitionNotRegistered]
@@ -430,12 +431,12 @@ struct GeofenceLogTailTests {
     @Test
     func rawValueTokens_expectThePinnedSetPerEnum() {
         // Also the tracked event's `transition`, persisted pending rows, and the pending/cooldown keys.
-        expectTokens(GeofenceTransition.self, ["enter", "exit"])
+        expectTokens(GeofenceTransition.self, ["enter", "dwell", "exit"])
         // camelCase on purpose: Android emits neither.
         expectTokens(HandleMovementTier.self, ["localRerank", "remoteRefresh"])
         expectTokens(PolygonPassSkipReason.self, ["pass_in_flight"])
         expectTokens(PolygonEvaluationReason.self, ["new_polygon", "new_polygon_forced_request_failed", "movement", "foreground",
-                                                    "os_transition", "visit"])
+                                                    "os_transition", "visit", "dwell_evidence"])
         expectTokens(PolygonUndecidedReason.self, [
             "no_usable_fix", "user_changed", "ring_unbuildable", "unregistered", "circle_expired",
             "within_accuracy", "fix_too_old", "accuracy_too_low", "corroboration_unnecessary",
@@ -874,6 +875,25 @@ struct GeofenceLogTailTests {
             // `lat_lon`, though the wire sends `lon,lat`. Vertex 0 is at angle 0: centre latitude,
             // offset longitude.
             #expect(fields["ring"]?.hasPrefix("25.10991_55.18550") == true)
+        }
+    }
+
+    @Test
+    func fenceCatalog_givenDwellThreshold_expectRawValueOrOmittedWhenMissing() {
+        withDiagnostics(true) {
+            for threshold in [nil, 0, 60, -1, Int.max] as [Int?] {
+                for var region in [catalogRegion(), catalogPolygonRegion()] {
+                    region.dwellThresholdSeconds = threshold
+                    let logger = CapturingLogger()
+                    logger.geofenceApiFetchResult(returnedCount: 1, elapsed: 0.4, regions: [region])
+                    guard let fields = parseTail(logger.messages.last ?? "") else {
+                        Issue.record("missing catalogue tail for threshold \(String(describing: threshold))")
+                        continue
+                    }
+                    #expect(fields["ev"] == "fence.cataloged")
+                    #expect(fields["dwell"] == threshold.map(String.init))
+                }
+            }
         }
     }
 
