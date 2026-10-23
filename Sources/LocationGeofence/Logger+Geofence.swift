@@ -59,6 +59,18 @@ extension Logger {
         )
     }
 
+    func geofenceTransitionDroppedUserChanged(geofenceId: String, transition: GeofenceTransition) {
+        debug(
+            "Dropped \(transition.rawValue) event for geofence \(geofenceId): the identified user changed after the crossing was observed"
+                + geofenceTail("transition.dropped", .observation, [
+                    ("id", geofenceId),
+                    ("t", transition.rawValue),
+                    ("why", "user_changed")
+                ]),
+            geofenceTag
+        )
+    }
+
     func geofenceTransitionDroppedAnonymous(geofenceId: String, transition: GeofenceTransition) {
         debug(
             "Dropped \(transition.rawValue) event for geofence \(geofenceId): no identified user at transition time (geofencing is identified-only)"
@@ -163,7 +175,8 @@ extension Logger {
                         // `ring` truncates; `nv` is the true vertex count.
                         ("nv", GeofenceLog.int(region.catalogRing?.count)),
                         ("ring", GeofenceLog.list(region.catalogRing ?? [], limit: 64)),
-                        ("tt", GeofenceLog.list(region.transitionTypes ?? []))
+                        ("tt", GeofenceLog.list(region.transitionTypes ?? [])),
+                        ("dwell", region.dwellThresholdSeconds.map(String.init))
                     ]),
                 geofenceTag
             )

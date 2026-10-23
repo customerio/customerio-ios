@@ -89,6 +89,183 @@ struct GeofenceEventTrackerTests {
     }
 
     @Test
+    func trackDwellGivenVisitAddsDwellPropertiesAndReusesVisitIdAsTransitionId() async {
+        let dir = makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let pending = makePendingStore(directory: dir)
+        let delivery = GeofenceDeliveryTrackerMock()
+        delivery.trackMetricClosure = { _, _, onComplete in onComplete(.success(())) }
+        let tracker = makeTracker(
+            storage: makeStorage(directory: dir),
+            pendingStore: pending,
+            deliveryTracker: delivery,
+            contextStore: makeContextStore(userId: "user_42")
+        )
+        let enteredAt = crossedAt.addingTimeInterval(-75)
+
+        let persisted = await tracker.trackDwell(
+            geofenceId: "geo_1",
+            occurredAt: crossedAt,
+            context: GeofenceDwellContext(
+                visitId: "visit-1",
+                enteredAt: enteredAt,
+                thresholdSeconds: 60,
+                durationSeconds: 75,
+                detectionSource: "location_evidence"
+            ),
+            expectedUserId: "user_42"
+        )
+
+        let metric = delivery.trackMetricReceivedArguments?.metric
+        let properties = metric?.trackEventProperties
+        #expect(persisted)
+        #expect(metric?.transition == .dwell)
+        #expect(metric?.transitionId == "visit-1")
+        #expect(properties?["visitId"] as? String == "visit-1")
+        #expect(properties?["enteredAt"] as? Int == Int(enteredAt.timeIntervalSince1970))
+        #expect(properties?["dwellThresholdSeconds"] as? Int == 60)
+        #expect(properties?["dwellDurationSeconds"] as? Int == 75)
+        #expect(properties?["detectionSource"] as? String == "location_evidence")
+    }
+
+    /// Chosen behavior, matching Android: the cooldown dedupes ENTER and EXIT only. A dwell is
+    /// deduped per visit instead, so a re-entry whose ENTER the cooldown suppressed still gets its
+    /// dwell — self-describing through its own `visitId` and `enteredAt` — while that visit's EXIT
+    /// inside the window stays suppressed exactly as it was before dwell existed.
+    @Test
+    func trackDwell_givenReentryEnterSuppressedByCooldown_expectDwellStillDeliveredAndExitStillSuppressed() async {
+        let dir = makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let delivery = GeofenceDeliveryTrackerMock()
+        delivery.trackMetricClosure = { _, _, onComplete in onComplete(.success(())) }
+        let tracker = makeTracker(
+            storage: makeStorage(directory: dir),
+            pendingStore: makePendingStore(directory: dir),
+            deliveryTracker: delivery,
+            contextStore: makeContextStore(userId: "user_42")
+        )
+
+        await tracker.trackTransition(geofenceId: "geo_1", transition: .enter, occurredAt: crossedAt)
+        await tracker.trackExit(geofenceId: "geo_1", occurredAt: crossedAt.addingTimeInterval(300), context: nil, expectedUserId: nil)
+        await tracker.trackTransition(geofenceId: "geo_1", transition: .enter, occurredAt: crossedAt.addingTimeInterval(600))
+        let persisted = await tracker.trackDwell(
+            geofenceId: "geo_1",
+            occurredAt: crossedAt.addingTimeInterval(1200),
+            context: GeofenceDwellContext(
+                visitId: "visit-2", enteredAt: crossedAt.addingTimeInterval(600), thresholdSeconds: 600,
+                durationSeconds: 600, detectionSource: "location_evidence"
+            ),
+            expectedUserId: "user_42"
+        )
+        await tracker.trackExit(geofenceId: "geo_1", occurredAt: crossedAt.addingTimeInterval(3000), context: nil, expectedUserId: nil)
+
+        #expect(persisted)
+        #expect(delivery.trackMetricReceivedInvocations.map(\.metric.transition) == [.enter, .exit, .dwell])
+        #expect(delivery.trackMetricReceivedInvocations.last?.metric.visitId == "visit-2")
+    }
+
+    @Test
+    func trackExitGivenObservedVisitAddsDurationProperties() async {
+        let dir = makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let pending = makePendingStore(directory: dir)
+        let delivery = GeofenceDeliveryTrackerMock()
+        delivery.trackMetricClosure = { _, _, onComplete in onComplete(.success(())) }
+        let tracker = makeTracker(
+            storage: makeStorage(directory: dir),
+            pendingStore: pending,
+            deliveryTracker: delivery,
+            contextStore: makeContextStore(userId: "user_42")
+        )
+        let enteredAt = crossedAt.addingTimeInterval(-75)
+
+        await tracker.trackExit(
+            geofenceId: "geo_1",
+            occurredAt: crossedAt,
+            context: GeofenceExitContext(
+                visitId: "visit-1",
+                enteredAt: enteredAt,
+                durationSeconds: 75,
+                visitDurationUncertaintySeconds: 0,
+                detectionSource: "native"
+            ),
+            expectedUserId: "user_42"
+        )
+
+        let properties = delivery.trackMetricReceivedArguments?.metric.trackEventProperties
+        #expect(delivery.trackMetricReceivedArguments?.metric.transitionId != "visit-1")
+        #expect(properties?["visitId"] as? String == "visit-1")
+        #expect(properties?["enteredAt"] as? Int == Int(enteredAt.timeIntervalSince1970))
+        #expect(properties?["visitDurationSeconds"] as? Int == 75)
+        #expect(properties?["detectionSource"] as? String == "native")
+        #expect(properties?["dwellDurationSeconds"] == nil)
+    }
+
+    @Test
+    func trackExit_givenUserChangedSinceTheVisitWasRead_expectNothingDeliveredOrQueued() async {
+        let dir = makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let pending = makePendingStore(directory: dir)
+        let delivery = GeofenceDeliveryTrackerMock()
+        delivery.trackMetricClosure = { _, _, onComplete in onComplete(.success(())) }
+        let tracker = makeTracker(
+            storage: makeStorage(directory: dir),
+            pendingStore: pending,
+            deliveryTracker: delivery,
+            contextStore: makeContextStore(userId: "user_B")
+        )
+
+        // user_A's crossing and visit, reaching the tracker after user_B signed in.
+        await tracker.trackExit(
+            geofenceId: "geo_1",
+            occurredAt: crossedAt,
+            context: GeofenceExitContext(
+                visitId: "visit-of-A",
+                enteredAt: crossedAt.addingTimeInterval(-75),
+                durationSeconds: 75,
+                visitDurationUncertaintySeconds: 0,
+                detectionSource: "native"
+            ),
+            expectedUserId: "user_A"
+        )
+
+        #expect(delivery.trackMetricCallsCount == 0)
+        #expect(await pending.rows().isEmpty)
+    }
+
+    @Test
+    func trackDwell_givenUserChangedSinceTheVisitWasRead_expectNotPersisted() async {
+        let dir = makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let pending = makePendingStore(directory: dir)
+        let delivery = GeofenceDeliveryTrackerMock()
+        delivery.trackMetricClosure = { _, _, onComplete in onComplete(.success(())) }
+        let tracker = makeTracker(
+            storage: makeStorage(directory: dir),
+            pendingStore: pending,
+            deliveryTracker: delivery,
+            contextStore: makeContextStore(userId: "user_B")
+        )
+
+        let persisted = await tracker.trackDwell(
+            geofenceId: "geo_1",
+            occurredAt: crossedAt,
+            context: GeofenceDwellContext(
+                visitId: "visit-of-A",
+                enteredAt: crossedAt.addingTimeInterval(-61),
+                thresholdSeconds: 60,
+                durationSeconds: 61,
+                detectionSource: "location_evidence"
+            ),
+            expectedUserId: "user_A"
+        )
+
+        #expect(!persisted)
+        #expect(delivery.trackMetricCallsCount == 0)
+        #expect(await pending.rows().isEmpty)
+    }
+
+    @Test
     func trackTransition_givenDeliveryFailure_expectQueueRetainedNoEventBus() async {
         let dir = makeTempDirectory()
         defer { try? FileManager.default.removeItem(at: dir) }
@@ -107,6 +284,31 @@ struct GeofenceEventTrackerTests {
         await tracker.trackTransition(geofenceId: "geo_1", transition: .enter, occurredAt: crossedAt)
 
         #expect(await pending.rows().count == 1)
+    }
+
+    /// A dwell for a user no longer identified is refused for good; one whose outbox write fails
+    /// may be asked again. The two are told apart, so an orphaned dwell is dropped only on the first.
+    @Test
+    func deliverDwell_tellsARefusalFromAFailedWrite() async {
+        let context = GeofenceDwellContext(
+            visitId: "visit-of-A", enteredAt: nil, thresholdSeconds: 60, durationSeconds: nil, detectionSource: "location_evidence"
+        )
+        let dir = makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let switched = makeTracker(
+            storage: makeStorage(directory: dir), pendingStore: makePendingStore(directory: dir),
+            deliveryTracker: GeofenceDeliveryTrackerMock(), contextStore: makeContextStore(userId: "user_B")
+        )
+        #expect(await switched.deliverDwell(geofenceId: "geo_1", occurredAt: crossedAt, context: context, expectedUserId: "user_A") == .refused)
+
+        let blocker = makeTempDirectory()
+        FileManager.default.createFile(atPath: blocker.path, contents: Data())
+        defer { try? FileManager.default.removeItem(at: blocker) }
+        let unwritable = makeTracker(
+            storage: makeStorage(directory: dir), pendingStore: makePendingStore(directory: blocker.appendingPathComponent("nested")),
+            deliveryTracker: GeofenceDeliveryTrackerMock(), contextStore: makeContextStore(userId: "user_A")
+        )
+        #expect(await unwritable.deliverDwell(geofenceId: "geo_1", occurredAt: crossedAt, context: context, expectedUserId: "user_A") == .writeFailed)
     }
 
     @Test

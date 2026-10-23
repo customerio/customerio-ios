@@ -39,6 +39,30 @@ struct TrackingTaskSpawnerTests {
     }
 
     @Test
+    @MainActor
+    func awaitIdle_givenTransientIdleOnMainActor_expectRecheckBeforeReturning() async throws {
+        let spawner = TrackingTaskSpawner()
+        spawner.workStarted()
+        let waiter = Task { await spawner.awaitIdle(timeout: 30) }
+        let registrationDeadline = DispatchTime.now() + 5
+        while spawner.idleWaiterCount == 0, DispatchTime.now() < registrationDeadline {
+            await Task.yield()
+        }
+        try #require(spawner.idleWaiterCount == 1)
+
+        // One actor job briefly publishes idle before starting the work it waits on.
+        spawner.workFinished()
+        spawner.workStarted()
+        let recheckDeadline = DispatchTime.now() + 5
+        while spawner.idleWaiterCount == 0, DispatchTime.now() < recheckDeadline {
+            await Task.yield()
+        }
+        try #require(spawner.idleWaiterCount == 1)
+        spawner.workFinished()
+        #expect(await waiter.value == nil)
+    }
+
+    @Test
     func awaitIdle_givenSpawnedTask_expectResultAndIdle() async {
         let spawner = TrackingTaskSpawner()
         let task = spawner.spawn { 42 }

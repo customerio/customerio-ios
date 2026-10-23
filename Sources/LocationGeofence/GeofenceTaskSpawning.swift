@@ -10,6 +10,13 @@ protocol GeofenceTaskSpawning: Sendable {
         @_inheritActorContext @_implicitSelfCapture _ operation: sending @escaping @isolated(any) () async -> Success
     ) -> Task<Success, Never>
 
+    /// Starts `operation` as `Task.detached { }` would: on no actor, so a busy caller's actor can't
+    /// hold it back.
+    @discardableResult
+    func spawnDetached<Success: Sendable>(
+        _ operation: sending @escaping @isolated(any) () async -> Success
+    ) -> Task<Success, Never>
+
     /// Work that isn't a spawned task: an OS event from delivery until it is handled, and the event
     /// consumer until it has subscribed. Production has no use for either, so the live spawner
     /// ignores both.
@@ -23,6 +30,13 @@ struct LiveGeofenceTaskSpawner: GeofenceTaskSpawning {
         @_inheritActorContext @_implicitSelfCapture _ operation: sending @escaping @isolated(any) () async -> Success
     ) -> Task<Success, Never> {
         Task(operation: operation)
+    }
+
+    @discardableResult
+    func spawnDetached<Success: Sendable>(
+        _ operation: sending @escaping @isolated(any) () async -> Success
+    ) -> Task<Success, Never> {
+        Task.detached(operation: operation)
     }
 
     func workStarted() {}

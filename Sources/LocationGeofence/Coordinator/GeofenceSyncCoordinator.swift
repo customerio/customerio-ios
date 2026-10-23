@@ -51,6 +51,12 @@ final class GeofenceSyncCoordinatorImpl: GeofenceSyncCoordinator, @unchecked Sen
     let dateUtil: DateUtil
     let transitionEmitter: GeofenceTransitionEmitting
     let contextStore: BackgroundDeliveryContextStore
+    let dwellCoordinator: GeofenceDwellCoordinator?
+    /// The resolver the post-refresh polygon passes run on. Injected, not read from
+    /// `DIGraphShared.shared` at the call: a composition with its own resolver (replay) otherwise
+    /// had every such pass — and, through the singleton's construction, a production dwell
+    /// coordinator — run against the process-wide graph mid-drive.
+    let polygonResolver: @MainActor @Sendable () -> PolygonMembershipResolver
     let refreshInProgress = Synchronized<Bool>(false)
 
     /// A movement that lost the gate, replayed when it frees. Refreshes aren't deferred: a dropped
@@ -71,6 +77,10 @@ final class GeofenceSyncCoordinatorImpl: GeofenceSyncCoordinator, @unchecked Sen
         monitor: GeofenceRegionMonitoring,
         contextStore: BackgroundDeliveryContextStore,
         transitionEmitter: GeofenceTransitionEmitting,
+        dwellCoordinator: GeofenceDwellCoordinator? = nil,
+        polygonResolver: @escaping @MainActor @Sendable () -> PolygonMembershipResolver = {
+            DIGraphShared.shared.polygonMembershipResolver
+        },
         distanceFilter: GeofenceDistanceFilter = GeofenceDistanceFilter(),
         dateUtil: DateUtil,
         logger: Logger,
@@ -82,6 +92,8 @@ final class GeofenceSyncCoordinatorImpl: GeofenceSyncCoordinator, @unchecked Sen
         self.monitor = monitor
         self.contextStore = contextStore
         self.transitionEmitter = transitionEmitter
+        self.dwellCoordinator = dwellCoordinator
+        self.polygonResolver = polygonResolver
         self.distanceFilter = distanceFilter
         self.dateUtil = dateUtil
         self.logger = logger
@@ -122,28 +134,23 @@ final class GeofenceSyncCoordinatorImpl: GeofenceSyncCoordinator, @unchecked Sen
         // A non-live anchor can be hours old; ranking around it can drop the fence that just fired.
         // Use the registration centre the live set is already built around.
         let location = anchorIsLiveFix ? requested : (await storage.getLastRegistrationCenter() ?? requested)
-        switch await refreshAction(location: location, config: effectiveConfig) {
-        case .remote:
-            return await performRemoteRefresh(
+        let action = await refreshAction(location: location, config: effectiveConfig)
+        if action != .remote, await storage.cachedCatalogPredatesDwell() {
+            return await performCatalogUpgradeRefresh(
                 expectedUserId: userId,
                 anchor: location,
                 cachedConfig: cachedConfig,
-                anchorIsLiveFix: anchorIsLiveFix
+                anchorIsLiveFix: anchorIsLiveFix,
+                fallback: action
             )
-        case .local:
-            let cachedRegions = await storage.getCachedGeofences()
-            return await performLocalRefresh(
-                expectedUserId: userId,
-                anchor: location,
-                config: effectiveConfig,
-                cachedRegions: cachedRegions,
-                anchorIsLiveFix: anchorIsLiveFix
-            )
-        // Moved nothing, so it must not retire a queued movement.
-        case .skip:
-            logger.geofenceSyncSkippedFresh()
-            return MovementPassOutcome(result: .success(()), reCentred: false)
         }
+        return await performRefreshAction(
+            action,
+            expectedUserId: userId,
+            anchor: location,
+            cachedConfig: cachedConfig,
+            anchorIsLiveFix: anchorIsLiveFix
+        )
     }
 
     // Defaulted here because protocol requirements cannot carry default arguments.
@@ -198,20 +205,23 @@ final class GeofenceSyncCoordinatorImpl: GeofenceSyncCoordinator, @unchecked Sen
                 return MovementPassOutcome(result: remote.result, reCentred: rearm.reCentred)
             }
             return remote
-        } else if await !movedBeyondRerankRadius(to: movement, config: effectiveConfig) {
-            return await performPolygonWakePass(expectedUserId: userId, at: movement, config: effectiveConfig, anchorIsLiveFix: anchorIsLiveFix, heldFix: heldFix)
-        } else {
-            logger.geofenceMovementTrigger(tier: .localRerank)
-            let cachedRegions = await storage.getCachedGeofences()
-            return await performLocalRefresh(
+        }
+        if await storage.cachedCatalogPredatesDwell() {
+            return await performCatalogUpgradeMovement(
                 expectedUserId: userId,
-                anchor: movement,
-                config: effectiveConfig,
-                cachedRegions: cachedRegions,
+                movement: movement,
+                cachedConfig: cachedConfig,
                 anchorIsLiveFix: anchorIsLiveFix,
                 heldFix: heldFix
             )
         }
+        return await performCachedMovementTier(
+            expectedUserId: userId,
+            movement: movement,
+            config: effectiveConfig,
+            anchorIsLiveFix: anchorIsLiveFix,
+            heldFix: heldFix
+        )
     }
 
     func reset() async -> Result<Void, GeofenceSyncError> {
@@ -228,6 +238,16 @@ final class GeofenceSyncCoordinatorImpl: GeofenceSyncCoordinator, @unchecked Sen
             return .success(())
         }
 
+        // Before the storage await, so no lease outlives the user it served: signed out, no lease's
+        // user matches, so all are released and the session stops. A new user's leases are kept.
+        // Diagnostics too, rechecked on the main actor: fence ids with times are this user's history.
+        await MainActor.run {
+            dwellCoordinator?.reconcileCollection()
+            // The visits the waits serve are cleared below; a wait left running would only wake
+            // to find none, and under the next user's identity.
+            dwellCoordinator?.cancelAllEvidence()
+            dwellCoordinator?.clearDiagnosticsIfSignedOut()
+        }
         // Clear BEFORE the OS stop, so a polygon pass resuming in between can't emit an enter for
         // a fence being torn down.
         await storage.clearUserScopedState()
@@ -262,6 +282,7 @@ extension GeofenceSyncCoordinatorImpl {
         monitor: DIGraphShared.shared.geofenceMonitor,
         contextStore: DIGraphShared.shared.backgroundDeliveryContextStore,
         transitionEmitter: DIGraphShared.shared.geofenceEventTracker,
+        dwellCoordinator: DIGraphShared.shared.geofenceDwellCoordinator,
         dateUtil: DIGraphShared.shared.dateUtil,
         logger: DIGraphShared.shared.logger
     )
