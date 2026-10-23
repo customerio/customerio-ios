@@ -98,7 +98,9 @@ extension GeofenceDwellCoordinator {
             let isPolygon = await storage.isPolygon(id: geofenceId)
             guard polygonCatalogGeneration == generation else { continue }
             guard isPolygon else {
-                unjudgedCrossings[geofenceId] = nil
+                if let unjudged = unjudgedCrossings.removeValue(forKey: geofenceId) {
+                    noteEnter(unjudged, geofenceId: geofenceId, crossing: true)
+                }
                 if let held = heldCoveringCrossings.removeValue(forKey: geofenceId) {
                     noteEnter(held, geofenceId: geofenceId, crossing: true)
                 }
@@ -162,10 +164,15 @@ extension GeofenceDwellCoordinator {
         return true
     }
 
-    /// Notes the corrections that arrived before the shapes were known, for the fences the catalog
-    /// now says are circles; a polygon's covering-circle correction is dropped (`polygonIds`).
+    /// Notes the corrections and crossings that arrived before the shapes were known, for the fences
+    /// the catalog now says are circles; a polygon's covering-circle correction is dropped
+    /// (`polygonIds`).
     private func drainPendingCorrections() {
-        // The polygons' were withdrawn by `rememberPolygons`; the rest are circles', noted as such.
+        // The polygons' crossings were withdrawn and held by `rememberPolygons`; the rest are
+        // circles', noted now.
+        for (geofenceId, mark) in unjudgedCrossings where !polygonIds.contains(geofenceId) {
+            noteEnter(mark, geofenceId: geofenceId, crossing: true)
+        }
         unjudgedCrossings.removeAll()
         let waiting = pendingCorrections
         pendingCorrections.removeAll()
@@ -182,11 +189,10 @@ extension GeofenceDwellCoordinator {
         }
     }
 
-    /// A crossing noted before the shapes were known, for a fence now known to be a polygon: no
-    /// longer a mark, but held for the routed ENTER to judge.
+    /// A crossing seen before the shapes were known, for a fence now known to be a polygon: held
+    /// for the routed ENTER to judge.
     private func withdrawUnjudgedCrossing(_ geofenceId: String) {
-        guard let noted = unjudgedCrossings.removeValue(forKey: geofenceId) else { return }
-        if enterMarks[geofenceId]?.crossing == noted { enterMarks[geofenceId]?.crossing = nil }
-        holdCoveringCrossing(noted, geofenceId: geofenceId)
+        guard let unjudged = unjudgedCrossings.removeValue(forKey: geofenceId) else { return }
+        holdCoveringCrossing(unjudged, geofenceId: geofenceId)
     }
 }

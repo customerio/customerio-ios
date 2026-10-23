@@ -177,16 +177,16 @@ extension GeofenceDwellCoordinator {
     }
 
     /// Whether a first admission of `visit` — one with no reservation yet — is refused by a native
-    /// ENTER: a correction for its fence still waiting for the shapes to load
-    /// (`pendingCorrections`), or a covering-circle crossing still waiting for the polygon's
-    /// evidence (`heldCoveringCrossings`), either of which once applied may end the stay, or one
+    /// ENTER: a correction or crossing for its fence still waiting for the shapes to load
+    /// (`pendingCorrections`, `unjudgedCrossings`), or a covering-circle crossing still waiting for
+    /// the polygon's evidence (`heldCoveringCrossings`), any of which once applied may end the stay, or one
     /// already noted that supersedes the visit (`GeofenceEnterMarks.supersede`, as
     /// `continuityHolds` judges it). Checked on both sides of the reservation write, since either
     /// can arrive during it.
     func correctionRefusesAdmission(of visit: GeofenceDwellVisit, geofenceId: String) -> Bool {
         guard visit.dwellReservation == nil else { return false }
         return pendingCorrections.contains { $0.geofenceId == geofenceId }
-            || heldCoveringCrossings[geofenceId] != nil
+            || unjudgedCrossings[geofenceId] != nil || heldCoveringCrossings[geofenceId] != nil
             || enterSuperseded(visit, geofenceId: geofenceId)
     }
 

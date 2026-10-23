@@ -2573,6 +2573,36 @@ struct GeofenceDwellCoordinatorTests {
         #expect(await setup.storage.getDwellVisit(geofenceId: id)?.visitId == visitId)
     }
 
+    /// Before the shapes load, a crossing is held unnoted: a read in that window cannot end a
+    /// polygon's stay on its covering circle's crossing, though its first DWELL waits. The load
+    /// then holds a polygon's crossing for its routed ENTER, and notes a circle's.
+    @Test(arguments: [true, false])
+    func crossingBeforeTheShapesLoad_isHeldUntilTheLoad(isPolygon: Bool) async throws {
+        let clock = ManualGeofenceClock(wall: Date(timeIntervalSince1970: 1000))
+        let setup = await makeSetup(isPolygon: isPolygon, clock: clock)
+        try #require(await settleOnMain { setup.coordinator.polygonIdsLoaded })
+        let id = setup.geofence.id
+        await setup.coordinator.handleBoundary(geofence: setup.geofence, transition: .enter, occurredAt: clock.wall)
+        let visit = try #require(await setup.storage.getDwellVisit(geofenceId: id))
+        setup.coordinator.cancelEvidence(for: id)
+        let entryMark = setup.coordinator.enterMarks[id]?.crossing
+        // A process whose catalog read has not landed yet.
+        setup.coordinator.polygonIds = []
+        setup.coordinator.polygonIdsLoaded = false
+        clock.advance(30)
+
+        setup.coordinator.noteEnter(geofenceId: id, occurredAt: clock.wall, crossing: true)
+
+        #expect(setup.coordinator.enterMarks[id]?.crossing == entryMark, "not noted yet")
+        #expect(setup.coordinator.correctionRefusesAdmission(of: visit, geofenceId: id), "the first DWELL waits")
+        #expect(await setup.coordinator.currentVisit(geofence: setup.geofence, userId: "user-1")?.visitId == visit.visitId)
+
+        setup.coordinator.rememberCatalog([setup.geofence])
+        #expect((setup.coordinator.heldCoveringCrossings[id] != nil) == isPolygon)
+        #expect((setup.coordinator.enterMarks[id]?.crossing != entryMark) == !isPolygon, "noted only as a circle's")
+        #expect(setup.coordinator.unjudgedCrossings.isEmpty)
+    }
+
     /// Between a polygon's covering-circle correction callback and its routed ENTER, the correction
     /// is no mark: it says nothing about the shape, so a read in that window neither ends the stay
     /// nor refuses its first DWELL. (The routed ENTER would withdraw such a mark, but only later.)

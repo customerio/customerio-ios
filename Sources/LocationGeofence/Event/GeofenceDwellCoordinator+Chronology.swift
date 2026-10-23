@@ -160,9 +160,9 @@ extension GeofenceDwellCoordinator {
     /// covering circle is what the OS watches: a correction of the state the OS assumed for it
     /// says nothing about the shape, and is not noted (`polygonIds`); a crossing of it is held
     /// until the routed ENTER judges it by the polygon's own evidence (`heldCoveringCrossings`).
-    /// Until the shapes are loaded a correction waits (`pendingCorrections`), placed on the
-    /// timeline now, and is noted at the load only if its fence is a circle; a crossing is noted
-    /// at once, as a circle's, and withdrawn if its fence turns out to be a polygon.
+    /// Until the shapes are loaded a correction waits (`pendingCorrections`) and a crossing is held
+    /// (`unjudgedCrossings`), both placed on the timeline now; at the load each is noted if its
+    /// fence is a circle, and a polygon's crossing is held for its routed ENTER.
     func noteEnter(geofenceId: String, occurredAt: Date, crossing: Bool) {
         guard crossing || !polygonIds.contains(geofenceId) else { return }
         let mark = GeofenceExitMark(date: occurredAt, processedAt: readClock(), source: .enterEvent)
@@ -175,7 +175,9 @@ extension GeofenceDwellCoordinator {
                 pendingCorrections.append((geofenceId, mark))
                 return
             }
+            if let held = unjudgedCrossings[geofenceId], held.outranksEnter(mark) { return }
             unjudgedCrossings[geofenceId] = mark
+            return
         }
         noteEnter(mark, geofenceId: geofenceId, crossing: crossing)
     }

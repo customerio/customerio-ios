@@ -48,8 +48,10 @@ final class GeofenceDwellCoordinator {
     /// an arrival a fix already began the visit with. Each refuses a first DWELL meanwhile, as a
     /// noted crossing would, but ends no visit. Internal for `+Chronology` and `+Polygons`.
     var heldCoveringCrossings: [String: GeofenceExitMark] = [:]
-    /// Crossings noted before the shapes were loaded, by fence, so one that turns out to be a
-    /// polygon's covering circle is withdrawn and held (`rememberPolygons`). Internal for the same.
+    /// Crossings seen before the shapes were loaded, by fence, held unnoted until the load tells a
+    /// circle's (noted then) from a polygon's covering circle's (held for its routed ENTER, in
+    /// `heldCoveringCrossings`). Each refuses a first DWELL meanwhile but ends no visit, so a read
+    /// before the load cannot end a polygon's stay on its covering circle. Internal for the same.
     var unjudgedCrossings: [String: GeofenceExitMark] = [:]
     /// Whether the OS monitor dates its events at receipt rather than by the event itself
     /// (`GeofenceRegionMonitoring.datesEventsAtReceipt`); set by the binder. A circle EXIT dated at
