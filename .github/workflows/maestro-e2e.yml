@@ -100,13 +100,14 @@ jobs:
     if: >-
       vars.MOBILE_E2E_ENABLED == 'true' ||
       github.event_name == 'workflow_dispatch'
-    runs-on: macos-26
+    runs-on: xcode-27
     # Step budgets total 56 minutes, leaving room before the job cancellation.
     # A step timeout fails the job while evidence and notification steps can still run.
     timeout-minutes: 60
     env:
-      DEVELOPER_DIR: /Applications/Xcode_26.6.app/Contents/Developer
-      IOS_SIMULATOR_NAME: iPhone 17 Pro
+      DEVELOPER_DIR: /Applications/Xcode_27.0.app/Contents/Developer
+      # Must exist on the image's iOS 27.0 runtime, which has no iPhone 17 Pro.
+      IOS_SIMULATOR_NAME: iPhone 18 Pro
     strategy:
       fail-fast: false
       matrix:

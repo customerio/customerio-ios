@@ -225,7 +225,11 @@ jobs:
             echo "version=${{ inputs.existing-git-tag }}" >> $GITHUB_OUTPUT
           fi
 
+      # Pinned rather than left to setup-ios' default: releases stay on Xcode 26 (macos-26 has no
+      # Xcode 27), so a default change in mobile-ci-tools must not move the CocoaPods push.
       - uses: customerio/mobile-ci-tools/github-actions/ios/setup-ios/v1@main
+        with:
+          xcode-version: '26.6'
 
       - name: Install cocoapods
         # Pinned so a new cocoapods release cannot break deployments. Bump deliberately.

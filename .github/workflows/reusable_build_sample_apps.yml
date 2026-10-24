@@ -47,7 +47,7 @@ on:
 
 jobs:
   build_sample_apps:
-    runs-on: macos-26
+    runs-on: xcode-27
     name: Building iOS sample apps
     strategy:
       fail-fast: false
@@ -230,6 +230,7 @@ jobs:
       - name: Build sample app
         uses: ./.github/actions/build-sample-app
         with:
+          xcode-version: '27.0'
           apn-or-fcm: ${{ matrix.apn-or-fcm }}
           sample-app: ${{ matrix.sample-app }}
           customerio-workspace-siteid: ${{ secrets[matrix.cio-siteid-secret-key] }}
