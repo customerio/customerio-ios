@@ -2,12 +2,23 @@
 @testable import CioInternalCommonMocks
 @testable import CioMessagingInAppMocks
 @testable import CioMessagingInApp
+import ConcurrencyExtras
 import Foundation
 import SharedTests
 import XCTest
 
 /// Tests for `SseConnectionManager` actor.
 class SseConnectionManagerTest: XCTestCase {
+    // Runs every test with all cooperative-pool jobs serialized onto the main
+    // executor, making Task scheduling deterministic. Fixes CI flakes where the
+    // spawned connection task never got a CPU slice before waitUntil's wall-clock
+    // budget expired on starved CI runners (MBL-2409).
+    override func invokeTest() {
+        withMainSerialExecutor {
+            super.invokeTest()
+        }
+    }
+
     private var loggerMock: LoggerMock!
     private var inAppMessageManagerMock: InAppMessageManagerMock!
     private var sseServiceMock: SseServiceProtocolMock!
