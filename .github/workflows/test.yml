@@ -15,6 +15,10 @@ jobs:
   test:
     uses: customerio/mobile-ci-tools/.github/workflows/ios-test.yml@main
     with:
+      runner-label: 'xcode-27'
+      # Pinned with fastlane/Scanfile: 27.0 is the only Xcode on the xcode-27 image that ships a
+      # simulator runtime (iOS 27.0). Change one, check the other.
+      xcode-version: '27.0'
       scheme: 'Customer.io-Package'
       xcresult-name: 'Customer.io-Package.xcresult'
       # Must track the Ruby this repo's Gemfile.lock is resolved against; the lock pulls
