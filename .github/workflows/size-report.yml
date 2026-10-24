@@ -16,6 +16,8 @@ on:
       - 'Apps/fastlane/**'
       - 'Gemfile'
       - 'Gemfile.lock'
+      - 'Makefile'
+      - 'scripts/update-version.sh'
       # The size tooling itself; deploy-sdk.yml needs it to tag a release
       - '.github/actions/generate-sdk-size-report/**'
       - '.github/actions/build-sample-app/**'
