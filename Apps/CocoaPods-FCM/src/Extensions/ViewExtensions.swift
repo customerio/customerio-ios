@@ -1,7 +1,6 @@
 import SwiftUI
 
 extension View {
-    @available(iOS 14.0, *)
     @ViewBuilder
     func onValueChange<Value: Equatable>(of value: Value, perform action: @escaping (Value) -> Void) -> some View {
         if #available(iOS 17.0, *) {

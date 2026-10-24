@@ -118,7 +118,8 @@ struct InlineMessageUIViewRepresentable: UIViewRepresentable {
 }
 
 // UIActivityIndicatorView to use in SwiftUI.
-// Must use this because SwiftUI activity indicator was introduced in iOS 14.
+// Matches the large spinner of the UIKit inline view. SwiftUI's `ProgressView` only honors
+// `.controlSize(.large)` from iOS 16, so it would render the smaller spinner on iOS 15.
 struct ActivityIndicator: UIViewRepresentable {
     func makeUIView(context: Context) -> UIActivityIndicatorView {
         let indicator = UIActivityIndicatorView(style: .large)

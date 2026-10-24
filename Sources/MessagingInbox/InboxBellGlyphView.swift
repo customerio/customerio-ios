@@ -7,7 +7,6 @@ import SwiftUI
 /// Renders the workspace's branding SVG (`patterns.inbox.floatingIcon.svg`, pre-parsed once by
 /// ``VisualInboxModel`` into an ``InboxBellGlyph``) when present, otherwise the bundled default bell
 /// asset. Both are tinted with `tint`. Purely decorative: callers attach any accessibility label.
-@available(iOS 13.0, *)
 struct InboxBellGlyphView: View {
     let glyph: InboxBellGlyph?
     let tint: Color
@@ -38,15 +37,13 @@ struct InboxBellGlyphView: View {
     }
 }
 
-@available(iOS 13.0, *)
 extension View {
     /// Applies a host-configured accessibility label, or leaves the view unlabeled when the host
     /// provided none. The SDK never falls back to English copy of its own.
-    /// `.accessibility(label:)` is the iOS 13-safe form; `.accessibilityLabel` is iOS 14+.
     @ViewBuilder
     func inboxAccessibilityLabel(_ label: String?) -> some View {
         if let label {
-            accessibility(label: Text(label))
+            accessibilityLabel(Text(label))
         } else {
             self
         }

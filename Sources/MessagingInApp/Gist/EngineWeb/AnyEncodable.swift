@@ -19,7 +19,6 @@
 import Foundation
 #endif
 
-#if swift(>=5.1)
 @frozen public struct AnyEncodable: Encodable {
     public let value: Any
 
@@ -27,29 +26,13 @@ import Foundation
         self.value = value ?? ()
     }
 }
-#else
-public struct AnyEncodable: Encodable {
-    public let value: Any
-
-    public init<T>(_ value: T?) {
-        self.value = value ?? ()
-    }
-}
-#endif
 
 // swiftlint:disable type_name
-#if swift(>=4.2)
 @usableFromInline
 protocol _AnyEncodable {
     var value: Any { get }
     init<T>(_ value: T?)
 }
-#else
-protocol _AnyEncodable {
-    var value: Any { get }
-    init<T>(_ value: T?)
-}
-#endif
 // swiftlint:enable type_name
 
 extension AnyEncodable: _AnyEncodable {}
@@ -144,13 +127,11 @@ extension _AnyEncodable {
             try container.encode(nsnumber.floatValue)
         case .doubleType, .float64Type, .cgFloatType:
             try container.encode(nsnumber.doubleValue)
-        #if swift(>=5.0)
         @unknown default:
             let context = EncodingError.Context(
                 codingPath: container.codingPath,
                 debugDescription: "NSNumber cannot be encoded because its type is not handled")
             throw EncodingError.invalidValue(nsnumber, context)
-        #endif
         }
     }
     #endif
@@ -229,9 +210,7 @@ extension AnyEncodable: ExpressibleByBooleanLiteral {}
 extension AnyEncodable: ExpressibleByIntegerLiteral {}
 extension AnyEncodable: ExpressibleByFloatLiteral {}
 extension AnyEncodable: ExpressibleByStringLiteral {}
-#if swift(>=5.0)
 extension AnyEncodable: ExpressibleByStringInterpolation {}
-#endif
 extension AnyEncodable: ExpressibleByArrayLiteral {}
 extension AnyEncodable: ExpressibleByDictionaryLiteral {}
 

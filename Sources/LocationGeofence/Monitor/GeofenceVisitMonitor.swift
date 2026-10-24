@@ -73,11 +73,7 @@ final class GeofenceVisitMonitor: NSObject, GeofenceVisitMonitoring, @preconcurr
     }
 
     private static func systemAuthorizationStatus(_ manager: CLLocationManager) -> CLAuthorizationStatus {
-        if #available(iOS 14.0, *) {
-            return manager.authorizationStatus
-        } else {
-            return CLLocationManager.authorizationStatus()
-        }
+        manager.authorizationStatus
     }
 
     func stop() {

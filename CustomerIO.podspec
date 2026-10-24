@@ -18,7 +18,7 @@ Pod::Spec.new do |spec|
   spec.cocoapods_version = '>= 1.11.0'
 
   spec.platform = :ios # platforms SDK supports. Leave blank and it's assumed SDK supports all platforms. 
-  spec.ios.deployment_target = "13.0"
+  spec.ios.deployment_target = "15.0"
   # spec.osx.deployment_target = "10.15"
   # spec.tvos.deployment_target = '13.0'
 
@@ -45,6 +45,11 @@ Pod::Spec.new do |spec|
 
   spec.subspec "MessagingPushFCM" do |ss|
     ss.dependency "CustomerIOMessagingPushFCM", "= #{spec.version.to_s}"
+  end
+
+  # Firebase adapter for MessagingPushFCM (installs FirebaseMessaging from CocoaPods).
+  spec.subspec "FirebaseWrapper" do |ss|
+    ss.dependency "CioFirebaseWrapper", "= #{spec.version.to_s}"
   end
 
   spec.subspec "MessagingInApp" do |ss|

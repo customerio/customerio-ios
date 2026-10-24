@@ -8,7 +8,6 @@ import SwiftUI
 ///
 /// The raw values are the exact strings the backend/web SDK emit (gist-web `positionStyles`):
 /// `bottom-right` / `bottom-left` / `top-right` / `top-left`, with `bottom-right` as the default.
-@available(iOS 13.0, *)
 enum InboxBellPosition: String {
     case bottomRight = "bottom-right"
     case bottomLeft = "bottom-left"
