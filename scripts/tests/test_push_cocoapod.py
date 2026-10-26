@@ -115,13 +115,13 @@ class PushCocoapodTests(unittest.TestCase):
                 self.assertEqual(state['pod_calls'], 1)
 
     def test_real_release_podspecs_skip_using_their_exact_identity(self):
-        for name in ['CustomerIOCommon', 'CioFirebaseWrapper']:
-            with self.subTest(name=name):
+        for podspec in sorted(REPO.glob('*.podspec')):
+            with self.subTest(podspec=podspec.name):
                 # Read the real files unchanged, including trailing version comments,
                 # interpolation and subspecs. The SDK's public version is the oracle.
                 result, state = self.run_script(
-                    statuses=['200'], podspec_file=REPO / (name + '.podspec'),
-                    expected_name=name, expected_version=SDK_VERSION,
+                    statuses=['200'], podspec_file=podspec,
+                    expected_name=podspec.stem, expected_version=SDK_VERSION,
                 )
                 self.assert_exit(result, 0)
                 self.assertEqual(state['pod_calls'], 0)

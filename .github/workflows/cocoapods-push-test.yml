@@ -5,8 +5,7 @@ on:
     paths:
       - 'scripts/push-cocoapod.sh'
       - 'scripts/tests/test_push_cocoapod.py'
-      - 'CustomerIOCommon.podspec'
-      - 'CioFirebaseWrapper.podspec'
+      - '*.podspec'
       - 'Sources/Common/Version.swift'
       - '.github/workflows/cocoapods-push-test.yml'
   push:
@@ -14,8 +13,7 @@ on:
     paths:
       - 'scripts/push-cocoapod.sh'
       - 'scripts/tests/test_push_cocoapod.py'
-      - 'CustomerIOCommon.podspec'
-      - 'CioFirebaseWrapper.podspec'
+      - '*.podspec'
       - 'Sources/Common/Version.swift'
       - '.github/workflows/cocoapods-push-test.yml'
 
