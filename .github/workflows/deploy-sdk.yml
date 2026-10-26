@@ -245,6 +245,8 @@ jobs:
 
       - name: Push all podspecs to CocoaPods
         id: push-pods
+        # Leave time for failure reporting before the overall job timeout.
+        timeout-minutes: 300
         run: |
           # Podspecs are grouped into tiers by their dependencies on each other.
           # Pods within a tier do not depend on each other, so they push in parallel.
