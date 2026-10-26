@@ -199,6 +199,7 @@ jobs:
     runs-on: macos-26
     outputs:
       version: ${{ steps.get-version.outputs.version }}
+      pods: ${{ steps.release-pods.outputs.pods }}
       # 'true' when trunk refused at least one write. The job may be green (nothing
       # was published) or red (some pods were, or others failed outright), so
       # downstream steps have to read this rather than infer it from job status.
@@ -224,6 +225,21 @@ jobs:
           else
             echo "version=${{ inputs.existing-git-tag }}" >> $GITHUB_OUTPUT
           fi
+
+      # The downstream CDN wait uses these podspecs from the released checkout.
+      - name: List pods in this release
+        id: release-pods
+        run: |
+          if ! files=$(ls -- *.podspec); then
+            echo "::error::No podspecs were found in the released checkout."
+            exit 1
+          fi
+          pods=$(printf '%s\n' "$files" | sed 's/\.podspec$//')
+          {
+            echo 'pods<<CIO_PODS'
+            printf '%s\n' "$pods"
+            echo 'CIO_PODS'
+          } >> "$GITHUB_OUTPUT"
 
       # Pinned rather than left to setup-ios' default: releases stay on Xcode 26 (macos-26 has no
       # Xcode 27), so a default change in mobile-ci-tools must not move the CocoaPods push.
@@ -516,7 +532,7 @@ jobs:
     needs: [deploy-cocoapods]
     runs-on: ubuntu-latest
     timeout-minutes: 70
-    # A refused release is missing at least one pod, so the poll below would spend
+    # A refused release is missing at least one pod, so the shared wait action would spend
     # its full budget waiting for a version that is not coming. (It may
     # still have published some of them - a partial release is red, so success()
     # already covers that case, and this clause is what handles the green one.)
@@ -532,22 +548,23 @@ jobs:
         with:
           ecosystem: cocoapods
           version: ${{ needs.deploy-cocoapods.outputs.version }}
-          packages: |
-            CustomerIOCommon
-            CustomerIOTrackingMigration
-            CustomerIODataPipelines
-            CustomerIOMessagingPush
-            CustomerIOMessagingPushAPN
-            CustomerIOMessagingPushFCM
-            CustomerIOMessagingInApp
-            CustomerIOMessagingInbox
-            CustomerIOLocation
-            CustomerIOLocationGeofence
-            CustomerIOLiveActivitiesAttributes
-            CustomerIOLiveActivities
-            CustomerIOLiveActivitiesTemplates
-            CioFirebaseWrapper
-            CustomerIO
+          packages: ${{ needs.deploy-cocoapods.outputs.pods }}
+
+      - name: Notify team when CocoaPods CDN availability could not be confirmed
+        if: ${{ failure() }}
+        timeout-minutes: 2
+        uses: slackapi/slack-github-action@dcb1066f776dd043e64d0e8ba94ca15cc7e1875d # v4.0.0
+        with:
+          webhook: ${{ secrets.SLACK_NOTIFY_RELEASES_WEBHOOK_URL }}
+          webhook-type: incoming-webhook
+          errors: true
+          payload: |
+            {
+              "text": ${{ toJSON(format('iOS SDK {0} is published, but CocoaPods CDN availability could not be confirmed. Sample apps were not built or distributed. Re-run the failed jobs once the pods are downloadable. <https://github.com/{1}/actions/runs/{2}|CI server logs>.', needs.deploy-cocoapods.outputs.version, github.repository, github.run_id)) }},
+              "username": "iOS deployment bot",
+              "icon_url": "https://pngimg.com/uploads/apple_logo/apple_logo_PNG19687.png",
+              "channel": "#mobile-deployments"
+            }
 
   # New job to build sample apps after successful deployment to CocoaPods
   build-sample-apps:
