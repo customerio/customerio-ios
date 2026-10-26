@@ -1,3 +1,13 @@
+## [5.0.0](https://github.com/customerio/customerio-ios/compare/4.13.0...5.0.0) (2026-10-26)
+
+### ⚠ BREAKING CHANGES
+
+* raise the minimum iOS version to 15 (#1335)
+
+### Features
+
+* raise the minimum iOS version to 15 ([#1335](https://github.com/customerio/customerio-ios/issues/1335)) ([ea67726](https://github.com/customerio/customerio-ios/commit/ea6772651dc35af05df6d01fed7b43cdf4a1bc5e))
+
 ## [4.13.0](https://github.com/customerio/customerio-ios/compare/4.12.3...4.13.0) (2026-10-23)
 
 ### Features
