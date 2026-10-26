@@ -176,7 +176,8 @@ private func reducer(action: InAppMessageAction, state: InAppMessageState) -> In
             publicKey: state.publicKey,
             dataCenter: state.dataCenter,
             environment: state.environment,
-            colorScheme: state.colorScheme
+            colorScheme: state.colorScheme,
+            queueFetchGeneration: state.queueFetchGeneration + 1
         )
     }
 }
