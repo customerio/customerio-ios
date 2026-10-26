@@ -25,6 +25,10 @@ protocol SseLifecycleManager: AutoMockable {
     ///   `mustBeFresh` is true when an older request in flight can't stand in for this fetch: the stream
     ///   just opened, or the app is returning from the background.
     func start(queueFetchHandler: @escaping (_ state: InAppMessageState, _ mustBeFresh: Bool) -> Void) async
+
+    /// Stops the SSE connection now, whatever the app state and SSE flag. Used when switching users, so
+    /// the previous user's stream is gone before the new user is set.
+    func stopConnection() async
 }
 
 // sourcery: InjectRegisterShared = "SseLifecycleManager"
@@ -266,6 +270,11 @@ actor CioSseLifecycleManager: SseLifecycleManager {
             // a launch fetch that is already in flight.
             queueFetchHandler?(state, hasBeenBackgrounded)
         }
+    }
+
+    func stopConnection() async {
+        logger.logWithModuleTag("SseLifecycleManager: Stopping SSE connection on request", level: .info)
+        await sseConnectionManager.stopConnection()
     }
 
     private func handleBackgrounded() async {

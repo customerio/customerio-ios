@@ -267,6 +267,34 @@ class InAppMessageStateTests: IntegrationTest {
         }
     }
 
+    func test_setUserToken_givenDifferentUserSet_expectSseStoppedAfterResetAndBeforeNewUserSet() async {
+        let sseLifecycleManager = SseLifecycleManagerMock()
+        let gistUnderTest = Gist(
+            logger: diGraphShared.logger,
+            gistDelegate: diGraphShared.gistDelegate,
+            inAppMessageManager: inAppMessageManager,
+            queueManager: queueManager,
+            threadUtil: diGraphShared.threadUtil,
+            sseLifecycleManager: sseLifecycleManager,
+            applicationStateProvider: applicationStateProviderMock
+        )
+        // Subscribers are notified inside the dispatch, so this always holds the store's current userId.
+        let currentUserId = CioInternalCommon.Synchronized<String?>(nil)
+        let userIdSubscriber = InAppMessageStoreSubscriber { currentUserId.wrappedValue = $0.userId }
+        await inAppMessageManager.subscribe(keyPath: \.userId, subscriber: userIdSubscriber).value
+        let userIdsWhenStopped = CioInternalCommon.Synchronized<[String?]>([])
+        sseLifecycleManager.stopConnectionClosure = {
+            userIdsWhenStopped.mutating { $0.append(currentUserId.wrappedValue) }
+        }
+        await inAppMessageManager.dispatchAsync(action: .setUserIdentifier(user: "user-a"))
+
+        gistUnderTest.setUserToken("user-b")
+
+        _ = await inAppMessageManager.waitForState(pollInterval: 0.01) { $0.userId == "user-b" }
+        XCTAssertEqual(userIdsWhenStopped.wrappedValue, [nil])
+        withExtendedLifetime(userIdSubscriber) {}
+    }
+
     // MARK: - Message Processing Tests
 
     func test_processMessageQueue_givenMessagePriorities_expectHighestPriorityLoaded() async {
