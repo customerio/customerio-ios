@@ -1,3 +1,4 @@
+// swiftlint:disable file_length
 import CioInternalCommon
 import Foundation
 
@@ -31,6 +32,7 @@ class Gist: GistProvider {
     private var sseEnabledSubscriber: InAppMessageStoreSubscriber?
     private var userIdSubscriber: InAppMessageStoreSubscriber?
     private let queueTimer = CioInternalCommon.Synchronized<Timer?>(nil)
+    private let queueFetches = QueueFetchCoordinator()
 
     init(
         logger: Logger,
@@ -53,8 +55,8 @@ class Gist: GistProvider {
 
         // Start the SSE lifecycle manager to observe app foreground/background events
         Task {
-            await sseLifecycleManager.start(queueFetchHandler: { [weak self] state in
-                self?.fetchUserQueue(state: state)
+            await sseLifecycleManager.start(queueFetchHandler: { [weak self] state, mustBeFresh in
+                self?.fetchUserQueue(state: state, mustBeFresh: mustBeFresh)
             })
         }
     }
@@ -327,11 +329,22 @@ class Gist: GistProvider {
             fetchUserQueue(state: state)
         }
     }
+}
 
-    private func fetchUserQueue(state: InAppMessageState) {
+// MARK: - Queue fetch
+
+extension Gist {
+    /// - Parameter mustBeFresh: Set by callers that need data from after they fired; they get one
+    ///   follow-up instead of sharing an older request in flight (see `QueueFetchCoordinator`).
+    private func fetchUserQueue(state: InAppMessageState, mustBeFresh: Bool = false) {
         // Allow fetching with either userId or anonymousId
-        guard state.userId != nil || state.anonymousId != nil else {
+        guard let key = QueueFetchKey(state: state) else {
             logger.logWithModuleTag("Neither user token nor anonymous ID set, skipping fetch user queue.", level: .debug)
+            return
+        }
+
+        guard let ticket = queueFetches.begin(key: key, mustBeFresh: mustBeFresh) else {
+            logger.logWithModuleTag("Gist: Queue fetch already in flight for this user, sharing it (mustBeFresh: \(mustBeFresh))", level: .debug)
             return
         }
 
@@ -342,22 +355,45 @@ class Gist: GistProvider {
             queueManager.fetchUserQueue(state: state) { [weak self] response in
                 guard let self else { return }
 
-                switch response {
-                case .success(nil):
-                    logger.logWithModuleTag("No changes to remote queue", level: .info)
-                    inAppMessageManager.dispatch(action: .clearMessageQueue)
+                let refetch = queueFetches.finish(ticket)
+                inAppMessageManager.fetchState { [weak self] currentState in
+                    guard let self else { return }
 
-                case .success(let messages):
-                    guard let messages else { return }
+                    // The identity changed while the request was in flight (logout, or another user
+                    // identified), so these messages belong to the previous one.
+                    guard QueueFetchKey(state: currentState) == key else {
+                        logger.logWithModuleTag("Gist: Discarding queue response for a previous user", level: .info)
+                        return
+                    }
 
-                    logger.logWithModuleTag("Gist queue service found \(messages.count) new messages", level: .info)
-                    inAppMessageManager.dispatch(action: .processMessageQueue(messages: messages))
+                    handleQueueResponse(response)
 
-                case .failure(let error):
-                    logger.logWithModuleTag("Error fetching messages from Gist queue service. \(error.localizedDescription)", level: .error)
-                    inAppMessageManager.dispatch(action: .clearMessageQueue)
+                    if refetch {
+                        logger.logWithModuleTag("Gist: Fetching queue again for a caller that needed newer data", level: .debug)
+                        fetchUserQueue(state: currentState)
+                    }
                 }
             }
+        }
+    }
+
+    private func handleQueueResponse(_ response: Result<[Message]?, Error>) {
+        switch response {
+        case .success(nil):
+            logger.logWithModuleTag("No changes to remote queue", level: .info)
+            inAppMessageManager.dispatch(action: .clearMessageQueue)
+
+        case .success(let messages):
+            guard let messages else { return }
+
+            logger.logWithModuleTag("Gist queue service found \(messages.count) new messages", level: .info)
+            inAppMessageManager.dispatch(action: .processMessageQueue(messages: messages))
+
+        case .failure(let error) where error is QueueFetchError:
+            return // Discarded for a previous user; not this response's queue to clear.
+        case .failure(let error):
+            logger.logWithModuleTag("Error fetching messages from Gist queue service. \(error.localizedDescription)", level: .error)
+            inAppMessageManager.dispatch(action: .clearMessageQueue)
         }
     }
 }

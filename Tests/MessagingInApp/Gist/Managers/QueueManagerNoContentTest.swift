@@ -24,6 +24,13 @@ class QueueManagerNoContentTest: UnitTest {
         inAppMessageManagerMock = InAppMessageManagerMock()
         inAppMessageManagerMock.dispatchReturnValue = Task {}
         inAppMessageManagerMock.underlyingState = InAppMessageState()
+        // QueueManager checks the response still belongs to the current identity before using it.
+        let manager: InAppMessageManagerMock = inAppMessageManagerMock
+        inAppMessageManagerMock.fetchStateClosure = { [weak manager] completion in
+            let state = manager?.underlyingState ?? InAppMessageState()
+            completion(state)
+            return Task { state }
+        }
         repositoryFake = VisualInboxRepositoryFake()
 
         // The 200 path runs the anonymous-message merge; the mock's return value is implicitly
@@ -138,53 +145,5 @@ class QueueManagerNoContentTest: UnitTest {
             try? await Task.sleep(nanoseconds: 5000000) // 5ms
         }
         XCTFail("condition never became true", file: file, line: line)
-    }
-}
-
-/// Minimal `VisualInboxRepository` stand-in recording the calls the queue pipeline makes.
-/// Hand-rolled because the protocol's `async` members are not expressible by the mock template.
-private actor VisualInboxRepositoryFake: VisualInboxRepository {
-    private(set) var enableAndLoadCallCount = 0
-    private(set) var setEnabledValues: [Bool] = []
-    private var enabled = false
-
-    var isInboxEnabled: Bool { enabled }
-    var loadState: VisualInboxLoadState { .idle }
-    var isInboxVisible: Bool { false }
-
-    func enableAndLoad() async {
-        enableAndLoadCallCount += 1
-    }
-
-    func selectedMessages() async -> [InboxMessage] {
-        []
-    }
-
-    func jistMessages() async -> [JistInboxMessage] {
-        []
-    }
-
-    func loadStateAndJistMessages() async -> (state: VisualInboxLoadState, messages: [JistInboxMessage]) {
-        (.idle, [])
-    }
-
-    func templatesRegistry() async -> InboxTemplatesRegistry? {
-        nil
-    }
-
-    func branding() async -> InboxBranding? {
-        nil
-    }
-
-    @discardableResult
-    func setInboxEnabled(_ enabled: Bool) async -> Bool {
-        let previous = self.enabled
-        self.enabled = enabled
-        setEnabledValues.append(enabled)
-        return previous
-    }
-
-    func loadStateChanges() async -> AsyncStream<Void> {
-        AsyncStream { $0.finish() }
     }
 }
