@@ -237,7 +237,7 @@ final class MovementFixResolver: NSObject, @preconcurrency CLLocationManagerDele
     /// What this resolver asks Core Location for, by name. Read from the stored value, so the
     /// `requestFreshFix` seam still never creates the manager.
     private var requestedAccuracyLabel: String {
-        if #available(iOS 14.0, *), desiredAccuracy == kCLLocationAccuracyReduced { return "reduced" }
+        if desiredAccuracy == kCLLocationAccuracyReduced { return "reduced" }
         return Self.accuracyLabels[desiredAccuracy] ?? "custom"
     }
 

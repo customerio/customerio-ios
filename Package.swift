@@ -18,6 +18,9 @@ var products: [PackageDescription.Product] = [
     .library(name: "DataPipelines", targets: ["CioDataPipelines"]),
     .library(name: "MessagingPushAPN", targets: ["CioMessagingPushAPN"]),
     .library(name: "MessagingPushFCM", targets: ["CioMessagingPushFCM"]),
+    // Firebase adapter for MessagingPushFCM, previously the separate customerio-ios-fcm package. It declares no Firebase
+    // dependency: the app links FirebaseMessaging, and the adapter finds it at runtime.
+    .library(name: "CioFirebaseWrapper", targets: ["CioFirebaseWrapper"]),
     .library(name: "MessagingInApp", targets: ["CioMessagingInApp"]),
     .library(name: "MessagingInbox", targets: ["CioMessagingInbox"]),
     .library(name: "Location", targets: ["CioLocation"]),
@@ -40,7 +43,7 @@ if (ProcessInfo.processInfo.environment["CI"] != nil) { // true if running on a 
 let package = Package(
     name: "Customer.io",
     platforms: [
-        .iOS(.v13)
+        .iOS(.v15)
     ],
     products: products,
     dependencies: [
@@ -54,10 +57,9 @@ let package = Package(
         .package(name: "CioAnalytics", url: "https://github.com/customerio/cdp-analytics-swift.git", .exact("1.7.3+cio.1")),
         
         // SSE (Server-Sent Events) client for real-time in-app messaging.
-        // Pinned exactly: 3.3.1 raised the package's iOS floor to 15.0, which this package (iOS 13)
-        // cannot build against. Unpin once our own iOS minimum reaches 15.0, or if LaunchDarkly
-        // restores iOS 13 support in a later release.
-        .package(url: "https://github.com/LaunchDarkly/swift-eventsource.git", .exact("3.3.0")),
+        // Kept below 3.4.0, matching the podspec. 3.4.0 changes how a server-closed stream is reported,
+        // so bump it deliberately.
+        .package(url: "https://github.com/LaunchDarkly/swift-eventsource.git", .upToNextMinor(from: "3.3.0")),
 
         // Jist SwiftUI renderer used by the Visual Inbox overlay (`CioMessagingInbox`).
         // Published release from the Jist monorepo (its root Package.swift exposes the `Jist` product;
@@ -161,6 +163,13 @@ let package = Package(
         .testTarget(name: "MessagingPushFCMTests",
                     dependencies: ["CioMessagingPushFCM", "SharedTests", "CioInternalCommonMocks", "CioMessagingPushMocks", "CioMessagingPushFCMMocks"],
                     path: "Tests/MessagingPushFCM"),
+        // FCM Firebase adapter. No package dependency on Firebase, so APN-only apps never resolve, fetch or build it.
+        .target(name: "CioFirebaseWrapper",
+                dependencies: ["CioMessagingPushFCM", "CioMessagingPush", "CioInternalCommon"],
+                path: "Sources/FirebaseWrapper"),
+        .testTarget(name: "FirebaseWrapperTests",
+                    dependencies: ["CioFirebaseWrapper", "CioMessagingPushFCM", "CioInternalCommon", "CioInternalCommonMocks"],
+                    path: "Tests/FirebaseWrapper"),
 
         // Messaging in-app
         .target(name: "CioMessagingInApp",
