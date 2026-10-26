@@ -531,6 +531,7 @@ jobs:
     name: Wait for deploy-cocoapods to finish
     needs: [deploy-cocoapods]
     runs-on: ubuntu-latest
+    # Above the wait's 60 minutes, so its report and the Slack alert are not cut off.
     timeout-minutes: 70
     # A refused release is missing at least one pod, so the shared wait action would spend
     # its full budget waiting for a version that is not coming. (It may
@@ -549,21 +550,46 @@ jobs:
           ecosystem: cocoapods
           version: ${{ needs.deploy-cocoapods.outputs.version }}
           packages: ${{ needs.deploy-cocoapods.outputs.pods }}
+          # Explicit, not the action's default, so it stays under this job's timeout-minutes.
+          timeout-minutes: '60'
 
-      - name: Notify team when CocoaPods CDN availability could not be confirmed
-        if: ${{ failure() }}
-        timeout-minutes: 2
+      - name: Notify team of failure
         uses: slackapi/slack-github-action@dcb1066f776dd043e64d0e8ba94ca15cc7e1875d # v4.0.0
+        if: ${{ failure() }} # only run this if any previous step failed
         with:
+          # Incoming webhook URL that sends message into the correct Slack channel.
+          # Help on how to get the webhook URL: https://docs.slack.dev/tools/slack-github-action/sending-data-slack-incoming-webhook/
           webhook: ${{ secrets.SLACK_NOTIFY_RELEASES_WEBHOOK_URL }}
           webhook-type: incoming-webhook
+          # Fail the step when Slack rejects the message, as v1 of this action did.
           errors: true
+          # Use block kit for format of the JSON payloads: https://app.slack.com/block-kit-builder
+          # toJSON quotes and escapes the version, so a quote in it cannot produce invalid JSON.
           payload: |
             {
-              "text": ${{ toJSON(format('iOS SDK {0} is published, but CocoaPods CDN availability could not be confirmed. Sample apps were not built or distributed. Re-run the failed jobs once the pods are downloadable. <https://github.com/{1}/actions/runs/{2}|CI server logs>.', needs.deploy-cocoapods.outputs.version, github.repository, github.run_id)) }},
+              "text": "iOS SDK deployment failure",
               "username": "iOS deployment bot",
               "icon_url": "https://pngimg.com/uploads/apple_logo/apple_logo_PNG19687.png",
-              "channel": "#mobile-deployments"
+              "channel": "#mobile-deployments",
+              "blocks": [
+                  {
+                      "type": "section",
+                      "text": {
+                          "type": "mrkdwn",
+                          "text": "*iOS* SDK deployment :warning: failure :warning:"
+                      }
+                  },
+                  {
+                      "type": "divider"
+                  },
+                  {
+                      "type": "section",
+                      "text": {
+                          "type": "mrkdwn",
+                          "text": ${{ toJSON(format('iOS SDK deployment failed during step *wait for CocoaPods CDN*. *Version {0}* is on CocoaPods trunk, but the CDN could not be confirmed to serve every pod, so sample apps were not built or distributed. View <https://github.com/{1}/actions/runs/{2}|CI server logs> to learn why, and re-run the failed jobs once the pods are downloadable. <https://github.com/customerio/mobile/blob/main/GIT-WORKFLOW.md|Learn more about the deployment process and how to fix errors>.', needs.deploy-cocoapods.outputs.version, github.repository, github.run_id)) }}
+                      }
+                  }
+              ]
             }
 
   # New job to build sample apps after successful deployment to CocoaPods
