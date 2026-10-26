@@ -9,7 +9,7 @@ Set `CIOGeofenceExperimentalPendingDwellBackgroundCollection` to Boolean `true` 
 Info.plist. The host must also declare the `location` background mode and already have Always and
 Precise Location access. The SDK does not request new permission for this experiment. The shared
 background bootstrap reads the same flag, including launches before SDK initialization.
-Collection requires iOS 16 or later for the supported continuous-clock wait. On iOS 13–15, this
+Collection requires iOS 16 or later for the supported continuous-clock wait. On iOS 15, this
 experiment remains off even when the flag is set; ordinary geofencing and dwell behavior continue.
 
 One low-power location session serves pending polygon visits with thresholds up to two hours.
