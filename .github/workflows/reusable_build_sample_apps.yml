@@ -104,6 +104,31 @@ jobs:
             exit 1
           fi
 
+      # Manual `use_latest_sdk_version` runs skip deploy-sdk.yml's wait-for-cocoapods job. On the
+      # release path that job already waited, so this passes on its first check.
+      - name: Wait until every pod is downloadable from the CocoaPods CDN
+        if: ${{ inputs.use_latest_sdk_version == true && matrix.sample-app == 'CocoaPods-FCM' }}
+        uses: customerio/mobile-ci-tools/github-actions/wait-until-downloadable/v1@main
+        with:
+          ecosystem: cocoapods
+          version: ${{ env.LATEST_TAG }}
+          packages: |
+            CustomerIOCommon
+            CustomerIOTrackingMigration
+            CustomerIODataPipelines
+            CustomerIOMessagingPush
+            CustomerIOMessagingPushAPN
+            CustomerIOMessagingPushFCM
+            CustomerIOMessagingInApp
+            CustomerIOMessagingInbox
+            CustomerIOLocation
+            CustomerIOLocationGeofence
+            CustomerIOLiveActivitiesAttributes
+            CustomerIOLiveActivities
+            CustomerIOLiveActivitiesTemplates
+            CioFirebaseWrapper
+            CustomerIO
+
       - name: Replace local references with published SDK version
         if: ${{ inputs.use_latest_sdk_version == true }}
         shell: bash
