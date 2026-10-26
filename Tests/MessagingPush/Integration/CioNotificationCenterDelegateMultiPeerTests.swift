@@ -307,11 +307,7 @@ final class CioNotificationDelegateMultiPeerTests: XCTestCase {
             withCompletionHandler: { result = $0 }
         )
 
-        if #available(iOS 14.0, *) {
-            XCTAssertEqual(result, [.list, .banner, .badge, .sound])
-        } else {
-            XCTAssertEqual(result, [.alert, .badge, .sound])
-        }
+        XCTAssertEqual(result, [.list, .banner, .badge, .sound])
         XCTAssertEqual(peer.willPresentCallsCount, 0)
     }
 
@@ -866,11 +862,7 @@ final class CioNotificationDelegateMultiPeerTests: XCTestCase {
         XCTAssertEqual(chainedPeer.didReceiveCallsCount, 1)
         XCTAssertEqual(chainedPeer.openSettingsCallsCount, 1)
         XCTAssertEqual(willPresentOuterCallsCount, 1)
-        if #available(iOS 14.0, *) {
-            XCTAssertEqual(willPresentOptions, [.list, .banner, .badge, .sound])
-        } else {
-            XCTAssertEqual(willPresentOptions, [.alert, .badge, .sound])
-        }
+        XCTAssertEqual(willPresentOptions, [.list, .banner, .badge, .sound])
         XCTAssertEqual(didReceiveOuterCallsCount, 1)
     }
 

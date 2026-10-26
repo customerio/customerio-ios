@@ -15,7 +15,6 @@ import SwiftUI
 ///
 /// Thread safety: `@MainActor` so all `@Published` mutations happen on the main thread; the
 /// provider calls are `async` and hop back to the main actor before publishing.
-@available(iOS 13.0, *)
 @MainActor
 final class VisualInboxModel: ObservableObject {
     /// Current visibility/loading state from the data layer. Drives which chrome is shown.

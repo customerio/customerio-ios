@@ -48,6 +48,9 @@ enum PolygonEvaluationReason: String, CaseIterable {
     case foreground
     case osTransition = "os_transition"
     case visit
+    /// A pending dwell asked for proof of presence because its evidence deadline fired or was re-armed.
+    /// Names the request's purpose, not its trigger, which the caller's own records give.
+    case dwellEvidence = "dwell_evidence"
 
     var prose: String {
         switch self {
@@ -57,6 +60,7 @@ enum PolygonEvaluationReason: String, CaseIterable {
         case .foreground: return "foreground"
         case .osTransition: return "os circle enter"
         case .visit: return "visit"
+        case .dwellEvidence: return "dwell evidence"
         }
     }
 }
@@ -81,6 +85,7 @@ extension PolygonMembershipOutcome {
     var logToken: String {
         switch self {
         case .deliver: return "deliver"
+        case .discoveredInside: return "discovered_inside"
         case .suppressedNoChange: return "no_change"
         case .suppressedNewerDecision: return "newer_decision"
         case .suppressedInitialOutside: return "initial_outside"

@@ -15,17 +15,20 @@ extension PolygonMembershipResolver {
     /// second request answered by a CoreLocation echo is refused.
     func heldFixUse(_ heldFix: ResolvedFix?) -> HeldFixDecision {
         guard let heldFix else { return HeldFixDecision(use: .none, age: 0, newerFix: nil) }
+        // A negative age is a fix from before the clock was set back: no age at all can be placed.
+        let tolerance = GeofenceConstants.dwellWallClockStepTolerance
         if let latest = fixResolver.latestFix, latest.timestamp > heldFix.timestamp {
             // Judged on the NEWER fix's age, not the held one's.
             let age = dateUtil.now.timeIntervalSince(latest.timestamp)
-            guard age <= GeofenceConstants.movementFixMaxAge else {
+            guard age >= -tolerance, age <= GeofenceConstants.movementFixMaxAge else {
                 return HeldFixDecision(use: .tooOld, age: age, newerFix: nil)
             }
             return HeldFixDecision(use: .newer, age: age, newerFix: latest)
         }
         let age = dateUtil.now.timeIntervalSince(heldFix.timestamp)
         return HeldFixDecision(
-            use: age <= GeofenceConstants.movementFixMaxAge ? .reused : .tooOld, age: age, newerFix: nil
+            use: age >= -tolerance && age <= GeofenceConstants.movementFixMaxAge ? .reused : .tooOld,
+            age: age, newerFix: nil
         )
     }
 
@@ -67,11 +70,15 @@ extension PolygonMembershipResolver {
     /// With `requiringFresh`, only a fix received for THIS request and newer than the last delivered
     /// counts. Stricter than the coordinator's `wakeRadius` test; neither may be relaxed to the other.
     func resolveFix(requiringFresh: Bool = false) async -> CLLocation? {
+        let cached = requiringFresh ? nil : fixResolver.cachedFix
+        // A pass a dwell's evidence request runs is charged to that visit's budget as it issues a
+        // request; refused, it decides nothing. Any other pass is not charged.
+        let admit = dwellCoordinator?.dwellProofAdmission()
         // Not `cachedFix`: CoreLocation's cache advances on its own, so the guard below would never
         // pass.
         let priorTimestamp = fixResolver.latestFix?.timestamp
         return await withCheckedContinuation { continuation in
-            fixResolver.resolve(cached: requiringFresh ? nil : fixResolver.cachedFix, purpose: .polygon) { [weak self] _, isFresh in
+            fixResolver.resolve(cached: cached, purpose: .polygon, admit: admit) { [weak self] _, isFresh in
                 guard let self else { return continuation.resume(returning: nil) }
                 let resolved = fixResolver.latestFix
                 if requiringFresh {

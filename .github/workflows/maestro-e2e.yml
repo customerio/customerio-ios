@@ -100,13 +100,14 @@ jobs:
     if: >-
       vars.MOBILE_E2E_ENABLED == 'true' ||
       github.event_name == 'workflow_dispatch'
-    runs-on: macos-26
+    runs-on: xcode-27
     # Step budgets total 56 minutes, leaving room before the job cancellation.
     # A step timeout fails the job while evidence and notification steps can still run.
     timeout-minutes: 60
     env:
-      DEVELOPER_DIR: /Applications/Xcode_26.6.app/Contents/Developer
-      IOS_SIMULATOR_NAME: iPhone 17 Pro
+      DEVELOPER_DIR: /Applications/Xcode_27.0.app/Contents/Developer
+      # Must exist on the image's iOS 27.0 runtime, which has no iPhone 17 Pro.
+      IOS_SIMULATOR_NAME: iPhone 18 Pro
     strategy:
       fail-fast: false
       matrix:
@@ -114,11 +115,11 @@ jobs:
     steps:
       - name: Check out iOS SDK
         timeout-minutes: 2
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Check out shared E2E harness
         timeout-minutes: 2
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           repository: customerio/mobile-e2e
           ref: ${{ inputs.harness_ref || 'main' }}
@@ -205,7 +206,7 @@ jobs:
       - name: Upload E2E evidence
         timeout-minutes: 2
         if: ${{ always() && steps.sanitize.outcome == 'success' }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: maestro-ios-${{ matrix.suite }}
           path: artifacts/e2e/

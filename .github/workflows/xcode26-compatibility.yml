@@ -1,0 +1,47 @@
+name: Xcode 26 compatibility
+
+# Regular CI builds and tests on Xcode 27. Customers still build the SDK with Xcode 26, and the way
+# to break that is code that only the iOS 27 SDK can compile, such as an iOS 27 symbol, even behind
+# `if #available(iOS 27, *)`. This job compiles every package product with Xcode 26 to catch that.
+# It is kept cheap on purpose: compile only, one simulator architecture, no tests, no simulator
+# boot, no signing, and only when SDK sources or the package manifest change.
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - 'Sources/**'
+      - 'Package.swift'
+      - 'Package.resolved'
+      - '.github/workflows/xcode26-compatibility.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  compile:
+    name: Compile SDK with Xcode 26
+    runs-on: macos-26
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+
+      # Same Xcode the release workflow (deploy-sdk.yml) builds with.
+      - name: Install Xcode
+        uses: maxim-lobanov/setup-xcode@ed7a3b1fda3918c0306d1b724322adc0b8cc0a90 # v1.7.0
+        with:
+          xcode-version: '26.6'
+
+      - name: Compile every SDK product
+        run: |
+          set -o pipefail
+          xcodebuild build \
+            -scheme Customer.io-Package \
+            -configuration Debug \
+            -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath "$RUNNER_TEMP/xcode26" \
+            ARCHS=arm64 \
+            CODE_SIGNING_ALLOWED=NO

@@ -1,6 +1,6 @@
 import Foundation
 
-/// Backport of `AsyncStream.makeStream()` for iOS 13+.
+/// Backport of `AsyncStream.makeStream()` for iOS 15 and 16.
 ///
 /// `AsyncStream.makeStream()` was introduced in iOS 17 and provides a way to create
 /// an AsyncStream and access its continuation separately. This is useful when you need
