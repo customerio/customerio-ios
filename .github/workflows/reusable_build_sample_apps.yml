@@ -87,6 +87,7 @@ jobs:
         run: |
           if [ -n "$SDK_VERSION" ]; then
             # The release path passes the version the release job just published.
+            latest_tag="$SDK_VERSION"
             echo "LATEST_TAG=$SDK_VERSION" >> "$GITHUB_ENV"
             echo "Using SDK version supplied by the caller: $SDK_VERSION"
           elif [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
@@ -103,6 +104,35 @@ jobs:
             echo "::error::use_latest_sdk_version is true but no sdk_version was passed. The caller must pass the version that was just published."
             exit 1
           fi
+          if ! git rev-parse --verify --quiet "refs/tags/$latest_tag^{commit}" > /dev/null; then
+            echo "::error::Release tag $latest_tag was not found."
+            exit 1
+          fi
+          # Manual builds may check out code newer than the selected release.
+          files=$(git ls-tree --name-only "refs/tags/$latest_tag")
+          pods=$(printf '%s\n' "$files" | sed -n 's/\.podspec$//p')
+          if [ -z "$pods" ]; then
+            echo "::error::No podspecs were found at release tag $latest_tag."
+            exit 1
+          fi
+          {
+            echo 'pods<<CIO_PODS'
+            printf '%s\n' "$pods"
+            echo 'CIO_PODS'
+          } >> "$GITHUB_OUTPUT"
+
+      # Manual `use_latest_sdk_version` runs skip deploy-sdk.yml's wait-for-cocoapods job. On the
+      # release path that job already waited, so this passes on its first check. A manual
+      # run targets an existing release and gets a shorter wait when a pod never shipped.
+      # Keep this well under the job's timeout-minutes so the action reports before the job is cancelled.
+      - name: Wait until every pod is downloadable from the CocoaPods CDN
+        if: ${{ inputs.use_latest_sdk_version == true && matrix.sample-app == 'CocoaPods-FCM' }}
+        uses: customerio/mobile-ci-tools/github-actions/wait-until-downloadable/v1@main
+        with:
+          ecosystem: cocoapods
+          version: ${{ env.LATEST_TAG }}
+          packages: ${{ steps.latest-sdk-version-step.outputs.pods }}
+          timeout-minutes: '15'
 
       - name: Replace local references with published SDK version
         if: ${{ inputs.use_latest_sdk_version == true }}
