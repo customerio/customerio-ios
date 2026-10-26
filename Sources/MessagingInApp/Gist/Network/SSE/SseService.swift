@@ -153,14 +153,14 @@ actor SseService: SseServiceProtocol {
         let sessionId = SessionManager.shared.sessionId
         // The public key identifies the workspace when set, so the site ID is only sent without it.
         let workspaceItem = state.publicKey.map { URLQueryItem(name: "key", value: $0) }
-            ?? URLQueryItem(name: "siteId", value: state.siteId)
+            ?? (state.siteId.isEmpty ? nil : URLQueryItem(name: "siteId", value: state.siteId))
         components.queryItems = [
             URLQueryItem(name: "sessionId", value: sessionId),
             workspaceItem,
             URLQueryItem(name: "userToken", value: userToken)
-        ]
+        ].compactMap { $0 }
 
-        logger.logWithModuleTag("SseService: Built URL with \(workspaceItem.name), sessionId=\(sessionId), identifier=\(identifier)", level: .debug)
+        logger.logWithModuleTag("SseService: Built URL with \(workspaceItem?.name ?? "no workspace"), sessionId=\(sessionId), identifier=\(identifier)", level: .debug)
 
         return components.url
     }

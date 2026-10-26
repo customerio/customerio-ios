@@ -1,7 +1,8 @@
 import Foundation
 
 struct EngineWebConfiguration: Encodable {
-    let siteId: String
+    /// Nil when no site ID is set, so the encoded configuration leaves it out instead of sending an empty one.
+    let siteId: String?
     /// Public `pk_` key, sent alongside the site ID.
     let key: String?
     let dataCenter: String
@@ -13,7 +14,7 @@ struct EngineWebConfiguration: Encodable {
     let colorScheme: String?
 
     init(
-        siteId: String,
+        siteId: String?,
         key: String? = nil,
         dataCenter: String,
         instanceId: String,
@@ -22,7 +23,7 @@ struct EngineWebConfiguration: Encodable {
         properties: [String: AnyEncodable?]?,
         colorScheme: String? = nil
     ) {
-        self.siteId = siteId
+        self.siteId = siteId.flatMap { $0.isEmpty ? nil : $0 }
         self.key = key
         self.dataCenter = dataCenter
         self.instanceId = instanceId
