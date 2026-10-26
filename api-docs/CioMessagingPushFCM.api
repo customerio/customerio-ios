@@ -5,9 +5,22 @@ public interface CioMessagingPushFCM.FirebaseService {
 	public fun func fetchToken(completion: @escaping (String?, Error?) -> Unit);
 	public fun func fetchInstallationId(completion: @escaping (String?, Error?) -> Unit);
 }
+public extension CioMessagingPushFCM.FirebaseService {
+	public var isInstallationIdEnabled: Boolean;
+	public fun func fetchInstallationId(completion: @escaping (String?, Error?) -> Unit);
+}
 public interface CioMessagingPushFCM.FirebaseServiceDelegate {
 	public fun func didReceiveRegistrationToken(_ token: String?);
 	public fun func didReceiveRegistration(_ installationId: String?);
+}
+public extension CioMessagingPushFCM.FirebaseServiceDelegate {
+	public fun func didReceiveRegistration(_ installationId: String?);
+}
+public extension CioMessagingPushFCM.MessagingPush {
+	public fun func registerDeviceToken(fcmToken: String?);
+	public fun func messaging(_ messaging: Any, didReceiveRegistrationToken fcmToken: String?);
+	public fun func messaging(_ messaging: Any, didReceiveRegistration installationId: String?);
+	public fun func application(_ application: Any, didFailToRegisterForRemoteNotificationsWithError error: Error);
 }
 public final class CioMessagingPushFCM.MessagingPushFCM {
 	public fun func registerDeviceToken(fcmToken: String?);
@@ -31,4 +44,7 @@ public interface CioMessagingPushFCM.MessagingPushFCMInstance {
 	public fun func trackMetric(deliveryID: String, event: Metric, deviceToken: String);
 	public fun func didReceive(_ request: UNNotificationRequest, withContentHandler contentHandler: @escaping (UNNotificationContent) -> Unit) -> Boolean;
 	public fun func serviceExtensionTimeWillExpire();
+}
+public extension CioMessagingPushFCM.MessagingPushFCMInstance {
+	public fun func messaging(_ messaging: Any, didReceiveRegistration installationId: String?);
 }
