@@ -51,6 +51,32 @@ class EngineWebConfigurationTests: UnitTest {
         XCTAssertNil(json?["key"])
     }
 
+    func test_encode_givenEmptySiteId_expectSiteIdOmitted() throws {
+        let configuration = EngineWebConfiguration(
+            siteId: "",
+            key: "pk_us_abc",
+            dataCenter: "US",
+            instanceId: "instance",
+            endpoint: "https://engine",
+            messageId: "message",
+            properties: nil
+        )
+
+        let json = try JSONSerialization.jsonObject(with: JSONEncoder().encode(configuration)) as? [String: Any]
+
+        XCTAssertNil(json?["siteId"])
+        XCTAssertEqual(json?["key"] as? String, "pk_us_abc")
+    }
+
+    func test_messageManager_givenPublicKeyAndNoSiteId_expectNoSiteIdPassedToEngine() {
+        let state = InAppMessageState(publicKey: "pk_us_abc", dataCenter: "US")
+
+        _ = ModalMessageManager(state: state, message: Message(messageId: "test-message"))
+
+        XCTAssertEqual(engineWebProvider.lastConfiguration?.key, "pk_us_abc")
+        XCTAssertNil(engineWebProvider.lastConfiguration?.siteId)
+    }
+
     func test_encode_givenKey_expectKeyEncoded() throws {
         let configuration = EngineWebConfiguration(
             siteId: "test-site",
