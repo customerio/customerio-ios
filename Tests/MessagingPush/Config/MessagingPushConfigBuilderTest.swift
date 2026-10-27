@@ -1,4 +1,5 @@
 @testable import CioInternalCommon
+@testable import CioInternalCommonMocks
 @testable import CioMessagingPush
 import SharedTests
 import XCTest
@@ -61,6 +62,47 @@ class MessagingPushConfigBuilderTest: UnitTest {
         let config = MessagingPushConfigBuilder(cdpApiKey: String.random, region: nil).build()
 
         XCTAssertEqual(config.region, Region.US)
+    }
+
+    func test_init_givenSecretKey_expectSecretKeyErrorLogged() {
+        let loggerMock = LoggerMock()
+        mockCollection.add(mock: loggerMock)
+        diGraphShared.override(value: loggerMock, forType: Logger.self)
+
+        _ = MessagingPushConfigBuilder(cdpApiKey: "sk_us_\(String.random)", region: nil)
+
+        XCTAssertEqual(loggerMock.errorReceivedInvocations.map(\.message), [ApiKey.secretKeyError])
+    }
+
+    func test_init_givenPublicOrLegacyKey_expectNoErrorLogged() {
+        let loggerMock = LoggerMock()
+        mockCollection.add(mock: loggerMock)
+        diGraphShared.override(value: loggerMock, forType: Logger.self)
+
+        _ = MessagingPushConfigBuilder(cdpApiKey: "pk_us_\(String.random)", region: nil)
+        _ = MessagingPushConfigBuilder(cdpApiKey: String.random, region: nil)
+
+        XCTAssertFalse(loggerMock.errorCalled)
+    }
+
+    func test_apiHost_whenNotSet_expectNil() {
+        let config = MessagingPushConfigBuilder().build()
+
+        XCTAssertNil(config.apiHost)
+    }
+
+    @available(iOS, unavailable)
+    @available(visionOS, unavailable)
+    @available(iOSApplicationExtension, introduced: 13.0)
+    @available(visionOSApplicationExtension, introduced: 1.0)
+    func test_apiHost_whenSet_expectValuePreserved() {
+        let givenApiHost = "proxy.example.com/v1"
+
+        let config = MessagingPushConfigBuilder(cdpApiKey: "placeholder")
+            .apiHost(givenApiHost)
+            .build()
+
+        XCTAssertEqual(config.apiHost, givenApiHost)
     }
 
     func test_initializeFromEmptyDictionary_expectDefaultValues() {
@@ -134,5 +176,6 @@ extension MessagingPushConfigBuilderTest {
         XCTAssertTrue(config.showPushAppInForeground, file: file, line: line)
         XCTAssertEqual(config.region, Region.US, file: file, line: line)
         XCTAssertNil(config.appGroupId, file: file, line: line)
+        XCTAssertNil(config.apiHost, file: file, line: line)
     }
 }

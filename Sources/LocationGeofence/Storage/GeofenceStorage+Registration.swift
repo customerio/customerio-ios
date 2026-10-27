@@ -21,6 +21,7 @@ extension GeofenceStorage {
             state.monitorRegionRecords = records.filter { retained.contains($0.key) }
         }
         state.prunePolygonState(retaining: businessIds)
+        state.dwellVisits = state.dwellVisits?.filter { businessIds.contains($0.key) }
         saveToDisk(state)
     }
 }

@@ -21,16 +21,14 @@ import UIKit
 /// ```swift
 /// NotificationInboxView()
 /// ```
-@available(iOS 13.0, *)
 public struct NotificationInboxView: View {
     /// Owns the model for standalone embedding.
     ///
-    /// `@State` rather than `@ObservedObject`: `@ObservedObject` does not own its value, so a parent
-    /// update could hand the view a brand-new model after the original had already started its
-    /// lifecycle — losing load state, dedupe guards, and in-flight work. `@StateObject` would be the
-    /// natural owner but is iOS 14+, and this view is public on iOS 13. `VisualInboxModel.init` has no
-    /// side effects (work begins in `start()`), so the instances SwiftUI discards are inert.
-    @State private var model = VisualInboxModel()
+    /// `@StateObject` rather than `@ObservedObject`: `@ObservedObject` does not own its value, so a
+    /// parent update could hand the view a brand-new model after the original had already started its
+    /// lifecycle — losing load state, dedupe guards, and in-flight work. `@StateObject` creates the model
+    /// once per view identity and keeps it across view reconstruction.
+    @StateObject private var model = VisualInboxModel()
 
     /// Creates a standalone inbox list backed by the SDK's shared Visual Inbox data layer.
     public init() {}
@@ -42,7 +40,6 @@ public struct NotificationInboxView: View {
 
 /// Renders the inbox list for a model it does not own. Always constructed with an explicit model —
 /// either the shared one from ``NotificationInboxOverlay`` or the one ``NotificationInboxView`` owns.
-@available(iOS 13.0, *)
 struct InboxListView: View {
     @ObservedObject private var model: VisualInboxModel
 
@@ -145,15 +142,13 @@ struct InboxListView: View {
                 InboxBellGlyphView(glyph: model.bellGlyph, tint: .secondary)
                     .frame(width: Self.emptyStateGlyphSize, height: Self.emptyStateGlyphSize)
                     .opacity(Self.emptyStateGlyphOpacity)
-                    .accessibility(hidden: model.accessibilityLabels.emptyState == nil)
+                    .accessibilityHidden(model.accessibilityLabels.emptyState == nil)
                     .inboxAccessibilityLabel(model.accessibilityLabels.emptyState)
                 Spacer()
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else if model.messages.isEmpty {
             // idle/loading (pre-first-snapshot or fetch in progress) → spinner, not the empty copy.
-            // `InboxLoadingSpinner` (UIKit) instead of SwiftUI `ProgressView`, which is iOS 14+ while
-            // this view is public on iOS 13.
             VStack {
                 Spacer()
                 InboxLoadingSpinner(accessibilityLabel: model.accessibilityLabels.loadingIndicator)
@@ -289,12 +284,12 @@ struct InboxListView: View {
     }
 }
 
-/// iOS 13-compatible loading spinner. SwiftUI's `ProgressView` is iOS 14+, but ``NotificationInboxView``
-/// is public on iOS 13, so the loading state wraps UIKit's `UIActivityIndicatorView` instead.
+/// Loading spinner backed by UIKit's `UIActivityIndicatorView`. Unlike SwiftUI's `ProgressView`, it does
+/// not pick up the host's `.tint` or progress view style, so the inbox spinner looks the same in every
+/// host app.
 ///
 /// `accessibilityLabel` is the host-configured `loadingIndicator` label. When nil the spinner is not an
 /// accessibility element at all, so VoiceOver skips it rather than focusing an unnamed control.
-@available(iOS 13.0, *)
 private struct InboxLoadingSpinner: UIViewRepresentable {
     let accessibilityLabel: String?
 

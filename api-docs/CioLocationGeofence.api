@@ -1,3 +1,6 @@
+public extension CioInternalCommon.CustomerIO {
+	public var geofence: any GeofenceServices;
+}
 public enum CioLocationGeofence.GeofenceLocationMode {
 }
 public final class CioLocationGeofence.GeofenceModule {

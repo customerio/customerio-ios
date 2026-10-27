@@ -7,7 +7,6 @@ import Foundation
 /// Mirrors the web SDK's `InboxActionConfig` (gist-web `inbox-component-manager.handleInboxAction`):
 /// `{ behavior, action, name, dismiss, newTab }`. `newTab` is web-only (open in a new browser tab)
 /// and is not modeled here — native always opens externally.
-@available(iOS 13.0, *)
 struct InboxActionResolution: Equatable {
     /// The action `behavior` from the message's `properties[actionName]`. Matches the web enum
     /// `InboxActionBehavior` (minus `dismiss`, which is resolved before this type is built).

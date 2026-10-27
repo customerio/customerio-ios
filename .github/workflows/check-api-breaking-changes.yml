@@ -10,28 +10,34 @@ on:
       - 'scripts/check-api-changes.rb'
       - 'scripts/generate-api-docs.sh'
       - 'scripts/format-api-docs.rb'
+      - 'scripts/test_format_api_docs.rb'
       - '.github/workflows/check-api-breaking-changes.yml'
 
 concurrency: # cancel previous workflow run if one exists
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
-  
+
 jobs:
   check-api-breaking-changes:
-    runs-on: macos-26
+    runs-on: xcode-27
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       
       - uses: customerio/mobile-ci-tools/github-actions/ios/setup-ios/v1@main
-      
+        with:
+          xcode-version: '27.0'
+
       - name: Install sourcekitten
         run: brew install sourcekitten
-      
+
       - name: Setup Ruby
         uses: ruby/setup-ruby@95ef2b042f9d7a56d8268cba8559e2842e2ad01b # v1.321.0
         with:
           ruby-version: '3.4'
           bundler-cache: false # we don't need bundler for this workflow
+
+      - name: Test API docs formatter
+        run: ruby scripts/test_format_api_docs.rb
 
       - name: Check for API changes
         run: |

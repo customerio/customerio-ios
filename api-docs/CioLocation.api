@@ -1,3 +1,6 @@
+public extension CioInternalCommon.CustomerIO {
+	public var location: any LocationServices;
+}
 public final class CioLocation.LocationConfig {
 	public final val mode: LocationTrackingMode;
 	public fun init(mode: LocationTrackingMode);

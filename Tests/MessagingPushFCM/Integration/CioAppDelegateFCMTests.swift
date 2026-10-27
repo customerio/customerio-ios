@@ -49,7 +49,8 @@ class CioAppDelegateFCMTests: XCTestCase {
             autoFetchDeviceToken: autoFetchDeviceToken,
             autoTrackPushEvents: autoTrackPushEvents,
             showPushAppInForeground: false,
-            appGroupId: nil
+            appGroupId: nil,
+            apiHost: nil
         )
     }
 

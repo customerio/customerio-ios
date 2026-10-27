@@ -1,3 +1,55 @@
+## [5.1.2](https://github.com/customerio/customerio-ios/compare/5.1.1...5.1.2) (2026-10-27)
+
+### Bug Fixes
+
+* **in-app:** SSE and queue fetch fixes for user switch, anonymous identify, foreground ([#1368](https://github.com/customerio/customerio-ios/issues/1368)) ([2650ff4](https://github.com/customerio/customerio-ios/commit/2650ff49805e59a481665cca3d6435268b36e758))
+
+## [5.1.1](https://github.com/customerio/customerio-ios/compare/5.1.0...5.1.1) (2026-10-27)
+
+### Bug Fixes
+
+* keep the app delegate's push registration callbacks when auto-fetching the token ([#1373](https://github.com/customerio/customerio-ios/issues/1373)) ([8a4072a](https://github.com/customerio/customerio-ios/commit/8a4072aa77b375bbff9681dc0df7cd5f4e75bc28))
+
+## [5.1.0](https://github.com/customerio/customerio-ios/compare/5.0.0...5.1.0) (2026-10-27)
+
+### Features
+
+* **MBL-2652:** let in-app start without a site ID when set up with a pk_ key ([#1370](https://github.com/customerio/customerio-ios/issues/1370)) ([3a33261](https://github.com/customerio/customerio-ios/commit/3a33261433d8d87fc4b6aa40259cba052efba2ab))
+
+## [5.0.0](https://github.com/customerio/customerio-ios/compare/4.13.0...5.0.0) (2026-10-26)
+
+### ⚠ BREAKING CHANGES
+
+* raise the minimum iOS version to 15 (#1335)
+
+### Features
+
+* raise the minimum iOS version to 15 ([#1335](https://github.com/customerio/customerio-ios/issues/1335)) ([ea67726](https://github.com/customerio/customerio-ios/commit/ea6772651dc35af05df6d01fed7b43cdf4a1bc5e))
+
+## [4.13.0](https://github.com/customerio/customerio-ios/compare/4.12.3...4.13.0) (2026-10-23)
+
+### Features
+
+* **geofence:** add dwell and observed exit duration (MBL-2493, MBL-2495) ([#1346](https://github.com/customerio/customerio-ios/issues/1346)) ([6b45f0e](https://github.com/customerio/customerio-ios/commit/6b45f0e0a5c05c91aae05638331e067a9fca8618))
+
+## [4.12.3](https://github.com/customerio/customerio-ios/compare/4.12.2...4.12.3) (2026-10-22)
+
+### Bug Fixes
+
+* **MBL-2604:** refuse sk_ keys in the notification service extension ([#1362](https://github.com/customerio/customerio-ios/issues/1362)) ([d98314e](https://github.com/customerio/customerio-ios/commit/d98314e3192a66809097b36128a24c88f5bfbc96))
+
+## [4.12.2](https://github.com/customerio/customerio-ios/compare/4.12.1...4.12.2) (2026-10-22)
+
+### Bug Fixes
+
+* track launch lifecycle events when the SDK initializes after app launch ([#1354](https://github.com/customerio/customerio-ios/issues/1354)) ([b88d612](https://github.com/customerio/customerio-ios/commit/b88d612433ab68239cf43d6adf5875f1916ce4b4))
+
+## [4.12.1](https://github.com/customerio/customerio-ios/compare/4.12.0...4.12.1) (2026-10-22)
+
+### Bug Fixes
+
+* **messagingpush:** support apiHost in Notification Service Extension ([#1357](https://github.com/customerio/customerio-ios/issues/1357)) ([eca12ff](https://github.com/customerio/customerio-ios/commit/eca12ff8ae0d1f239d0169c2953d2194d5cb4953))
+
 ## [4.12.0](https://github.com/customerio/customerio-ios/compare/4.11.0...4.12.0) (2026-10-21)
 
 ### Features

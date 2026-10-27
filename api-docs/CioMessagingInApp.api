@@ -1,12 +1,27 @@
-public final class AnyEncodable {
-	public var value: Any;
+public extension CioInternalCommon.DIGraphShared {
+	public var visualInboxProvider: any VisualInboxProvider;
 }
 public final class CioMessagingInApp.AnyEncodable {
 	public final val value: Any;
 	public fun init<T>(_ value: T?);
 }
+public extension CioMessagingInApp.AnyEncodable {
+	public var description: String;
+	public var debugDescription: String;
+	public fun func == (lhs: AnyEncodable, rhs: AnyEncodable) -> Boolean;
+}
 public interface CioMessagingInApp.AnyStoreSubscriber {
 	public fun func _newState(state: Any);
+}
+public extension CioMessagingInApp.BaseMessageManager {
+	public fun func bootstrapped();
+	public fun func tap(name: String, action: String, system: Boolean);
+	public fun func routeChanged(newRoute: String);
+	public fun func sizeChanged(width: CGFloat, height: CGFloat);
+	public fun func routeError(route: String);
+	public fun func error();
+	public fun func error(_ error: InAppMessageError);
+	public fun func routeLoaded(route: String);
 }
 public enum CioMessagingInApp.ColorScheme {
 }
@@ -16,6 +31,13 @@ public final class CioMessagingInApp.EngineWeb {
 	public var currentRoute: String;
 	public fun func updateColorScheme(_ scheme: String);
 	public fun func cleanEngineWeb();
+}
+public extension CioMessagingInApp.EngineWeb {
+	public fun func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage);
+	public fun func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!);
+	public fun func webViewWebContentProcessDidTerminate(_ webView: WKWebView);
+	public fun func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error);
+	public fun func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error);
 }
 public interface CioMessagingInApp.EngineWebDelegate {
 	public fun func bootstrapped();
@@ -27,6 +49,9 @@ public interface CioMessagingInApp.EngineWebDelegate {
 	public fun func error();
 	public fun func error(_ error: InAppMessageError);
 }
+public extension CioMessagingInApp.EngineWebDelegate {
+	public fun func error(_ error: InAppMessageError);
+}
 public interface CioMessagingInApp.GistDelegate {
 	public fun func embedMessage(message: Message, elementId: String);
 	public fun func messageShown(message: Message);
@@ -35,6 +60,9 @@ public interface CioMessagingInApp.GistDelegate {
 	public fun func messageError(message: Message, error: InAppMessageError);
 	public fun func action(message: Message, currentRoute: String, action: String, name: String);
 	public fun func setEventListener(_ eventListener: InAppEventListener?);
+}
+public extension CioMessagingInApp.GistDelegate {
+	public fun func messageError(message: Message, error: InAppMessageError);
 }
 public enum CioMessagingInApp.GistEnvironment {
 }
@@ -45,6 +73,9 @@ public final class CioMessagingInApp.GistProperties {
 	public final val position: MessagePosition;
 	public final val persistent: Boolean?;
 	public final val overlayColor: String?;
+}
+public extension CioMessagingInApp.GistProperties {
+	public var description: String;
 }
 public final class CioMessagingInApp.GistView {
 	public var delegate: (any GistViewDelegate)?;
@@ -77,6 +108,9 @@ public interface CioMessagingInApp.InAppEventListener {
 	public fun func errorWithMessage(message: InAppMessage, error: InAppMessageError);
 	public fun func messageActionTaken(message: InAppMessage, actionValue: String, actionName: String);
 }
+public extension CioMessagingInApp.InAppEventListener {
+	public fun func errorWithMessage(message: InAppMessage, error: InAppMessageError);
+}
 public final class CioMessagingInApp.InAppMessage {
 	public final val messageId: String;
 	public final val deliveryId: String?;
@@ -92,6 +126,11 @@ public enum CioMessagingInApp.InAppMessageErrorReason {
 }
 public interface CioMessagingInApp.InboxEventListener {
 	public fun func messageActionTaken(message: InboxMessage, actionName: String, actionValue: String) -> Boolean;
+	public fun func messageShown(message: InboxMessage);
+	public fun func messageOpened(message: InboxMessage);
+	public fun func messageDismissed(message: InboxMessage);
+}
+public extension CioMessagingInApp.InboxEventListener {
 	public fun func messageShown(message: InboxMessage);
 	public fun func messageOpened(message: InboxMessage);
 	public fun func messageDismissed(message: InboxMessage);
@@ -155,6 +194,11 @@ public final class CioMessagingInApp.Message {
 	public var elementId: String?;
 	public fun init(messageId: String, queueId: String? = nil, priority: Int? = nil, properties: List<String: Any>?);
 }
+public extension CioMessagingInApp.Message {
+	public var description: String;
+	public fun func == (lhs: Message, rhs: Message) -> Boolean;
+	public fun func hash(into hasher: inout Hasher);
+}
 public enum CioMessagingInApp.MessagePosition {
 }
 public final class CioMessagingInApp.MessagingInApp {
@@ -167,11 +211,15 @@ public final class CioMessagingInApp.MessagingInApp {
 	public fun func setColorScheme(_ colorScheme: ColorScheme);
 }
 public final class CioMessagingInApp.MessagingInAppConfigBuilder {
+	public fun init();
 	public fun init(siteId: String);
 	public fun init(siteId: String, region: Region);
 	public fun func setColorScheme(_ colorScheme: ColorScheme) -> MessagingInAppConfigBuilder;
 	public fun func setNotificationInboxAccessibilityLabels(_ labels: NotificationInboxAccessibilityLabels) -> MessagingInAppConfigBuilder;
 	public fun func build() -> MessagingInAppConfigOptions;
+}
+public extension CioMessagingInApp.MessagingInAppConfigBuilder {
+	public fun func build(from sdkConfig: List<String: Any?>) throws -> MessagingInAppConfigOptions?;
 }
 public enum CioMessagingInApp.MessagingInAppConfigBuilderError {
 }
@@ -188,10 +236,16 @@ public interface CioMessagingInApp.MessagingInAppInstance {
 	public fun func dismissMessage();
 	public fun func setColorScheme(_ colorScheme: ColorScheme);
 }
+public extension CioMessagingInApp.MessagingInAppInstance {
+	public fun func setInboxEventListener(_: InboxEventListener?);
+}
 public final class CioMessagingInApp.ModalMessageManager {
 	public fun deinit;
 	public fun func subscribeToInAppMessageState();
 	public fun func showMessage();
+}
+public extension CioMessagingInApp.ModalMessageManager {
+	public fun func gistViewWillRemoveFromSuperview(_ gistView: GistView);
 }
 public interface CioMessagingInApp.NotificationInbox {
 	public fun func getMessages(topic: String?) async -> List<InboxMessage>;
@@ -207,6 +261,16 @@ public interface CioMessagingInApp.NotificationInbox {
 	public fun func notifyMessageShown(message: InboxMessage);
 	public fun func messages(topic: String?) -> AsyncStream<List<InboxMessage>>;
 }
+public extension CioMessagingInApp.NotificationInbox {
+	public fun func setInboxEventListener(_: InboxEventListener?);
+	public fun func notifyMessageActionTaken(message _: InboxMessage, actionValue _: String, actionName _: String) -> Boolean;
+	public fun func notifyMessageShown(message _: InboxMessage);
+	public fun func getMessages() async -> List<InboxMessage>;
+	public fun func addChangeListener(_ listener: NotificationInboxChangeListener);
+	public fun func trackMessageClicked(message: InboxMessage);
+	public fun func trackMessageClicked(message: InboxMessage, actionName: String?, actionValue: String?);
+	public fun func messages() -> AsyncStream<List<InboxMessage>>;
+}
 public final class CioMessagingInApp.NotificationInboxAccessibilityLabels {
 	public final val bell: String?;
 	public final val bellWithUnreadCount: ((Int) -> String)?;
@@ -220,10 +284,19 @@ public interface CioMessagingInApp.NotificationInboxChangeListener {
 public interface CioMessagingInApp.StoreSubscriber {
 	public fun func newState(state: StoreSubscriberStateType);
 }
+public extension CioMessagingInApp.StoreSubscriber {
+	public fun func _newState(state: Any);
+}
 public final class CioMessagingInApp.Subscription {
 	public var observer: ((State?, State) -> ())?;
 	public fun init(sink: @escaping (@escaping (State?, State) -> Unit) -> Unit);
 	public fun func skipRepeats(_ isRepeat: @escaping (_ oldState: State, _ newState: State) -> Boolean) -> Subscription<State>;
+}
+public extension CioMessagingInApp.Subscription {
+	public fun func skip(when: @escaping (_ oldState: State, _ newState: State) -> Boolean) -> Subscription<State>;
+}
+public extension CioMessagingInApp.Subscription where State: Equatable {
+	public fun func skipRepeats() -> Subscription<State>;
 }
 public enum CioMessagingInApp.VisualInboxActionOutcome {
 }
@@ -278,4 +351,7 @@ public final class CioMessagingInApp.VisualInboxSnapshot {
 }
 public enum CioMessagingInApp.VisualInboxState {
 	public var isVisible: Boolean;
+}
+public extension Foundation.URL {
+	public var queryParameters: List<String : String>?;
 }

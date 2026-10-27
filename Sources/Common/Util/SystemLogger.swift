@@ -17,13 +17,8 @@ public class SystemLoggerImpl: SystemLogger {
         #if canImport(os)
         // Unified logging for Swift. https://www.avanderlee.com/workflow/oslog-unified-logging/
         // This means we can view logs in xcode console + Console app.
-        if #available(iOS 14, *) {
-            let logger = os.Logger(subsystem: logSubsystem, category: logCategory)
-            logger.log(level: level.osLogLevel, "\(message, privacy: .public)")
-        } else {
-            let logger = OSLog(subsystem: logSubsystem, category: logCategory)
-            os_log("%{public}@", log: logger, type: level.osLogLevel, message)
-        }
+        let logger = os.Logger(subsystem: logSubsystem, category: logCategory)
+        logger.log(level: level.osLogLevel, "\(message, privacy: .public)")
         #else
         // At this time, Linux cannot use `os.log` or `OSLog`. Instead, use: https://github.com/apple/swift-log/
         // As we don't officially support Linux at this time, no need to add a dependency to the project.

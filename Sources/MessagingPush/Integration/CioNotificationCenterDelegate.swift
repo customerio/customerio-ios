@@ -87,11 +87,7 @@ open class CioNotificationCenterDelegate: NSObject, UNUserNotificationCenterDele
     private var cioConfiguredPresentationOptions: UNNotificationPresentationOptions {
         guard config?().showPushAppInForeground ?? false else { return [] }
 
-        if #available(iOS 14.0, *) {
-            return [.list, .banner, .badge, .sound]
-        } else {
-            return [.alert, .badge, .sound]
-        }
+        return [.list, .banner, .badge, .sound]
     }
 
     open func userNotificationCenter(

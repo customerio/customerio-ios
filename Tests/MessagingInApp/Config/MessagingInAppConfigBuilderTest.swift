@@ -122,14 +122,33 @@ class MessagingInAppConfigBuilderTest: UnitTest {
         XCTAssertEqual(config?.region, .US)
     }
 
-    func test_initializeFromEmptyDictionary_expectThrowError() {
+    func test_initializeFromEmptyDictionary_expectConfigWithoutSiteId() throws {
         let givenDict: [String: Any] = [
             "inApp": [:]
         ]
 
-        XCTAssertThrowsError(try MessagingInAppConfigBuilder.build(from: givenDict)) { error in
-            XCTAssertEqual(error as? MessagingInAppConfigBuilderError, MessagingInAppConfigBuilderError.missingSiteId)
-        }
+        let config = try MessagingInAppConfigBuilder.build(from: givenDict)
+
+        XCTAssertEqual(config?.siteId, "")
+    }
+
+    func test_initializeFromDictionaryWithEmptySiteId_expectConfigWithoutSiteId() throws {
+        let givenDict: [String: Any] = [
+            "inApp": [
+                "siteId": ""
+            ]
+        ]
+
+        let config = try MessagingInAppConfigBuilder.build(from: givenDict)
+
+        XCTAssertEqual(config?.siteId, "")
+    }
+
+    func test_init_givenNoSiteId_expectEmptySiteIdAndDefaults() {
+        let config = MessagingInAppConfigBuilder().build()
+
+        XCTAssertEqual(config.siteId, "")
+        XCTAssertEqual(config.colorScheme, .auto)
     }
 
     // Apps written against the old API read `siteId` as a non-optional `String`.
@@ -141,16 +160,18 @@ class MessagingInAppConfigBuilderTest: UnitTest {
         XCTAssertEqual(siteId, "site-1")
     }
 
-    // The gist renderer can't load messages with only the public key yet, so siteId stays required.
-    func test_initializeFromDictionaryWithoutSiteId_givenPublicKey_expectThrowError() {
+    func test_initializeFromDictionaryWithoutSiteId_givenPublicKey_expectConfigWithoutSiteId() throws {
         let givenDict: [String: Any] = [
             "cdpApiKey": "pk_us_\(String.random)",
-            "inApp": [:]
+            "inApp": [
+                "colorScheme": "dark"
+            ]
         ]
 
-        XCTAssertThrowsError(try MessagingInAppConfigBuilder.build(from: givenDict)) { error in
-            XCTAssertEqual(error as? MessagingInAppConfigBuilderError, MessagingInAppConfigBuilderError.missingSiteId)
-        }
+        let config = try MessagingInAppConfigBuilder.build(from: givenDict)
+
+        XCTAssertEqual(config?.siteId, "")
+        XCTAssertEqual(config?.colorScheme, .dark)
     }
 
     func test_initializeFromMalformedDictionary_expectThrowError() {
@@ -179,7 +200,7 @@ class MessagingInAppConfigBuilderTest: UnitTest {
         XCTAssertEqual(config?.region, .US)
     }
 
-    func test_initializeFromDictionaryWithIncorrectSiteIdType_expectThrowError() {
+    func test_initializeFromDictionaryWithIncorrectSiteIdType_expectConfigWithoutSiteId() throws {
         let givenDict: [String: Any] = [
             "region": "US",
             "inApp": [
@@ -187,22 +208,9 @@ class MessagingInAppConfigBuilderTest: UnitTest {
             ]
         ]
 
-        XCTAssertThrowsError(try MessagingInAppConfigBuilder.build(from: givenDict)) { error in
-            XCTAssertEqual(error as? MessagingInAppConfigBuilderError, MessagingInAppConfigBuilderError.missingSiteId)
-        }
-    }
+        let config = try MessagingInAppConfigBuilder.build(from: givenDict)
 
-    func test_initializeFromDictionaryWithOnlyRegion_expectThrowError() {
-        let givenDict: [String: Any] = [
-            "region": String.random,
-            "inApp": [
-                "apiKey": String.random
-            ]
-        ]
-
-        XCTAssertThrowsError(try MessagingInAppConfigBuilder.build(from: givenDict)) { error in
-            XCTAssertEqual(error as? MessagingInAppConfigBuilderError, MessagingInAppConfigBuilderError.missingSiteId)
-        }
+        XCTAssertEqual(config?.siteId, "")
     }
 
     @available(*, deprecated)
