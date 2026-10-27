@@ -1,3 +1,9 @@
+## [5.1.1](https://github.com/customerio/customerio-ios/compare/5.1.0...5.1.1) (2026-10-27)
+
+### Bug Fixes
+
+* keep the app delegate's push registration callbacks when auto-fetching the token ([#1373](https://github.com/customerio/customerio-ios/issues/1373)) ([8a4072a](https://github.com/customerio/customerio-ios/commit/8a4072aa77b375bbff9681dc0df7cd5f4e75bc28))
+
 ## [5.1.0](https://github.com/customerio/customerio-ios/compare/5.0.0...5.1.0) (2026-10-27)
 
 ### Features
