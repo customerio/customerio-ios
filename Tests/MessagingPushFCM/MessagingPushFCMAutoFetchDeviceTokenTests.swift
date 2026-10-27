@@ -35,6 +35,22 @@ private class BaseAppDelegateWithDidRegister: NSObject, UIApplicationDelegate {
 
 private class AppDelegateInheritingDidRegister: BaseAppDelegateWithDidRegister {}
 
+private class AppDelegateSubclassedAfterSwizzling: NSObject, UIApplicationDelegate {
+    var receivedDeviceTokens: [Data] = []
+
+    // `dynamic` so the subclass's `super` call goes through the Objective-C runtime, like the proxy subclass's call does.
+    @objc dynamic func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
+        receivedDeviceTokens.append(deviceToken)
+    }
+}
+
+/// Stands in for the subclass an isa-swizzling SDK, such as Firebase's app delegate proxy, creates at runtime.
+private class ProxySubclassOfAppDelegate: AppDelegateSubclassedAfterSwizzling {
+    override func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
+        super.application(application, didRegisterForRemoteNotificationsWithDeviceToken: deviceToken)
+    }
+}
+
 private class AppDelegateWrappedByCio: NSObject, UIApplicationDelegate {
     var receivedDeviceTokens: [Data] = []
 
@@ -105,6 +121,18 @@ class MessagingPushFCMAutoFetchDeviceTokenTests: XCTestCase {
 
         XCTAssertEqual(appDelegate.receivedDeviceTokens, [apnsToken])
         XCTAssertEqual(otherInstanceOfBaseClass.receivedDeviceTokens, [apnsToken])
+        XCTAssertEqual(firebaseService.fetchTokenCallCount, 1)
+    }
+
+    func testAutoFetch_whenAppDelegateIsSubclassedAfterSwizzling_thenAppCodeAndFirebaseRegistrationRunOnce() {
+        let appDelegate = AppDelegateSubclassedAfterSwizzling()
+        let subclassedAppDelegate = ProxySubclassOfAppDelegate()
+
+        MessagingPushFCM.shared.swizzleDidRegisterForRemoteNotifications(of: appDelegate)
+        MessagingPushFCM.shared.swizzleDidRegisterForRemoteNotifications(of: subclassedAppDelegate)
+        didRegister(subclassedAppDelegate)
+
+        XCTAssertEqual(subclassedAppDelegate.receivedDeviceTokens, [apnsToken])
         XCTAssertEqual(firebaseService.fetchTokenCallCount, 1)
     }
 
