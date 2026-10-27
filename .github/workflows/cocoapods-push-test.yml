@@ -1,0 +1,36 @@
+name: CocoaPods push script
+
+on:
+  pull_request:
+    paths:
+      - 'scripts/push-cocoapod.sh'
+      - 'scripts/tests/test_push_cocoapod.py'
+      - '*.podspec'
+      - 'Sources/Common/Version.swift'
+      - '.github/workflows/cocoapods-push-test.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/push-cocoapod.sh'
+      - 'scripts/tests/test_push_cocoapod.py'
+      - '*.podspec'
+      - 'Sources/Common/Version.swift'
+      - '.github/workflows/cocoapods-push-test.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  regression-tests:
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [ubuntu-latest, macos-26]
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - name: Check shell syntax
+        run: sh -n scripts/push-cocoapod.sh
+      - name: Exercise publishing with fake commands
+        run: python3 -m unittest discover -s scripts/tests -p test_push_cocoapod.py -v

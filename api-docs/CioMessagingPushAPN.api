@@ -1,3 +1,8 @@
+public extension CioMessagingPushAPN.MessagingPush {
+	public fun func registerDeviceToken(apnDeviceToken: Data);
+	public fun func application(_ application: Any, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data);
+	public fun func application(_ application: Any, didFailToRegisterForRemoteNotificationsWithError error: Error);
+}
 public final class CioMessagingPushAPN.MessagingPushAPN {
 	public fun func registerDeviceToken(apnDeviceToken: Data);
 	public fun func application(_ application: Any, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data);

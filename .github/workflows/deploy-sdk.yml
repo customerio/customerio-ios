@@ -199,6 +199,7 @@ jobs:
     runs-on: macos-26
     outputs:
       version: ${{ steps.get-version.outputs.version }}
+      pods: ${{ steps.release-pods.outputs.pods }}
       # 'true' when trunk refused at least one write. The job may be green (nothing
       # was published) or red (some pods were, or others failed outright), so
       # downstream steps have to read this rather than infer it from job status.
@@ -225,6 +226,21 @@ jobs:
             echo "version=${{ inputs.existing-git-tag }}" >> $GITHUB_OUTPUT
           fi
 
+      # The downstream CDN wait uses these podspecs from the released checkout.
+      - name: List pods in this release
+        id: release-pods
+        run: |
+          if ! files=$(ls -- *.podspec); then
+            echo "::error::No podspecs were found in the released checkout."
+            exit 1
+          fi
+          pods=$(printf '%s\n' "$files" | sed 's/\.podspec$//')
+          {
+            echo 'pods<<CIO_PODS'
+            printf '%s\n' "$pods"
+            echo 'CIO_PODS'
+          } >> "$GITHUB_OUTPUT"
+
       # Pinned rather than left to setup-ios' default: releases stay on Xcode 26 (macos-26 has no
       # Xcode 27), so a default change in mobile-ci-tools must not move the CocoaPods push.
       - uses: customerio/mobile-ci-tools/github-actions/ios/setup-ios/v1@main
@@ -245,6 +261,8 @@ jobs:
 
       - name: Push all podspecs to CocoaPods
         id: push-pods
+        # Leave time for failure reporting before the overall job timeout.
+        timeout-minutes: 300
         run: |
           # Podspecs are grouped into tiers by their dependencies on each other.
           # Pods within a tier do not depend on each other, so they push in parallel.
@@ -513,8 +531,10 @@ jobs:
     name: Wait for deploy-cocoapods to finish
     needs: [deploy-cocoapods]
     runs-on: ubuntu-latest
-    # A refused release is missing at least one pod, so the poll below would spend
-    # its full 20 minute budget waiting for a version that is not coming. (It may
+    # Above the wait's 60 minutes, so its report and the Slack alert are not cut off.
+    timeout-minutes: 70
+    # A refused release is missing at least one pod, so the shared wait action would spend
+    # its full budget waiting for a version that is not coming. (It may
     # still have published some of them - a partial release is red, so success()
     # already covers that case, and this clause is what handles the green one.)
     # Skipping this also skips build-sample-apps, which needs it - that is the only
@@ -522,56 +542,55 @@ jobs:
     # job in its `needs`.
     if: ${{ success() && needs.deploy-cocoapods.outputs.trunk-closed != 'true' }}
     steps:
-      - name: Wait for CocoaPods CDN propagation
-        run: |
-          # Poll the CocoaPods CDN until it serves the new version of every pod,
-          # instead of sleeping a fixed 20 minutes. Propagation usually takes a few
-          # minutes, so this typically saves 15+ minutes per release.
-          # The CDN shards its pod index by the first 3 hex chars of md5(pod name).
-          version="${{ needs.deploy-cocoapods.outputs.version }}"
-          if [[ -z "$version" ]]; then
-            echo "::error::Could not determine the released version to wait for."
-            exit 1
-          fi
+      # Fails, instead of continuing, when a pod is still missing after 60 minutes. Checks the
+      # unbusted CDN index and each podspec, the same URLs `pod install` fetches.
+      - name: Wait until every pod is downloadable from the CocoaPods CDN
+        uses: customerio/mobile-ci-tools/github-actions/wait-until-downloadable/v1@main
+        with:
+          ecosystem: cocoapods
+          version: ${{ needs.deploy-cocoapods.outputs.version }}
+          packages: ${{ needs.deploy-cocoapods.outputs.pods }}
+          # Explicit, not the action's default, so it stays under this job's timeout-minutes.
+          timeout-minutes: '60'
 
-          pods=(
-            CustomerIOCommon
-            CustomerIOTrackingMigration
-            CustomerIODataPipelines
-            CustomerIOMessagingPush
-            CustomerIOMessagingPushAPN
-            CustomerIOMessagingPushFCM
-            CustomerIOMessagingInApp
-            CustomerIOMessagingInbox
-            CustomerIOLocation
-            CustomerIOLocationGeofence
-            CustomerIOLiveActivitiesAttributes
-            CustomerIOLiveActivities
-            CustomerIOLiveActivitiesTemplates
-            CioFirebaseWrapper
-            CustomerIO
-          )
-
-          # Give up after 20 minutes, the previous fixed wait time. On timeout we
-          # continue instead of failing, matching the old behavior of proceeding
-          # after the sleep regardless of CDN state.
-          deadline=$((SECONDS + 1200))
-          for pod in "${pods[@]}"; do
-            md5=$(printf '%s' "$pod" | md5sum | cut -c1-3)
-            shard="${md5:0:1}_${md5:1:1}_${md5:2:1}"
-            url="https://cdn.cocoapods.org/all_pods_versions_${shard}.txt"
-
-            until curl -sf "${url}?cachebust=$(date +%s)" | grep "^${pod}/" | tr '/' '\n' | grep -qx "$version"; do
-              if (( SECONDS >= deadline )); then
-                echo "::warning::Timed out waiting for the CDN to serve ${pod} ${version}. Continuing anyway."
-                exit 0
-              fi
-              echo "CDN does not serve ${pod} ${version} yet. Retrying in 30s..."
-              sleep 30
-            done
-            echo "CDN serves ${pod} ${version}."
-          done
-          echo "CocoaPods CDN propagation completed."
+      - name: Notify team of failure
+        uses: slackapi/slack-github-action@dcb1066f776dd043e64d0e8ba94ca15cc7e1875d # v4.0.0
+        if: ${{ failure() }} # only run this if any previous step failed
+        with:
+          # Incoming webhook URL that sends message into the correct Slack channel.
+          # Help on how to get the webhook URL: https://docs.slack.dev/tools/slack-github-action/sending-data-slack-incoming-webhook/
+          webhook: ${{ secrets.SLACK_NOTIFY_RELEASES_WEBHOOK_URL }}
+          webhook-type: incoming-webhook
+          # Fail the step when Slack rejects the message, as v1 of this action did.
+          errors: true
+          # Use block kit for format of the JSON payloads: https://app.slack.com/block-kit-builder
+          # toJSON quotes and escapes the version, so a quote in it cannot produce invalid JSON.
+          payload: |
+            {
+              "text": "iOS SDK deployment failure",
+              "username": "iOS deployment bot",
+              "icon_url": "https://pngimg.com/uploads/apple_logo/apple_logo_PNG19687.png",
+              "channel": "#mobile-deployments",
+              "blocks": [
+                  {
+                      "type": "section",
+                      "text": {
+                          "type": "mrkdwn",
+                          "text": "*iOS* SDK deployment :warning: failure :warning:"
+                      }
+                  },
+                  {
+                      "type": "divider"
+                  },
+                  {
+                      "type": "section",
+                      "text": {
+                          "type": "mrkdwn",
+                          "text": ${{ toJSON(format('iOS SDK deployment failed during step *wait for CocoaPods CDN*. *Version {0}* is on CocoaPods trunk, but the CDN could not be confirmed to serve every pod, so sample apps were not built or distributed. View <https://github.com/{1}/actions/runs/{2}|CI server logs> to learn why, and re-run the failed jobs once the pods are downloadable. <https://github.com/customerio/mobile/blob/main/GIT-WORKFLOW.md|Learn more about the deployment process and how to fix errors>.', needs.deploy-cocoapods.outputs.version, github.repository, github.run_id)) }}
+                      }
+                  }
+              ]
+            }
 
   # New job to build sample apps after successful deployment to CocoaPods
   build-sample-apps:
