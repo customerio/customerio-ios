@@ -88,6 +88,26 @@ class GistModalViewControllerKeyboardTests: UnitTest {
         XCTAssertEqual(layout(.top, contentHeight: 446, keyboardOverlap: 1000).height, 0)
     }
 
+    // MARK: - keyboardOverlap
+
+    func test_keyboardOverlap_givenKeyboardOverBottom_expectCoveredHeight() {
+        let bounds = CGRect(x: 0, y: 0, width: 400, height: 800)
+
+        XCTAssertEqual(GistModalViewController.keyboardOverlap(keyboardFrame: CGRect(x: 0, y: 500, width: 400, height: 300), viewBounds: bounds), 300)
+    }
+
+    func test_keyboardOverlap_givenKeyboardOutsideView_expectZero() {
+        let bounds = CGRect(x: 0, y: 0, width: 400, height: 800)
+        let cases: [(name: String, frame: CGRect)] = [
+            ("beside", CGRect(x: 450, y: 500, width: 300, height: 200)),
+            ("above", CGRect(x: 0, y: -300, width: 400, height: 200)),
+            ("below", CGRect(x: 0, y: 800, width: 400, height: 300))
+        ]
+        for testCase in cases {
+            XCTAssertEqual(GistModalViewController.keyboardOverlap(keyboardFrame: testCase.frame, viewBounds: bounds), 0, testCase.name)
+        }
+    }
+
     // MARK: - keyboard notifications
 
     func test_keyboardWillChangeFrame_expectOverlapTracksKeyboardAndResets() {
@@ -111,6 +131,33 @@ class GistModalViewControllerKeyboardTests: UnitTest {
         postKeyboardFrame(CGRect(x: 0, y: viewBottom, width: 400, height: 300))
         XCTAssertEqual(viewController.keyboardOverlap, 0)
         XCTAssertEqual(viewController.verticalConstraint.constant, 0)
+
+        window.isHidden = true
+    }
+
+    func test_keyboardWillChangeFrame_givenDisplacedWindowAndKeyboardOutside_expectLayoutUnchanged() {
+        let gistView = GistView(message: Message(messageId: "test-message"), engineView: UIView())
+        let viewController = GistModalViewController()
+        viewController.gistView = gistView
+        viewController.setup(position: .center)
+        viewController.sizeChanged(message: Message(messageId: "test-message"), width: 300, height: 400)
+
+        // Like an iPad window in Split View, away from the screen origin.
+        let window = UIWindow(frame: CGRect(x: 300, y: 200, width: 400, height: 600))
+        window.rootViewController = viewController
+        window.isHidden = false
+        viewController.view.layoutIfNeeded()
+        let height = viewController.heightConstraint.constant
+        XCTAssertEqual(height, 400)
+
+        // Floating keyboards beside and then entirely above the window.
+        for frame in [CGRect(x: 0, y: 500, width: 280, height: 250), CGRect(x: 300, y: 0, width: 400, height: 180)] {
+            postKeyboardFrame(frame)
+            viewController.view.layoutIfNeeded()
+            XCTAssertEqual(viewController.keyboardOverlap, 0)
+            XCTAssertEqual(viewController.heightConstraint.constant, height)
+            XCTAssertEqual(viewController.verticalConstraint.constant, 0)
+        }
 
         window.isHidden = true
     }

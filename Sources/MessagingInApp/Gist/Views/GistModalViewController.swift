@@ -97,8 +97,9 @@ class GistModalViewController: UIViewController, GistViewDelegate, DoNotTrackScr
 
     /// Height and vertical offset for the message.
     ///
-    /// With the keyboard up, the message moves just far enough to clear it and never past the top
-    /// safe area, and only gets shorter when it still does not fit. If the bottom of the message
+    /// With the keyboard up, the message moves just far enough to clear it and only gets shorter when
+    /// it still does not fit. The move never pushes it past the top safe area, though tall centered
+    /// content can still reach above it, as it does without a keyboard. If the bottom of the message
     /// stays behind the keyboard, WebKit scrolls the content up inside the fixed frame to show the
     /// focused field, which cuts off the top of the message.
     static func layout(
@@ -132,10 +133,12 @@ class GistModalViewController: UIViewController, GistViewDelegate, DoNotTrackScr
               let endFrame = info[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect,
               let screen = view.window?.screen
         else { return }
+        // The notification's object is the screen the keyboard is on.
+        if let keyboardScreen = notification.object as? UIScreen, keyboardScreen !== screen { return }
 
         // The modal has its own window, so the keyboard frame has to come out of screen space first.
         let keyboardFrame = view.convert(endFrame, from: screen.coordinateSpace)
-        let overlap = max(0, view.bounds.maxY - keyboardFrame.minY)
+        let overlap = Self.keyboardOverlap(keyboardFrame: keyboardFrame, viewBounds: view.bounds)
         guard overlap != keyboardOverlap else { return }
         keyboardOverlap = overlap
 
@@ -149,6 +152,13 @@ class GistModalViewController: UIViewController, GistViewDelegate, DoNotTrackScr
             guard let self, self.keyboardOverlap == 0 else { return }
             self.webView?.scrollView.setContentOffset(.zero, animated: true)
         })
+    }
+
+    /// How much of the bottom of the view the keyboard covers. A floating keyboard on iPad can sit
+    /// beside or above the window, which covers nothing.
+    static func keyboardOverlap(keyboardFrame: CGRect, viewBounds: CGRect) -> CGFloat {
+        guard keyboardFrame.intersects(viewBounds) else { return 0 }
+        return max(0, viewBounds.maxY - keyboardFrame.minY)
     }
 
     private var webView: WKWebView? {
