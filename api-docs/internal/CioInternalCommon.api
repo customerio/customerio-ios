@@ -83,6 +83,10 @@ public final class CioInternalCommon.BackgroundTrackRequest {
 }
 public enum CioInternalCommon.CIOApiEndpoint {
 }
+public extension CioInternalCommon.CIOApiEndpoint {
+	public fun func getUrl(baseUrl: String) -> URL?;
+	public fun func getUrlString(baseUrl: String) -> String;
+}
 public final class CioInternalCommon.CIODeviceInfo {
 	public var deviceManufacturer: String;
 	public var deviceModel: String?;
@@ -103,6 +107,9 @@ public final class CioInternalCommon.CioAppGroupPendingPushDeliveryStore {
 	public fun func removeAll(ids: Set<UUID>) -> Boolean;
 }
 public enum CioInternalCommon.CioLogLevel {
+}
+public extension CioInternalCommon.CioLogLevel {
+	public fun func getLogLevel(for value: String) -> CioLogLevel?;
 }
 public final class CioInternalCommon.CioProfileStore {
 	public fun func getProfileId(siteId: String) -> String?;
@@ -199,6 +206,10 @@ public final class CioInternalCommon.DIGraphShared {
 	public fun func getSingletonOrCreate<T>(of type: T.Type = T.self, with factory: () -> T) -> T;
 	public fun func reset();
 }
+public extension CioInternalCommon.DIGraphShared {
+	public var pendingPushDeliveryStore: any PendingPushDeliveryStore;
+	public fun func registerPendingPushDeliveryStore(appGroupId: String?) -> PendingPushDeliveryStore;
+}
 public interface CioInternalCommon.DataPipelineTracking {
 	public var isUserIdentified: Boolean;
 	public var apiKey: String;
@@ -214,6 +225,9 @@ public interface CioInternalCommon.DateUtil {
 public interface CioInternalCommon.DeepLinkUtil {
 	public fun @_spi(Internal) func setDeepLinkCallback(_ callback: @escaping DeepLinkCallback);
 	public fun func handleDeepLink(_ deepLinkUrl: URL);
+}
+public extension CioInternalCommon.DeepLinkUtil {
+	public fun @_spi(Internal) func setDeepLinkCallback(_ callback: @escaping DeepLinkCallback);
 }
 public final class CioInternalCommon.DeepLinkUtilImpl {
 	public fun @_spi(Internal) func setDeepLinkCallback(_ callback: @escaping DeepLinkCallback);
@@ -287,6 +301,11 @@ public interface CioInternalCommon.EventRepresentable {
 	public var timestamp: Date;
 	public var isPersistent: Boolean;
 }
+public extension CioInternalCommon.EventRepresentable {
+	public var key: String;
+	public var key: String;
+	public var isPersistent: Boolean;
+}
 public interface CioInternalCommon.EventStorage {
 	public fun func store(event: AnyEventRepresentable) async throws;
 	public fun func retrieve(eventType: String, storageId: String) async throws -> AnyEventRepresentable?;
@@ -306,6 +325,9 @@ public final class CioInternalCommon.FileManagerQueueStorage {
 	public fun func saveInventory(_ newInventory: List<QueueTaskMetadata>, siteId: String) -> Boolean;
 	public fun func get(storageId: String, siteId: String) -> QueueTask?;
 	public fun func delete(storageId: String, siteId: String) -> Boolean;
+}
+public extension CioInternalCommon.FileManagerQueueStorage {
+	public fun func update(queueTask: QueueTask, siteId: String) -> Boolean;
 }
 public interface CioInternalCommon.FileStorage {
 	public fun func save(siteId: String, type: FileType, contents: Data, fileId: String?) -> Boolean;
@@ -335,6 +357,17 @@ public interface CioInternalCommon.GeofenceMetric {
 	public var visitDurationUncertaintySeconds: Int?;
 	public var detectionSource: String?;
 }
+public extension CioInternalCommon.GeofenceMetric {
+	public var visitId: String?;
+	public var enteredAt: Date?;
+	public var dwellThresholdSeconds: Int?;
+	public var dwellDurationSeconds: Int?;
+	public var detectionSource: String?;
+	public var visitDurationSeconds: Int?;
+	public var visitDurationUncertaintySeconds: Int?;
+	public var trackEventName: String;
+	public var trackEventProperties: Map<String, Any>;
+}
 public enum CioInternalCommon.GeofenceTransition {
 }
 public interface CioInternalCommon.GlobalDataStore {
@@ -342,12 +375,19 @@ public interface CioInternalCommon.GlobalDataStore {
 	public var pushDeviceTokenType: DeviceTokenType?;
 	public fun func deleteAll();
 }
+public extension CioInternalCommon.GlobalDataStore {
+	public fun mutating func savePushDeviceToken(_ deviceToken: String, type: DeviceTokenType?);
+	public fun func isPushDeviceTokenStored(_ deviceToken: String, type: DeviceTokenType?) -> Boolean;
+}
 public interface CioInternalCommon.HttpClient {
 	public fun func request(_ params: HttpRequestParams, onComplete: @escaping (Result<Data, HttpRequestError>) -> Unit);
 	public fun func downloadFile(url: URL, fileType: DownloadFileType, onComplete: @escaping (URL?) -> Unit);
 	public fun func cancel(finishTasks: Boolean);
 }
 public enum CioInternalCommon.HttpRequestError {
+}
+public extension CioInternalCommon.HttpRequestError {
+	public var description: String;
 }
 public final class CioInternalCommon.HttpRequestParams {
 	public final val method: String;
@@ -412,6 +452,11 @@ public interface CioInternalCommon.Logger {
 	public fun func info(_ message: String, _ tag: String?);
 	public fun func error(_ message: String, _ tag: String?, _ throwable: Error?);
 }
+public extension CioInternalCommon.Logger {
+	public fun func debug(_ message: String);
+	public fun func info(_ message: String);
+	public fun func error(_ message: String);
+}
 public final class CioInternalCommon.LoggerImpl {
 	public var logLevel: CioLogLevel;
 	public fun func setLogLevel(_ level: CioLogLevel);
@@ -421,6 +466,9 @@ public final class CioInternalCommon.LoggerImpl {
 	public fun func error(_ message: String, _ tag: String?, _ error: Error?);
 }
 public enum CioInternalCommon.Metric {
+}
+public extension CioInternalCommon.Metric {
+	public fun func getEvent(from metricStr: String) -> Metric?;
 }
 public final class CioInternalCommon.MetricRequest {
 	public final val deliveryId: String;
@@ -468,6 +516,9 @@ public interface CioInternalCommon.PendingPushDeliveryStore {
 }
 public interface CioInternalCommon.ProfileEnrichmentProvider {
 	public fun func getProfileEnrichmentAttributes() -> List<String: Any>?;
+	public fun func resetContext();
+}
+public extension CioInternalCommon.ProfileEnrichmentProvider {
 	public fun func resetContext();
 }
 public interface CioInternalCommon.ProfileEnrichmentRegistry {
@@ -522,6 +573,9 @@ public enum CioInternalCommon.QueueTaskType {
 }
 public enum CioInternalCommon.Region {
 }
+public extension CioInternalCommon.Region {
+	public fun func getRegion(from regionStr: String) -> Region;
+}
 public final class CioInternalCommon.RegisterDeviceTokenEvent {
 	public final val storageId: String;
 	public final val params: List<String : String>;
@@ -559,6 +613,9 @@ public interface CioInternalCommon.SdkClient {
 	public var source: String;
 	public var sdkVersion: String;
 }
+public extension CioInternalCommon.SdkClient {
+	public var description: String;
+}
 public interface CioInternalCommon.SdkCommonLogger {
 	public fun func coreSdkInitStart();
 	public fun func coreSdkInitSuccess();
@@ -590,6 +647,9 @@ public final class CioInternalCommon.SdkDateUtil {
 public enum CioInternalCommon.SdkVersion {
 	public final val version: String;
 }
+public extension CioInternalCommon.Seconds {
+	public fun func secondsFromDays(_ numberOfDays: Int) -> Seconds;
+}
 public interface CioInternalCommon.SharedKeyValueStorage {
 	public fun func integer(_ key: KeyValueStorageKey) -> Int?;
 	public fun func setInt(_ value: Int?, forKey key: KeyValueStorageKey);
@@ -614,6 +674,50 @@ public final class CioInternalCommon.Synchronized {
 	public fun func using<Result>(_ body: (T) throws -> Result) rethrows -> Result;
 	public fun func atomicSetAndFetch(_ newValue: T) -> T;
 }
+public extension CioInternalCommon.Synchronized where T == Bool {
+	public fun func toggle();
+}
+public extension CioInternalCommon.Synchronized where T: AdditiveArithmetic {
+	public fun func + (lhs: Synchronized<T>, rhs: T) -> T;
+	public fun func - (lhs: Synchronized<T>, rhs: T) -> T;
+	public fun func += (lhs: Synchronized<T>, rhs: T);
+	public fun func -= (lhs: Synchronized<T>, rhs: T);
+}
+public extension CioInternalCommon.Synchronized where T: Collection {
+	public var count: Int;
+	public var isEmpty: Boolean;
+}
+public extension CioInternalCommon.Synchronized where T: Comparable {
+	public fun func < (lhs: Synchronized<T>, rhs: T) -> Boolean;
+	public fun func <= (lhs: Synchronized<T>, rhs: T) -> Boolean;
+	public fun func > (lhs: Synchronized<T>, rhs: T) -> Boolean;
+	public fun func >= (lhs: Synchronized<T>, rhs: T) -> Boolean;
+}
+public extension CioInternalCommon.Synchronized where T: DictionaryProtocol {
+	public fun subscript(key: Key) -> Value?;
+	public fun func removeValue(forKey key: Key) -> Value?;
+}
+public extension CioInternalCommon.Synchronized where T: Equatable {
+	public fun func == (lhs: Synchronized<T>, rhs: Synchronized<T>) -> Boolean;
+	public fun func == (lhs: Synchronized<T>, rhs: T) -> Boolean;
+	public fun func != (lhs: Synchronized<T>, rhs: T) -> Boolean;
+}
+public extension CioInternalCommon.Synchronized where T: Hashable {
+	public fun func hash(into hasher: inout Hasher);
+}
+public extension CioInternalCommon.Synchronized where T: MutableCollection {
+	public fun subscript(position: T.Index) -> T.Element;
+}
+public extension CioInternalCommon.Synchronized where T: RangeReplaceableCollection {
+	public fun func += <S>(lhs: Synchronized<T>, rhs: S) where S: Sequence, T.Element == S.Element;
+	public fun func += (lhs: Synchronized<T>, rhs: T.Element);
+	public fun func append(_ newElement: T.Element);
+	public fun func append<S>(contentsOf newElements: S) where S: Sequence, T.Element == S.Element;
+	public fun func insert(_ newElement: T.Element, at i: T.Index);
+	public fun func insert<S>(contentsOf newElements: S, at i: T.Index) where S: Collection, T.Element == S.Element;
+	public fun func removeAll(keepingCapacity keepCapacity: Boolean = false);
+	public fun func removeAll(where matching: (T.Element) throws -> Boolean) rethrows;
+}
 public interface CioInternalCommon.SystemLogger {
 	public fun func log(_ message: String, _ level: CioLogLevel);
 }
@@ -631,6 +735,10 @@ public interface CioInternalCommon.ThreadUtil {
 	public fun func runBackground(_ block: @escaping () -> Unit);
 	public fun func runUtility(_ block: @escaping () -> Unit);
 	public fun func runMain(_ block: @escaping () -> Unit);
+	public fun func runMainActor(_ block: @MainActor @escaping () -> Unit);
+}
+public extension CioInternalCommon.ThreadUtil {
+	public fun func runUtility(_ block: @escaping () -> Unit);
 	public fun func runMainActor(_ block: @MainActor @escaping () -> Unit);
 }
 public final class CioInternalCommon.TrackDeliveryEventRequestBody {
@@ -718,4 +826,50 @@ public final class CioInternalCommon.UserDefaultsSharedKeyValueStorage {
 	public fun func data(_ key: KeyValueStorageKey) -> Data?;
 	public fun func setData(_ value: Data?, forKey key: KeyValueStorageKey);
 	public fun func deleteAll();
+}
+public extension Foundation.Data {
+	public var string: String?;
+}
+public extension Foundation.Date {
+	public var millisecondsSince1970: Double;
+	public fun func string(format: DateFormat) -> String;
+	public fun func fromIso8601WithMilliseconds(_ string: String) -> Date?;
+	public fun func fromMillisecondsSince1970(_ milliseconds: Double) -> Date;
+	public fun func addingMilliseconds(_ milliseconds: Double) -> Date;
+}
+public extension Foundation.LocalizedError where Self: CustomStringConvertible {
+	public var errorDescription: String?;
+}
+public extension Foundation.OperationQueue {
+	public fun func addAsyncOperation(asyncBlock: @escaping () async -> Unit);
+}
+public extension Swift.Array {
+	public fun mutating func removeFirstOrNil() -> Element?;
+	public fun func mapNonNil<T>() -> List<T> where Element == T?;
+}
+public extension Swift.Dictionary where Key == String, Value == Any {
+	public fun func mergeWith(_ other: List<String: Any>) -> List<String: Any>;
+}
+public extension Swift.String {
+	public var data: Data?;
+	public var url: URL?;
+	public var abcLetters: String;
+	public var random: String;
+	public fun init(apnDeviceToken: Data);
+	public fun func getFirstNCharacters(_ numberOfCharacters: Int) -> String;
+	public fun func random(length: Int = 10) -> String;
+	public fun func matches(regex: String) -> Boolean;
+	public fun func setLastCharacters(_ characters: String) -> String;
+	public fun func isBlankOrEmpty() -> Boolean;
+	public fun subscript(_ range: CountableRange<Int>) -> String;
+	public fun subscript(_ range: CountablePartialRangeFrom<Int>) -> String;
+}
+public extension UIKit.UIApplication {
+	public fun func open(url: URL);
+}
+public extension UIKit.UIDevice {
+	public final val deviceModelCode: String;
+}
+public extension UIKit.UIViewController {
+	public var bundleIdOfView: String?;
 }

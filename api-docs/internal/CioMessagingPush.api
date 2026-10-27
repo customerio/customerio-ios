@@ -1,3 +1,10 @@
+public extension CioInternalCommon.DIGraphShared {
+	public var messagingPushInstance: any MessagingPushInstance;
+}
+public extension CioMessagingPush.CustomerIOParsedPushPayload {
+	public var deepLink: URL?;
+	public var image: URL?;
+}
 public final class CioMessagingPush.MessagingPush {
 	public var appDelegateIntegratedExplicitly: Boolean;
 	public var shared: MessagingPush;
@@ -11,6 +18,10 @@ public final class CioMessagingPush.MessagingPush {
 	public fun func didReceive(_ request: UNNotificationRequest, withContentHandler contentHandler: @escaping (UNNotificationContent) -> Unit) -> Boolean;
 	public fun func serviceExtensionTimeWillExpire();
 }
+public extension CioMessagingPush.MessagingPush {
+	public fun func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse, withCompletionHandler completionHandler: @escaping () -> Unit) -> Boolean;
+	public fun func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse) -> CustomerIOParsedPushPayload?;
+}
 public final class CioMessagingPush.MessagingPushConfigBuilder {
 	public fun init();
 	public fun func autoFetchDeviceToken(_ value: Boolean) -> MessagingPushConfigBuilder;
@@ -18,6 +29,9 @@ public final class CioMessagingPush.MessagingPushConfigBuilder {
 	public fun func showPushAppInForeground(_ value: Boolean) -> MessagingPushConfigBuilder;
 	public fun func appGroupId(_ value: String) -> MessagingPushConfigBuilder;
 	public fun func build() -> MessagingPushConfigOptions;
+}
+public extension CioMessagingPush.MessagingPushConfigBuilder {
+	public fun func build(from dictionary: List<String: Any>) -> MessagingPushConfigOptions;
 }
 public final class CioMessagingPush.MessagingPushConfigOptions {
 	public final val logLevel: CioLogLevel;
@@ -47,6 +61,15 @@ public interface CioMessagingPush.PushNotification {
 	public var body: String;
 	public var data: List<AnyHashable : Any>;
 	public var attachments: List<PushAttachment>;
+}
+public extension CioMessagingPush.PushNotification {
+	public var cioAttachmentsPrefix: String;
+	public var cioDelivery: (id: String, token: String)?;
+	public var isPushSentFromCio: Boolean;
+	public var cioImage: String?;
+	public var cioDeepLink: String?;
+	public var cioAttachments: List<PushAttachment>;
+	public var cioRichPushImageFile: URL?;
 }
 public final class CioMessagingPush.RichPushHttpClient {
 	public fun func request(_ params: CioInternalCommon.HttpRequestParams, onComplete: @escaping (Result<Data, CioInternalCommon.HttpRequestError>) -> Unit);

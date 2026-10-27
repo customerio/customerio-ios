@@ -10,6 +10,7 @@ on:
       - 'scripts/check-api-changes.rb'
       - 'scripts/generate-api-docs.sh'
       - 'scripts/format-api-docs.rb'
+      - 'scripts/test_format_api_docs.rb'
       - '.github/workflows/check-api-breaking-changes.yml'
 
 concurrency: # cancel previous workflow run if one exists
@@ -34,6 +35,9 @@ jobs:
         with:
           ruby-version: '3.4'
           bundler-cache: false # we don't need bundler for this workflow
+
+      - name: Test API docs formatter
+        run: ruby scripts/test_format_api_docs.rb
 
       - name: Check for API changes
         run: |
