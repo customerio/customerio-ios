@@ -14,7 +14,7 @@ private class AppDelegateWithDidRegister: NSObject, UIApplicationDelegate {
     }
 }
 
-private class AppDelegateWithDidRegisterInitializedTwice: NSObject, UIApplicationDelegate {
+private class AppDelegateInitializedTwice: NSObject, UIApplicationDelegate {
     var receivedDeviceTokens: [Data] = []
 
     func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
@@ -91,7 +91,7 @@ private class AppDelegateBehindForwardingDelegate: NSObject, UIApplicationDelega
     }
 }
 
-class MessagingPushFCMAutoFetchDeviceTokenTests: XCTestCase {
+class MessagingPushFCMAutoFetchTests: XCTestCase {
     private let apnsToken = Data([0x01, 0x02, 0x03])
     private var firebaseService: MockFirebaseService!
 
@@ -131,7 +131,7 @@ class MessagingPushFCMAutoFetchDeviceTokenTests: XCTestCase {
     }
 
     func testAutoFetch_whenInitializedTwice_thenAppCodeAndFirebaseRegistrationRunOnce() {
-        let appDelegate = AppDelegateWithDidRegisterInitializedTwice()
+        let appDelegate = AppDelegateInitializedTwice()
 
         MessagingPushFCM.shared.swizzleDidRegisterForRemoteNotifications(of: appDelegate)
         MessagingPushFCM.shared.swizzleDidRegisterForRemoteNotifications(of: appDelegate)

@@ -21,7 +21,7 @@ private class AppDelegateWithRegistrationCallbacks: NSObject, UIApplicationDeleg
     }
 }
 
-private class AppDelegateWithRegistrationCallbacksInitializedTwice: NSObject, UIApplicationDelegate {
+private class AppDelegateInitializedTwice: NSObject, UIApplicationDelegate {
     var receivedDeviceTokens: [Data] = []
     var receivedErrorCount = 0
 
@@ -67,7 +67,7 @@ private class ForwardingAppDelegate: NSObject, UIApplicationDelegate {
     }
 }
 
-class MessagingPushAPNAutoFetchDeviceTokenTests: XCTestCase {
+class MessagingPushAPNAutoFetchTests: XCTestCase {
     private let apnsToken = Data([0x01, 0x02, 0x03])
     private var implementationMock: MessagingPushInstanceMock!
     private var loggerMock: LoggerMock!
@@ -135,7 +135,7 @@ class MessagingPushAPNAutoFetchDeviceTokenTests: XCTestCase {
     }
 
     func testAutoFetch_whenInitializedTwice_thenAppCodeAndCustomerIORunOnce() {
-        let appDelegate = AppDelegateWithRegistrationCallbacksInitializedTwice()
+        let appDelegate = AppDelegateInitializedTwice()
 
         MessagingPushAPN.shared.swizzleDidRegisterForRemoteNotifications(of: appDelegate)
         MessagingPushAPN.shared.swizzleDidRegisterForRemoteNotifications(of: appDelegate)
