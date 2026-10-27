@@ -51,6 +51,16 @@ class SseServiceHeadersTest: UnitTest {
         XCTAssertEqual(query.first { $0.name == "key" }?.value, "pk_us_abc")
     }
 
+    func test_buildSseUrl_givenNoPublicKeyAndEmptySiteId_expectNoSiteIdQuery() async throws {
+        let sut = SseService(logger: diGraphShared.logger)
+        let state = InAppMessageState(siteId: "", dataCenter: "US", userId: "user123")
+
+        let url = await sut.buildSseUrl(state: state, identifier: "user123")
+        let query = try XCTUnwrap(url.flatMap { URLComponents(url: $0, resolvingAgainstBaseURL: false)?.queryItems })
+
+        XCTAssertEqual(query.map(\.name), ["sessionId", "userToken"])
+    }
+
     func test_buildHeaders_givenPublicKey_expectNoAuthorizationOrSiteIdHeader() async {
         let sut = SseService(logger: diGraphShared.logger)
         let state = InAppMessageState(siteId: "test-site", publicKey: "pk_us_abc", dataCenter: "US", userId: "user123")
