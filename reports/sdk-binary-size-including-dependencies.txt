@@ -5,7 +5,7 @@
    2.1%  52.2Ki   2.1%  52.2Ki    /Users/runner/work/customerio-ios/customerio-ios/Sources/LocationGeofence/Model/GeofenceState.swift
    1.8%  43.2Ki   1.8%  43.2Ki    /Users/runner/work/customerio-ios/customerio-ios/Sources/Common/Communication/Event.swift
    1.6%  39.8Ki   1.6%  39.8Ki    /Users/runner/work/customerio-ios/customerio-ios/Sources/LocationGeofence/Event/GeofenceDwellCoordinator+Evidence.swift
-   1.5%  35.3Ki   1.5%  35.3Ki    /Users/runner/work/customerio-ios/customerio-ios/Sources/MessagingPush/Integration/CioNotificationCenterDelegate.swift
+   1.5%  37.4Ki   1.5%  37.4Ki    /Users/runner/work/customerio-ios/customerio-ios/Sources/MessagingPush/Integration/CioNotificationCenterDelegate.swift
    1.2%  28.1Ki   1.2%  28.1Ki    /Users/runner/work/customerio-ios/customerio-ios/Sources/MessagingInApp/Inbox/Data/VisualInboxSPI.swift
    1.1%  27.3Ki   1.1%  27.3Ki    /Users/runner/work/customerio-ios/customerio-ios/Sources/LocationGeofence/Event/GeofenceDwellCoordinator+EvidenceRequest.swift
    1.1%  27.2Ki   1.1%  27.2Ki    /Users/runner/work/customerio-ios/customerio-ios/Sources/LocationGeofence/Monitor/CLMonitorGeofenceMonitor+Rearm.swift
@@ -15,7 +15,7 @@
    1.0%  24.1Ki   1.0%  24.1Ki    /Users/runner/work/customerio-ios/customerio-ios/Sources/MessagingInApp/Inbox/DefaultNotificationInbox.swift
    1.0%  24.1Ki   1.0%  24.1Ki    /Users/runner/work/customerio-ios/customerio-ios/Sources/DataPipeline/Util/AnalyticsStorageMigration.swift
    1.0%  23.5Ki   1.0%  23.5Ki    /Users/runner/work/customerio-ios/customerio-ios/Sources/LocationGeofence/Event/GeofenceDwellCoordinator+ExitDuration.swift
-   1.0%  23.1Ki   1.0%  23.1Ki    /Users/runner/work/customerio-ios/customerio-ios/Sources/MessagingInApp/State/InAppMessageMiddleware.swift
+   0.9%  23.1Ki   0.9%  23.1Ki    /Users/runner/work/customerio-ios/customerio-ios/Sources/MessagingInApp/State/InAppMessageMiddleware.swift
    0.9%  22.3Ki   0.9%  22.3Ki    /Users/runner/work/customerio-ios/customerio-ios/Sources/MessagingInApp/Inbox/Data/VisualInboxRepository.swift
    0.9%  22.3Ki   0.9%  22.3Ki    /Users/runner/work/customerio-ios/customerio-ios/Sources/MessagingInbox/VisualInboxModel.swift
    0.9%  22.2Ki   0.9%  22.2Ki    /Users/runner/work/customerio-ios/customerio-ios/Sources/LocationGeofence/Polygon/PolygonMembershipResolver+Delivery.swift
@@ -74,7 +74,7 @@
    0.5%  12.1Ki   0.5%  12.1Ki    /Users/runner/work/customerio-ios/customerio-ios/Sources/LocationGeofence/Storage/PendingGeofenceMetricStore.swift
    0.5%  11.8Ki   0.5%  11.8Ki    /Users/runner/work/customerio-ios/customerio-ios/Sources/LocationGeofence/Monitor/CoreLocationGeofenceMonitor.swift
    0.5%  11.3Ki   0.5%  11.3Ki    /Users/runner/work/customerio-ios/customerio-ios/Sources/MessagingInbox/InboxBellIcon.swift
-   0.5%  10.9Ki   0.5%  10.9Ki    /Users/runner/work/customerio-ios/customerio-ios/Sources/LocationGeofence/Event/GeofenceCrossing.swift
+   0.4%  10.9Ki   0.4%  10.9Ki    /Users/runner/work/customerio-ios/customerio-ios/Sources/LocationGeofence/Event/GeofenceCrossing.swift
    0.4%  10.8Ki   0.4%  10.8Ki    /Users/runner/work/customerio-ios/customerio-ios/Sources/LocationGeofence/Storage/GeofenceStorage.swift
    0.4%  10.6Ki   0.4%  10.6Ki    /Users/runner/work/customerio-ios/customerio-ios/Sources/LiveActivities_Templates/CountdownTimer/CIOCountdownTimerAttributes.swift
    0.4%  10.5Ki   0.4%  10.5Ki    /Users/runner/work/customerio-ios/customerio-ios/Sources/LocationGeofence/Storage/PendingGeofenceMetric.swift
@@ -154,10 +154,10 @@
    0.2%  4.30Ki   0.2%  4.30Ki    /Users/runner/work/customerio-ios/customerio-ios/Sources/MessagingInbox/Vendor/SVGPath/SVGPath+CoreGraphics.swift
    0.2%  4.20Ki   0.2%  4.20Ki    /Users/runner/work/customerio-ios/customerio-ios/Sources/LiveActivities/Reporting/LiveActivityReporter.swift
    0.2%  4.12Ki   0.2%  4.12Ki    /Users/runner/work/customerio-ios/customerio-ios/Sources/LocationGeofence/Logger+GeofenceMovement.swift
-   0.2%  4.06Ki   0.2%  4.06Ki    /Users/runner/work/customerio-ios/customerio-ios/Sources/MessagingPush/Integration/MessagingPush+NotificationCenterDelegate.swift
    0.2%  4.04Ki   0.2%  4.04Ki    /Users/runner/work/customerio-ios/customerio-ios/Sources/MessagingInApp/Gist/Managers/Models/Message.swift
    0.2%  4.03Ki   0.2%  4.03Ki    /Users/runner/work/customerio-ios/customerio-ios/Sources/LocationGeofence/Geometry/PolygonRegion.swift
    0.2%  3.99Ki   0.2%  3.99Ki    /Users/runner/work/customerio-ios/customerio-ios/Sources/LocationGeofence/Polygon/PolygonMembershipResolver+Corroboration.swift
+   0.2%  3.99Ki   0.2%  3.99Ki    /Users/runner/work/customerio-ios/customerio-ios/Sources/MessagingPush/Integration/MessagingPush+NotificationCenterDelegate.swift
    0.2%  3.96Ki   0.2%  3.96Ki    /Users/runner/work/customerio-ios/customerio-ios/Sources/LocationGeofence/Event/GeofenceTransitionEmitting.swift
    0.2%  3.93Ki   0.2%  3.93Ki    /Users/runner/work/customerio-ios/customerio-ios/Sources/MessagingInApp/Views/InlineMessageBridgeView.swift
    0.2%  3.88Ki   0.2%  3.88Ki    /Users/runner/work/customerio-ios/customerio-ios/Sources/Common/Util/KeyValueStorage.swift
@@ -219,6 +219,7 @@
    0.1%  2.53Ki   0.1%  2.53Ki    /Users/runner/work/customerio-ios/customerio-ios/Sources/DataPipeline/Plugins/IdentifyContextPlugin.swift
    0.1%  2.51Ki   0.1%  2.51Ki    /Users/runner/work/customerio-ios/customerio-ios/Sources/Location/Type/LocationProviderTypes.swift
    0.1%  2.50Ki   0.1%  2.50Ki    /Users/runner/work/customerio-ios/customerio-ios/Sources/LocationGeofence/Api/GeofenceApiRegion+Catalog.swift
+   0.1%  2.48Ki   0.1%  2.48Ki    /Users/runner/work/customerio-ios/customerio-ios/Sources/MessagingPush/Integration/AppDelegateSwizzler.swift
    0.1%  2.48Ki   0.1%  2.48Ki    /Users/runner/work/customerio-ios/customerio-ios/Sources/Common/Service/HttpRequestParams.swift
    0.1%  2.45Ki   0.1%  2.45Ki    /Users/runner/work/customerio-ios/customerio-ios/Sources/MessagingInApp/Type/InAppMessageError.swift
    0.1%  2.45Ki   0.1%  2.45Ki    /Users/runner/work/customerio-ios/customerio-ios/Sources/MessagingInApp/Inbox/Data/Jist/JistInboxMessage.swift
@@ -248,7 +249,7 @@
    0.1%  1.84Ki   0.1%  1.84Ki    /Users/runner/work/customerio-ios/customerio-ios/Sources/Common/Synchronized/Synchronized.swift
    0.1%  1.84Ki   0.1%  1.84Ki    /Users/runner/work/customerio-ios/customerio-ios/Sources/Common/Background Queue/Type/QueueTaskRunResults.swift
    0.1%  1.82Ki   0.1%  1.82Ki    /Users/runner/work/customerio-ios/customerio-ios/Sources/DataPipeline/CustomerIO+Events.swift
-   0.1%  1.82Ki   0.1%  1.82Ki    /Users/runner/work/customerio-ios/customerio-ios/Sources/MessagingPush/Integration/NotificationPeerDeliveryCoordinator.swift
+   0.1%  1.80Ki   0.1%  1.80Ki    /Users/runner/work/customerio-ios/customerio-ios/Sources/MessagingPush/Integration/NotificationPeerDeliveryCoordinator.swift
    0.1%  1.79Ki   0.1%  1.79Ki    /Users/runner/work/customerio-ios/customerio-ios/Sources/Common/Service/BackgroundTaskRunner.swift
    0.1%  1.79Ki   0.1%  1.79Ki    /Users/runner/work/customerio-ios/customerio-ios/Sources/LocationGeofence/Polygon/PolygonMembershipResolver+Foreground.swift
    0.1%  1.78Ki   0.1%  1.78Ki    /Users/runner/work/customerio-ios/customerio-ios/Sources/LiveActivities_Templates/Segments/CIOSegmentsBranding.swift
@@ -284,9 +285,9 @@
    0.0%  1.14Ki   0.0%  1.14Ki    /Users/runner/work/customerio-ios/customerio-ios/Sources/Common/Service/Request/PushMetric.swift
    0.0%  1.14Ki   0.0%  1.14Ki    /Users/runner/work/customerio-ios/customerio-ios/Sources/MessagingInApp/Gist/Network/Models/QueueMessagesResponse.swift
    0.0%  1.12Ki   0.0%  1.12Ki    /Users/runner/work/customerio-ios/customerio-ios/Sources/MessagingPush/RichPush/RichPushRequest.swift
-   0.0%  1.12Ki   0.0%  1.12Ki    /Users/runner/work/customerio-ios/customerio-ios/Sources/MessagingPushAPN/MessagingPushAPN.swift
    0.0%  1.12Ki   0.0%  1.12Ki    /Users/runner/work/customerio-ios/customerio-ios/Sources/LocationGeofence/Monitor/CLMonitorGeofenceMonitor+Fixes.swift
    0.0%  1.06Ki   0.0%  1.11Ki    /Users/runner/work/customerio-ios/customerio-ios/Sources/Common/Extensions/DeviceExtension.swift
+   0.0%  1.11Ki   0.0%  1.11Ki    /Users/runner/work/customerio-ios/customerio-ios/Sources/MessagingPushAPN/MessagingPushAPN.swift
    0.0%  1.09Ki   0.0%  1.09Ki    /Users/runner/work/customerio-ios/customerio-ios/Sources/MessagingPush/autogenerated/AutoDependencyInjection.generated.swift
    0.0%  1.09Ki   0.0%  1.09Ki    /Users/runner/work/customerio-ios/customerio-ios/Sources/Common/Util/UIKitWrapper.swift
    0.0%  1.09Ki   0.0%  1.09Ki    /Users/runner/work/customerio-ios/customerio-ios/Sources/DataPipeline/CustomerIO+Segment.swift
@@ -323,8 +324,8 @@
    0.0%     756   0.0%     756    /Users/runner/work/customerio-ios/customerio-ios/Sources/LocationGeofence/Polygon/PolygonLogReason.swift
    0.0%     740   0.0%     740    /Users/runner/work/customerio-ios/customerio-ios/Sources/MessagingInApp/Gist/Managers/InboxMessageCacheManager.swift
    0.0%     716   0.0%     716    /Users/runner/work/customerio-ios/customerio-ios/Sources/Common/Util/RingBuffer.swift
-   0.0%     712   0.0%     712    /Users/runner/work/customerio-ios/customerio-ios/Sources/MessagingPushAPN/MessagingPushAPN+PushConfigs.swift
    0.0%     680   0.0%     680    /Users/runner/work/customerio-ios/customerio-ios/Sources/MessagingInApp/Inbox/Data/Network/InboxFetchRetry.swift
+   0.0%     672   0.0%     672    /Users/runner/work/customerio-ios/customerio-ios/Sources/MessagingPushAPN/MessagingPushAPN+PushConfigs.swift
    0.0%     664   0.0%     664    /Users/runner/work/customerio-ios/customerio-ios/Sources/MessagingPush/RichPush/RichPushDeliveryTracker.swift
    0.0%     644   0.0%     644    /Users/runner/work/customerio-ios/customerio-ios/Sources/MessagingPush/Type/CustomerIOParsedPushPayload.swift
    0.0%     628   0.0%     628    /Users/runner/work/customerio-ios/customerio-ios/Sources/DataPipeline/DataPipelineImplementation+GeofenceObserver.swift
@@ -334,7 +335,6 @@
    0.0%     600   0.0%     600    /Users/runner/work/customerio-ios/customerio-ios/Sources/MessagingPushAPN/MessagingPush+APN.swift
    0.0%     596   0.0%     596    /Users/runner/work/customerio-ios/customerio-ios/Sources/LocationGeofence/Polygon/PolygonWakeRadius.swift
    0.0%     592   0.0%     592    /Users/runner/work/customerio-ios/customerio-ios/Sources/LocationGeofence/Monitor/CLMonitorGeofenceMonitor+Authorization.swift
-   0.0%     592   0.0%     592    /Users/runner/work/customerio-ios/customerio-ios/Sources/MessagingPush/Integration/NotificationPeerDeliveryGuard.swift
    0.0%     580   0.0%     580    /Users/runner/work/customerio-ios/customerio-ios/Sources/DataPipeline/autogenerated/AutoDependencyInjection.generated.swift
    0.0%     540   0.0%     540    /Users/runner/work/customerio-ios/customerio-ios/Sources/MessagingInApp/Extensions/UIViewExtensions.swift
    0.0%     528   0.0%     528    /Users/runner/work/customerio-ios/customerio-ios/Sources/Common/Type/Region.swift
@@ -349,6 +349,7 @@
    0.0%     476   0.0%     476    /Users/runner/work/customerio-ios/customerio-ios/Sources/MessagingInApp/Inbox/Data/VisualInboxLoadStateObservers.swift
    0.0%     472   0.0%     472    /Users/runner/work/customerio-ios/customerio-ios/Sources/Common/Service/BackgroundDeliveryHttpHelpers.swift
    0.0%     468   0.0%     468    /Users/runner/work/customerio-ios/customerio-ios/Sources/LiveActivities/Logger+LiveActivities.swift
+   0.0%     464   0.0%     464    /Users/runner/work/customerio-ios/customerio-ios/Sources/MessagingPush/Integration/NotificationPeerDeliveryGuard.swift
    0.0%     460   0.0%     460    /Users/runner/work/customerio-ios/customerio-ios/Sources/MessagingInApp/Gist/Utilities/Environment.swift
    0.0%     456   0.0%     456    /Users/runner/work/customerio-ios/customerio-ios/Sources/Location/LocationModule.swift
    0.0%     452   0.0%     452    /Users/runner/work/customerio-ios/customerio-ios/Sources/MessagingInApp/Gist/Utilities/Encodable.swift

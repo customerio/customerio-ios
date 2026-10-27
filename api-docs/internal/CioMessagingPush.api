@@ -1,6 +1,10 @@
 public extension CioInternalCommon.DIGraphShared {
 	public var messagingPushInstance: any MessagingPushInstance;
 }
+public enum CioMessagingPush.AppDelegateSwizzler {
+	public fun func swizzleDidRegisterForRemoteNotifications(of appDelegate: UIApplicationDelegate?, handler: @escaping (UIApplication, Data) -> Unit);
+	public fun func swizzleDidFailToRegisterForRemoteNotifications(of appDelegate: UIApplicationDelegate?, handler: @escaping (UIApplication, Error) -> Unit);
+}
 public extension CioMessagingPush.CustomerIOParsedPushPayload {
 	public var deepLink: URL?;
 	public var image: URL?;
