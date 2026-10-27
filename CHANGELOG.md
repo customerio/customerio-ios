@@ -1,3 +1,9 @@
+## [5.1.0](https://github.com/customerio/customerio-ios/compare/5.0.0...5.1.0) (2026-10-27)
+
+### Features
+
+* **MBL-2652:** let in-app start without a site ID when set up with a pk_ key ([#1370](https://github.com/customerio/customerio-ios/issues/1370)) ([3a33261](https://github.com/customerio/customerio-ios/commit/3a33261433d8d87fc4b6aa40259cba052efba2ab))
+
 ## [5.0.0](https://github.com/customerio/customerio-ios/compare/4.13.0...5.0.0) (2026-10-26)
 
 ### ⚠ BREAKING CHANGES

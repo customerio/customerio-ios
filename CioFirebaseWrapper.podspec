@@ -3,7 +3,7 @@
 
 Pod::Spec.new do |spec|
   spec.name         = "CioFirebaseWrapper"
-  spec.version      = "5.0.0" # Don't modify this line - it's automatically updated
+  spec.version      = "5.1.0" # Don't modify this line - it's automatically updated
   spec.summary      = "Official Customer.io SDK for iOS."
   spec.homepage     = "https://github.com/customerio/customerio-ios"
   spec.documentation_url = 'https://customer.io/docs/sdk/ios/'
