@@ -1,3 +1,9 @@
+## [5.1.2](https://github.com/customerio/customerio-ios/compare/5.1.1...5.1.2) (2026-10-27)
+
+### Bug Fixes
+
+* **in-app:** SSE and queue fetch fixes for user switch, anonymous identify, foreground ([#1368](https://github.com/customerio/customerio-ios/issues/1368)) ([2650ff4](https://github.com/customerio/customerio-ios/commit/2650ff49805e59a481665cca3d6435268b36e758))
+
 ## [5.1.1](https://github.com/customerio/customerio-ios/compare/5.1.0...5.1.1) (2026-10-27)
 
 ### Bug Fixes
