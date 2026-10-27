@@ -105,20 +105,13 @@ struct GeofenceTaskSpawningTests {
         #expect(await log.snapshot() == Array(0 ..< 20))
     }
 
-    /// The closure doesn't inherit the caller's main actor: it runs while the main thread is held.
+    /// The closure doesn't inherit the caller's main actor, so a busy main thread can't hold it up.
+    /// Checked by thread, not by holding the main thread against a deadline a slow runner misses.
     @Test(arguments: Kind.allCases)
-    func spawnDetached_givenBusyMainActor_expectOperationStillRuns(_ kind: Kind) async {
-        let ran = DispatchSemaphore(value: 0)
+    func spawnDetached_givenMainActorCaller_expectOperationOffMainThread(_ kind: Kind) async {
+        let ranOnMainThread = await kind.make().spawnDetached { pthread_main_np() != 0 }.value
 
-        let task = kind.make().spawnDetached { ran.signal() }
-
-        #expect(Self.holdMainThread(until: ran), "the detached work waited for the main actor")
-        await task.value
-    }
-
-    /// Holds the calling thread until `semaphore` is signalled or 10 s pass. Whether it was.
-    private nonisolated static func holdMainThread(until semaphore: DispatchSemaphore) -> Bool {
-        semaphore.wait(timeout: .now() + 10) == .success
+        #expect(!ranOnMainThread, "the detached work ran on the main actor")
     }
 
     @Test
@@ -133,7 +126,7 @@ struct GeofenceTaskSpawningTests {
 
         gate.continuation.finish()
         await task.value
-        await spawner.awaitIdle()
+        #expect(await spawner.awaitIdle(timeout: TrackingTaskSpawner.noDeadline) == nil)
 
         #expect(spawner.inFlight == 0)
     }
@@ -155,9 +148,10 @@ struct GeofenceTaskSpawningTests {
             for await _ in callerHeld.stream {}
         }
         let waiter = Task {
-            await spawner.awaitIdle()
+            let timeout = await spawner.awaitIdle(timeout: TrackingTaskSpawner.noDeadline)
             log.entries.append(0)
             waiterStep.yield(.returned)
+            return timeout
         }
         try #require(await steps.next() == .registered)
 
@@ -171,7 +165,7 @@ struct GeofenceTaskSpawningTests {
         #expect(log.entries.isEmpty)
         startedHeld.continuation.finish()
         await started.value
-        await waiter.value
+        #expect(await waiter.value == nil)
         #expect(log.entries == [1, 0])
         callerHeld.continuation.finish()
         await caller.value
@@ -189,7 +183,7 @@ struct GeofenceTaskSpawningTests {
 
         gate.continuation.finish()
         await task.value
-        await spawner.awaitIdle()
+        #expect(await spawner.awaitIdle(timeout: TrackingTaskSpawner.noDeadline) == nil)
 
         #expect(spawner.inFlight == 0)
     }

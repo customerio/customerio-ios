@@ -29,6 +29,9 @@ final class TrackingTaskSpawner: GeofenceTaskSpawning, @unchecked Sendable {
         var isIdle: Bool { inFlight == parked }
     }
 
+    /// For tests that must not fail on a slow runner: a real hang is left to the test run's timeout.
+    static let noDeadline: TimeInterval = 3600
+
     private let state = Synchronized<State>(State())
 
     var inFlight: Int { state.wrappedValue.inFlight }

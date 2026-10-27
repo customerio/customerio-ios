@@ -30,7 +30,7 @@ struct TrackingTaskSpawnerTests {
     func awaitIdle_givenTwoWaiters_expectTimeoutDoesNotConsumeOtherWaiter() async {
         let spawner = TrackingTaskSpawner()
         spawner.workStarted()
-        let patient = Task { await spawner.awaitIdle(timeout: 30) }
+        let patient = Task { await spawner.awaitIdle(timeout: TrackingTaskSpawner.noDeadline) }
         let timeout = await spawner.awaitIdle(timeout: 0.02)
         #expect(timeout == TrackingTaskSpawner.IdleTimeout(inFlight: 1, parked: 0))
 
@@ -42,21 +42,22 @@ struct TrackingTaskSpawnerTests {
     @MainActor
     func awaitIdle_givenTransientIdleOnMainActor_expectRecheckBeforeReturning() async throws {
         let spawner = TrackingTaskSpawner()
+        // Each step the waiter takes, awaited in order rather than polled against the wall clock.
+        let (waiterSteps, waiterStep) = AsyncStream<Bool>.makeStream()
+        spawner.onWaiterRegistered = { waiterStep.yield(true) }
+        var registered = waiterSteps.makeAsyncIterator()
         spawner.workStarted()
-        let waiter = Task { await spawner.awaitIdle(timeout: 30) }
-        let registrationDeadline = DispatchTime.now() + 5
-        while spawner.idleWaiterCount == 0, DispatchTime.now() < registrationDeadline {
-            await Task.yield()
+        let waiter = Task {
+            let timeout = await spawner.awaitIdle(timeout: TrackingTaskSpawner.noDeadline)
+            waiterStep.yield(false)
+            return timeout
         }
-        try #require(spawner.idleWaiterCount == 1)
+        try #require(await registered.next() == true)
 
         // One actor job briefly publishes idle before starting the work it waits on.
         spawner.workFinished()
         spawner.workStarted()
-        let recheckDeadline = DispatchTime.now() + 5
-        while spawner.idleWaiterCount == 0, DispatchTime.now() < recheckDeadline {
-            await Task.yield()
-        }
+        try #require(await registered.next() == true, "the waiter returned on a transient idle")
         try #require(spawner.idleWaiterCount == 1)
         spawner.workFinished()
         #expect(await waiter.value == nil)
@@ -67,7 +68,7 @@ struct TrackingTaskSpawnerTests {
         let spawner = TrackingTaskSpawner()
         let task = spawner.spawn { 42 }
         #expect(await task.value == 42)
-        #expect(await spawner.awaitIdle(timeout: 30) == nil)
+        #expect(await spawner.awaitIdle(timeout: TrackingTaskSpawner.noDeadline) == nil)
         #expect(spawner.inFlight == 0)
     }
 }
