@@ -25,7 +25,7 @@ struct GistCommonHeaders {
             if includeAuthorization {
                 headers[HTTPHeader.authorization.rawValue] = "Bearer \(publicKey)"
             }
-        } else {
+        } else if !state.siteId.isEmpty {
             headers[HTTPHeader.siteId.rawValue] = state.siteId
         }
         return headers

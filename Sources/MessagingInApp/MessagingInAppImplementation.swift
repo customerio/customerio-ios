@@ -46,6 +46,9 @@ class MessagingInAppImplementation: MessagingInAppInstance {
         }
         // Only public `pk_` keys are sent to in-app APIs.
         let publicKey = dataPipeline.map(\.apiKey).flatMap { ApiKey.isPublic($0) ? $0 : nil }
+        if moduleConfig.siteId.isEmpty, publicKey == nil {
+            logger.logWithModuleTag("In-app messaging needs a site ID, or CustomerIO set up with a public (pk_) key.", level: .error)
+        }
 
         inAppMessageManager.dispatch(action: .initialize(
             siteId: moduleConfig.siteId,
