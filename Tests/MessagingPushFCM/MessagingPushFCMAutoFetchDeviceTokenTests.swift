@@ -61,6 +61,36 @@ private class AppDelegateWrappedByCio: NSObject, UIApplicationDelegate {
 
 private class CioAppDelegateUsedWithAutoFetch: CioAppDelegate {}
 
+/// Works like SwiftUI's app delegate, which implements neither registration callback and forwards them to the
+/// `UIApplicationDelegateAdaptor` delegate. Tests use the subclasses so each swizzles its own class.
+private class ForwardingAppDelegate: NSObject, UIApplicationDelegate {
+    private let target: NSObject
+
+    init(target: NSObject) {
+        self.target = target
+    }
+
+    override func responds(to aSelector: Selector!) -> Bool {
+        super.responds(to: aSelector) || target.responds(to: aSelector)
+    }
+
+    override func forwardingTarget(for aSelector: Selector!) -> Any? {
+        target.responds(to: aSelector) ? target : nil
+    }
+}
+
+private class ForwardingAppDelegateToAppCode: ForwardingAppDelegate {}
+
+private class ForwardingAppDelegateToCioWrapper: ForwardingAppDelegate {}
+
+private class AppDelegateBehindForwardingDelegate: NSObject, UIApplicationDelegate {
+    var receivedDeviceTokens: [Data] = []
+
+    func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
+        receivedDeviceTokens.append(deviceToken)
+    }
+}
+
 class MessagingPushFCMAutoFetchDeviceTokenTests: XCTestCase {
     private let apnsToken = Data([0x01, 0x02, 0x03])
     private var firebaseService: MockFirebaseService!
@@ -133,6 +163,34 @@ class MessagingPushFCMAutoFetchDeviceTokenTests: XCTestCase {
         didRegister(subclassedAppDelegate)
 
         XCTAssertEqual(subclassedAppDelegate.receivedDeviceTokens, [apnsToken])
+        XCTAssertEqual(firebaseService.fetchTokenCallCount, 1)
+    }
+
+    func testAutoFetch_whenAppDelegateForwardsDidRegister_thenForwardedAppCodeAndFirebaseRegistrationBothRun() {
+        let adaptorAppDelegate = AppDelegateBehindForwardingDelegate()
+        let appDelegate = ForwardingAppDelegateToAppCode(target: adaptorAppDelegate)
+
+        MessagingPushFCM.shared.swizzleDidRegisterForRemoteNotifications(of: appDelegate)
+        didRegister(appDelegate)
+
+        XCTAssertEqual(adaptorAppDelegate.receivedDeviceTokens, [apnsToken])
+        XCTAssertEqual(firebaseService.fetchTokenCallCount, 1)
+    }
+
+    func testAutoFetch_whenAppDelegateForwardsToTheCioWrapper_thenWrappedAppCodeAndFirebaseRegistrationRunOnce() {
+        let wrappedAppDelegate = AppDelegateWrappedByCio()
+        let cioAppDelegate = CioAppDelegateUsedWithAutoFetch(
+            messagingPush: MessagingPush.shared,
+            appDelegate: wrappedAppDelegate,
+            config: { MessagingPushConfigBuilder().build() },
+            logger: DIGraphShared.shared.logger
+        )
+        let appDelegate = ForwardingAppDelegateToCioWrapper(target: cioAppDelegate)
+
+        MessagingPushFCM.shared.swizzleDidRegisterForRemoteNotifications(of: appDelegate)
+        didRegister(appDelegate)
+
+        XCTAssertEqual(wrappedAppDelegate.receivedDeviceTokens, [apnsToken])
         XCTAssertEqual(firebaseService.fetchTokenCallCount, 1)
     }
 

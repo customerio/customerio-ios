@@ -36,6 +36,37 @@ private class AppDelegateWithRegistrationCallbacksInitializedTwice: NSObject, UI
 
 private class AppDelegateWithoutRegistrationCallbacks: NSObject, UIApplicationDelegate {}
 
+private class AppDelegateBehindForwardingDelegate: NSObject, UIApplicationDelegate {
+    var receivedDeviceTokens: [Data] = []
+    var receivedErrorCount = 0
+
+    func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
+        receivedDeviceTokens.append(deviceToken)
+    }
+
+    func application(_ application: UIApplication, didFailToRegisterForRemoteNotificationsWithError error: Error) {
+        receivedErrorCount += 1
+    }
+}
+
+/// Works like SwiftUI's app delegate, which implements neither registration callback and forwards them to the
+/// `UIApplicationDelegateAdaptor` delegate.
+private class ForwardingAppDelegate: NSObject, UIApplicationDelegate {
+    private let target: NSObject
+
+    init(target: NSObject) {
+        self.target = target
+    }
+
+    override func responds(to aSelector: Selector!) -> Bool {
+        super.responds(to: aSelector) || target.responds(to: aSelector)
+    }
+
+    override func forwardingTarget(for aSelector: Selector!) -> Any? {
+        target.responds(to: aSelector) ? target : nil
+    }
+}
+
 class MessagingPushAPNAutoFetchDeviceTokenTests: XCTestCase {
     private let apnsToken = Data([0x01, 0x02, 0x03])
     private var implementationMock: MessagingPushInstanceMock!
@@ -86,6 +117,20 @@ class MessagingPushAPNAutoFetchDeviceTokenTests: XCTestCase {
         didFailToRegister(appDelegate)
 
         XCTAssertEqual(implementationMock.registerDeviceTokenReceivedInvocations, ["010203"])
+        XCTAssertEqual(registrationFailureLogCount, 1)
+    }
+
+    func testAutoFetch_whenAppDelegateForwardsCallbacks_thenForwardedAppCodeAndCustomerIOBothRun() {
+        let adaptorAppDelegate = AppDelegateBehindForwardingDelegate()
+        let appDelegate = ForwardingAppDelegate(target: adaptorAppDelegate)
+
+        MessagingPushAPN.shared.swizzleDidRegisterForRemoteNotifications(of: appDelegate)
+        didRegister(appDelegate)
+        didFailToRegister(appDelegate)
+
+        XCTAssertEqual(adaptorAppDelegate.receivedDeviceTokens, [apnsToken])
+        XCTAssertEqual(implementationMock.registerDeviceTokenReceivedInvocations, ["010203"])
+        XCTAssertEqual(adaptorAppDelegate.receivedErrorCount, 1)
         XCTAssertEqual(registrationFailureLogCount, 1)
     }
 

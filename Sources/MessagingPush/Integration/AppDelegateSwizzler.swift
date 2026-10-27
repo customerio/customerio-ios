@@ -2,8 +2,8 @@ import ObjectiveC
 import UIKit
 
 /// Adds Customer.io handlers to the app delegate's remote notification registration callbacks, for apps that don't use
-/// `CioAppDelegateWrapper`. The app delegate keeps what it already did for each callback, whether it implements it
-/// or inherits it: that runs first and the handler runs after it, the same order as the wrapper.
+/// `CioAppDelegateWrapper`. The app delegate keeps what it already did for each callback, whether it implements it,
+/// inherits it or forwards it: that runs first and the handler runs after it, the same order as the wrapper.
 @_spi(Internal)
 @available(iOSApplicationExtension, unavailable)
 public enum AppDelegateSwizzler {
@@ -45,8 +45,10 @@ public enum AppDelegateSwizzler {
 
     private static func swizzle(_ selector: Selector, of appDelegate: UIApplicationDelegate?, handler: @escaping (UIApplication, AnyObject?) -> Void) {
         guard let appDelegate, let delegateClass = object_getClass(appDelegate) else { return }
-        // The wrapper already runs the handlers and forwards to the app's delegate.
-        guard !(appDelegate is CioProviderAgnosticAppDelegate) else { return }
+        // The wrapper already runs the handlers and forwards to the app's delegate, also when SwiftUI's delegate forwards to it.
+        guard !(appDelegate is CioProviderAgnosticAppDelegate),
+              !(forwardingTarget(of: appDelegate, for: selector) is CioProviderAgnosticAppDelegate)
+        else { return }
 
         lock.lock()
         defer { lock.unlock() }
@@ -69,9 +71,22 @@ public enum AppDelegateSwizzler {
         let implementation: @convention(block) (AnyObject, UIApplication, AnyObject?) -> Void = { delegate, application, argument in
             if let original {
                 unsafeBitCast(original, to: Implementation.self)(delegate, selector, application, argument)
+            } else if let target = forwardingTarget(of: delegate, for: selector),
+                      let targetImplementation = class_getMethodImplementation(object_getClass(target), selector) {
+                // Adding the method stopped the runtime from forwarding the callback, so forward it here.
+                unsafeBitCast(targetImplementation, to: Implementation.self)(target, selector, application, argument)
             }
             handler(application, argument)
         }
         class_replaceMethod(delegateClass, selector, imp_implementationWithBlock(implementation), typeEncoding)
+    }
+
+    /// Where a delegate that doesn't implement `selector` forwards it, like SwiftUI's app delegate does to the
+    /// `UIApplicationDelegateAdaptor` delegate.
+    private static func forwardingTarget(of delegate: AnyObject, for selector: Selector) -> AnyObject? {
+        guard let forwarded = (delegate as? NSObject)?.forwardingTarget(for: selector) else { return nil }
+        let target = forwarded as AnyObject
+        guard target !== delegate, (target as? NSObjectProtocol)?.responds(to: selector) == true else { return nil }
+        return target
     }
 }
