@@ -1,3 +1,9 @@
+## [5.1.3](https://github.com/customerio/customerio-ios/compare/5.1.2...5.1.3) (2026-10-28)
+
+### Bug Fixes
+
+* keep in-app modal content visible when the keyboard opens ([#1364](https://github.com/customerio/customerio-ios/issues/1364)) ([737ba84](https://github.com/customerio/customerio-ios/commit/737ba8433c962e5750521ec3f6b13e9e99235eec))
+
 ## [5.1.2](https://github.com/customerio/customerio-ios/compare/5.1.1...5.1.2) (2026-10-27)
 
 ### Bug Fixes
