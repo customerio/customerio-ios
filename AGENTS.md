@@ -87,7 +87,7 @@ After making changes to Unit Tests, ALWAYS test the changed test classes. Avoid 
 ## Architecture
 
 ### Module Architecture
-- Each module exposes a public-facing facade extending `ModuleTopLevelObject`
+- `DataPipeline`, `MessagingPush` and `MessagingInApp` expose a public-facing facade extending `ModuleTopLevelObject`
 - Implementation classes are hidden from SDK users
 - Public protocols define the interface contracts
 - Builder pattern for configuration options
