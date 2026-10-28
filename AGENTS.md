@@ -216,10 +216,10 @@ xcodebuild build-for-testing -destination 'platform=iOS Simulator,id=SIMULATOR_I
 To run tests from the command line with xcodebuild:
 Example:
 ```bash
-xcodebuild test-without-building -workspace ./.swiftpm/xcode/package.xcworkspace -destination 'platform=iOS Simulator,id=A7D4BD50-572C-491A-9713-4A3B9DB04B44' -scheme Customer.io-Package -only-testing:MessagingPushTests/CioProviderAgnosticAppDelegateTests
+xcodebuild test-without-building -workspace ./.swiftpm/xcode/package.xcworkspace -destination 'platform=iOS Simulator,id=SIMULATOR_ID' -scheme Customer.io-Package -only-testing:MessagingPushTests/CioProviderAgnosticAppDelegateTests
 ```
 
 To run all tests in a suite:
 ```bash
-xcodebuild test-without-building -workspace ./.swiftpm/xcode/package.xcworkspace -destination 'platform=iOS Simulator,id=A7D4BD50-572C-491A-9713-4A3B9DB04B44' -scheme Customer.io-Package -only-testing:MessagingPushTests
+xcodebuild test-without-building -workspace ./.swiftpm/xcode/package.xcworkspace -destination 'platform=iOS Simulator,id=SIMULATOR_ID' -scheme Customer.io-Package -only-testing:MessagingPushTests
 ```
