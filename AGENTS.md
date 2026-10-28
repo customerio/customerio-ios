@@ -107,8 +107,7 @@ CustomerIO.shared.identify(userId: "customer-id")
 ```
 
 ### Dependency Injection
-- Always use a constructor-based dependency injection pattern
-- `DIGraphShared` serves as the central dependency registry, which should be used only for top-level module initialization
+- `DIGraphShared` serves as the central dependency registry
 - Modules obtain dependencies through constructor injection
 - Avoid the Singleton pattern whenever you can
 - Thread-safe access via `Swift Structured Concurrency` and `@Atomic` property wrapper
@@ -128,8 +127,6 @@ xcrun simctl list devices available
 Prefer to use Booted Simulators.
 
 ## Building
-
-After completing planned changes to the code, ALWAYS compile to make sure it's working, before continuing to the next step.
 
 ### Building a single module
 Example:
