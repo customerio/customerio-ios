@@ -1,6 +1,6 @@
-# CLAUDE.md
+# AGENTS.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This file provides guidance to AI coding agents when working with code in this repository.
 
 # Customer.io iOS SDK - Developer Guide
 
@@ -16,6 +16,7 @@ After making changes to Unit Tests, ALWAYS test the changed test classes. Avoid 
 - Lint: `make lint`
 - Generate code and mocks: `make generate`
   - After `make generate`, always run `make format` first and then `make lint`
+- The `make` targets above run through `./binny`, which is gitignored. Install it first (`docs/dev-notes/DEVELOPMENT.md`).
 
 ## Code Style
 - Swift 5.3+ with protocol-oriented design
@@ -74,6 +75,7 @@ After making changes to Unit Tests, ALWAYS test the changed test classes. Avoid 
   - `MessagingPushFCM/` - Firebase Cloud Messaging implementation
   - `MessagingInApp/` - In-app messaging functionality
   - `Migration/` - Migration tools for version upgrades
+  - `MessagingInbox/`, `Location/`, `LocationGeofence/`, `LiveActivities/` (with `LiveActivities_Attributes/` and `LiveActivities_Templates/`), `FirebaseWrapper/` - Further modules; each is a product in `Package.swift`
   - `Templates/` - Sourcery templates for code generation
 - `Tests/` - Test files organized by module
 - `Apps/` - Sample applications demonstrating SDK usage
@@ -103,7 +105,7 @@ CustomerIO.shared.identify(userId: "customer-id")
 ### Dependency Injection
 - `DIGraphShared` serves as the central dependency registry
 - Avoid the Singleton pattern whenever you can
-- Thread-safe access via `Swift Structured Concurrency` and `@Atomic` property wrapper
+- `DIGraphShared` guards its registry with an `NSRecursiveLock`; use `lock.withLock` in new accessors (`Sources/Common/DIGraphShared.swift`)
 - Testing uses the override mechanism to substitute components
 
 ### Inter-Module Communication
