@@ -102,7 +102,6 @@ CustomerIO.shared.identify(userId: "customer-id")
 
 ### Dependency Injection
 - `DIGraphShared` serves as the central dependency registry
-- Modules obtain dependencies through constructor injection
 - Avoid the Singleton pattern whenever you can
 - Thread-safe access via `Swift Structured Concurrency` and `@Atomic` property wrapper
 - Testing uses the override mechanism to substitute components
