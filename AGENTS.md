@@ -50,19 +50,13 @@ After making changes to Unit Tests, ALWAYS test the changed test classes. Avoid 
   - Implement `deinit` for classes that need cleanup
   - Cancel any async operations in `deinit`
   - Dispose of resources explicitly when needed (e.g., file handles, network connections)
-- Document memory ownership expectations in public APIs
-- Design APIs to make the correct memory pattern obvious to users
 
 ## Thread safety
 - Prefer high-level concurrency models (Swift Concurrency) over low-level ones (GCD)
 - Avoid `sync` operation in GDC unless no alternative. Always point out when `sync` is included in generated code.
 - Prefer Actor over DispatchQueue unless it produces significant performance degradation
 - Ensure UI operations happen on the main thread
-- Design with immutability in mind for concurrent operation
-- Create clear boundaries between thread-safe and thread-unsafe components
-- Design APIs that help prevent thread safety issues
 - When testing concurrent code, include stress tests
-- Document the threading model clearly, especially for the SDK's public APIs
 
 ## Committing and Pushing with Git
 - Use `lefthook` for git hooks
