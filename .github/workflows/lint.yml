@@ -14,3 +14,5 @@ jobs:
     uses: customerio/mobile-ci-tools/.github/workflows/ios-lint.yml@main
     with:
       runner-label: 'xcode-27'
+      # Lint finishes in under 2 minutes; the limit stops a hung job from holding a Mac.
+      timeout-minutes: 10
