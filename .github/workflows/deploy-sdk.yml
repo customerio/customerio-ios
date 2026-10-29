@@ -20,6 +20,7 @@ jobs:
   generate-sdk-size-report:
     name: Generate SDK size report to attach to the release 
     runs-on: macos-26
+    timeout-minutes: 60
     # In order to pass data from 1 action to another, you use outputs. 
     # These are the generated reports that the deployment action depends on. 
     outputs:
