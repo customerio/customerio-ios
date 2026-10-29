@@ -437,6 +437,8 @@ class SseConnectionManagerTest: XCTestCase {
 
         // Decisions are handled one at a time, in order. Once this sentinel decision has started a new
         // connection, a duplicate dispatch from the decision above would already have happened.
+        // This relies on the manager still acting on retry decisions after a full failure; if that
+        // changes, this wait times out on the sentinel connect instead of failing on the count.
         retryContinuation.yield((.retryNow(attemptCount: 1), 1))
         await fulfillment(of: [sentinelConnect], timeout: signalTimeout)
 
@@ -445,11 +447,7 @@ class SseConnectionManagerTest: XCTestCase {
         retryContinuation.finish()
 
         // Assert: Check that SSE was disabled (fallback to polling)
-        let sseDisabledActions = inAppMessageManagerMock.dispatchReceivedInvocations.filter {
-            if case .setSseEnabled(enabled: false) = $0.action { return true }
-            return false
-        }
-        XCTAssertEqual(sseDisabledActions.count, 1)
+        XCTAssertEqual(sseDisabledDispatchCount, 1)
     }
 
     func test_retryDecision_givenRetryNotPossible_expectFallbackToPolling() async {
@@ -484,6 +482,8 @@ class SseConnectionManagerTest: XCTestCase {
 
         // Decisions are handled one at a time, in order. Once this sentinel decision has started a new
         // connection, a duplicate dispatch from the decision above would already have happened.
+        // This relies on the manager still acting on retry decisions after a full failure; if that
+        // changes, this wait times out on the sentinel connect instead of failing on the count.
         retryContinuation.yield((.retryNow(attemptCount: 1), 1))
         await fulfillment(of: [sentinelConnect], timeout: signalTimeout)
 
@@ -491,11 +491,7 @@ class SseConnectionManagerTest: XCTestCase {
         retryContinuation.finish()
 
         // Assert
-        let sseDisabledActions = inAppMessageManagerMock.dispatchReceivedInvocations.filter {
-            if case .setSseEnabled(enabled: false) = $0.action { return true }
-            return false
-        }
-        XCTAssertEqual(sseDisabledActions.count, 1)
+        XCTAssertEqual(sseDisabledDispatchCount, 1)
     }
 }
 
