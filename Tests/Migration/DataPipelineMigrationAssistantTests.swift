@@ -43,7 +43,6 @@ class DataPipelineMigrationAssistantTests: UnitTest {
     }
 
     func test_givenBacklog_expectTaskProcessed() {
-        var inventory: [QueueTaskMetadata] = []
         let givenType = QueueTaskType.identifyProfile
         let givenTask = IdentifyProfileQueueTaskData(identifier: String.random, attributesJsonString: "null")
 
@@ -52,18 +51,12 @@ class DataPipelineMigrationAssistantTests: UnitTest {
             return
         }
 
-        guard let fileManagerQueueStorage = queueStorage as? FileManagerQueueStorage else {
-            XCTFail("queueStorage could not be cast to FileManagerQueueStorage")
-            return
-        }
-
+        // The migration assistant reads the backlog through the queue mock, so the inventory is built in memory.
+        // Creating each task in real queue storage rewrote the whole inventory file every time, which made this
+        // test take from seconds to minutes depending on disk speed.
         let counter = 3000
-        for _ in 1 ... counter {
-            guard let givenCreatedTask = fileManagerQueueStorage.create(siteId: testSiteId, type: givenType.rawValue, data: givenQueueTaskData, groupStart: nil, blockingGroups: nil).createdTask else {
-                XCTFail("Failed to create task")
-                return
-            }
-            inventory.append(givenCreatedTask)
+        let inventory = (1 ... counter).map { _ in
+            QueueTaskMetadata(taskPersistedId: String.random, taskType: givenType.rawValue, groupStart: nil, groupMember: nil, createdAt: dateUtilStub.now)
         }
 
         backgroundQueueMock.getAllStoredTasksReturnValue = inventory
