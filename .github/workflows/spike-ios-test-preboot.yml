@@ -1,0 +1,50 @@
+name: Spike iOS tests with simulator pre-boot
+
+# SPIKE (do not merge). Same steps as mobile-ci-tools' ios-test.yml, run by the
+# existing `Tests` workflow, plus one step that boots the simulator the Scanfile
+# pins before the compile starts. Compare this job's `Run tests` step against the
+# baseline `test / automated-tests` job from the same push. Coverage upload and
+# the JUnit check are left out so the spike adds no duplicate reports to the PR.
+on:
+  pull_request:
+    paths-ignore:
+      - '**/*.md'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  automated-tests:
+    name: spike / automated-tests [preboot]
+    runs-on: xcode-27
+    timeout-minutes: 60
+    steps:
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+    - name: Setup iOS
+      uses: customerio/mobile-ci-tools/github-actions/ios/setup-ios/v1@main
+      with:
+        xcode-version: '27.0'
+
+    - name: Get XCode schemes
+      run: xcrun xcodebuild -list
+
+    - name: Setup Ruby to run Fastlane
+      uses: ruby/setup-ruby@95ef2b042f9d7a56d8268cba8559e2842e2ad01b # v1.321.0
+      with:
+        ruby-version: '3.4'
+        bundler-cache: true
+
+    # fastlane/Scanfile pins "iPhone 17 (27.0)". Booting that device here lets the
+    # boot overlap the package resolve and compile instead of following them.
+    - name: Pre-boot iOS simulator
+      run: |
+        udid="$(xcrun simctl list devices available --json | jq -r '[.devices | to_entries[] | select(.key | test("SimRuntime\\.iOS-27-0$")) | .value[] | select(.name == "iPhone 17") | .udid][0] // empty')"
+        echo "Pre-booting simulator: ${udid:-none found}"
+        if [ -n "$udid" ]; then xcrun simctl boot "$udid"; fi
+
+    - name: Run tests
+      uses: maierj/fastlane-action@182983d8f94bad9884001c03c1c2786f4c7165ed # v3.2.0
+      with:
+        lane: 'scan'
