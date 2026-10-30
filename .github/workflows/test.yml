@@ -24,6 +24,8 @@ jobs:
       # Pinned with fastlane/Scanfile: 27.0 is the only Xcode on the xcode-27 image that ships a
       # simulator runtime (iOS 27.0). Change one, check the other.
       xcode-version: '27.0'
+      # Recent passing runs took up to 35 minutes; the limit stops a hung run from holding a Mac.
+      timeout-minutes: 45
       scheme: 'Customer.io-Package'
       xcresult-name: 'Customer.io-Package.xcresult'
       # Must track the Ruby this repo's Gemfile.lock is resolved against; the lock pulls
