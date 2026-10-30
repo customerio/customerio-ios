@@ -13,6 +13,11 @@ concurrency: # cancel previous workflow run if one exists.
 
 jobs:
   test:
+    # The shared workflow posts test results as a check, so it needs checks: write. Set here so the job keeps it when
+    # the repo's default token permission is read-only.
+    permissions:
+      contents: read
+      checks: write
     uses: customerio/mobile-ci-tools/.github/workflows/ios-test.yml@main
     with:
       runner-label: 'xcode-27'
