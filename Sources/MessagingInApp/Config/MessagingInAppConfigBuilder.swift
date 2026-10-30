@@ -9,6 +9,7 @@ import Foundation
 /// **Usage Example:**
 ///
 /// ```
+/// // With a public `pk_` key, the site ID can be left out: `MessagingInAppConfigBuilder()`.
 /// let config = MessagingInAppConfigBuilder(siteId: siteId)
 ///   // additional configuration as needed...
 ///   .build()
@@ -16,11 +17,18 @@ import Foundation
 /// ```
 public class MessagingInAppConfigBuilder {
     // configuration options for MessagingInAppConfigOptions
-    private let siteId: String
+    private let siteId: String?
     // Only kept for the deprecated `MessagingInAppConfigOptions.region`.
     private var region: Region = .US
     private var colorScheme: ColorScheme = .auto
     private var notificationInboxAccessibilityLabels = NotificationInboxAccessibilityLabels()
+
+    /// Initializes new `MessagingInAppConfigBuilder` without a site ID.
+    /// Use when `CustomerIO` is set up with a public (`pk_`) key, which identifies the workspace.
+    /// In-app uses the API key and region `CustomerIO` is set up with, so initialize `CustomerIO` first.
+    public init() {
+        self.siteId = nil
+    }
 
     /// Initializes new `MessagingInAppConfigBuilder` with required configuration options.
     /// In-app uses the API key and region `CustomerIO` is set up with, so initialize `CustomerIO` first.
@@ -59,7 +67,7 @@ public class MessagingInAppConfigBuilder {
     /// Builds and returns `MessagingInAppConfigOptions` instance from the configured properties.
     public func build() -> MessagingInAppConfigOptions {
         MessagingInAppConfigOptions(
-            siteId: siteId,
+            siteId: siteId ?? "",
             region: region,
             colorScheme: colorScheme,
             notificationInboxAccessibilityLabels: notificationInboxAccessibilityLabels
@@ -70,6 +78,7 @@ public class MessagingInAppConfigBuilder {
 /// Defines errors that can occur during the `MessagingInAppConfigBuilder` building process.
 public enum MessagingInAppConfigBuilderError: Error {
     case malformedConfig
+    @available(*, deprecated, message: "No longer thrown, the site ID is optional when CustomerIO is set up with a public (pk_) key.")
     case missingSiteId
 }
 
@@ -103,12 +112,11 @@ public extension MessagingInAppConfigBuilder {
             throw MessagingInAppConfigBuilderError.malformedConfig
         }
 
-        guard let siteId = config[Keys.siteId.rawValue] as? String else {
-            throw MessagingInAppConfigBuilderError.missingSiteId
-        }
-
+        // The site ID is optional, as a public (pk_) key identifies the workspace without it.
         // Region comes from the SDK setup, so it isn't read here.
-        let builder = MessagingInAppConfigBuilder(siteId: siteId)
+        let builder = (config[Keys.siteId.rawValue] as? String)
+            .flatMap { $0.isEmpty ? nil : $0 }
+            .map { MessagingInAppConfigBuilder(siteId: $0) } ?? MessagingInAppConfigBuilder()
 
         if let colorSchemeStr = config["colorScheme"] as? String {
             switch colorSchemeStr {

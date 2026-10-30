@@ -24,6 +24,7 @@ declare -a PUBLIC_MODULES=(
     "DataPipelines:CioDataPipelines"
     "MessagingPushAPN:CioMessagingPushAPN"
     "MessagingPushFCM:CioMessagingPushFCM"
+    "CioFirebaseWrapper:CioFirebaseWrapper"
     "MessagingInApp:CioMessagingInApp"
     "MessagingInbox:CioMessagingInbox"
     "Location:CioLocation"

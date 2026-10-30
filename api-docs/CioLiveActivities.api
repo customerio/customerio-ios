@@ -1,3 +1,6 @@
+public extension CioInternalCommon.CustomerIO {
+	public var liveActivities: any LiveActivitiesInstance;
+}
 public final class CioLiveActivities.CIOLiveActivity {
 	public final val id: String;
 	public final val activity: Activity<Attributes>;
@@ -9,6 +12,10 @@ public interface CioLiveActivities.LiveActivitiesInstance {
 	public fun func start<Attributes: CIOActivityAttribute>(_ attributes: Attributes, contentState: Attributes.ContentState, staleDate: Date?, relevanceScore: Double) throws -> CIOLiveActivity<Attributes>?;
 	public fun func adopt<Attributes: ActivityAttributes>(_ activity: Activity<Attributes>) -> CIOLiveActivity<Attributes>?;
 	public fun func handleWidgetUrl(_ url: URL) -> URL?;
+}
+public extension CioLiveActivities.LiveActivitiesInstance {
+	public fun func start<Attributes: ActivityAttributes>(_ attributes: Attributes, contentState: Attributes.ContentState) throws -> CIOLiveActivity<Attributes>?;
+	public fun func start<Attributes: CIOActivityAttribute>(_ attributes: Attributes, contentState: Attributes.ContentState) throws -> CIOLiveActivity<Attributes>?;
 }
 public final class CioLiveActivities.LiveActivitiesModule {
 	public final val moduleName: String;

@@ -69,6 +69,13 @@ class GistCommonHeadersTest: UnitTest {
         XCTAssertNil(headers["X-CIO-Site-Id"])
     }
 
+    func test_headers_givenNoPublicKeyAndEmptySiteId_expectNoSiteIdHeader() {
+        let headers = builder().headers(state: InAppMessageState(siteId: "", dataCenter: "US"))
+
+        XCTAssertNil(headers["X-CIO-Site-Id"])
+        XCTAssertNil(headers["Authorization"])
+    }
+
     func test_headers_givenPublicKeyWithoutAuthorization_expectNeitherKeyNorSiteId() {
         let headers = builder().headers(
             state: InAppMessageState(siteId: "test-site", publicKey: "pk_us_abc", dataCenter: "US"),

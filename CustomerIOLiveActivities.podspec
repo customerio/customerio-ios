@@ -1,6 +1,6 @@
 Pod::Spec.new do |spec|
   spec.name         = "CustomerIOLiveActivities"
-  spec.version      = "4.13.0" # Don't modify this line - it's automatically updated
+  spec.version      = "5.1.3" # Don't modify this line - it's automatically updated
   spec.summary      = "Official Customer.io SDK for iOS."
   spec.homepage     = "https://github.com/customerio/customerio-ios"
   spec.documentation_url = 'https://customer.io/docs/sdk/ios/'
@@ -13,7 +13,7 @@ Pod::Spec.new do |spec|
   spec.cocoapods_version = '>= 1.11.0'
 
   spec.platform = :ios
-  spec.ios.deployment_target = "13.0"
+  spec.ios.deployment_target = "15.0"
 
   # Live Activities runtime (registration, lifecycle, delivery/token reporting). Import in the
   # app target only. Live Activities APIs are @available(iOS 16.2, *)-gated in source.

@@ -84,7 +84,7 @@ jobs:
     name: Compile APN sample
     needs: detect-changes
     if: needs.detect-changes.outputs.apn == 'true'
-    runs-on: macos-26
+    runs-on: xcode-27
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v7
@@ -92,7 +92,7 @@ jobs:
       - name: Install Xcode
         uses: maxim-lobanov/setup-xcode@ed7a3b1fda3918c0306d1b724322adc0b8cc0a90 # v1.7.0
         with:
-          xcode-version: '26.6'
+          xcode-version: '27.0'
 
       - name: Prepare placeholder build environment
         run: cp 'Apps/APN-UIKit/BuildEnvironment.sample.swift' 'Apps/APN-UIKit/BuildEnvironment.swift'
@@ -115,7 +115,7 @@ jobs:
         uses: customerio/mobile-ci-tools/github-actions/ios/launch-simulator-app/v1@main
         with:
           app-path: ${{ runner.temp }}/apn-sample/Build/Products/Debug-iphonesimulator/APN UIKit.app
-          expected-ios-major: '26'
+          expected-ios-major: '27'
           survival-seconds: ${{ env.LAUNCH_SURVIVAL_SECONDS }}
           log-path: ${{ runner.temp }}/apn-sample-launch.log
 
@@ -123,7 +123,7 @@ jobs:
     name: Compile FCM sample
     needs: detect-changes
     if: needs.detect-changes.outputs.fcm == 'true'
-    runs-on: macos-26
+    runs-on: xcode-27
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v7
@@ -131,7 +131,7 @@ jobs:
       - name: Install Xcode
         uses: maxim-lobanov/setup-xcode@ed7a3b1fda3918c0306d1b724322adc0b8cc0a90 # v1.7.0
         with:
-          xcode-version: '26.6'
+          xcode-version: '27.0'
 
       - name: Prepare placeholder build environment
         run: cp 'Apps/CocoaPods-FCM/BuildEnvironment.sample.swift' 'Apps/CocoaPods-FCM/BuildEnvironment.swift'
@@ -160,6 +160,6 @@ jobs:
         uses: customerio/mobile-ci-tools/github-actions/ios/launch-simulator-app/v1@main
         with:
           app-path: ${{ runner.temp }}/fcm-sample/Build/Products/Debug-iphonesimulator/test cocoapods.app
-          expected-ios-major: '26'
+          expected-ios-major: '27'
           survival-seconds: ${{ env.LAUNCH_SURVIVAL_SECONDS }}
           log-path: ${{ runner.temp }}/fcm-sample-launch.log

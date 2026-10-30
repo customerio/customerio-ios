@@ -123,7 +123,6 @@ final class CoreLocationConditionMonitor: GeofenceConditionMonitoring, @unchecke
     }
 }
 
-@available(iOS 14.0, *)
 final class CoreLocationAuthority: NSObject, GeofenceLocationAuthority, CLLocationManagerDelegate {
     private let manager: CLLocationManager
     /// `CLServiceSession`; untyped because a stored property cannot carry availability.

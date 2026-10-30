@@ -6,45 +6,30 @@ extension MessagingPushAPN {
     @available(iOSApplicationExtension, unavailable)
     func setupAutoFetchDeviceToken() {
         // Swizzle method `didRegisterForRemoteNotificationsWithDeviceToken`
-        swizzleDidRegisterForRemoteNotifications()
+        swizzleDidRegisterForRemoteNotifications(of: UIApplication.shared.delegate)
         // Register for push notifications to invoke`didRegisterForRemoteNotificationsWithDeviceToken` method
         UIApplication.shared.registerForRemoteNotifications()
     }
 
     @available(iOSApplicationExtension, unavailable)
-    private func swizzleDidRegisterForRemoteNotifications() {
-        let appDelegate = UIApplication.shared.delegate
-        let appDelegateClass: AnyClass? = object_getClass(appDelegate)
-
+    func swizzleDidRegisterForRemoteNotifications(of appDelegate: UIApplicationDelegate?) {
         // Swizzle `didRegisterForRemoteNotificationsWithDeviceToken`
-        let originalSelector = #selector(UIApplicationDelegate.application(_:didRegisterForRemoteNotificationsWithDeviceToken:))
-        let swizzledSelector = #selector(application(_:didRegisterForRemoteNotificationsWithDeviceToken:))
-        swizzle(forOriginalClass: appDelegateClass, forSwizzledClass: MessagingPushAPN.self, original: originalSelector, new: swizzledSelector)
+        AppDelegateSwizzler.swizzleDidRegisterForRemoteNotifications(of: appDelegate) { [weak self] application, deviceToken in
+            self?.application(application, didRegisterForRemoteNotificationsWithDeviceToken: deviceToken)
+        }
 
         // Swizzle `didFailToRegisterForRemoteNotificationsWithError`
-        let originalSelectorForDidFail = #selector(UIApplicationDelegate.application(_:didFailToRegisterForRemoteNotificationsWithError:))
-        let swizzledSelectorForDidFail = #selector(application(_:didFailToRegisterForRemoteNotificationsWithError:))
-        swizzle(forOriginalClass: appDelegateClass, forSwizzledClass: MessagingPushAPN.self, original: originalSelectorForDidFail, new: swizzledSelectorForDidFail)
-    }
-
-    private func swizzle(forOriginalClass: AnyClass?, forSwizzledClass: AnyClass?, original: Selector, new: Selector) {
-        guard let swizzledMethod = class_getInstanceMethod(forSwizzledClass, new) else { return }
-        guard let originalMethod = class_getInstanceMethod(forOriginalClass, original) else {
-            // Add method if it doesn't exist
-            class_addMethod(forOriginalClass, new, method_getImplementation(swizzledMethod), method_getTypeEncoding(swizzledMethod))
-            return
+        AppDelegateSwizzler.swizzleDidFailToRegisterForRemoteNotifications(of: appDelegate) { [weak self] application, error in
+            self?.application(application, didFailToRegisterForRemoteNotificationsWithError: error)
         }
-        method_exchangeImplementations(originalMethod, swizzledMethod)
     }
 
-    // Swizzled method for APN device token.
-    @objc
+    // Runs after the app delegate's own `didRegisterForRemoteNotificationsWithDeviceToken`.
     func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
         Self.shared.registerDeviceToken(apnDeviceToken: deviceToken)
     }
 
-    // Swizzled method for `didFailToRegisterForRemoteNotificationsWithError'
-    @objc
+    // Runs after the app delegate's own `didFailToRegisterForRemoteNotificationsWithError`.
     func application(_ application: UIApplication, didFailToRegisterForRemoteNotificationsWithError error: Error) {
         MessagingPush.shared.didFailToRegisterForRemoteNotifications(error: error)
     }

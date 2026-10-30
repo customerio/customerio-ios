@@ -168,6 +168,39 @@ class CDPInteractionDefaultConfigTests: DataPipelineInteractionTests {
         XCTAssertEqual(postEventArgument.identifier, givenIdentifier)
     }
 
+    func test_setProfileAttributes_givenNoProfileIdentified_expectPostAnonymousProfileEventToEventBus() {
+        // Drop the init-time AnonymousProfileIdentifiedEvent so only the write's event is checked.
+        eventBusHandlerMock.resetMock()
+
+        customerIO.setProfileAttributes(["plan": "trial"])
+
+        XCTAssertEqual(outputReader.identifyEvents.count, 1)
+        XCTAssertNil(analytics.userId)
+
+        XCTAssertEqual(eventBusHandlerMock.postEventCallsCount, 1)
+        guard let postEventArgument = eventBusHandlerMock.postEventReceivedInvocations.last as? AnonymousProfileIdentifiedEvent else {
+            XCTFail("last event must be AnonymousProfileIdentifiedEvent")
+            return
+        }
+        XCTAssertEqual(postEventArgument.identifier, analytics.anonymousId)
+    }
+
+    func test_identifyTraits_givenProfileIdentified_expectPostProfileEventToEventBus() {
+        let givenIdentifier = String.random
+        customerIO.identify(userId: givenIdentifier)
+        eventBusHandlerMock.resetMock()
+
+        // Traits-only identify passes no userId; Segment fills it from the stored user.
+        analytics.identify(traits: ["plan": "trial"])
+
+        XCTAssertEqual(eventBusHandlerMock.postEventCallsCount, 1)
+        guard let postEventArgument = eventBusHandlerMock.postEventReceivedInvocations.last as? ProfileIdentifiedEvent else {
+            XCTFail("last event must be ProfileIdentifiedEvent")
+            return
+        }
+        XCTAssertEqual(postEventArgument.identifier, givenIdentifier)
+    }
+
     func test_identify_givenEmptyIdentifier_givenNoProfilePreviouslyIdentified_expectRequestIgnored() {
         let givenIdentifier = ""
 

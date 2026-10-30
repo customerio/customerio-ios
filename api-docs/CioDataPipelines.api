@@ -6,6 +6,34 @@ public final class CioDataPipelines.AutoTrackingScreenViews {
 	public var autoScreenViewBody: (() -> Map<String, Any>)?;
 	public fun init(filterAutoScreenViewEvents: ((UIViewController) -> Boolean)? = nil, autoScreenViewBody: (() -> List<String: Any>)? = nil);
 }
+public extension CioDataPipelines.CustomerIO {
+	public var enabled: Boolean;
+	public var anonymousId: String;
+	public var userId: String?;
+	public var hasUnsentEvents: Boolean;
+	public var pendingUploads: List<URL>?;
+	public fun func track(name: String);
+	public fun func identify<T: Codable>(traits: T);
+	public fun func screen<P: Codable>(title: String, category: String? = nil, properties: P?);
+	public fun func screen(title: String, category: String?);
+	public fun func alias(newId: String);
+	public fun func screen(title: String, category: String? = nil, properties: List<String: Any>? = nil);
+	public fun func apply(closure: (Plugin) -> Unit);
+	public fun func add(plugin: Plugin) -> Plugin;
+	public fun func add(enrichment: @escaping EnrichmentClosure) -> Plugin;
+	public fun func remove(plugin: Plugin);
+	public fun func find<T: Plugin>(pluginType: T.Type) -> T?;
+	public fun func findAll<T: Plugin>(pluginType: T.Type) -> List<T>?;
+	public fun func find(key: String) -> DestinationPlugin?;
+	public fun func flush(completion: (() -> Unit)? = nil);
+	public fun func reset();
+	public fun func purgeStorage();
+	public fun func purgeStorage(fileURL: URL);
+	public fun func waitUntilStarted();
+	public fun func initialize(withConfig config: SDKConfigBuilderResult);
+	public fun func setUpSharedInstanceForIntegrationTest(diGraphShared: DIGraphShared, moduleConfig: DataPipelineConfigOptions) -> DataPipelineInstance;
+	public fun func resetTestEnvironment();
+}
 public final class CioDataPipelines.CustomerIODestination {
 }
 public final class CioDataPipelines.DataPipeline {
@@ -30,6 +58,15 @@ public final class CioDataPipelines.DataPipeline {
 	public fun func screen(title: String, properties: List<String: Any>?);
 	public fun func screen<RequestBody: Codable>(title: String, properties: RequestBody?);
 	public fun func trackMetric(deliveryID: String, event: Metric, deviceToken: String);
+}
+public extension CioDataPipelines.DataPipeline {
+	public fun func processAlreadyIdentifiedUser(identifier: String);
+	public fun func processIdentifyFromBGQ(identifier: String, timestamp: String, body: List<String: Any>? = nil);
+	public fun func processScreenEventFromBGQ(identifier: String, name: String, timestamp: String?, properties: List<String: Any>);
+	public fun func processEventFromBGQ(identifier: String, name: String, timestamp: String?, properties: List<String: Any>);
+	public fun func processDeleteTokenFromBGQ(identifier: String, token: String, timestamp: String);
+	public fun func processRegisterDeviceFromBGQ(identifier: String, token: String, timestamp: String, attributes: List<String: Any>? = nil);
+	public fun func processMetricsFromBGQ(token: String?, event: String, deliveryId: String, timestamp: String, metaData: List<String: Any> = List<:>);
 }
 public final class CioDataPipelines.DataPipelineConfigOptions {
 	public final val cdpApiKey: String;

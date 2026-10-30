@@ -7,7 +7,6 @@ import UIKit
 /// a protocol so ``NotificationInboxView`` can be exercised — including its navigate/dismiss ordering
 /// and host-interception paths — without `DIGraphShared` or live UIKit, keeping the shared graph at
 /// the module boundary with constructor injection below it (per the SDK DI guidelines).
-@available(iOS 13.0, *)
 protocol InboxActionNavigating {
     /// Open an external URL (web parity `openUrl`) — the system browser or whichever app claims it.
     func openExternalURL(_ url: URL)
@@ -17,7 +16,6 @@ protocol InboxActionNavigating {
 }
 
 /// Production ``InboxActionNavigating`` backed by the SDK's shared `DeepLinkUtil` and `UIApplication`.
-@available(iOS 13.0, *)
 struct DefaultInboxActionNavigator: InboxActionNavigating {
     private let deepLinkUtil: DeepLinkUtil
 

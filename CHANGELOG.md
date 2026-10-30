@@ -1,3 +1,37 @@
+## [5.1.3](https://github.com/customerio/customerio-ios/compare/5.1.2...5.1.3) (2026-10-28)
+
+### Bug Fixes
+
+* keep in-app modal content visible when the keyboard opens ([#1364](https://github.com/customerio/customerio-ios/issues/1364)) ([737ba84](https://github.com/customerio/customerio-ios/commit/737ba8433c962e5750521ec3f6b13e9e99235eec))
+
+## [5.1.2](https://github.com/customerio/customerio-ios/compare/5.1.1...5.1.2) (2026-10-27)
+
+### Bug Fixes
+
+* **in-app:** SSE and queue fetch fixes for user switch, anonymous identify, foreground ([#1368](https://github.com/customerio/customerio-ios/issues/1368)) ([2650ff4](https://github.com/customerio/customerio-ios/commit/2650ff49805e59a481665cca3d6435268b36e758))
+
+## [5.1.1](https://github.com/customerio/customerio-ios/compare/5.1.0...5.1.1) (2026-10-27)
+
+### Bug Fixes
+
+* keep the app delegate's push registration callbacks when auto-fetching the token ([#1373](https://github.com/customerio/customerio-ios/issues/1373)) ([8a4072a](https://github.com/customerio/customerio-ios/commit/8a4072aa77b375bbff9681dc0df7cd5f4e75bc28))
+
+## [5.1.0](https://github.com/customerio/customerio-ios/compare/5.0.0...5.1.0) (2026-10-27)
+
+### Features
+
+* **MBL-2652:** let in-app start without a site ID when set up with a pk_ key ([#1370](https://github.com/customerio/customerio-ios/issues/1370)) ([3a33261](https://github.com/customerio/customerio-ios/commit/3a33261433d8d87fc4b6aa40259cba052efba2ab))
+
+## [5.0.0](https://github.com/customerio/customerio-ios/compare/4.13.0...5.0.0) (2026-10-26)
+
+### ⚠ BREAKING CHANGES
+
+* raise the minimum iOS version to 15 (#1335)
+
+### Features
+
+* raise the minimum iOS version to 15 ([#1335](https://github.com/customerio/customerio-ios/issues/1335)) ([ea67726](https://github.com/customerio/customerio-ios/commit/ea6772651dc35af05df6d01fed7b43cdf4a1bc5e))
+
 ## [4.13.0](https://github.com/customerio/customerio-ios/compare/4.12.3...4.13.0) (2026-10-23)
 
 ### Features

@@ -200,7 +200,7 @@ final class CoreLocationGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @pr
     }
 
     // Unfiltered: an improvement re-attempts registration, and a downgrade disarms visits. The
-    // iOS 14+ call on delegate set is harmless.
+    // call Core Location makes when the delegate is set is harmless.
     func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
         interruptContinuityIfAccessDropped()
         onAuthorizationChanged?()
@@ -246,11 +246,7 @@ final class CoreLocationGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @pr
     }
 
     private func currentAuthorizationStatus() -> CLAuthorizationStatus {
-        if #available(iOS 14.0, *) {
-            return manager.authorizationStatus
-        } else {
-            return CLLocationManager.authorizationStatus()
-        }
+        manager.authorizationStatus
     }
 
     var locationAccess: GeofenceLocationAccess {

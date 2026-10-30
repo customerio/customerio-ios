@@ -29,6 +29,7 @@ class MessagingInAppAPITest: UnitTest {
     func test_allPublicModuleConfigOptions() throws {
         try skipRunningTest()
 
+        _ = MessagingInAppConfigBuilder().build()
         _ = MessagingInAppConfigBuilder(siteId: "")
             .setColorScheme(.auto)
             .setNotificationInboxAccessibilityLabels(NotificationInboxAccessibilityLabels(

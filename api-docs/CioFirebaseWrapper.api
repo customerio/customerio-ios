@@ -1,0 +1,3 @@
+public extension CioMessagingPushFCM.MessagingPushFCM {
+	public fun func initialize(withConfig config: MessagingPushConfigOptions = MessagingPushConfigBuilder().build()) -> MessagingPushInstance;
+}

@@ -1,6 +1,6 @@
 Pod::Spec.new do |spec|
   spec.name         = "CustomerIOMessagingPush"
-  spec.version      = "4.13.0" # Don't modify this line - it's automatically updated
+  spec.version      = "5.1.3" # Don't modify this line - it's automatically updated
   spec.summary      = "Official Customer.io SDK for iOS."
   spec.homepage     = "https://github.com/customerio/customerio-ios"
   spec.documentation_url = 'https://customer.io/docs/sdk/ios/'
@@ -13,9 +13,7 @@ Pod::Spec.new do |spec|
   spec.cocoapods_version = '>= 1.11.0'
 
   spec.platform = :ios # platforms SDK supports. Leave blank and it's assumed SDK supports all platforms. 
-  spec.ios.deployment_target = "13.0"
-  # spec.osx.deployment_target = "10.15"
-  # spec.tvos.deployment_target = '13.0'
+  spec.ios.deployment_target = "15.0"
 
   spec.source_files  = "Sources/MessagingPush/**/*"
   spec.exclude_files = "Sources/**/*{.md}"

@@ -14,14 +14,11 @@ changes local build settings in the generated Pods project and CocoaPods-integra
 extension projects. It does not rewrite a podspec, change an SDK's public platform declaration, or
 make an API available on an older OS.
 
-Customer.io deliberately continues to publish SDKs that support iOS versions below 15. A podspec
-can therefore correctly declare that lower library minimum even when the application consuming it
-has moved to iOS 15 or later. CocoaPods carries deployment metadata from Customer.io and
-third-party podspecs into generated build targets, but Xcode 27 no longer accepts targets below the
-iOS SDK's supported build range. Raising every published podspec to iOS 15 would unnecessarily
-drop older applications and would not control metadata from transitive dependencies. The helper
-instead aligns the generated targets with the host application's chosen minimum while leaving the
-SDK's published runtime compatibility unchanged. This is the supported integration policy for an
+Customer.io podspecs declare iOS 15.0, but some of their dependencies and other pods in an app
+still declare older minimums. CocoaPods carries that deployment metadata into generated build
+targets, but Xcode 27 no longer accepts targets below the iOS SDK's supported build range. The
+helper aligns the generated targets with the host application's chosen minimum without changing any
+published podspec. This is the supported integration policy for an
 application that has moved its own minimum to iOS 15 or later.
 
 > [!WARNING]
@@ -94,8 +91,8 @@ These cases fail before any project mutation.
 ## When the helper is no longer needed
 
 Keep the helper while a supported dependency graph can validly include deployment metadata below
-the host application's minimum. This is expected while Customer.io supports older iOS versions or
-supported third-party pods continue to declare lower minimums. A `platform` declaration in the
+the host application's minimum. This is expected while dependencies continue to declare lower
+minimums. A `platform` declaration in the
 application's Podfile alone does not guarantee that every generated target uses the same value.
 
 The helper becomes unnecessary only when a clean install without it proves that every
