@@ -1,0 +1,90 @@
+name: Diagnose slow migration test (temporary)
+
+# Temporary and not for merge. DataPipelineMigrationAssistantTests.test_givenBacklog_expectTaskProcessed
+# takes minutes on CI and about a second locally. This records runner load while the suite runs,
+# runs the suite twice and the single test once, and samples the test process.
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/tmp-diagnose-slow-test.yml'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  diagnose:
+    name: Diagnose (attempt ${{ matrix.attempt }})
+    runs-on: xcode-27
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        attempt: [1, 2, 3]
+    env:
+      # Same device and OS as fastlane/Scanfile.
+      DESTINATION: platform=iOS Simulator,name=iPhone 17,OS=27.0
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Setup iOS
+        uses: customerio/mobile-ci-tools/github-actions/ios/setup-ios/v1@main
+        with:
+          xcode-version: '27.0'
+
+      - name: Record machine facts
+        run: |
+          mkdir -p "$RUNNER_TEMP/diag"
+          {
+            sw_vers
+            uname -a
+            sysctl hw.ncpu hw.memsize machdep.cpu.brand_string
+            xcodebuild -version
+            echo "ImageVersion=${ImageVersion:-unset}"
+            uptime
+          } | tee "$RUNNER_TEMP/diag/machine.txt"
+
+      - name: Build for testing
+        run: |
+          set -o pipefail
+          start=$(date +%s)
+          xcodebuild build-for-testing -scheme Customer.io-Package -destination "$DESTINATION" \
+            -derivedDataPath .build/dd -enableCodeCoverage YES > "$RUNNER_TEMP/diag/build.log" 2>&1
+          echo "build-for-testing took $(( $(date +%s) - start )) s" | tee -a "$RUNNER_TEMP/diag/timings.txt"
+
+      - name: Run migration tests with load sampling
+        run: |
+          OUT="$RUNNER_TEMP/diag"
+          nohup top -l 0 -s 5 -o cpu -n 10 > "$OUT/top.txt" 2>&1 &
+          nohup vm_stat 5 > "$OUT/vm_stat.txt" 2>&1 &
+          nohup iostat -w 5 > "$OUT/iostat.txt" 2>&1 &
+
+          run_tests() {
+            label="$1"; only="$2"
+            start=$(date +%s)
+            # Sample the test host once, 60 s in, if it is still running.
+            ( sleep 60; pid=$(pgrep -n xctest || true); if [ -n "$pid" ]; then sample "$pid" 10 -file "$OUT/sample-$label.txt" > /dev/null 2>&1; fi ) &
+            xcodebuild test-without-building -scheme Customer.io-Package -destination "$DESTINATION" \
+              -derivedDataPath .build/dd -enableCodeCoverage YES -parallel-testing-enabled NO \
+              "-only-testing:$only" -resultBundlePath "$OUT/$label.xcresult" > "$OUT/$label.log" 2>&1 || true
+            echo "$label took $(( $(date +%s) - start )) s" | tee -a "$OUT/timings.txt"
+            grep -E "Test Case .*(passed|failed)|Executed [0-9]+ tests?" "$OUT/$label.log" | sed 's/\x1b\[[0-9;]*m//g' | sort -u | tail -n 8 | tee -a "$OUT/timings.txt"
+          }
+
+          run_tests suite-run1 MigrationTests/DataPipelineMigrationAssistantTests
+          run_tests suite-run2 MigrationTests/DataPipelineMigrationAssistantTests
+          run_tests single-test MigrationTests/DataPipelineMigrationAssistantTests/test_givenBacklog_expectTaskProcessed
+
+          pkill -f "top -l 0" || true
+          pkill vm_stat || true
+          pkill iostat || true
+          cat "$OUT/timings.txt" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload diagnostics
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: diagnose-attempt-${{ matrix.attempt }}
+          path: ${{ runner.temp }}/diag
+          retention-days: 7
