@@ -70,123 +70,131 @@
 
 ## [4.10.0](https://github.com/customerio/customerio-ios/compare/4.9.0...4.10.0) (2026-10-08)
 
+### Breaking Changes
+
+* **Initialization:** The SDK no longer initializes when you pass a secret API key (one starting with `ak_`) to `SDKConfigBuilder(cdpApiKey:)`. It logs the error "Secret (ak_) keys must not be used in apps" and skips initialization, so no data is sent. What to do: make sure your app uses your public API key, not a secret `ak_` key.
+
 ### Features
 
-* **MBL-2542:** reject ak_ keys and pick region from key ([#1326](https://github.com/customerio/customerio-ios/issues/1326)) ([3483fd8](https://github.com/customerio/customerio-ios/commit/3483fd860e5507a7d1f1ede2b116e1c7df9102ee))
+* **Initialization:** The SDK now reads your data center region from the prefix of public API keys (`wk_us_` or `wk_eu_`) when you don't call `.region(_:)` on `SDKConfigBuilder`. A region you set explicitly with `.region(_:)` still takes precedence, and keys without a prefix still default to US. ([#1326](https://github.com/customerio/customerio-ios/issues/1326)) ([3483fd8](https://github.com/customerio/customerio-ios/commit/3483fd860e5507a7d1f1ede2b116e1c7df9102ee))
 
 ## [4.9.0](https://github.com/customerio/customerio-ios/compare/4.8.1...4.9.0) (2026-09-25)
 
 ### Features
 
-* **geofence:** add support for polygon geofences ([#1308](https://github.com/customerio/customerio-ios/issues/1308)) ([0c76d4b](https://github.com/customerio/customerio-ios/commit/0c76d4b7d9f2ff59065ad230df770ed05e399b5e))
+* **Geofencing:** Added support for polygon geofences. Geofences defined by a polygon are now monitored by their actual shape, and the SDK decides on the device whether the user is inside, instead of using a circle around the area. Circular geofences work as before. ([#1308](https://github.com/customerio/customerio-ios/issues/1308)) ([0c76d4b](https://github.com/customerio/customerio-ios/commit/0c76d4b7d9f2ff59065ad230df770ed05e399b5e))
 
 ## [4.8.1](https://github.com/customerio/customerio-ios/compare/4.8.0...4.8.1) (2026-09-16)
 
 ### Bug Fixes
 
-* **deps:** pin LDSwiftEventSource to 3.3.0 ([#1292](https://github.com/customerio/customerio-ios/issues/1292)) ([cc19396](https://github.com/customerio/customerio-ios/commit/cc193963a4af96c79370cd9eb09f8499cb4af78c))
+* **In-app messages:** Pinned the `LDSwiftEventSource` dependency to 3.3.0 for Swift Package Manager and CocoaPods. Version 3.3.1 raised its minimum iOS version to 15.0, which caused build failures for apps that support iOS 13 or 14. ([#1292](https://github.com/customerio/customerio-ios/issues/1292)) ([cc19396](https://github.com/customerio/customerio-ios/commit/cc193963a4af96c79370cd9eb09f8499cb4af78c))
 
 ## [4.8.0](https://github.com/customerio/customerio-ios/compare/4.7.9...4.8.0) (2026-09-09)
 
+### Upgrade notes
+
+* **Notification Inbox:** The visual Notification Inbox no longer includes built-in English VoiceOver labels for the bell, unread count, loading indicator, or empty state. If you don't provide labels, these elements have no VoiceOver label. What to do: pass a `NotificationInboxAccessibilityLabels` value (with `bell`, `bellWithUnreadCount`, `loadingIndicator`, and `emptyState`) to `MessagingInAppConfigBuilder.setNotificationInboxAccessibilityLabels(_:)`, using your own localized strings.
+
 ### Features
 
-* **inbox:** replace visual inbox empty-state text with a dimmed bell ([#1251](https://github.com/customerio/customerio-ios/issues/1251)) ([d5f46dd](https://github.com/customerio/customerio-ios/commit/d5f46dd8eeab98209842cbf6a66bc915c88da3fa))
+* **Notification Inbox:** The visual Notification Inbox's empty state now shows your workspace's dimmed bell icon instead of hardcoded English text, and you can supply your own localized VoiceOver labels with the new `setNotificationInboxAccessibilityLabels(_:)` option on `MessagingInAppConfigBuilder`. ([#1251](https://github.com/customerio/customerio-ios/issues/1251)) ([d5f46dd](https://github.com/customerio/customerio-ios/commit/d5f46dd8eeab98209842cbf6a66bc915c88da3fa))
 
 ## [4.7.9](https://github.com/customerio/customerio-ios/compare/4.7.8...4.7.9) (2026-09-08)
 
 ### Bug Fixes
 
-* **deps:** update Faraday security pin to 1.10.6 ([#1257](https://github.com/customerio/customerio-ios/issues/1257)) ([b24741e](https://github.com/customerio/customerio-ios/commit/b24741e94bb88314c85ba7d5a68ae0c2e9ebce83))
+* **Dependencies:** Security update to the Faraday Ruby gem (1.10.6) used by the SDK's build tooling. Faraday is not included in the SDK itself, so apps are not affected. ([#1257](https://github.com/customerio/customerio-ios/issues/1257)) ([b24741e](https://github.com/customerio/customerio-ios/commit/b24741e94bb88314c85ba7d5a68ae0c2e9ebce83))
 
 ## [4.7.8](https://github.com/customerio/customerio-ios/compare/4.7.7...4.7.8) (2026-09-04)
 
 ### Bug Fixes
 
-* surface the failure reason on in-app error callback ([#1238](https://github.com/customerio/customerio-ios/issues/1238)) ([3733867](https://github.com/customerio/customerio-ios/commit/37338679d33d1f7a76e3d0fb209f5993b44fc7b4))
+* **In-app messages:** `InAppEventListener` now tells you why an in-app message failed. A new callback, `errorWithMessage(message:error:)`, provides an `InAppMessageError` with a `reason` (`network`, `timeout`, `renderFailed`, `webViewCrashed`, or `internalError`), plus an optional `detail` description and `code`. Existing implementations of `errorWithMessage(message:)` keep working and still receive failures. What to do: to get the failure reason, implement `errorWithMessage(message:error:)` in your listener. ([#1238](https://github.com/customerio/customerio-ios/issues/1238)) ([3733867](https://github.com/customerio/customerio-ios/commit/37338679d33d1f7a76e3d0fb209f5993b44fc7b4))
 
 ## [4.7.7](https://github.com/customerio/customerio-ios/compare/4.7.6...4.7.7) (2026-08-31)
 
 ### Bug Fixes
 
-* call BaseNetwork completion handler once on transport error ([#1233](https://github.com/customerio/customerio-ios/issues/1233)) ([2a36ef2](https://github.com/customerio/customerio-ios/commit/2a36ef227e39402d85aaf31f7d2abdb9455d9598))
+* **Notification Inbox:** Fixed a crash that could occur when a network request for in-app or visual inbox content failed (for example, with no connection or a DNS error). The request's error is now reported once instead of twice. ([#1233](https://github.com/customerio/customerio-ios/issues/1233)) ([2a36ef2](https://github.com/customerio/customerio-ios/commit/2a36ef227e39402d85aaf31f7d2abdb9455d9598))
 
 ## [4.7.6](https://github.com/customerio/customerio-ios/compare/4.7.5...4.7.6) (2026-08-24)
 
 ### Bug Fixes
 
-* deallocate subscribers on main thread ([#1222](https://github.com/customerio/customerio-ios/issues/1222)) ([0da3107](https://github.com/customerio/customerio-ios/commit/0da310774edede6a4328c38b259e1fa8246de5c6))
+* **In-app messages:** Fixed a crash that could occur when a modal in-app message was dismissed. ([#1222](https://github.com/customerio/customerio-ios/issues/1222)) ([0da3107](https://github.com/customerio/customerio-ios/commit/0da310774edede6a4328c38b259e1fa8246de5c6))
 
 ## [4.7.5](https://github.com/customerio/customerio-ios/compare/4.7.4...4.7.5) (2026-08-21)
 
 ### Bug Fixes
 
-* **in-app:** send app identifier header to Gist ([#1210](https://github.com/customerio/customerio-ios/issues/1210)) ([7227169](https://github.com/customerio/customerio-ios/commit/7227169cf88208993de5e4d81afec45dd764185a))
+* **In-app messages:** In-app message requests now include your app's bundle identifier, so Customer.io can target in-app messages to a specific app. No changes are needed in your app. ([#1210](https://github.com/customerio/customerio-ios/issues/1210)) ([7227169](https://github.com/customerio/customerio-ios/commit/7227169cf88208993de5e4d81afec45dd764185a))
 
 ## [4.7.4](https://github.com/customerio/customerio-ios/compare/4.7.3...4.7.4) (2026-08-18)
 
 ### Bug Fixes
 
-* compose notification center delegates (MBL-2281) ([#1211](https://github.com/customerio/customerio-ios/issues/1211)) ([fc575b7](https://github.com/customerio/customerio-ios/commit/fc575b72ef4922c65bb0caecf7c8d5f94cd40a8d))
+* **Push:** Fixed an issue where a `UNUserNotificationCenter` delegate set by your app or another SDK could stop receiving notification callbacks after Customer.io initialized. Delegates set before or after `MessagingPush` initialization now all receive `willPresent` and `didReceive` callbacks alongside Customer.io. ([#1211](https://github.com/customerio/customerio-ios/issues/1211)) ([fc575b7](https://github.com/customerio/customerio-ios/commit/fc575b72ef4922c65bb0caecf7c8d5f94cd40a8d))
 
 ## [4.7.3](https://github.com/customerio/customerio-ios/compare/4.7.2...4.7.3) (2026-08-10)
 
 ### Bug Fixes
 
-* prioritize SDK background work ([#1198](https://github.com/customerio/customerio-ios/issues/1198)) ([d9a745e](https://github.com/customerio/customerio-ios/commit/d9a745efc31c03bc8fc0207d75b57e5ba4da1294))
+* **In-app messages:** The SDK now fetches in-app and inbox messages at a higher priority, so loading them isn't delayed behind other background work. ([#1198](https://github.com/customerio/customerio-ios/issues/1198)) ([d9a745e](https://github.com/customerio/customerio-ios/commit/d9a745efc31c03bc8fc0207d75b57e5ba4da1294))
 
 ## [4.7.2](https://github.com/customerio/customerio-ios/compare/4.7.1...4.7.2) (2026-08-06)
 
 ### Bug Fixes
 
-* **geofence:** correct region registration, eviction and baseline handling ([#1192](https://github.com/customerio/customerio-ios/issues/1192)) ([1a020e0](https://github.com/customerio/customerio-ios/commit/1a020e002dd6b1f1f52513074d625d0a78636a38))
+* **Geofencing:** Improved geofence reliability. The SDK now updates only the regions that changed instead of re-registering every region on each sync, picks the nearest geofences by distance to their boundary rather than their center, and keeps receiving events for a region after iOS temporarily stops monitoring it and then resumes. ([#1192](https://github.com/customerio/customerio-ios/issues/1192)) ([1a020e0](https://github.com/customerio/customerio-ios/commit/1a020e002dd6b1f1f52513074d625d0a78636a38))
 
 ## [4.7.1](https://github.com/customerio/customerio-ios/compare/4.7.0...4.7.1) (2026-08-05)
 
 ### Bug Fixes
 
-* **in-app:** stop corrupting escaped regex in page route rules ([#1174](https://github.com/customerio/customerio-ios/issues/1174)) ([00e81bb](https://github.com/customerio/customerio-ios/commit/00e81bb522ab1257d2cddee4300bc1e04c6cc2ca))
+* **In-app messages:** Fixed page rules that contain a dot (for example, `dashboard.account.settings`). These rules never matched, so the in-app messages that used them didn't appear. ([#1174](https://github.com/customerio/customerio-ios/issues/1174)) ([00e81bb](https://github.com/customerio/customerio-ios/commit/00e81bb522ab1257d2cddee4300bc1e04c6cc2ca))
 
 ## [4.7.0](https://github.com/customerio/customerio-ios/compare/4.6.1...4.7.0) (2026-07-30)
 
 ### Features
 
-* Visual Notification Inbox overlay (integration / build distribution) ([#1141](https://github.com/customerio/customerio-ios/issues/1141)) ([74217fd](https://github.com/customerio/customerio-ios/commit/74217fdacdc5fee035c869acf2af2b8b933fb8ae))
+* **Notification Inbox:** Added the visual Notification Inbox, a ready-made SwiftUI inbox UI in the new `CioMessagingInbox` module (Swift Package Manager product `MessagingInbox`, CocoaPods pod `CustomerIOMessagingInbox`). It provides `NotificationInboxOverlay`, `NotificationInboxBell`, and `NotificationInboxView`, styled with the branding you set up in Customer.io. This release also adds `InboxEventListener`, which you can register with `MessagingInApp.shared.setInboxEventListener(_:)` to be notified when inbox messages are shown, opened, dismissed, or have an action taken. ([#1141](https://github.com/customerio/customerio-ios/issues/1141)) ([74217fd](https://github.com/customerio/customerio-ios/commit/74217fdacdc5fee035c869acf2af2b8b933fb8ae))
 
 ## [4.6.1](https://github.com/customerio/customerio-ios/compare/4.6.0...4.6.1) (2026-07-24)
 
 ### Bug Fixes
 
-* preserve wrapped app delegate protocol conformance ([#1163](https://github.com/customerio/customerio-ios/issues/1163)) ([3852901](https://github.com/customerio/customerio-ios/commit/3852901921abaa3529f6a5bd07a901f150e6c87f))
+* **Push:** Fixed an issue where wrapping your app delegate with Customer.io hid the protocols your app delegate conforms to. This prevented some Flutter plugins (such as `quick_actions_ios`) from registering for app lifecycle callbacks. ([#1163](https://github.com/customerio/customerio-ios/issues/1163)) ([3852901](https://github.com/customerio/customerio-ios/commit/3852901921abaa3529f6a5bd07a901f150e6c87f))
 
 ## [4.6.0](https://github.com/customerio/customerio-ios/compare/4.5.3...4.6.0) (2026-07-06)
 
 ### Features
 
-* **in-app:** add dark mode support for in-app messages ([#1131](https://github.com/customerio/customerio-ios/issues/1131)) ([f92d058](https://github.com/customerio/customerio-ios/commit/f92d058b40be00492757f5343f00d317d6e53a3e))
+* **In-app messages:** Added dark mode support for in-app messages. By default (`.auto`), messages follow your app's light or dark appearance, including live changes. What to do: to force a scheme, call `.setColorScheme(.light)` or `.setColorScheme(.dark)` on `MessagingInAppConfigBuilder`, or change it at runtime with `MessagingInApp.shared.setColorScheme(_:)`. ([#1131](https://github.com/customerio/customerio-ios/issues/1131)) ([f92d058](https://github.com/customerio/customerio-ios/commit/f92d058b40be00492757f5343f00d317d6e53a3e))
 
 ## [4.5.3](https://github.com/customerio/customerio-ios/compare/4.5.2...4.5.3) (2026-06-22)
 
 ### Bug Fixes
 
-* Resolve duplicate event delivery bugs ([#1099](https://github.com/customerio/customerio-ios/issues/1099)) ([8aacf3a](https://github.com/customerio/customerio-ios/commit/8aacf3ac782e9c7914e1e4158832489c19390b5b))
+* Fixed a race condition in the SDK's internal event handling that could occasionally deliver the same internal event twice between SDK modules. ([#1099](https://github.com/customerio/customerio-ios/issues/1099)) ([8aacf3a](https://github.com/customerio/customerio-ios/commit/8aacf3ac782e9c7914e1e4158832489c19390b5b))
 
 ## [4.5.2](https://github.com/customerio/customerio-ios/compare/4.5.1...4.5.2) (2026-06-16)
 
 ### Bug Fixes
 
-* Corrected SSE Heartbeat test ([#1097](https://github.com/customerio/customerio-ios/issues/1097)) ([ac4659c](https://github.com/customerio/customerio-ios/commit/ac4659caffa82bae339f3538b6f765c32a2617a1))
+* Internal test fix only. No changes to SDK behavior. ([#1097](https://github.com/customerio/customerio-ios/issues/1097)) ([ac4659c](https://github.com/customerio/customerio-ios/commit/ac4659caffa82bae339f3538b6f765c32a2617a1))
 
 ## [4.5.1](https://github.com/customerio/customerio-ios/compare/4.5.0...4.5.1) (2026-06-15)
 
 ### Bug Fixes
 
-* move generated mocks into per-module mock targets (test isolation) ([#1093](https://github.com/customerio/customerio-ios/issues/1093)) ([6539766](https://github.com/customerio/customerio-ios/commit/65397666d4e82eeec788ade4fb4aea19c876890a))
+* Test-only mock code is no longer compiled into the SDK's libraries. No changes to SDK APIs or behavior. ([#1093](https://github.com/customerio/customerio-ios/issues/1093)) ([6539766](https://github.com/customerio/customerio-ios/commit/65397666d4e82eeec788ade4fb4aea19c876890a))
 
 ## [4.5.0](https://github.com/customerio/customerio-ios/compare/4.4.3...4.5.0) (2026-06-05)
 
 ### Features
 
-* dedup identify calls within a session when no traits supplied ([#1080](https://github.com/customerio/customerio-ios/issues/1080)) ([174e133](https://github.com/customerio/customerio-ios/commit/174e13316cc47df627b8ef71960f1d33433df80f))
+* **Identify:** The SDK now skips repeated `identify` calls for the same user within a session when you don't pass any traits, which reduces duplicate identify events. The first `identify` after each app launch, calls that include traits (including an empty dictionary), calls for a different user, and the first call after `clearIdentify()` are still sent. ([#1080](https://github.com/customerio/customerio-ios/issues/1080)) ([174e133](https://github.com/customerio/customerio-ios/commit/174e13316cc47df627b8ef71960f1d33433df80f))
 
 ## [4.4.3](https://github.com/customerio/customerio-ios/compare/4.4.2...4.4.3) (2026-05-08)
 
