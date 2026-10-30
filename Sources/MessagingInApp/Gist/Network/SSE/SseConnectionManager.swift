@@ -82,6 +82,9 @@ actor SseConnectionManager: SseConnectionManagerProtocol {
     /// Hook invoked from the server `connected` event branch only. See `setOnConnectionConfirmed`.
     private var onConnectionConfirmed: (@Sendable () -> Void)?
     private var streamTask: Task<Void, Never>?
+    /// Identifies the current stream task. Changes each time a stream task is started or discarded,
+    /// so a stream that ends late can tell it is no longer the current one.
+    private var streamAttempt: UInt64 = 0
     private var retryTask: Task<Void, Never>?
 
     init(
@@ -158,15 +161,21 @@ actor SseConnectionManager: SseConnectionManagerProtocol {
         await subscribeToRetryDecisions()
 
         // Start the connection
-        var newTask: Task<Void, Never>?
+        startStreamTask(generation: generation)
+    }
 
-        newTask = Task { [weak self, generation] in
+    /// Starts the task that connects and collects events for `generation`.
+    ///
+    /// The task is given its attempt number up front. It must not read `streamTask`, which is only
+    /// assigned after the task has been created and may not be set yet when the task body starts.
+    private func startStreamTask(generation: UInt64) {
+        streamAttempt &+= 1
+        let attempt = streamAttempt
+
+        streamTask = Task { [weak self, generation, attempt] in
             guard let self = self else { return }
-            guard let task = newTask else { return }
-            await self.executeConnectionAttempt(task: task, generation: generation)
+            await self.executeConnectionAttempt(attempt: attempt, generation: generation)
         }
-
-        streamTask = newTask
     }
 
     func setOnConnectionConfirmed(_ handler: @escaping @Sendable () -> Void) {
@@ -190,6 +199,7 @@ actor SseConnectionManager: SseConnectionManagerProtocol {
         // Cancel all tasks
         streamTask?.cancel()
         streamTask = nil
+        streamAttempt &+= 1
         retryTask?.cancel()
         retryTask = nil
 
@@ -213,9 +223,9 @@ actor SseConnectionManager: SseConnectionManagerProtocol {
 
     /// Executes the actual connection attempt and handles failures.
     /// - Parameters:
-    ///   - task: The task reference for this connection attempt
+    ///   - attempt: The stream attempt number this connection attempt was started with
     ///   - generation: The connection generation this attempt belongs to
-    private func executeConnectionAttempt(task: Task<Void, Never>, generation: UInt64) async {
+    private func executeConnectionAttempt(attempt: UInt64, generation: UInt64) async {
         // Verify generation is still current before connecting
         guard generation == activeConnectionGeneration else {
             logger.logWithModuleTag("SSE Manager: Stale connection attempt (generation \(generation) vs \(activeConnectionGeneration)), aborting", level: .debug)
@@ -246,8 +256,8 @@ actor SseConnectionManager: SseConnectionManagerProtocol {
             await handleEvent(event, generation: generation)
         }
 
-        // Stream ended - pass task and generation reference to verify it's still current
-        handleStreamEnded(task: task, generation: generation)
+        // Stream ended - pass attempt and generation to verify it's still current
+        handleStreamEnded(attempt: attempt, generation: generation)
     }
 
     // MARK: - Event Handlers
@@ -268,9 +278,9 @@ actor SseConnectionManager: SseConnectionManagerProtocol {
         }
     }
 
-    private func handleStreamEnded(task: Task<Void, Never>, generation: UInt64) {
-        // Only proceed if this is still the current stream task and generation
-        guard streamTask == task, generation == activeConnectionGeneration else {
+    private func handleStreamEnded(attempt: UInt64, generation: UInt64) {
+        // Only proceed if this is still the current stream attempt and generation
+        guard attempt == streamAttempt, generation == activeConnectionGeneration else {
             logger.logWithModuleTag("SSE Manager: Stale stream ended (gen \(generation) vs \(activeConnectionGeneration)), ignoring", level: .debug)
             return
         }
@@ -507,15 +517,7 @@ actor SseConnectionManager: SseConnectionManagerProtocol {
             updateConnectionState(.connecting)
 
             // Start new connection attempt with same generation
-            var newTask: Task<Void, Never>?
-
-            newTask = Task { [weak self, generation] in
-                guard let self = self else { return }
-                guard let task = newTask else { return }
-                await self.executeConnectionAttempt(task: task, generation: generation)
-            }
-
-            streamTask = newTask
+            startStreamTask(generation: generation)
 
         case .maxRetriesReached:
             logger.logWithModuleTag("SSE Manager: Max retries reached - falling back to polling", level: .error)
