@@ -5,7 +5,9 @@ import Foundation
 
 public extension CustomerIO {
     func track(name: String) {
-        DataPipeline.shared.segment.track(name: name)
+        DataPipelineLogTail.input("api.track", [("event", name)]) {
+            DataPipeline.shared.segment.track(name: name)
+        }
     }
 
     /// Associate a user with their unique ID and record traits about them.
@@ -13,20 +15,28 @@ public extension CustomerIO {
     ///   - traits: A dictionary of traits you know about the user. Things like: email, name, plan, etc.
     @available(*, deprecated, message: "Use 'setProfileAttributes(_:)' with [String: Any] instead. Support for Codable traits will be removed in a future version.")
     func identify<T: Codable>(traits: T) {
-        DataPipeline.shared.segment.identify(traits: traits)
+        DataPipelineLogTail.input("api.profile_attributes", [("attrs", "codable")]) {
+            DataPipeline.shared.segment.identify(traits: traits)
+        }
     }
 
     @available(*, deprecated, message: "Use 'screen(title:properties:)' with [String: Any] properties parameter instead. Support for Codable properties will be removed in a future version.")
     func screen<P: Codable>(title: String, category: String? = nil, properties: P?) {
-        DataPipeline.shared.segment.screen(title: title, category: category, properties: properties)
+        DataPipelineLogTail.input("api.screen", [("event", title)]) {
+            DataPipeline.shared.segment.screen(title: title, category: category, properties: properties)
+        }
     }
 
     func screen(title: String, category: String?) {
-        DataPipeline.shared.segment.screen(title: title, category: category)
+        DataPipelineLogTail.input("api.screen", [("event", title)]) {
+            DataPipeline.shared.segment.screen(title: title, category: category)
+        }
     }
 
     func alias(newId: String) {
-        DataPipeline.shared.segment.alias(newId: newId)
+        DataPipelineLogTail.input("api.alias", [("user", newId)]) {
+            DataPipeline.shared.segment.alias(newId: newId)
+        }
     }
 }
 
@@ -39,6 +49,8 @@ public extension CustomerIO {
     ///   - category: A category to the type of screen if it applies.
     ///   - properties: Any extra metadata associated with the screen. e.g. method of access, size, etc.
     func screen(title: String, category: String? = nil, properties: [String: Any]? = nil) {
-        DataPipeline.shared.segment.screen(title: title, category: category, properties: properties?.sanitizedForJSON())
+        DataPipelineLogTail.input("api.screen", [("event", title)]) {
+            DataPipeline.shared.segment.screen(title: title, category: category, properties: properties?.sanitizedForJSON())
+        }
     }
 }

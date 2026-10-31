@@ -30,7 +30,9 @@ public extension CustomerIO {
     /// Resets this instance of Analytics to a clean slate.  Traits, UserID's, anonymousId, etc are all cleared or reset.  This
     /// command will also be sent to each plugin present in the system.
     func reset() {
-        DataPipeline.shared.segment.reset()
+        DataPipelineLogTail.input("api.reset") {
+            DataPipeline.shared.segment.reset()
+        }
     }
 }
 

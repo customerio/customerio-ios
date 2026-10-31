@@ -3,8 +3,9 @@ import CioInternalCommon
 import Foundation
 
 /// The one way our SDK hands events to Segment, and reads back the identity Segment holds. Every
-/// call is passed through unchanged; the gateway exists so every hand-off goes through one place and
-/// tests can stand in for Segment. Plugin setup, flush and storage stay on `Analytics`.
+/// call is passed through unchanged; the gateway exists so each hand-off can be logged in one place
+/// (`LoggingSegmentGateway`) and so tests can stand in for Segment. Plugin setup, flush and storage stay
+/// on `Analytics`.
 protocol SegmentGateway: AnyObject {
     /// Segment's userId.
     var userId: String? { get }
@@ -52,7 +53,7 @@ struct SegmentFactory {
 
     static let live = SegmentFactory(
         makeAnalytics: { Analytics(configuration: $0) },
-        makeGateway: { AnalyticsSegmentGateway(analytics: $0) }
+        makeGateway: { LoggingSegmentGateway(analytics: $0) }
     )
 }
 
