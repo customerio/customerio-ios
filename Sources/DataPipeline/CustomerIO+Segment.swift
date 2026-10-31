@@ -12,12 +12,12 @@ public extension CustomerIO {
 
     /// Returns the anonymousId currently in use.
     var anonymousId: String {
-        DataPipeline.shared.analytics.anonymousId
+        DataPipeline.shared.segment.anonymousId
     }
 
     /// Returns the userId that was specified in the last identify call.
     var userId: String? {
-        DataPipeline.shared.analytics.userId
+        DataPipeline.shared.segment.userId
     }
 
     /// Tells this instance of CustomerIO to flush any queued events. This command will also
@@ -30,7 +30,7 @@ public extension CustomerIO {
     /// Resets this instance of Analytics to a clean slate.  Traits, UserID's, anonymousId, etc are all cleared or reset.  This
     /// command will also be sent to each plugin present in the system.
     func reset() {
-        DataPipeline.shared.analytics.reset()
+        DataPipeline.shared.segment.reset()
     }
 }
 
