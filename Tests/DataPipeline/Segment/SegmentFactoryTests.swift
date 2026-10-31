@@ -24,7 +24,8 @@ class SegmentFactoryTests: UnitTest {
 
         let gateway = diGraphShared.segmentFactory.makeGateway(givenAnalytics)
 
-        let liveGateway = gateway as? AnalyticsSegmentGateway
+        let loggingGateway = gateway as? LoggingSegmentGateway
+        let liveGateway = loggingGateway?.gateway as? AnalyticsSegmentGateway
         XCTAssertNotNil(liveGateway)
         XCTAssertTrue(liveGateway?.analytics === givenAnalytics)
     }
@@ -45,6 +46,7 @@ class SegmentFactoryTests: UnitTest {
         XCTAssertEqual(actual?.flushInterval, expected.flushInterval)
         XCTAssertEqual(actual?.operatingMode, expected.operatingMode)
         XCTAssertEqual(actual?.flushPolicies.map { String(describing: type(of: $0)) }, expected.flushPolicies.map { String(describing: type(of: $0)) })
-        XCTAssertTrue((implementation?.segment as? AnalyticsSegmentGateway)?.analytics === implementation?.analytics)
+        let liveGateway = (implementation?.segment as? LoggingSegmentGateway)?.gateway as? AnalyticsSegmentGateway
+        XCTAssertTrue(liveGateway?.analytics === implementation?.analytics)
     }
 }
