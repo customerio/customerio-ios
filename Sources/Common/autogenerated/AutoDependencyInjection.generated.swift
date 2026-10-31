@@ -240,7 +240,7 @@ extension DIGraphShared {
     }
 
     private func _get_eventBusHandler() -> EventBusHandler {
-        CombinedCacheEventBusHandler(eventStorage: eventStorage, logger: logger)
+        CombinedCacheEventBusHandler(eventStorage: eventStorage, logger: logger, taskSpawner: taskSpawning)
     }
 
     // SdkClient (custom. property getter provided via extension)
