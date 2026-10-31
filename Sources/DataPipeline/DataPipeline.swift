@@ -44,6 +44,10 @@ public class DataPipeline: ModuleTopLevelObject<DataPipelineInstance>, DataPipel
     }
 
     static func resetTestEnvironment() {
+        // The instance being replaced stops as it would with its process: its Segment pipeline would
+        // otherwise go on processing and flushing (its interval flush timer) next to the new one, over
+        // the same write key's storage.
+        (shared._implementation as? DataPipelineImplementation)?.analytics.enabled = false
         moduleConfig = nil
         shared = DataPipeline()
     }
