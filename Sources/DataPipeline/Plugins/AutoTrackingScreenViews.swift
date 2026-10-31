@@ -122,7 +122,8 @@ extension AutoTrackingScreenViews {
         }
 
         let addionalScreenViewData = autoScreenViewBody?() ?? [:]
-        analytics?.screen(title: name, properties: addionalScreenViewData)
+        guard let analytics else { return }
+        AnalyticsSegmentGateway(analytics: analytics).screen(title: name, category: nil, properties: addionalScreenViewData)
     }
 }
 
