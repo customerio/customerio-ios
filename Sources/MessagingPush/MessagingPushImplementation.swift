@@ -1,4 +1,4 @@
-import CioInternalCommon
+@_spi(Internal) import CioInternalCommon
 import Foundation
 #if canImport(UserNotifications)
 import UserNotifications
@@ -10,6 +10,7 @@ class MessagingPushImplementation: MessagingPushInstance {
     private let logger: Logger
     private let jsonAdapter: JsonAdapter
     private let eventBusHandler: EventBusHandler
+    private let taskSpawner: TaskSpawning
 
     private let nseCoordinatorsLock = NSLock()
     private var activeNSECoordinators: [NSEPushCoordinator] = []
@@ -20,6 +21,7 @@ class MessagingPushImplementation: MessagingPushInstance {
         self.jsonAdapter = diGraph.jsonAdapter
         self.eventBusHandler = diGraph.eventBusHandler
         self.pushLogger = diGraph.pushNotificationLogger
+        self.taskSpawner = diGraph.taskSpawning
     }
 
     func deleteDeviceToken() {
@@ -81,7 +83,7 @@ class MessagingPushImplementation: MessagingPushInstance {
         coordinator.prepareNotification(request: request, withContentHandler: contentHandler)
         // Detached so concurrent `didReceive` calls are not serialized on the caller's executor (e.g. MainActor in XCTest),
         // which would otherwise prevent a second notification from starting delivery tracking while the first waits on HTTP.
-        Task.detached(priority: .userInitiated) { [weak self] in
+        taskSpawner.spawnDetached(priority: .userInitiated) { [weak self] in
             await coordinator.handle(
                 request: request,
                 withContentHandler: contentHandler,

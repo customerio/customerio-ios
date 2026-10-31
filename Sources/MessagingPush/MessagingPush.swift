@@ -1,4 +1,4 @@
-import CioInternalCommon
+@_spi(Internal) import CioInternalCommon
 import Foundation
 
 #if canImport(UserNotifications)
@@ -277,8 +277,9 @@ public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, Messagi
         let store = DIGraphShared.shared.pendingPushDeliveryStore
         let logger = DIGraphShared.shared.logger
         // Retain the task handle so tests can await it deterministically and teardown can drain it, preventing a
-        // leaked flush from outliving its test. Production behavior is otherwise unchanged.
-        pendingMetricsFlushTask = Task.detached(priority: .utility) {
+        // leaked flush from outliving its test. Production behavior is otherwise unchanged: the live spawner
+        // starts exactly this `Task.detached(priority: .utility)`; a test's spawner can also tell when it is done.
+        pendingMetricsFlushTask = DIGraphShared.shared.taskSpawning.spawnDetached(priority: .utility) {
             // Unreadable is not empty: "nothing to flush" would report a backlog as cleared. No
             // later-launch promise either — an unresolvable app group gives the same result.
             guard case .rows(let pending) = store.read() else {
