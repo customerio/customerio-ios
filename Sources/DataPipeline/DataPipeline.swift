@@ -18,7 +18,7 @@ public class DataPipeline: ModuleTopLevelObject<DataPipelineInstance>, DataPipel
     /// The gateway every event and identity read goes through: the implementation's own, or one in
     /// front of `analytics` (the dead instance, or a unit test's stand-in).
     var segment: SegmentGateway {
-        (implementation as? DataPipelineImplementation)?.segment ?? AnalyticsSegmentGateway(analytics: analytics)
+        (implementation as? DataPipelineImplementation)?.segment ?? LoggingSegmentGateway(analytics: analytics)
     }
 
     @CioInternalCommon.Atomic public private(set) static var shared = DataPipeline()
@@ -65,15 +65,21 @@ public class DataPipeline: ModuleTopLevelObject<DataPipelineInstance>, DataPipel
         shared.initializeModuleIfNotAlready {
             Self.moduleConfig = moduleConfig
 
-            let implementation = DataPipelineImplementation(diGraph: DIGraphShared.shared, moduleConfig: moduleConfig)
-            implementation.replayMissedLaunchLifecycleEvents(enabled: moduleConfig.trackApplicationLifecycleEvents)
-            return implementation
+            // A new instance numbers its inputs from 1 again, as a new process does on a device
+            DataPipelineLogTail.newProcess()
+            return DataPipelineLogTail.input("api.initialize") {
+                let implementation = DataPipelineImplementation(diGraph: DIGraphShared.shared, moduleConfig: moduleConfig)
+                implementation.replayMissedLaunchLifecycleEvents(enabled: moduleConfig.trackApplicationLifecycleEvents)
+                return implementation
+            }
         }
 
         return shared
     }
 
     // MARK: - DataPipelineInstance implementation
+
+    // The app's calls: each is logged as an input (`DataPipelineLogTail`), and what it hands to Segment carries its call id
 
     @available(*, deprecated, message: "Use setProfileAttributes() instead")
     public var profileAttributes: [String: Any] {
@@ -82,31 +88,41 @@ public class DataPipeline: ModuleTopLevelObject<DataPipelineInstance>, DataPipel
     }
 
     public func setProfileAttributes(_ attributes: [String: Any]) {
-        implementation?.setProfileAttributes(attributes.sanitizedForJSON())
+        DataPipelineLogTail.input("api.profile_attributes", [("attrs", String(attributes.count))]) {
+            implementation?.setProfileAttributes(attributes.sanitizedForJSON())
+        }
     }
 
     public func identify(userId: String, traits: [String: Any]?) {
-        implementation?.identify(userId: userId, traits: traits?.sanitizedForJSON())
+        DataPipelineLogTail.input("api.identify", [("user", userId), ("traits", traits.map { String($0.count) })]) {
+            implementation?.identify(userId: userId, traits: traits?.sanitizedForJSON())
+        }
     }
 
     public func identify<RequestBody: Codable>(userId: String, traits: RequestBody?) {
-        implementation?.identify(userId: userId, traits: traits)
+        DataPipelineLogTail.input("api.identify", [("user", userId), ("traits", traits == nil ? nil : "codable")]) {
+            implementation?.identify(userId: userId, traits: traits)
+        }
     }
 
     public func clearIdentify() {
-        implementation?.clearIdentify()
+        DataPipelineLogTail.input("api.clear_identify") {
+            implementation?.clearIdentify()
+        }
     }
 
     @available(*, deprecated, message: "Use setDeviceAttributes method instead. This property getter always returns an empty dictionary.")
     public var deviceAttributes: [String: Any] {
         get { [:] }
         set {
-            implementation?.setDeviceAttributes(newValue.sanitizedForJSON())
+            setDeviceAttributes(newValue)
         }
     }
 
     public func setDeviceAttributes(_ attributes: [String: Any]) {
-        implementation?.setDeviceAttributes(attributes.sanitizedForJSON())
+        DataPipelineLogTail.input("api.device_attributes", [("attrs", String(attributes.count))]) {
+            implementation?.setDeviceAttributes(attributes.sanitizedForJSON())
+        }
     }
 
     public var registeredDeviceToken: String? {
@@ -114,31 +130,45 @@ public class DataPipeline: ModuleTopLevelObject<DataPipelineInstance>, DataPipel
     }
 
     public func registerDeviceToken(_ deviceToken: String) {
-        implementation?.registerDeviceToken(deviceToken)
+        DataPipelineLogTail.input("api.register_token", [("token", deviceToken)]) {
+            implementation?.registerDeviceToken(deviceToken)
+        }
     }
 
     public func deleteDeviceToken() {
-        implementation?.deleteDeviceToken()
+        DataPipelineLogTail.input("api.delete_token") {
+            implementation?.deleteDeviceToken()
+        }
     }
 
     public func track(name: String, properties: [String: Any]?) {
-        implementation?.track(name: name, properties: properties?.sanitizedForJSON())
+        DataPipelineLogTail.input("api.track", [("event", name)]) {
+            implementation?.track(name: name, properties: properties?.sanitizedForJSON())
+        }
     }
 
     public func track<RequestBody: Codable>(name: String, properties: RequestBody?) {
-        implementation?.track(name: name, properties: properties)
+        DataPipelineLogTail.input("api.track", [("event", name)]) {
+            implementation?.track(name: name, properties: properties)
+        }
     }
 
     public func screen(title: String, properties: [String: Any]?) {
-        implementation?.screen(title: title, properties: properties?.sanitizedForJSON())
+        DataPipelineLogTail.input("api.screen", [("event", title)]) {
+            implementation?.screen(title: title, properties: properties?.sanitizedForJSON())
+        }
     }
 
     public func screen<RequestBody: Codable>(title: String, properties: RequestBody?) {
-        implementation?.screen(title: title, properties: properties)
+        DataPipelineLogTail.input("api.screen", [("event", title)]) {
+            implementation?.screen(title: title, properties: properties)
+        }
     }
 
     public func trackMetric(deliveryID: String, event: Metric, deviceToken: String) {
-        implementation?.trackMetric(deliveryID: deliveryID, event: event, deviceToken: deviceToken)
+        DataPipelineLogTail.input("api.track_metric", [("metric", event.rawValue), ("delivery", deliveryID)]) {
+            implementation?.trackMetric(deliveryID: deliveryID, event: event, deviceToken: deviceToken)
+        }
     }
 }
 

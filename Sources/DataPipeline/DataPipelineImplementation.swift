@@ -118,24 +118,27 @@ class DataPipelineImplementation: DataPipelineInstance, DataPipelineTracking, Ba
     }
 
     private func subscribeToJourneyEvents() {
+        // Each bus event is an input of its own (`DataPipelineLogTail`), logged when the SDK handles it
         eventBusHandler.addObserver(TrackMetricEvent.self) { metric in
-            self.trackPushMetric(deliveryID: metric.deliveryID, event: metric.event, deviceToken: metric.deviceToken)
+            DataPipelineLogTail.input("bus.push_metric", [("metric", metric.event), ("delivery", metric.deliveryID)]) { self.trackPushMetric(deliveryID: metric.deliveryID, event: metric.event, deviceToken: metric.deviceToken) }
         }
 
         eventBusHandler.addObserver(TrackInAppMetricEvent.self) { metric in
-            self.trackInAppMetric(deliveryID: metric.deliveryID, event: metric.event, metaData: metric.params)
+            DataPipelineLogTail.input("bus.inapp_metric", [("metric", metric.event), ("delivery", metric.deliveryID)]) { self.trackInAppMetric(deliveryID: metric.deliveryID, event: metric.event, metaData: metric.params) }
         }
 
         eventBusHandler.addObserver(TrackGeofenceMetricEvent.self) { metric in
-            self.processGeofenceMetricEvent(metric)
+            DataPipelineLogTail.input("bus.geofence_transition", [("event", metric.trackEventName)]) { self.processGeofenceMetricEvent(metric) }
         }
 
         eventBusHandler.addObserver(RegisterDeviceTokenEvent.self) { event in
-            // Events are delivered concurrently, and the same token can be posted again before it's stored
-            self.deviceTokenLock.lock()
-            defer { self.deviceTokenLock.unlock() }
-            guard !self.globalDataStore.isPushDeviceTokenStored(event.token, type: event.tokenType) else { return }
-            self.registerDeviceToken(event.token, tokenType: event.tokenType)
+            DataPipelineLogTail.input("bus.register_token", [("token", event.token)]) {
+                // Events are delivered concurrently, and the same token can be posted again before it's stored
+                self.deviceTokenLock.lock()
+                defer { self.deviceTokenLock.unlock() }
+                guard !self.globalDataStore.isPushDeviceTokenStored(event.token, type: event.tokenType) else { return }
+                self.registerDeviceToken(event.token, tokenType: event.tokenType)
+            }
         }
     }
 
@@ -302,6 +305,8 @@ class DataPipelineImplementation: DataPipelineInstance, DataPipelineTracking, Ba
         }
         contextPlugin.deviceToken = deviceToken
 
+        // The answer can come after later inputs; its hand-off still belongs to this one
+        let call = DataPipelineLogTail.currentCall
         // Consolidate all Apple platforms under iOS
         deviceAttributesProvider.getDefaultDeviceAttributes { defaultDeviceAttributes in
             // A token registered since then sends its own events. Tracking this one late would re-create the device just deleted.
@@ -318,7 +323,7 @@ class DataPipelineImplementation: DataPipelineInstance, DataPipelineTracking, Ba
             let tokenType = self.globalDataStore.pushDeviceToken == token ? self.globalDataStore.pushDeviceTokenType : nil
             let deviceAttributes = defaultDeviceAttributes.mergeWith(customAttributes.withDeviceTokenType(tokenType, logger: self.dataPipelinesLogger))
             self.contextPlugin.attributes = deviceAttributes
-            self.segment.track(name: "Device Created or Updated", properties: deviceAttributes, deviceToken: token)
+            DataPipelineLogTail.running(call) { self.segment.track(name: "Device Created or Updated", properties: deviceAttributes, deviceToken: token) }
         }
     }
 

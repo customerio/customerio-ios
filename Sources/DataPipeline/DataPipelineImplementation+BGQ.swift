@@ -5,7 +5,9 @@ import CioInternalCommon
 // BGQ in each of the following methods refer to background queue
 extension DataPipelineImplementation {
     func processAlreadyIdentifiedUser(identifier: String) {
-        commonIdentifyProfile(userId: identifier)
+        DataPipelineLogTail.input("migration.identified_user", [("user", identifier)]) {
+            commonIdentifyProfile(userId: identifier)
+        }
     }
 
     func processIdentifyFromBGQ(identifier: String, timestamp: String, body: [String: Any]?) {
@@ -15,7 +17,9 @@ extension DataPipelineImplementation {
             let jsonTraits = try? JSON(traits)
             identifyEvent.traits = jsonTraits
         }
-        segment.process(event: identifyEvent)
+        DataPipelineLogTail.input("migration.identify") {
+            segment.process(event: identifyEvent)
+        }
     }
 
     func processScreenEventFromBGQ(identifier: String, name: String, timestamp: String?, properties: [String: Any]) {
@@ -25,7 +29,9 @@ extension DataPipelineImplementation {
         if let jsonProperties = try? JSON(properties) {
             screenEvent.properties = jsonProperties
         }
-        segment.process(event: screenEvent)
+        DataPipelineLogTail.input("migration.screen") {
+            segment.process(event: screenEvent)
+        }
     }
 
     func processEventFromBGQ(identifier: String, name: String, timestamp: String?, properties: [String: Any]) {
@@ -35,7 +41,9 @@ extension DataPipelineImplementation {
         if let jsonProperties = try? JSON(properties) {
             trackEvent.properties = jsonProperties
         }
-        segment.process(event: trackEvent)
+        DataPipelineLogTail.input("migration.track") {
+            segment.process(event: trackEvent)
+        }
     }
 
     func processDeleteTokenFromBGQ(identifier: String, token: String, timestamp: String) {
@@ -46,7 +54,9 @@ extension DataPipelineImplementation {
         if let context = try? JSON(deviceDict) {
             trackDeleteEvent.context = context
         }
-        segment.process(event: trackDeleteEvent)
+        DataPipelineLogTail.input("migration.delete_token") {
+            segment.process(event: trackDeleteEvent)
+        }
     }
 
     func processRegisterDeviceFromBGQ(identifier: String, token: String, timestamp: String, attributes: [String: Any]? = nil) {
@@ -62,7 +72,9 @@ extension DataPipelineImplementation {
         if let attributes = attributes, let attributes = try? JSON(attributes) {
             trackRegisterTokenEvent.properties = attributes
         }
-        segment.process(event: trackRegisterTokenEvent)
+        DataPipelineLogTail.input("migration.register_token") {
+            segment.process(event: trackRegisterTokenEvent)
+        }
     }
 
     func processMetricsFromBGQ(token: String?, event: String, deliveryId: String, timestamp: String, metaData: [String: Any]) {
@@ -77,6 +89,8 @@ extension DataPipelineImplementation {
         // anonymousId or userId is required in the payload for backend processing
         trackPushMetricEvent.anonymousId = deliveryId
         trackPushMetricEvent.timestamp = timestamp
-        segment.process(event: trackPushMetricEvent)
+        DataPipelineLogTail.input("migration.metric") {
+            segment.process(event: trackPushMetricEvent)
+        }
     }
 }
