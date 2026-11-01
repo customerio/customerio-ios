@@ -33,3 +33,19 @@ custom_rules:
       - string
     message: "Start geofence work with `taskSpawner.spawn { }` so the replay harness can tell when it has finished. A task that never finishes opts out with `// swiftlint:disable:next geofence_untracked_task` and a reason."
     severity: error
+  # Every call the SDK makes into Segment goes through one gateway, so a test (or the diagnostics log) sees each hand-off.
+  segment_calls_through_gateway:
+    name: "Segment call outside the gateway"
+    included: "Sources/.*\\.swift$"
+    excluded: "Sources/DataPipeline/Segment/SegmentGateway\\.swift$"
+    # Plugin setup, flush and storage stay on `Analytics`; only events and resets go through the gateway.
+    regex: "\\banalytics\\??\\.(track|identify|screen|reset|alias|process|group)\\("
+    excluded_match_kinds:
+      - comment
+      - comment.mark
+      - comment.url
+      - doccomment
+      - doccomment.field
+      - string
+    message: "Hand events to Segment through `SegmentGateway` (DataPipeline's `segment`), so every hand-off goes through one place."
+    severity: error
