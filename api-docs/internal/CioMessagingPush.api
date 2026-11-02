@@ -5,6 +5,12 @@ public enum CioMessagingPush.AppDelegateSwizzler {
 	public fun func swizzleDidRegisterForRemoteNotifications(of appDelegate: UIApplicationDelegate?, handler: @escaping (UIApplication, Data) -> Unit);
 	public fun func swizzleDidFailToRegisterForRemoteNotifications(of appDelegate: UIApplicationDelegate?, handler: @escaping (UIApplication, Error) -> Unit);
 }
+public final class CioMessagingPush.CustomerIOBackgroundPush {
+	public final val deliveryID: String;
+	public final val data: List<String : String>;
+}
+public enum CioMessagingPush.CustomerIOBackgroundPushResult {
+}
 public extension CioMessagingPush.CustomerIOParsedPushPayload {
 	public var deepLink: URL?;
 	public var image: URL?;
@@ -23,6 +29,7 @@ public final class CioMessagingPush.MessagingPush {
 	public fun func serviceExtensionTimeWillExpire();
 }
 public extension CioMessagingPush.MessagingPush {
+	public fun func handleBackgroundPush(userInfo: List<AnyHashable: Any>) -> CustomerIOBackgroundPushResult;
 	public fun func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse, withCompletionHandler completionHandler: @escaping () -> Unit) -> Boolean;
 	public fun func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse) -> CustomerIOParsedPushPayload?;
 }
