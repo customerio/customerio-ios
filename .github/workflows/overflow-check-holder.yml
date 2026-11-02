@@ -1,0 +1,17 @@
+name: Overflow check holder
+
+# Test only, never merged. Keeps one Mac job running on GitHub's pool for about 35 minutes, so the
+# runner selector has a job to count when other pull requests are checked. Close and reopen the pull
+# request to start another hold.
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  hold:
+    runs-on: xcode-27
+    timeout-minutes: 40
+    steps:
+      - run: sleep 2100
