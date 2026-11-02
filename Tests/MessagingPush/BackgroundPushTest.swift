@@ -1,9 +1,13 @@
 @testable import CioMessagingPush
+@_spi(Internal) @testable import CioInternalCommon
+@testable import CioInternalCommonMocks
 @testable import CioMessagingPushMocks
 import Foundation
 import XCTest
 
 class BackgroundPushTest: UnitTest {
+    private var receiptStore: PendingPushDeliveryStore!
+
     func test_beforeInitialization_returnsDataUsingDefaultConfigWithoutCrashing() {
         MessagingPush.resetTestEnvironment()
         XCTAssertFalse(MessagingPush.shared.hasBeenInitialized)
@@ -15,7 +19,7 @@ class BackgroundPushTest: UnitTest {
         XCTAssertEqual(payload.deliveryID, "dlv_123")
     }
 
-    func test_goEncodedAPNsAndFCMFixtures_returnUnchangedDataWithTransportMetadataRemoved() throws {
+    func test_goEncodedAPNsAndFCMFixtures_returnUnchangedDataWithTransportMetadataRemoved() async throws {
         for (json, fcm) in [(BackgroundPushFixtures.apns, false), (BackgroundPushFixtures.fcm, true)] {
             let mock = installMock()
             let object = try XCTUnwrap(JSONSerialization.jsonObject(with: Data(json.utf8)) as? [String: Any])
@@ -35,8 +39,10 @@ class BackgroundPushTest: UnitTest {
             }
             XCTAssertEqual(payload.deliveryID, "fixture-delivery-1")
             XCTAssertEqual(payload.data, ["title": "Order shipped", "order_id": "A-1001", "note": "line one\nsays \"hi\" <b>&</b> ✓", "cıo-x": "dotless"])
-            XCTAssertEqual(mock.trackMetricReceivedArguments?.deviceToken, fcm ? "fixture-fcm-token-1" : "fixture-apns-token-1")
-            XCTAssertEqual(mock.trackMetricReceivedArguments?.event, .delivered)
+            XCTAssertEqual(payload.deliveryToken, fcm ? "fixture-fcm-token-1" : "fixture-apns-token-1")
+            XCTAssertEqual(receiptStore.loadAll().first?.deviceToken, payload.deliveryToken)
+            XCTAssertEqual(mock.trackMetricCallsCount, 0)
+            await MessagingPush.backgroundPushReceiptSender?.waitUntilIdle()
         }
     }
 
@@ -58,6 +64,12 @@ class BackgroundPushTest: UnitTest {
             diGraphShared: diGraphShared,
             config: MessagingPushConfigBuilder().autoTrackPushEvents(autoTrack).build()
         )
+        let file = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString).appendingPathComponent("receipts.json")
+        receiptStore = CioAppGroupPendingPushDeliveryStore(privateFileURL: file, logger: log)
+        let client = BackgroundDeliveryHttpClientMock()
+        client.sendTrackEventClosure = { _, completion in completion(.failure(.transport)) }
+        MessagingPush.backgroundPushReceiptSender = BackgroundPushReceiptSender(store: receiptStore, httpClient: client, taskRunner: NoBackgroundTaskRunner(), logger: log)
+        addTeardownBlock { try? FileManager.default.removeItem(at: file.deletingLastPathComponent()) }
         return mock
     }
 
@@ -69,17 +81,20 @@ class BackgroundPushTest: UnitTest {
             return XCTFail("Expected background data")
         }
         XCTAssertNil(received.data["gcm.message_id"])
-        XCTAssertEqual(mock.trackMetricCallsCount, 1)
-        XCTAssertEqual(mock.trackMetricReceivedArguments?.deliveryID, "dlv_123")
-        XCTAssertEqual(mock.trackMetricReceivedArguments?.deviceToken, "tok_abc")
-        XCTAssertEqual(mock.trackMetricReceivedArguments?.event, .delivered)
+        XCTAssertEqual(mock.trackMetricCallsCount, 0)
+        XCTAssertEqual(receiptStore.loadAll().count, 1)
+        XCTAssertEqual(receiptStore.loadAll().first?.deliveryId, "dlv_123")
+        XCTAssertEqual(receiptStore.loadAll().first?.deviceToken, "tok_abc")
+        XCTAssertEqual(receiptStore.loadAll().first?.event, .delivered)
     }
 
     func test_autoTrackingDisabled_stillReturnsDataWithoutTracking() {
         let mock = installMock(autoTrack: false)
-        guard case .received = MessagingPush.shared.handleBackgroundPush(userInfo: userInfo()) else {
+        guard case .received(let payload) = MessagingPush.shared.handleBackgroundPush(userInfo: userInfo()) else {
             return XCTFail("Automatic metrics must not gate business data")
         }
+        XCTAssertEqual(payload.deliveryToken, "tok_abc")
+        XCTAssertTrue(receiptStore.loadAll().isEmpty)
         XCTAssertEqual(mock.trackMetricCallsCount, 0)
     }
 
@@ -92,9 +107,8 @@ class BackgroundPushTest: UnitTest {
             }
         }
 
-        XCTAssertEqual(mock.trackMetricCallsCount, 2)
-        XCTAssertEqual(mock.trackMetricReceivedArguments?.deliveryID, "dlv_123")
-        XCTAssertEqual(mock.trackMetricReceivedArguments?.event, .delivered)
+        XCTAssertEqual(mock.trackMetricCallsCount, 0)
+        XCTAssertEqual(receiptStore.loadAll().map(\.deliveryId), ["dlv_123", "dlv_123"])
     }
 
     func test_invalidMarkedPayloads_areUnsupportedWithoutMetrics() {
@@ -120,6 +134,7 @@ class BackgroundPushTest: UnitTest {
             XCTAssertEqual(MessagingPush.shared.handleBackgroundPush(userInfo: payload), .unsupported, "Invalid field: \(key)")
         }
         XCTAssertEqual(mock.trackMetricCallsCount, 0)
+        XCTAssertTrue(receiptStore.loadAll().isEmpty)
     }
 
     func test_legacyAndForeignPushes_remainAvailableToExistingHandlers() {
@@ -128,6 +143,7 @@ class BackgroundPushTest: UnitTest {
             XCTAssertEqual(MessagingPush.shared.handleBackgroundPush(userInfo: payload), .notBackground)
         }
         XCTAssertEqual(mock.trackMetricCallsCount, 0)
+        XCTAssertTrue(receiptStore.loadAll().isEmpty)
     }
 
     func test_legacyBusinessKeys_resemblingBackgroundMetadata_remainAvailableToExistingHandlers() {
@@ -139,6 +155,7 @@ class BackgroundPushTest: UnitTest {
             XCTAssertEqual(MessagingPush.shared.handleBackgroundPush(userInfo: payload), .notBackground, key)
         }
         XCTAssertEqual(mock.trackMetricCallsCount, 0)
+        XCTAssertTrue(receiptStore.loadAll().isEmpty)
     }
 
     func test_validBackgroundPush_returnsBusinessDataIncludingTitleAndBody() {

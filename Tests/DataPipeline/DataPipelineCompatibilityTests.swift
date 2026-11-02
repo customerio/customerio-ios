@@ -150,6 +150,7 @@ class DataPipelineCompatibilityTests: IntegrationTest {
 
         var expectedData = givenDefaultAttributes
         expectedData["cio_sdk_version"] = diGraphShared.sdkClient.sdkVersion
+        expectedData["cio_background_push_version"] = "0"
         expectedData.merge(
             // swiftlint:disable:next force_cast
             (savedEvent[keyPath: "context.screen"] as! [String: Any]).flatten(parentKey: "screen"),
@@ -200,6 +201,7 @@ class DataPipelineCompatibilityTests: IntegrationTest {
 
         var expectedData = deviceInfoStub.getDefaultAttributes().mergeWith(customAttributes)
         expectedData["cio_sdk_version"] = diGraphShared.sdkClient.sdkVersion
+        expectedData["cio_background_push_version"] = "0"
         expectedData.merge(
             // swiftlint:disable:next force_cast
             (savedEvent[keyPath: "context.screen"] as! [String: Any]).flatten(parentKey: "screen"),

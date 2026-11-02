@@ -42,8 +42,8 @@ open class UnitTest: SharedTests.UnitTestBase<MessagingPushInstance> {
     }
 
     override open func cleanupTestEnvironment() {
-        super.cleanupTestEnvironment()
         MessagingPush.resetTestEnvironment()
+        super.cleanupTestEnvironment()
     }
 }
 

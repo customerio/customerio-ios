@@ -14,20 +14,27 @@ public enum BackgroundDeliveryHttpError: Error, Equatable {
 /// One CDP `/track` request for a background-delivery caller. Bundles the request-body fields
 /// into one value so the client signature stays stable as the payload grows.
 public struct BackgroundTrackRequest {
-    /// CDP `track` event name.
     public let eventName: String
-    /// Identified user id. Caller must validate non-empty before sending.
+    /// Identified user id. Empty for an anonymous request. Identified callers validate it is non-empty.
     public let userId: String
-    /// Custom event properties payload.
+    /// Set for events tied to a message and no profile, such as push delivery receipts.
+    /// When set, the body carries `anonymousId` and omits `userId`.
+    public let anonymousId: String?
     public let properties: [String: Any]
-    /// When the event occurred. Serialized into the reserved top-level `timestamp` field so the
-    /// endpoint attributes the event to this instant rather than to when it was received; nil omits
-    /// the field. The client owns the wire format, keeping it identical to the analytics channel.
     public let timestamp: Date?
 
     public init(eventName: String, userId: String, properties: [String: Any] = [:], timestamp: Date? = nil) {
+        self.init(eventName: eventName, userId: userId, anonymousId: nil, properties: properties, timestamp: timestamp)
+    }
+
+    public init(eventName: String, anonymousId: String, properties: [String: Any] = [:], timestamp: Date? = nil) {
+        self.init(eventName: eventName, userId: "", anonymousId: anonymousId, properties: properties, timestamp: timestamp)
+    }
+
+    private init(eventName: String, userId: String, anonymousId: String?, properties: [String: Any], timestamp: Date?) {
         self.eventName = eventName
         self.userId = userId
+        self.anonymousId = anonymousId
         self.properties = properties
         self.timestamp = timestamp
     }
@@ -107,11 +114,15 @@ public final class BackgroundDeliveryHttpClientImpl: BackgroundDeliveryHttpClien
             return completion(.failure(.missingCdpApiKey))
         }
 
-        var body: [String: Any] = [
-            "event": request.eventName,
-            "userId": request.userId,
-            "properties": request.properties
-        ]
+        if let anonymousId = request.anonymousId, anonymousId.isEmpty {
+            return completion(.failure(.invalidRequest))
+        }
+        var body: [String: Any] = ["event": request.eventName, "properties": request.properties]
+        if let anonymousId = request.anonymousId {
+            body["anonymousId"] = anonymousId
+        } else {
+            body["userId"] = request.userId
+        }
         // Reserved top-level field: a bare integer here is read as milliseconds, so send the ISO-8601 string.
         if let timestamp = request.timestamp {
             body["timestamp"] = timestamp.string(format: .iso8601WithMilliseconds)

@@ -5,6 +5,8 @@ import CoreFoundation
 /// use `deliveryID` to make application work idempotent.
 public struct CustomerIOBackgroundPush: Equatable {
     public let deliveryID: String
+    /// The original target token, for manual delivered tracking when automatic tracking is disabled.
+    public let deliveryToken: String
     public let data: [String: String]
 }
 
@@ -45,7 +47,7 @@ private enum BackgroundPushParser {
             else { return (.unsupported, nil) }
             data[key] = value
         }
-        return (.received(CustomerIOBackgroundPush(deliveryID: deliveryID, data: data)), token)
+        return (.received(CustomerIOBackgroundPush(deliveryID: deliveryID, deliveryToken: token, data: data)), token)
     }
 }
 
@@ -54,19 +56,25 @@ public extension MessagingPush {
     /// its fetch completion handler and must finish within the system's deadline.
     /// This method never displays a notification or tracks an opened event.
     /// Initialize MessagingPush before calling to enable automatic delivered metrics.
-    /// Receipt tracking uses the existing analytics path and does not confirm that
-    /// the host completed its work. Delivery is not guaranteed and can repeat.
+    /// Before returning, saves a delivered receipt in app storage and starts sending
+    /// it with extra background time. Unsent receipts are retried on a later push or launch.
+    /// The receipt records SDK receipt only. Delivery is not guaranteed and can repeat.
     @discardableResult
     func handleBackgroundPush(userInfo: [AnyHashable: Any]) -> CustomerIOBackgroundPushResult {
+        let receivedAt = Date()
         let (result, token) = BackgroundPushParser.parse(userInfo)
-        if case .received(let payload) = result, let token, Self.moduleConfig.autoTrackPushEvents {
-            if let implementation {
-                implementation.trackMetric(deliveryID: payload.deliveryID, event: .delivered, deviceToken: token)
-            } else {
-                logger.info("Background push received before initialization; initialize MessagingPush to enable delivered metrics")
+        switch result {
+        case .received(let payload):
+            guard let token, Self.moduleConfig.autoTrackPushEvents else { break }
+            guard let sender = Self.backgroundPushReceiptSender else {
+                logger.info("Background push received before host initialization; no automatic delivered metric was recorded")
+                break
             }
-        } else if case .unsupported = result {
+            sender.enqueue(deliveryID: payload.deliveryID, deviceToken: token, receivedAt: receivedAt)
+        case .unsupported:
             logger.info("Ignoring unsupported background push without displaying a notification")
+        case .notBackground:
+            break
         }
         return result
     }

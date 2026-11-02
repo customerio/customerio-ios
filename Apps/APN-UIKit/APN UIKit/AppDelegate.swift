@@ -96,6 +96,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         // Initialize messaging features after initializing Customer.io SDK
         MessagingPushAPN.initialize(
             withConfig: MessagingPushConfigBuilder()
+                .backgroundPushEnabled(true)
                 .autoFetchDeviceToken(settings.messaging.autoFetchDeviceToken)
                 .autoTrackPushEvents(settings.messaging.autoTrackPushEvents)
                 .showPushAppInForeground(settings.messaging.showPushAppInForeground)
@@ -150,6 +151,33 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     }
 
     // MARK: UISceneSession Lifecycle
+
+    func application(_ application: UIApplication, didReceiveRemoteNotification userInfo: [AnyHashable: Any], fetchCompletionHandler completionHandler: @escaping (UIBackgroundFetchResult) -> Void) {
+        switch MessagingPush.shared.handleBackgroundPush(userInfo: userInfo) {
+        case .received(let payload):
+            do {
+                let receipt: [String: Any] = ["delivery_id": payload.deliveryID, "received_at_ms": Date().timeIntervalSince1970 * 1000, "data": payload.data]
+                let url = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+                    .appendingPathComponent("background-push.jsonl")
+                var row = try JSONSerialization.data(withJSONObject: receipt, options: [.sortedKeys])
+                row.append(0x0A)
+                if FileManager.default.fileExists(atPath: url.path) {
+                    let handle = try FileHandle(forWritingTo: url)
+                    defer { handle.closeFile() }
+                    handle.seekToEndOfFile()
+                    handle.write(row)
+                } else {
+                    try row.write(to: url, options: .atomic)
+                }
+                completionHandler(.newData)
+            } catch {
+                CioInternalCommon.DIGraphShared.shared.logger.error("Unable to store background push sample receipt: \(error)")
+                completionHandler(.failed)
+            }
+        case .unsupported, .notBackground:
+            completionHandler(.noData)
+        }
+    }
 
     func application(_ application: UIApplication, configurationForConnecting connectingSceneSession: UISceneSession, options: UIScene.ConnectionOptions) -> UISceneConfiguration {
         // Called when a new scene session is being created.

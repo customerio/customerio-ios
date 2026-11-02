@@ -71,15 +71,25 @@ public final class CioInternalCommon.BackgroundDeliveryHttpClientImpl {
 }
 public enum CioInternalCommon.BackgroundDeliveryHttpError {
 }
+public final class CioInternalCommon.BackgroundPushReadinessChangedEvent {
+	public final val storageId: String;
+	public final val params: List<String : String>;
+	public final val timestamp: Date;
+	public final val ready: Boolean;
+	public var isPersistent: Boolean;
+	public fun init(ready: Boolean, storageId: String = UUID().uuidString, timestamp: Date = Date());
+}
 public interface CioInternalCommon.BackgroundTaskRunner {
 	public fun func withBackgroundTime(_ work: @Sendable () async -> Unit) async;
 }
 public final class CioInternalCommon.BackgroundTrackRequest {
 	public final val eventName: String;
 	public final val userId: String;
+	public final val anonymousId: String?;
 	public final val properties: Map<String, Any>;
 	public final val timestamp: Date?;
 	public fun init(eventName: String, userId: String, properties: List<String: Any> = List<:>, timestamp: Date? = nil);
+	public fun init(eventName: String, anonymousId: String, properties: List<String: Any> = List<:>, timestamp: Date? = nil);
 }
 public enum CioInternalCommon.CIOApiEndpoint {
 }
@@ -100,6 +110,7 @@ public final class CioInternalCommon.CIODeviceInfo {
 }
 public final class CioInternalCommon.CioAppGroupPendingPushDeliveryStore {
 	public final val appGroupSuiteName: String?;
+	public fun init(privateFileURL fileURL: URL?, logger: Logger, fileManager: FileManager = .default);
 	public fun func append(_ metric: PendingPushDeliveryMetric) -> Boolean;
 	public fun func loadAll() -> List<PendingPushDeliveryMetric>;
 	public fun func read() -> PendingPushDeliveryQueueRead;

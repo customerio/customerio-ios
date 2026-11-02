@@ -116,6 +116,18 @@ public final class CioAppGroupPendingPushDeliveryStore: PendingPushDeliveryStore
         }
     }
 
+    /// Stores rows in `fileURL`, a file only this process uses (for example the host app's Application
+    /// Support). `appGroupSuiteName` is `nil` because no extension shares the file. A `nil` URL gives a
+    /// store whose reads report `unreadable` and whose writes return `false`.
+    @_spi(Internal)
+    public init(privateFileURL fileURL: URL?, logger: Logger, fileManager: FileManager = .default) {
+        self.logger = logger
+        self.fileManager = fileManager
+        self.maxEntries = PendingPushDeliveryMetricsConstants.maxEntries
+        self.metricsFileURL = fileURL
+        self.appGroupSuiteName = nil
+    }
+
     public func append(_ metric: PendingPushDeliveryMetric) -> Bool {
         guard let fileURL = metricsFileURL else { return false }
 

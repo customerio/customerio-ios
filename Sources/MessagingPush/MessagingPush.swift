@@ -14,6 +14,8 @@ public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, Messagi
     @Atomic public private(set) static var moduleConfig: MessagingPushConfigOptions =
         MessagingPushConfigBuilder().build()
 
+    @Atomic static var backgroundPushReceiptSender: BackgroundPushReceiptSender?
+
     private static let moduleName = "MessagingPush"
 
     /// Retains the detached task that flushes pending push delivery metrics on startup so it can be awaited or
@@ -91,6 +93,14 @@ public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, Messagi
     static func resetTestEnvironment() {
         // Drain any in-flight startup flush before tearing down so a leaked detached task cannot resolve the
         // next test's freshly-overridden DataPipeline/store mocks and forward a stray metric.
+        if let sender = backgroundPushReceiptSender {
+            let semaphore = DispatchSemaphore(value: 0)
+            Task.detached { await sender.waitUntilIdle()
+                semaphore.signal()
+            }
+            semaphore.wait()
+        }
+        backgroundPushReceiptSender = nil
         awaitPendingMetricsFlushForTests()
         moduleConfig = MessagingPushConfigBuilder().build()
         shared = MessagingPush()
@@ -142,6 +152,7 @@ public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, Messagi
             }
             DIGraphShared.shared.registerPendingPushDeliveryStore()
             Self.schedulePendingPushDeliveryMetricsFlush()
+            Self.initializeBackgroundPushSupport(config: config)
 
             return shared.getImplementation(config: config)
         }

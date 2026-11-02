@@ -188,6 +188,35 @@ class DataPipelineEventBustTests: IntegrationTest {
         XCTAssertEqual(trackEvent.properties?["cio_token_type"]?.stringValue, "fid")
     }
 
+    func testBackgroundReadiness_updatesExistingTokenAndCannotBeOverriddenByCustomAttributes() async {
+        deviceAttributesMock.getDefaultDeviceAttributesClosure = { $0([:]) }
+        await eventBusHandler.postEventAndWait(RegisterDeviceTokenEvent(token: "token-a"))
+        XCTAssertEqual((outputReader.lastEvent as? TrackEvent)?.properties?["cio_background_push_version"]?.stringValue, "0")
+
+        await eventBusHandler.postEventAndWait(BackgroundPushReadinessChangedEvent(ready: true))
+        XCTAssertEqual((outputReader.lastEvent as? TrackEvent)?.properties?["cio_background_push_version"]?.stringValue, "1")
+
+        customerIO.setDeviceAttributes(["cio_background_push_version": "0"])
+        XCTAssertEqual((outputReader.lastEvent as? TrackEvent)?.properties?["cio_background_push_version"]?.stringValue, "1")
+
+        await eventBusHandler.postEventAndWait(BackgroundPushReadinessChangedEvent(ready: false))
+        XCTAssertEqual((outputReader.lastEvent as? TrackEvent)?.properties?["cio_background_push_version"]?.stringValue, "0")
+    }
+
+    func testBackgroundReadiness_delayedAttributeCallbacksUseCurrentReadiness() async {
+        var pending: [([String: Any]) -> Void] = []
+        deviceAttributesMock.getDefaultDeviceAttributesClosure = { pending.append($0) }
+
+        await eventBusHandler.postEventAndWait(RegisterDeviceTokenEvent(token: "token-a"))
+        await eventBusHandler.postEventAndWait(BackgroundPushReadinessChangedEvent(ready: true))
+        await eventBusHandler.postEventAndWait(BackgroundPushReadinessChangedEvent(ready: false))
+        pending.reversed().forEach { $0([:]) }
+
+        let events = outputReader.events.compactMap { $0 as? TrackEvent }.filter { $0.event == "Device Created or Updated" }
+        XCTAssertEqual(events.count, 3)
+        XCTAssertTrue(events.allSatisfy { $0.properties?["cio_background_push_version"]?.stringValue == "0" })
+    }
+
     func testSubscribeToJourneyEvents_givenSameTokenPostedConcurrently_expectDeviceRegisteredOnce() async {
         deviceAttributesMock.getDefaultDeviceAttributesClosure = { $0([:]) }
         // Logged between the stored-token check and the store, so concurrent handlers overlap there

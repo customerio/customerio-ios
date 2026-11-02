@@ -4,7 +4,7 @@ import UIKit
 import UserNotifications
 import XCTest
 
-@testable import CioInternalCommon
+@_spi(Internal) @testable import CioInternalCommon
 @testable import CioInternalCommonMocks
 @_spi(Internal) @testable import CioMessagingPush
 
@@ -134,5 +134,41 @@ class MessagingPushTest: IntegrationTest {
             "CIO-Delivery-Token": "token"
         ]
         return UNNotificationRequest(identifier: "id", content: content, trigger: nil)
+    }
+
+    func test_backgroundReadinessIsFalseWhenHostLacksRemoteNotificationMode() {
+        let events = EventBusHandlerMock()
+        diGraphShared.override(value: events, forType: EventBusHandler.self)
+        MessagingPush.initialize(withConfig: MessagingPushConfigBuilder().autoTrackPushEvents(false).backgroundPushEnabled(true).build())
+        let readiness = events.postEventReceivedInvocations.compactMap { $0 as? BackgroundPushReadinessChangedEvent }
+        XCTAssertEqual(readiness.count, 1)
+        XCTAssertEqual(readiness.first?.ready, false)
+    }
+
+    func test_extensionNeverPublishesHostReadiness() {
+        let events = EventBusHandlerMock()
+        diGraphShared.override(value: events, forType: EventBusHandler.self)
+        MessagingPush.initializeExtensionModule(config: MessagingPushConfigBuilder().backgroundPushEnabled(true).build())
+        XCTAssertFalse(events.postEventReceivedInvocations.contains { $0 is BackgroundPushReadinessChangedEvent })
+        XCTAssertNil(MessagingPush.backgroundPushReceiptSender)
+    }
+
+    func test_receiptsRetryWhenDataPipelinePublishesItsReadyProfile() async {
+        let file = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString).appendingPathComponent("receipts.json")
+        let store = CioAppGroupPendingPushDeliveryStore(privateFileURL: file, logger: log)
+        let keyReady = Synchronized(false)
+        let client = BackgroundDeliveryHttpClientMock()
+        client.sendTrackEventClosure = { _, done in done(keyReady.wrappedValue ? .success(()) : .failure(.missingCdpApiKey)) }
+        let sender = BackgroundPushReceiptSender(store: store, httpClient: client, taskRunner: NoBackgroundTaskRunner(), logger: log)
+        diGraphShared.override(value: sender, forType: BackgroundPushReceiptSender.self)
+        MessagingPush.initialize(withConfig: MessagingPushConfigBuilder().autoTrackPushEvents(false).build())
+        sender.enqueue(deliveryID: "delivery", deviceToken: "target", receivedAt: Date())
+        await sender.waitUntilIdle()
+        XCTAssertEqual(store.loadAll().count, 1)
+        keyReady.wrappedValue = true
+        await diGraphShared.eventBusHandler.postEventAndWait(AnonymousProfileIdentifiedEvent(identifier: "anonymous"))
+        await sender.waitUntilIdle()
+        XCTAssertTrue(store.loadAll().isEmpty)
+        try? FileManager.default.removeItem(at: file.deletingLastPathComponent())
     }
 }

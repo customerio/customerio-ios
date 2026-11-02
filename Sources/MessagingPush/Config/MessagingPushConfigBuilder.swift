@@ -28,6 +28,18 @@ import Foundation
 /// // Use `config` for initializing the push module in NotificationServiceExtension...
 /// ```
 public class MessagingPushConfigBuilder {
+    private var backgroundPushEnabled = false
+
+    /// Enable only after adding the Remote notifications background mode and calling
+    /// `MessagingPush.shared.handleBackgroundPush` from your AppDelegate's remote-notification
+    /// callback. Configure this on every launch, including a background launch. The host owns
+    /// the fetch completion handler. Background delivery is best effort and may repeat.
+    @discardableResult
+    public func backgroundPushEnabled(_ value: Bool) -> MessagingPushConfigBuilder {
+        backgroundPushEnabled = value
+        return self
+    }
+
     // configuration options for SdkConfig
     private var logLevel: CioLogLevel = .error
 
@@ -144,6 +156,7 @@ public class MessagingPushConfigBuilder {
     /// Builds and returns `MessagingPushConfigOptions` instance from the configured properties.
     public func build() -> MessagingPushConfigOptions {
         let configOptions = MessagingPushConfigOptions(
+            backgroundPushEnabled: backgroundPushEnabled,
             logLevel: logLevel,
             cdpApiKey: cdpApiKey,
             region: region ?? ApiKey.region(of: cdpApiKey) ?? .US,

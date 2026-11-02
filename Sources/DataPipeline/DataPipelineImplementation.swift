@@ -127,6 +127,13 @@ class DataPipelineImplementation: DataPipelineInstance, DataPipelineTracking, Ba
             self.processGeofenceMetricEvent(metric)
         }
 
+        eventBusHandler.addObserver(BackgroundPushReadinessChangedEvent.self) { event in
+            self.deviceTokenLock.lock()
+            defer { self.deviceTokenLock.unlock() }
+            self.backgroundPushReady = event.ready
+            self.addDeviceAttributes(token: self.contextPlugin.deviceToken ?? self.globalDataStore.pushDeviceToken)
+        }
+
         eventBusHandler.addObserver(RegisterDeviceTokenEvent.self) { event in
             // Events are delivered concurrently, and the same token can be posted again before it's stored
             self.deviceTokenLock.lock()
@@ -300,6 +307,8 @@ class DataPipelineImplementation: DataPipelineInstance, DataPipelineTracking, Ba
     }
 
     /// Internal method for passing device token to the plugin and updating device attributes
+    private var backgroundPushReady = false
+
     private func addDeviceAttributes(token deviceToken: String?, attributes customAttributes: [String: Any] = [:]) {
         guard let token = deviceToken, !token.isBlankOrEmpty() else {
             dataPipelinesLogger.logTrackingDevicesAttributesWithoutValidToken()
@@ -327,18 +336,11 @@ class DataPipelineImplementation: DataPipelineInstance, DataPipelineTracking, Ba
             // Read here, as the same token can get a type while attributes load.
             // Sent even when automatic device attributes are off, as the backend uses it to tell FIDs from tokens.
             let tokenType = self.globalDataStore.pushDeviceToken == token ? self.globalDataStore.pushDeviceTokenType : nil
-            let deviceAttributes = defaultDeviceAttributes.mergeWith(customAttributes.withDeviceTokenType(tokenType, logger: self.dataPipelinesLogger))
+            var deviceAttributes = defaultDeviceAttributes.mergeWith(customAttributes.withDeviceTokenType(tokenType, logger: self.dataPipelinesLogger))
+            deviceAttributes["cio_background_push_version"] = self.backgroundPushReady ? "1" : "0"
             self.contextPlugin.attributes = deviceAttributes
             self.analytics.track(name: "Device Created or Updated", properties: deviceAttributes, enrichments: [Context.deviceTokenEnrichment(token)])
         }
-    }
-
-    func trackDeliveryEvent(token: String?, event: String, deliveryId: String, timestamp: String) {
-        processMetricsFromBGQ(token: token, event: event, deliveryId: deliveryId, timestamp: timestamp, metaData: [:])
-    }
-
-    func trackMetric(deliveryID: String, event: Metric, deviceToken: String) {
-        trackPushMetric(deliveryID: deliveryID, event: event.rawValue, deviceToken: deviceToken)
     }
 
     func trackPushMetric(deliveryID: String, event: String, deviceToken: String) {
@@ -389,9 +391,7 @@ extension DataPipelineImplementation {
             return
         }
         dataPipelinesLogger.logStoringDevicePushToken(token: deviceToken, userId: registeredUserId)
-        // save the device token for later use.
-        // segment plugin doesn't store token anywhere so we need to pass token to it every time
-        // storing it so we can reference the token and update device plugin app relaunch
+        // Segment does not persist device tokens; save this one before publishing attributes.
         globalDataStore.savePushDeviceToken(deviceToken, type: tokenType)
 
         dataPipelinesLogger.logRegisteringPushToken(token: deviceToken, userId: registeredUserId)

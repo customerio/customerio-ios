@@ -7,6 +7,7 @@ public enum CioMessagingPush.AppDelegateSwizzler {
 }
 public final class CioMessagingPush.CustomerIOBackgroundPush {
 	public final val deliveryID: String;
+	public final val deliveryToken: String;
 	public final val data: List<String : String>;
 }
 public enum CioMessagingPush.CustomerIOBackgroundPushResult {
@@ -34,6 +35,7 @@ public extension CioMessagingPush.MessagingPush {
 	public fun func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse) -> CustomerIOParsedPushPayload?;
 }
 public final class CioMessagingPush.MessagingPushConfigBuilder {
+	public fun func backgroundPushEnabled(_ value: Boolean) -> MessagingPushConfigBuilder;
 	public fun init();
 	public fun func autoFetchDeviceToken(_ value: Boolean) -> MessagingPushConfigBuilder;
 	public fun func autoTrackPushEvents(_ value: Boolean) -> MessagingPushConfigBuilder;
@@ -45,6 +47,7 @@ public extension CioMessagingPush.MessagingPushConfigBuilder {
 	public fun func build(from dictionary: List<String: Any>) -> MessagingPushConfigOptions;
 }
 public final class CioMessagingPush.MessagingPushConfigOptions {
+	public var backgroundPushEnabled: Boolean;
 	public final val logLevel: CioLogLevel;
 	public final val cdpApiKey: String;
 	public final val region: Region;

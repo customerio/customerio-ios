@@ -56,6 +56,7 @@ public enum EventTypesRegistry {
             TrackInAppMetricEvent.self,
             TrackGeofenceMetricEvent.self,
             RegisterDeviceTokenEvent.self,
+            BackgroundPushReadinessChangedEvent.self,
             DeleteDeviceTokenEvent.self,
             NewSubscriptionEvent.self,
             LocationAcquiredEvent.self
@@ -223,6 +224,20 @@ public struct TrackGeofenceMetricEvent: EventRepresentable, GeofenceMetric {
         self.visitDurationSeconds = visitDurationSeconds
         self.visitDurationUncertaintySeconds = visitDurationUncertaintySeconds
         self.detectionSource = detectionSource
+    }
+}
+
+public struct BackgroundPushReadinessChangedEvent: EventRepresentable {
+    public let storageId: String
+    public let params: [String: String] = [:]
+    public let timestamp: Date
+    public let ready: Bool
+    public var isPersistent: Bool { false }
+
+    public init(ready: Bool, storageId: String = UUID().uuidString, timestamp: Date = Date()) {
+        self.ready = ready
+        self.storageId = storageId
+        self.timestamp = timestamp
     }
 }
 

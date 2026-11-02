@@ -38,6 +38,14 @@ class CombinedCacheEventBusHandlerTest: UnitTest {
         XCTAssertEqual(mockEventStorage.storeCallsCount, 0)
     }
 
+    func test_backgroundPushReadinessWithoutObservers_isNeverPersistedAcrossLaunches() async {
+        let handler = makeHandler()
+
+        await handler.postEventAndWait(BackgroundPushReadinessChangedEvent(ready: true))
+
+        XCTAssertEqual(mockEventStorage.storeCallsCount, 0)
+    }
+
     func test_postEventAndWait_givenNoObservers_expectNoStoreErrorPropagated() async {
         mockEventStorage.storeThrowableError = NSError(domain: "test", code: 1)
         let handler = makeHandler()

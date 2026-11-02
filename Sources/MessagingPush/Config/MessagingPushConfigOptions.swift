@@ -4,6 +4,8 @@ import CioInternalCommon
 ///
 /// Use `MessagingPushConfigBuilder` for constructing its instances. For detailed usage, see builder class documentation.
 public struct MessagingPushConfigOptions {
+    /// The host has configured background remote notifications and calls `handleBackgroundPush`.
+    public var backgroundPushEnabled: Bool = false
     public let logLevel: CioLogLevel
     public let cdpApiKey: String
     public let region: Region
