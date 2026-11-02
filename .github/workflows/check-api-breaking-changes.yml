@@ -18,8 +18,22 @@ concurrency: # cancel previous workflow run if one exists
   cancel-in-progress: true
 
 jobs:
+  # Picks the Mac runner label: GitHub's, or the second pool's when GitHub's pool is busy.
+  # Skipped while the switch is off, so the job below starts exactly as before.
+  select-runner:
+    if: vars.MACOS_OVERFLOW_ENABLED == 'true'
+    uses: customerio/mobile-ci-tools/.github/workflows/macos-runner-select.yml@main
+    with:
+      enabled: ${{ vars.MACOS_OVERFLOW_ENABLED }}
+      github-label: xcode-27
+      overflow-label: ${{ vars.MACOS_OVERFLOW_RUNNER_LABEL }}
+      running-threshold: ${{ fromJSON(vars.MACOS_OVERFLOW_RUNNING_THRESHOLD || '13') }}
+
   check-api-breaking-changes:
-    runs-on: xcode-27
+    needs: select-runner
+    # Runs when the selector succeeded, was skipped, or failed. Only a cancelled run stops it.
+    if: ${{ !cancelled() }}
+    runs-on: ${{ needs.select-runner.outputs.label || 'xcode-27' }}
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v7
