@@ -28,6 +28,11 @@ jobs:
       github-label: xcode-27
       overflow-label: ${{ vars.MACOS_OVERFLOW_RUNNER_LABEL }}
       running-threshold: ${{ fromJSON(vars.MACOS_OVERFLOW_RUNNING_THRESHOLD || '13') }}
+      # The spend check is off while the cap variable is unset.
+      monthly-spend-cap: ${{ fromJSON(vars.MACOS_OVERFLOW_MONTHLY_CAP || '0') }}
+      spend-url: ${{ vars.MACOS_OVERFLOW_SPEND_URL }}
+    secrets:
+      spend-api-key: ${{ secrets.MACOS_OVERFLOW_SPEND_API_KEY }}
 
   check-api-breaking-changes:
     needs: select-runner

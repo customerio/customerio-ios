@@ -32,6 +32,11 @@ jobs:
       github-label: macos-26
       overflow-label: ${{ vars.MACOS_OVERFLOW_RUNNER_LABEL }}
       running-threshold: ${{ fromJSON(vars.MACOS_OVERFLOW_RUNNING_THRESHOLD || '13') }}
+      # The spend check is off while the cap variable is unset.
+      monthly-spend-cap: ${{ fromJSON(vars.MACOS_OVERFLOW_MONTHLY_CAP || '0') }}
+      spend-url: ${{ vars.MACOS_OVERFLOW_SPEND_URL }}
+    secrets:
+      spend-api-key: ${{ secrets.MACOS_OVERFLOW_SPEND_API_KEY }}
 
   compile:
     name: Compile SDK with Xcode 26
