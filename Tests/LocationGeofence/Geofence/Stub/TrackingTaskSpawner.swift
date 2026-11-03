@@ -25,6 +25,7 @@ final class TrackingTaskSpawner: GeofenceTaskSpawning, @unchecked Sendable {
         /// Work suspended at a boundary only the test releases.
         var parked = 0
         var idleWaiters: [UUID: Waiter] = [:]
+        var onWaiterRegistered: (@Sendable () -> Void)?
 
         var isIdle: Bool { inFlight == parked }
     }
@@ -33,6 +34,12 @@ final class TrackingTaskSpawner: GeofenceTaskSpawning, @unchecked Sendable {
 
     var inFlight: Int { state.wrappedValue.inFlight }
     var idleWaiterCount: Int { state.wrappedValue.idleWaiters.count }
+
+    /// Calls `body` each time an idle waiter registers, after it is counted in `idleWaiterCount`. A test
+    /// awaits that event instead of polling the count against a clock.
+    func observeWaiterRegistrations(_ body: @escaping @Sendable () -> Void) {
+        state.mutating { $0.onWaiterRegistered = body }
+    }
 
     /// The spawner that started the running task, inherited by any task it creates. Tells a boundary
     /// the work this spawner counts from a test's own tasks, which it must not count as parked.
@@ -106,6 +113,7 @@ final class TrackingTaskSpawner: GeofenceTaskSpawning, @unchecked Sendable {
                 continuation.resume(returning: nil)
             } else {
                 DispatchQueue.global().asyncAfter(deadline: idleDeadline, execute: deadline)
+                state.wrappedValue.onWaiterRegistered?()
             }
         }
     }
