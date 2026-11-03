@@ -125,7 +125,7 @@ struct GeofenceTaskSpawningTests {
 
         gate.continuation.finish()
         await task.value
-        await spawner.awaitIdle()
+        #expect(await spawner.awaitIdle(timeout: TrackingTaskSpawner.noDeadline) == nil)
 
         #expect(spawner.inFlight == 0)
     }
@@ -134,8 +134,7 @@ struct GeofenceTaskSpawningTests {
     /// parked, which reads idle, and the job then starts the timeout and answer it waits on. The
     /// waiter woken in between must keep waiting until that work is done.
     ///
-    /// The test awaits the waiter's own events, registering and returning, and not a timed poll. It
-    /// can't hang: `awaitIdle` returns at its own deadline if the waiter never registers again.
+    /// The test awaits the waiter's own events, registering and returning, and not a timed poll.
     @Test
     func trackingSpawner_givenParkedPublishedBeforeTheWorkItAwaits_expectWaiterKeepsWaiting() async throws {
         enum WaiterEvent { case registered, returned }
@@ -151,9 +150,10 @@ struct GeofenceTaskSpawningTests {
             for await _ in callerHeld.stream {}
         }
         let waiter = Task {
-            await spawner.awaitIdle()
+            let timeout = await spawner.awaitIdle(timeout: TrackingTaskSpawner.noDeadline)
             log.entries.append(0)
             events.continuation.yield(.returned)
+            return timeout
         }
         try #require(await nextEvent.next() == .registered)
 
@@ -168,7 +168,7 @@ struct GeofenceTaskSpawningTests {
         #expect(log.entries.isEmpty, "the waiter returned while the work its caller waits on still ran")
         startedHeld.continuation.finish()
         await started.value
-        await waiter.value
+        #expect(await waiter.value == nil)
         #expect(log.entries == [1, 0])
         callerHeld.continuation.finish()
         await caller.value
@@ -186,7 +186,7 @@ struct GeofenceTaskSpawningTests {
 
         gate.continuation.finish()
         await task.value
-        await spawner.awaitIdle()
+        #expect(await spawner.awaitIdle(timeout: TrackingTaskSpawner.noDeadline) == nil)
 
         #expect(spawner.inFlight == 0)
     }
