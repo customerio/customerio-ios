@@ -148,9 +148,9 @@ extension CioProviderAgnosticAppDelegate {
 /// call only what that class implements, skipping `forwardingTarget(for:)`. Without the forwarders below, the app's
 /// handler never runs under such a proxy, and neither does `MessagingPush.shared.handleBackgroundPush(userInfo:)`.
 ///
-/// Before silent push, a proxy found nothing to call here, so the app's handler didn't run under it. Some apps rely on
-/// that: Flutter's `FlutterAppDelegate` would hand the push to `firebase_messaging` a second time. A call through a
-/// proxy therefore reaches the app only when it turned on `backgroundPushEnabled`. UIKit's own calls always do.
+/// A call through a proxy reaches the app only when it turned on `backgroundPushEnabled`, as some apps must not get
+/// it: Flutter's `FlutterAppDelegate` would hand the push to `firebase_messaging`, which the proxy already called.
+/// UIKit's own calls always reach the app.
 @available(iOSApplicationExtension, unavailable)
 extension CioProviderAgnosticAppDelegate {
     private typealias FetchCompletionHandler = @convention(block) (UIBackgroundFetchResult) -> Void

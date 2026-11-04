@@ -28,7 +28,7 @@ public enum CustomerIOBackgroundPushResult: Equatable {
 
 private enum BackgroundPushParser {
     static func parse(_ userInfo: [AnyHashable: Any]) -> CustomerIOBackgroundPushResult {
-        // The legacy relay owns this pair; background envelopes forbid it.
+        // A push with this pair is a regular Customer.io push, even when its data uses background key names.
         if userInfo["CIO-Delivery-ID"] is String, userInfo["CIO-Delivery-Token"] is String {
             return .notBackground
         }

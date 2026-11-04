@@ -306,7 +306,7 @@ class CioProviderAgnosticAppDelegateTests: XCTestCase {
         XCTAssertTrue(wrapper.responds(to: remoteNotificationSelector))
     }
 
-    func testDidReceiveRemoteNotification_whenAProxyCallsItWithSilentPushOff_thenAppIsNotCalledAsBefore() throws {
+    func testDidReceiveRemoteNotification_whenAProxyCallsItWithSilentPushOff_thenAppIsNotCalled() throws {
         let wrapped = BackgroundPushAppDelegate()
         let wrapper = CioProviderAgnosticAppDelegate(messagingPush: mockMessagingPush, appDelegate: wrapped, config: { self.createMockConfig() }, logger: mockLogger)
         let original = try proxyLikeFirebase(wrapper)
