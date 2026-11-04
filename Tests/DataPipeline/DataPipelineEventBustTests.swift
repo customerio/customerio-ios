@@ -237,6 +237,35 @@ class DataPipelineEventBustTests: IntegrationTest {
         XCTAssertEqual(deviceUpdates().map { $0.properties?["cio_background_push_version"]?.stringValue }, ["0"])
     }
 
+    func testBackgroundReadiness_updateHeldWhileAnalyticsStarts_isMarkedReportedOnlyOnceProcessed() async {
+        deviceAttributesMock.getDefaultDeviceAttributesClosure = { $0([:]) }
+        globalDataStoreMock.pushDeviceToken = "token-a"
+        let startupQueue = holdAnalyticsEvents()
+
+        await eventBusHandler.postEventAndWait(BackgroundPushReadinessChangedEvent(ready: true))
+        // Held in memory: if the app is killed now, the next launch must send it again.
+        XCTAssertNil(globalDataStoreMock.reportedBackgroundPushVersion)
+
+        releaseAnalyticsEvents(startupQueue)
+        XCTAssertEqual(globalDataStoreMock.reportedBackgroundPushVersion, "1")
+    }
+
+    func testBackgroundReadiness_changingBackWhileAnUpdateIsHeld_sendsBothInOrder() async {
+        deviceAttributesMock.getDefaultDeviceAttributesClosure = { $0([:]) }
+        globalDataStoreMock.pushDeviceToken = "token-a"
+        globalDataStoreMock.reportedBackgroundPushVersion = "0"
+        let startupQueue = holdAnalyticsEvents()
+
+        await eventBusHandler.postEventAndWait(BackgroundPushReadinessChangedEvent(ready: true))
+        await eventBusHandler.postEventAndWait(BackgroundPushReadinessChangedEvent(ready: false))
+        releaseAnalyticsEvents(startupQueue)
+
+        let versions = outputReader.events.compactMap { $0 as? TrackEvent }.filter { $0.event == "Device Created or Updated" }
+            .map { $0.properties?["cio_background_push_version"]?.stringValue }
+        XCTAssertEqual(versions, ["1", "0"])
+        XCTAssertEqual(globalDataStoreMock.reportedBackgroundPushVersion, "0")
+    }
+
     func testBackgroundReadiness_delayedAttributeCallbacksUseCurrentReadiness() async {
         var pending: [([String: Any]) -> Void] = []
         deviceAttributesMock.getDefaultDeviceAttributesClosure = { pending.append($0) }
@@ -401,5 +430,31 @@ class DataPipelineEventBustTests: IntegrationTest {
         let properties = trackEvent.properties?.dictionaryValue
         XCTAssertEqual(properties?["latitude"] as? Double, givenLatitude)
         XCTAssertEqual(properties?["longitude"] as? Double, givenLongitude)
+    }
+}
+
+private extension DataPipelineEventBustTests {
+    /// Makes Analytics hold events in memory, as it does while settings load at startup.
+    func holdAnalyticsEvents() -> StartupQueue? {
+        let startupQueue = analytics.find(pluginType: StartupQueue.self)
+        XCTAssertNotNil(startupQueue)
+        analytics.store.dispatch(action: System.ToggleRunningAction(running: false))
+        waitUntil { startupQueue?.running == false }
+        return startupQueue
+    }
+
+    /// Lets Analytics run again and waits until it has processed the held events.
+    func releaseAnalyticsEvents(_ startupQueue: StartupQueue?) {
+        analytics.store.dispatch(action: System.ToggleRunningAction(running: true))
+        // Replay runs on the main queue under `syncQueue`, emptying the held events last.
+        waitUntil { startupQueue?.running == true && startupQueue?.syncQueue.sync { startupQueue?.queuedEvents.isEmpty } == true }
+    }
+
+    func waitUntil(_ condition: () -> Bool, file: StaticString = #filePath, line: UInt = #line) {
+        let deadline = Date().addingTimeInterval(5)
+        while !condition(), Date() < deadline {
+            RunLoop.current.run(until: Date().addingTimeInterval(0.01))
+        }
+        XCTAssertTrue(condition(), "Timed out waiting for Analytics", file: file, line: line)
     }
 }
