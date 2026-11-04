@@ -153,26 +153,20 @@ class BackgroundPushTest: UnitTest {
         XCTAssertTrue(receiptStore.loadAll().isEmpty)
     }
 
-    func test_legacyBusinessKeys_includingBackgroundMetadata_remainAvailableToExistingHandlers() {
-        let mock = installMock()
-        for key in ["CIO-Background-Version", "CIO-Background-Delivery-ID", "CIO-Background-Delivery-Token", "CIO-Background-sync", "cio-background-version", "CIO-Background-Delivery-ID-extra"] {
-            let payload: [AnyHashable: Any] = [
-                "CIO-Delivery-ID": "old", "CIO-Delivery-Token": "old", key: "existing business data"
-            ]
-            XCTAssertEqual(MessagingPush.shared.handleBackgroundPush(userInfo: payload), .notBackground, key)
-        }
-        XCTAssertEqual(mock.trackMetricCallsCount, 0)
-        XCTAssertTrue(receiptStore.loadAll().isEmpty)
-    }
-
     func test_legacyTrackingPair_takesPrecedenceOverBackgroundMetadata() {
         let mock = installMock()
-        var payload = userInfo()
-        payload["CIO-Delivery-ID"] = "legacy-delivery"
-        payload["CIO-Delivery-Token"] = "legacy-token"
-        payload["CIO-Background-Version"] = "2"
+        var payloads: [[AnyHashable: Any]] = ["CIO-Background-Version", "CIO-Background-Delivery-ID", "CIO-Background-Delivery-Token", "CIO-Background-sync", "cio-background-version", "CIO-Background-Delivery-ID-extra"].map {
+            ["CIO-Delivery-ID": "old", "CIO-Delivery-Token": "old", $0: "existing business data"]
+        }
+        var complete = userInfo()
+        complete["CIO-Delivery-ID"] = "legacy-delivery"
+        complete["CIO-Delivery-Token"] = "legacy-token"
+        complete["CIO-Background-Version"] = "2"
+        payloads.append(complete)
 
-        XCTAssertEqual(MessagingPush.shared.handleBackgroundPush(userInfo: payload), .notBackground)
+        for payload in payloads {
+            XCTAssertEqual(MessagingPush.shared.handleBackgroundPush(userInfo: payload), .notBackground, "\(payload.keys)")
+        }
         XCTAssertEqual(mock.trackMetricCallsCount, 0)
         XCTAssertTrue(receiptStore.loadAll().isEmpty)
     }

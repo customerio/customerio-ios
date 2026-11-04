@@ -11,6 +11,38 @@ final class BackgroundPushReceiptSenderTest: XCTestCase {
         return CioAppGroupPendingPushDeliveryStore(privateFileURL: directory.appendingPathComponent("receipts.json"), logger: LoggerMock())
     }
 
+    /// Holds the first request open until the test completes it. Later requests succeed.
+    private final class HeldFirstRequest {
+        let inFlight: XCTestExpectation
+        let deliveryIDs = Synchronized<[String]>([])
+        let completion = Synchronized<((Result<Void, BackgroundDeliveryHttpError>) -> Void)?>(nil)
+
+        init(inFlight: XCTestExpectation) {
+            self.inFlight = inFlight
+        }
+
+        func complete(_ result: Result<Void, BackgroundDeliveryHttpError>) {
+            completion.wrappedValue?(result)
+        }
+    }
+
+    private func holdFirstRequest(of client: BackgroundDeliveryHttpClientMock) -> HeldFirstRequest {
+        let held = HeldFirstRequest(inFlight: expectation(description: "First request paused"))
+        client.sendTrackEventClosure = { request, done in
+            let first = held.deliveryIDs.mutating { ids -> Bool in
+                ids.append(request.anonymousId ?? "")
+                return ids.count == 1
+            }
+            if first {
+                held.completion.wrappedValue = done
+                held.inFlight.fulfill()
+            } else {
+                done(.success(()))
+            }
+        }
+        return held
+    }
+
     /// A sender as `MessagingPush.initialize` leaves it: started, with automatic tracking on.
     private func makeSender(store: PendingPushDeliveryStore, client: BackgroundDeliveryHttpClient) -> BackgroundPushReceiptSender {
         let sender = BackgroundPushReceiptSender(store: store, httpClient: client, taskRunner: NoBackgroundTaskRunner(), logger: LoggerMock())
@@ -186,50 +218,30 @@ final class BackgroundPushReceiptSenderTest: XCTestCase {
     func test_newReceiptsWhileSendingDrainWithoutConcurrentHTTPRequests() async {
         let store = makeStore()
         let client = BackgroundDeliveryHttpClientMock()
-        let inFlight = expectation(description: "First request paused")
-        let completion = Synchronized<((Result<Void, BackgroundDeliveryHttpError>) -> Void)?>(nil)
-        let requests = Synchronized<[String]>([])
-        client.sendTrackEventClosure = { request, done in
-            let first = requests.mutating { ids -> Bool in ids.append(request.anonymousId ?? "")
-                return ids.count == 1
-            }
-            if first { completion.wrappedValue = done
-                inFlight.fulfill()
-            } else { done(.success(())) }
-        }
+        let firstRequest = holdFirstRequest(of: client)
         let sender = makeSender(store: store, client: client)
         sender.enqueue(deliveryID: "first", deviceToken: "target", receivedAt: Date())
-        await fulfillment(of: [inFlight], timeout: 2)
+        await fulfillment(of: [firstRequest.inFlight], timeout: 2)
         sender.enqueue(deliveryID: "second", deviceToken: "target", receivedAt: Date())
         sender.enqueue(deliveryID: "third", deviceToken: "target", receivedAt: Date())
-        XCTAssertEqual(requests.wrappedValue, ["first"])
-        completion.wrappedValue?(.success(()))
+        XCTAssertEqual(firstRequest.deliveryIDs.wrappedValue, ["first"])
+        firstRequest.complete(.success(()))
         await sender.waitUntilIdle()
-        XCTAssertEqual(requests.wrappedValue, ["first", "second", "third"])
+        XCTAssertEqual(firstRequest.deliveryIDs.wrappedValue, ["first", "second", "third"])
         XCTAssertTrue(store.loadAll().isEmpty)
     }
 
     func test_newReceiptDuringAFailedSendGetsAnotherAttemptWithoutWaitingForLaunch() async {
         let store = makeStore()
         let client = BackgroundDeliveryHttpClientMock()
-        let inFlight = expectation(description: "First request paused")
-        let completion = Synchronized<((Result<Void, BackgroundDeliveryHttpError>) -> Void)?>(nil)
-        let requests = Synchronized<[String]>([])
-        client.sendTrackEventClosure = { request, done in
-            let first = requests.mutating { ids -> Bool in ids.append(request.anonymousId ?? "")
-                return ids.count == 1
-            }
-            if first { completion.wrappedValue = done
-                inFlight.fulfill()
-            } else { done(.success(())) }
-        }
+        let firstRequest = holdFirstRequest(of: client)
         let sender = makeSender(store: store, client: client)
         sender.enqueue(deliveryID: "first", deviceToken: "target", receivedAt: Date())
-        await fulfillment(of: [inFlight], timeout: 2)
+        await fulfillment(of: [firstRequest.inFlight], timeout: 2)
         sender.enqueue(deliveryID: "second", deviceToken: "target", receivedAt: Date())
-        completion.wrappedValue?(.failure(.transport))
+        firstRequest.complete(.failure(.transport))
         await sender.waitUntilIdle()
-        XCTAssertEqual(requests.wrappedValue, ["first", "first", "second"])
+        XCTAssertEqual(firstRequest.deliveryIDs.wrappedValue, ["first", "first", "second"])
         XCTAssertTrue(store.loadAll().isEmpty)
     }
 

@@ -38,12 +38,9 @@ class CombinedCacheEventBusHandlerTest: UnitTest {
         XCTAssertEqual(mockEventStorage.storeCallsCount, 0)
     }
 
-    func test_backgroundPushReadinessWithoutObservers_isNeverPersistedAcrossLaunches() async {
-        let handler = makeHandler()
-
-        await handler.postEventAndWait(BackgroundPushReadinessChangedEvent(ready: true))
-
-        XCTAssertEqual(mockEventStorage.storeCallsCount, 0)
+    func test_backgroundPushReadiness_isTransient() {
+        // A launch must never replay an earlier launch's readiness.
+        XCTAssertFalse(BackgroundPushReadinessChangedEvent(ready: true).isPersistent)
     }
 
     func test_postEventAndWait_givenNoObservers_expectNoStoreErrorPropagated() async {
