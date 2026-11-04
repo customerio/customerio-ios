@@ -159,8 +159,9 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         switch MessagingPush.shared.handleBackgroundPush(userInfo: userInfo) {
         case .received(let push):
             // The same push can arrive twice, so real work should be keyed on `push.deliveryID`.
-            // This sample logs every arrival, repeats included, for checks on a device.
-            completionHandler(BackgroundPushLog.append(push) ? .newData : .failed)
+            // This sample records every arrival, repeats included, in the diagnostics log.
+            DiagnosticLog.shared.note("Silent push \(push.deliveryID): \(push.data)", tag: "BackgroundPush", level: .info)
+            completionHandler(.newData)
         case .unsupported:
             // A newer silent push format than this SDK reads. Nothing is shown.
             completionHandler(.noData)
@@ -295,31 +296,5 @@ class SampleInboxEventListener: InboxEventListener {
 
     func messageDismissed(message: InboxMessage) {
         os_log("[CIO-Inbox] sample listener: dismissed queueId=%{public}@", log: Self.log, type: .info, message.queueId)
-    }
-}
-
-/// Appends each silent push to `Documents/background-push.jsonl`, one JSON object per line, so a tester can
-/// pull the file off a device and match arrivals to sends.
-private enum BackgroundPushLog {
-    static func append(_ push: CustomerIOBackgroundPush) -> Bool {
-        let row: [String: Any] = ["delivery_id": push.deliveryID, "received_at_ms": Date().timeIntervalSince1970 * 1000, "data": push.data]
-        do {
-            let url = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
-                .appendingPathComponent("background-push.jsonl")
-            var line = try JSONSerialization.data(withJSONObject: row, options: [.sortedKeys])
-            line.append(0x0A)
-            guard FileManager.default.fileExists(atPath: url.path) else {
-                try line.write(to: url, options: .atomic)
-                return true
-            }
-            let handle = try FileHandle(forWritingTo: url)
-            defer { try? handle.close() }
-            try handle.seekToEnd()
-            try handle.write(contentsOf: line)
-            return true
-        } catch {
-            CioInternalCommon.DIGraphShared.shared.logger.error("Unable to log background push \(push.deliveryID): \(error)")
-            return false
-        }
     }
 }
