@@ -107,12 +107,12 @@ Sent with `apns-push-type: background` and `apns-priority: 5`. Over Firebase the
 
 - Saved to `Application Support/io.customer/background_push_receipts.json` before `handleBackgroundPush` returns, then sent as `Report Delivery Event` with `anonymousId` set to the delivery ID, `metric: delivered` and `recipient` set to the delivery token. The original receive time is kept.
 - Sent with a `UIApplication` background task. Rows that fail are retried on the next push, the next `initialize`, or when Data Pipeline publishes a profile. 4xx answers other than 401, 403, 408 and 429 drop the row.
-- One receipt per delivery: a repeat is skipped while a row for it is saved or after it was handled earlier in this launch (the last 100 deliveries).
-- Before `MessagingPush.initialize`, the receipt is saved the same way and sent once the SDK can reach Customer.io.
+- One receipt per delivery: a repeat is skipped while a row for it is saved or after it was handled earlier in this launch (the last 100 deliveries). A repeat still triggers a send attempt, so a receipt left by a failed send goes out when the push arrives again.
+- Before `MessagingPush.initialize`, the receipt is saved the same way and nothing is sent. `initialize` then sends it, or removes it when `autoTrackPushEvents` is off.
 
 ### Readiness
 
-`cio_background_push_version` is set last on every `Device Created or Updated`, so custom device attributes can't override it. It is `"1"` when `backgroundPushEnabled` is on and Info.plist lists `remote-notification`, and `"0"` otherwise, including apps that never initialize MessagingPush. MessagingPush posts `BackgroundPushReadinessChangedEvent` from `initialize`. Data Pipeline sends a device update for it only when the value differs from `GlobalDataStore.reportedBackgroundPushVersion`, the value in the last device update, so a launch with unchanged readiness sends nothing extra.
+`cio_background_push_version` is set last on every `Device Created or Updated`, so custom device attributes can't override it. It is `"1"` when `backgroundPushEnabled` is on and Info.plist lists `remote-notification`, and `"0"` otherwise, including apps that never initialize MessagingPush. MessagingPush posts `BackgroundPushReadinessChangedEvent` from `initialize`. Data Pipeline sends a device update for it only when the value differs from the last device update, so a launch with unchanged readiness sends nothing extra. The last value is saved in `GlobalDataStore.reportedBackgroundPushVersion` once the event gets past Analytics' in-memory startup queue, so an update lost to the app being killed before then is sent again on the next launch.
 
 ### App delegate proxies
 
