@@ -15,14 +15,14 @@ enum BackgroundPushReadiness {
 
 extension MessagingPush {
     /// The one receipt sender, created on first use. A host can handle a push before calling `initialize`,
-    /// so that push's receipt is saved then and sent once the SDK can reach Customer.io.
+    /// so that push's receipt is saved then and left for `initialize` to send or remove.
     @available(iOSApplicationExtension, unavailable)
     static func backgroundPushReceiptSenderCreatingIfNeeded() -> BackgroundPushReceiptSender {
         backgroundPushReceiptSender.mutating { existing in
             if let existing { return existing }
             let graph = DIGraphShared.shared
             let taskRunner: BackgroundTaskRunner = graph.getOverriddenInstance() ?? UIKitBackgroundTaskRunner(name: "io.customer.background-push-receipt")
-            let created: BackgroundPushReceiptSender = graph.getOverriddenInstance() ?? BackgroundPushReceiptSender(
+            let created = BackgroundPushReceiptSender(
                 store: CioAppGroupPendingPushDeliveryStore(privateFileURL: BackgroundPushReceiptSender.defaultFileURL(), logger: graph.logger),
                 httpClient: graph.backgroundDeliveryHttpClient,
                 taskRunner: taskRunner,
@@ -44,10 +44,10 @@ extension MessagingPush {
             backgroundModes: Bundle.main.object(forInfoDictionaryKey: "UIBackgroundModes")
         )
         if config.backgroundPushEnabled, !backgroundPushReady {
-            DIGraphShared.shared.logger.error(
+            graph.logger.error(
                 "Background push is enabled, but Info.plist UIBackgroundModes lacks remote-notification. This device will be registered as unable to receive background pushes."
             )
         }
-        DIGraphShared.shared.eventBusHandler.postEvent(BackgroundPushReadinessChangedEvent(ready: backgroundPushReady))
+        graph.eventBusHandler.postEvent(BackgroundPushReadinessChangedEvent(ready: backgroundPushReady))
     }
 }

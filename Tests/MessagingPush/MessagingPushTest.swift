@@ -167,69 +167,63 @@ class MessagingPushTest: IntegrationTest {
         let sender: BackgroundPushReceiptSender
     }
 
-    /// Installs a receipt sender backed by a temporary file, whose sends succeed.
-    private func installReceiptSender() -> ReceiptHarness {
+    /// Installs a receipt sender backed by a temporary file. Sends succeed unless `send` says otherwise.
+    private func installReceiptSender(
+        send: @escaping (BackgroundTrackRequest) -> Result<Void, BackgroundDeliveryHttpError> = { _ in .success(()) }
+    ) -> ReceiptHarness {
         let file = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString).appendingPathComponent("receipts.json")
         addTeardownBlock { try? FileManager.default.removeItem(at: file.deletingLastPathComponent()) }
         let store = CioAppGroupPendingPushDeliveryStore(privateFileURL: file, logger: log)
         let client = BackgroundDeliveryHttpClientMock()
-        client.sendTrackEventClosure = { _, done in done(.success(())) }
+        client.sendTrackEventClosure = { request, done in done(send(request)) }
         let sender = BackgroundPushReceiptSender(store: store, httpClient: client, taskRunner: NoBackgroundTaskRunner(), logger: log)
-        diGraphShared.override(value: sender, forType: BackgroundPushReceiptSender.self)
+        MessagingPush.backgroundPushReceiptSender.wrappedValue = sender
         return ReceiptHarness(store: store, client: client, sender: sender)
     }
 
     func test_backgroundPushBeforeInitialization_savesReceiptAndSendsItOnlyOnceInitialized() async {
         let harness = installReceiptSender()
-        let (store, client, sender) = (harness.store, harness.client, harness.sender)
         XCTAssertFalse(MessagingPush.shared.hasBeenInitialized)
 
         guard case .received(let payload) = MessagingPush.shared.handleBackgroundPush(userInfo: backgroundPush) else {
             return XCTFail("Background data must reach the host before initialization")
         }
         XCTAssertEqual(payload.data, ["order_id": "42"])
-        XCTAssertEqual(store.loadAll().map(\.deliveryId), ["delivery"])
+        XCTAssertEqual(harness.store.loadAll().map(\.deliveryId), ["delivery"])
         // Waits for initialize, which knows whether the app tracks automatically.
-        await sender.waitUntilIdle()
-        XCTAssertEqual(client.sendTrackEventCallsCount, 0)
+        await harness.sender.waitUntilIdle()
+        XCTAssertEqual(harness.client.sendTrackEventCallsCount, 0)
 
         MessagingPush.initialize()
-        await sender.waitUntilIdle()
+        await harness.sender.waitUntilIdle()
 
-        XCTAssertTrue(store.loadAll().isEmpty)
-        XCTAssertEqual(client.sendTrackEventReceivedArguments?.request.properties["recipient"] as? String, "target")
+        XCTAssertTrue(harness.store.loadAll().isEmpty)
+        XCTAssertEqual(harness.client.sendTrackEventReceivedArguments?.request.properties["recipient"] as? String, "target")
     }
 
     func test_backgroundPushBeforeInitialization_withAutoTrackingOff_sendsNoReceipt() async {
         let harness = installReceiptSender()
-        let (store, client, sender) = (harness.store, harness.client, harness.sender)
 
         guard case .received = MessagingPush.shared.handleBackgroundPush(userInfo: backgroundPush) else {
             return XCTFail("Background data must reach the host before initialization")
         }
         MessagingPush.initialize(withConfig: MessagingPushConfigBuilder().autoTrackPushEvents(false).build())
-        await sender.waitUntilIdle()
+        await harness.sender.waitUntilIdle()
 
-        XCTAssertEqual(client.sendTrackEventCallsCount, 0)
-        XCTAssertTrue(store.loadAll().isEmpty)
+        XCTAssertEqual(harness.client.sendTrackEventCallsCount, 0)
+        XCTAssertTrue(harness.store.loadAll().isEmpty)
     }
 
     func test_receiptsRetryWhenDataPipelinePublishesItsReadyProfile() async {
-        let file = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString).appendingPathComponent("receipts.json")
-        let store = CioAppGroupPendingPushDeliveryStore(privateFileURL: file, logger: log)
         let keyReady = Synchronized(false)
-        let client = BackgroundDeliveryHttpClientMock()
-        client.sendTrackEventClosure = { _, done in done(keyReady.wrappedValue ? .success(()) : .failure(.missingCdpApiKey)) }
-        let sender = BackgroundPushReceiptSender(store: store, httpClient: client, taskRunner: NoBackgroundTaskRunner(), logger: log)
-        diGraphShared.override(value: sender, forType: BackgroundPushReceiptSender.self)
+        let harness = installReceiptSender { _ in keyReady.wrappedValue ? .success(()) : .failure(.missingCdpApiKey) }
         MessagingPush.initialize(withConfig: MessagingPushConfigBuilder().autoTrackPushEvents(false).build())
-        sender.enqueue(deliveryID: "delivery", deviceToken: "target", receivedAt: Date())
-        await sender.waitUntilIdle()
-        XCTAssertEqual(store.loadAll().count, 1)
+        harness.sender.enqueue(deliveryID: "delivery", deviceToken: "target", receivedAt: Date())
+        await harness.sender.waitUntilIdle()
+        XCTAssertEqual(harness.store.loadAll().count, 1)
         keyReady.wrappedValue = true
         await diGraphShared.eventBusHandler.postEventAndWait(AnonymousProfileIdentifiedEvent(identifier: "anonymous"))
-        await sender.waitUntilIdle()
-        XCTAssertTrue(store.loadAll().isEmpty)
-        try? FileManager.default.removeItem(at: file.deletingLastPathComponent())
+        await harness.sender.waitUntilIdle()
+        XCTAssertTrue(harness.store.loadAll().isEmpty)
     }
 }

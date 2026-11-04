@@ -6,7 +6,6 @@ import Foundation
 /// A delivery gets one receipt: a repeat is skipped while its receipt is pending or was handled this launch.
 /// Nothing is sent until ``start(autoTrackPushEvents:)``, which `MessagingPush.initialize` calls with the app's config.
 final class BackgroundPushReceiptSender: @unchecked Sendable {
-    static let fileName = "background_push_receipts.json"
     static let maxUnsaved = 50
     static let maxHandledDeliveryIDs = 100
 
@@ -34,10 +33,10 @@ final class BackgroundPushReceiptSender: @unchecked Sendable {
         self.logger = logger
     }
 
-    static func defaultFileURL(fileManager: FileManager = .default) -> URL? {
-        fileManager.urls(for: .applicationSupportDirectory, in: .userDomainMask).first?
+    static func defaultFileURL() -> URL? {
+        FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first?
             .appendingPathComponent("io.customer", isDirectory: true)
-            .appendingPathComponent(fileName, isDirectory: false)
+            .appendingPathComponent("background_push_receipts.json", isDirectory: false)
     }
 
     func enqueue(deliveryID: String, deviceToken: String, receivedAt: Date) {
@@ -90,11 +89,13 @@ final class BackgroundPushReceiptSender: @unchecked Sendable {
         }
     }
 
+    #if DEBUG
     func waitUntilIdle() async {
         while let task = state.using({ $0.task }) {
             await task.value
         }
     }
+    #endif
 
     func observeContextReadiness(_ eventBus: EventBusHandler) {
         // DataPipeline publishes either event after installing its live API key provider.

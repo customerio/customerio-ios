@@ -120,9 +120,9 @@ public final class CioAppGroupPendingPushDeliveryStore: PendingPushDeliveryStore
     /// Support). `appGroupSuiteName` is `nil` because no extension shares the file. A `nil` URL gives a
     /// store whose reads report `unreadable` and whose writes return `false`.
     @_spi(Internal)
-    public init(privateFileURL fileURL: URL?, logger: Logger, fileManager: FileManager = .default) {
+    public init(privateFileURL fileURL: URL?, logger: Logger) {
         self.logger = logger
-        self.fileManager = fileManager
+        self.fileManager = .default
         self.maxEntries = PendingPushDeliveryMetricsConstants.maxEntries
         self.metricsFileURL = fileURL
         self.appGroupSuiteName = nil

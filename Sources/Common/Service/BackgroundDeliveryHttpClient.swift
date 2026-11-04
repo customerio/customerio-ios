@@ -18,8 +18,8 @@ public struct BackgroundTrackRequest {
     public let eventName: String
     /// Identified user id. Caller must validate non-empty before sending. Empty when `anonymousId` is set.
     public let userId: String
-    /// Set for events tied to a message and no profile, such as push delivery receipts.
-    /// When set, the body carries `anonymousId` and omits `userId`.
+    /// Set for events tied to a message and no profile, such as push delivery receipts. Caller must pass a
+    /// non-empty value. When set, the body carries `anonymousId` and omits `userId`.
     public let anonymousId: String?
     /// Custom event properties payload.
     public let properties: [String: Any]
@@ -119,9 +119,6 @@ public final class BackgroundDeliveryHttpClientImpl: BackgroundDeliveryHttpClien
             return completion(.failure(.missingCdpApiKey))
         }
 
-        if let anonymousId = request.anonymousId, anonymousId.isEmpty {
-            return completion(.failure(.invalidRequest))
-        }
         var body: [String: Any] = ["event": request.eventName, "properties": request.properties]
         if let anonymousId = request.anonymousId {
             body["anonymousId"] = anonymousId

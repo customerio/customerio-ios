@@ -44,16 +44,6 @@ struct BackgroundDeliveryHttpClientTests {
         #expect((body?["properties"] as? [String: Any])?["recipient"] as? String == "original-token")
     }
 
-    @Test
-    func emptyAnonymousIdentity_rejectsBeforeHTTP() async {
-        let (client, runner) = makeClient(store: makeStore())
-        let result = await withCheckedContinuation { continuation in
-            client.sendTrackEvent(BackgroundTrackRequest(eventName: "Report Delivery Event", anonymousId: "")) { continuation.resume(returning: $0) }
-        }
-        if case .failure(.invalidRequest) = result {} else { Issue.record("Expected invalid request") }
-        #expect(!runner.requestCalled)
-    }
-
     // MARK: - Wire format
 
     @Test

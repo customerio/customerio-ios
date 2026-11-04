@@ -1,5 +1,4 @@
 import Foundation
-import CoreFoundation
 
 /// Data from a Customer.io silent (background) push.
 ///
@@ -89,11 +88,8 @@ public extension MessagingPush {
     /// an app the person force-quit. While the device is offline, Apple keeps only the newest push for the app,
     /// so an earlier silent push can be dropped.
     ///
-    /// When `autoTrackPushEvents` is on, the receipt is saved to app storage before this returns, then sent with
-    /// extra background time. A receipt that can't be sent is retried on a later push, launch or profile change.
-    /// A repeat records no second receipt while the first is still saved, or when the first came earlier in
-    /// this launch. Calling this before `MessagingPush.initialize` returns the data too. Its receipt is saved and
-    /// waits for `initialize`, which sends it, or removes it when `autoTrackPushEvents` is off.
+    /// With `autoTrackPushEvents` on, a Delivered receipt is saved before this returns, then sent, and retried
+    /// later if sending fails. It also works before `MessagingPush.initialize`, which then sends the receipt.
     @available(iOSApplicationExtension, unavailable)
     @discardableResult
     func handleBackgroundPush(userInfo: [AnyHashable: Any]) -> CustomerIOBackgroundPushResult {

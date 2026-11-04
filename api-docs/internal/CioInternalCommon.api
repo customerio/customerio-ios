@@ -110,7 +110,7 @@ public final class CioInternalCommon.CIODeviceInfo {
 }
 public final class CioInternalCommon.CioAppGroupPendingPushDeliveryStore {
 	public final val appGroupSuiteName: String?;
-	public fun init(privateFileURL fileURL: URL?, logger: Logger, fileManager: FileManager = .default);
+	public fun init(privateFileURL fileURL: URL?, logger: Logger);
 	public fun func append(_ metric: PendingPushDeliveryMetric) -> Boolean;
 	public fun func loadAll() -> List<PendingPushDeliveryMetric>;
 	public fun func read() -> PendingPushDeliveryQueueRead;

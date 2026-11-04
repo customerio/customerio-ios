@@ -59,7 +59,7 @@ open class CioProviderAgnosticAppDelegate: CioAppDelegateType {
         self.config = config
         self.wrappedAppDelegate = appDelegate
         super.init()
-        _ = Self.remoteNotificationForwardingInstalled
+        _ = Self.classForwarderAdded
     }
 
     open func application(
@@ -171,7 +171,7 @@ extension CioProviderAgnosticAppDelegate {
     /// subclass that implements the method itself keeps compiling without `override` and still runs. The selector
     /// stays out of `implementedOptionalMethods`, so `responds(to:)` answers for the wrapped delegate and UIKit
     /// calls this only when the app handles background pushes.
-    static let remoteNotificationForwardingInstalled: Bool = {
+    private static let classForwarderAdded: Void = {
         typealias Implementation = @convention(block) (CioProviderAgnosticAppDelegate, UIApplication, NSDictionary, @escaping FetchCompletionHandler) -> Void
         let implementation: Implementation = { delegate, application, userInfo, completionHandler in
             delegate.forwardRemoteNotification(
@@ -181,7 +181,7 @@ extension CioProviderAgnosticAppDelegate {
                 completionHandler: completionHandler
             )
         }
-        return class_addMethod(CioProviderAgnosticAppDelegate.self, remoteNotificationSelector, imp_implementationWithBlock(implementation), remoteNotificationTypeEncoding)
+        class_addMethod(CioProviderAgnosticAppDelegate.self, remoteNotificationSelector, imp_implementationWithBlock(implementation), remoteNotificationTypeEncoding)
     }()
 
     /// With `UIApplicationDelegateAdaptor`, `UIApplication.shared.delegate` is SwiftUI's own app delegate, which forwards
