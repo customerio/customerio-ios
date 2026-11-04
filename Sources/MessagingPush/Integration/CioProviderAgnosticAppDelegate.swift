@@ -59,6 +59,7 @@ open class CioProviderAgnosticAppDelegate: CioAppDelegateType {
         self.config = config
         self.wrappedAppDelegate = appDelegate
         super.init()
+        _ = Self.remoteNotificationForwardingInstalled
     }
 
     open func application(
@@ -66,6 +67,8 @@ open class CioProviderAgnosticAppDelegate: CioAppDelegateType {
         didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
     ) -> Bool {
         MessagingPush.appDelegateIntegratedExplicitly = true
+        // Before the wrapped delegate runs, as that is where apps usually configure Firebase.
+        installRemoteNotificationForwarding(on: application.delegate)
 
         let result = wrappedAppDelegate?.application?(application, didFinishLaunchingWithOptions: launchOptions)
 
@@ -137,5 +140,90 @@ extension CioProviderAgnosticAppDelegate {
         options: [UIApplication.OpenURLOptionsKey: Any] = [:]
     ) -> Bool {
         wrappedAppDelegate?.application?(app, open: url, options: options) ?? false
+    }
+}
+
+/// Background pushes reach the app delegate through `application(_:didReceiveRemoteNotification:fetchCompletionHandler:)`.
+/// SDKs that proxy the app delegate, such as Firebase's, subclass the class of `UIApplication.shared.delegate` and
+/// call only what that class implements, skipping `forwardingTarget(for:)`. Without the forwarders below, the app's
+/// handler never runs under such a proxy, and neither does `MessagingPush.shared.handleBackgroundPush(userInfo:)`.
+///
+/// Before silent push, a proxy found nothing to call here, so the app's handler didn't run under it. Some apps rely on
+/// that: Flutter's `FlutterAppDelegate` would hand the push to `firebase_messaging` a second time. A call through a
+/// proxy therefore reaches the app only when it turned on `backgroundPushEnabled`. UIKit's own calls always do.
+@available(iOSApplicationExtension, unavailable)
+extension CioProviderAgnosticAppDelegate {
+    private typealias FetchCompletionHandler = @convention(block) (UIBackgroundFetchResult) -> Void
+
+    private static let remoteNotificationSelector = #selector(UIApplicationDelegate.application(_:didReceiveRemoteNotification:fetchCompletionHandler:))
+
+    private static var remoteNotificationTypeEncoding: UnsafePointer<CChar>? {
+        protocol_getMethodDescription(UIApplicationDelegate.self, remoteNotificationSelector, false, true).types.map { UnsafePointer($0) }
+    }
+
+    /// Whether a proxy subclassed `object` after `installedClass` got the forwarder, and is calling it as the original.
+    private static func isCalledThroughProxy(_ object: AnyObject, installedOn installedClass: AnyClass) -> Bool {
+        class_getMethodImplementation(object_getClass(object), remoteNotificationSelector)
+            != class_getMethodImplementation(installedClass, remoteNotificationSelector)
+    }
+
+    /// Gives this class its own implementation, forwarding to the wrapped app delegate. Added at runtime, so an app's
+    /// subclass that implements the method itself keeps compiling without `override` and still runs. The selector
+    /// stays out of `implementedOptionalMethods`, so `responds(to:)` answers for the wrapped delegate and UIKit
+    /// calls this only when the app handles background pushes.
+    static let remoteNotificationForwardingInstalled: Bool = {
+        typealias Implementation = @convention(block) (CioProviderAgnosticAppDelegate, UIApplication, NSDictionary, @escaping FetchCompletionHandler) -> Void
+        let implementation: Implementation = { delegate, application, userInfo, completionHandler in
+            delegate.forwardRemoteNotification(
+                application,
+                userInfo: userInfo as? [AnyHashable: Any] ?? [:],
+                throughProxy: isCalledThroughProxy(delegate, installedOn: CioProviderAgnosticAppDelegate.self),
+                completionHandler: completionHandler
+            )
+        }
+        return class_addMethod(CioProviderAgnosticAppDelegate.self, remoteNotificationSelector, imp_implementationWithBlock(implementation), remoteNotificationTypeEncoding)
+    }()
+
+    /// With `UIApplicationDelegateAdaptor`, `UIApplication.shared.delegate` is SwiftUI's own app delegate, which forwards
+    /// the callback to this wrapper without implementing it. Gives that class a forwarder too, so a proxy created
+    /// afterwards calls it. Does nothing when the app doesn't handle background pushes, or when `applicationDelegate`
+    /// implements the method or is this wrapper.
+    func installRemoteNotificationForwarding(on applicationDelegate: UIApplicationDelegate?) {
+        let selector = Self.remoteNotificationSelector
+        guard let applicationDelegate = applicationDelegate as? NSObject, applicationDelegate !== self,
+              applicationDelegate.forwardingTarget(for: selector) as AnyObject? === self,
+              let delegateClass = object_getClass(applicationDelegate),
+              class_getInstanceMethod(delegateClass, selector) == nil
+        else { return }
+
+        typealias Implementation = @convention(block) (NSObject, UIApplication, NSDictionary, @escaping FetchCompletionHandler) -> Void
+        let implementation: Implementation = { delegate, application, userInfo, completionHandler in
+            guard let wrapper = delegate.forwardingTarget(for: selector) as? CioProviderAgnosticAppDelegate else {
+                return completionHandler(.noData)
+            }
+            wrapper.forwardRemoteNotification(
+                application,
+                userInfo: userInfo as? [AnyHashable: Any] ?? [:],
+                throughProxy: Self.isCalledThroughProxy(delegate, installedOn: delegateClass),
+                completionHandler: completionHandler
+            )
+        }
+        class_addMethod(delegateClass, selector, imp_implementationWithBlock(implementation), Self.remoteNotificationTypeEncoding)
+    }
+
+    private func forwardRemoteNotification(
+        _ application: UIApplication,
+        userInfo: [AnyHashable: Any],
+        throughProxy: Bool,
+        completionHandler: @escaping (UIBackgroundFetchResult) -> Void
+    ) {
+        guard !throughProxy || config?().backgroundPushEnabled == true else {
+            return completionHandler(.noData)
+        }
+        let forwarded: Void? = wrappedAppDelegate?.application?(application, didReceiveRemoteNotification: userInfo, fetchCompletionHandler: completionHandler)
+        if forwarded == nil {
+            // Called although the wrapped delegate doesn't handle it; iOS still needs the handler called.
+            completionHandler(.noData)
+        }
     }
 }

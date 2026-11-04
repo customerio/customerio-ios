@@ -258,6 +258,114 @@ class CioProviderAgnosticAppDelegateTests: XCTestCase {
         XCTAssertTrue(result)
     }
 
+    // MARK: - Background remote notifications
+
+    private typealias RemoteNotificationIMP = @convention(c) (
+        AnyObject, Selector, UIApplication, NSDictionary, @escaping @convention(block) (UIBackgroundFetchResult) -> Void
+    ) -> Void
+
+    private let remoteNotificationSelector = #selector(UIApplicationDelegate.application(_:didReceiveRemoteNotification:fetchCompletionHandler:))
+
+    private func callImplementation(_ implementation: IMP, on object: AnyObject, userInfo: [AnyHashable: Any]) -> UIBackgroundFetchResult? {
+        var result: UIBackgroundFetchResult?
+        unsafeBitCast(implementation, to: RemoteNotificationIMP.self)(
+            object, remoteNotificationSelector, UIApplication.shared, userInfo as NSDictionary, { result = $0 }
+        )
+        return result
+    }
+
+    /// Calls the class's own implementation, as an app delegate proxy finds it, skipping `forwardingTarget(for:)`.
+    private func callClassImplementation(on delegate: NSObject, userInfo: [AnyHashable: Any]) throws -> UIBackgroundFetchResult? {
+        let method = try XCTUnwrap(class_getInstanceMethod(type(of: delegate), remoteNotificationSelector), "A swizzling proxy finds no implementation to call")
+        return callImplementation(method_getImplementation(method), on: delegate, userInfo: userInfo)
+    }
+
+    /// Does what Firebase's app delegate proxy does: moves `object` to a new subclass with the proxy's own
+    /// implementation, and returns the original implementation the proxy then calls.
+    private func proxyLikeFirebase(_ object: NSObject) throws -> IMP {
+        let realClass: AnyClass = try XCTUnwrap(object_getClass(object))
+        let original = try XCTUnwrap(class_getInstanceMethod(realClass, remoteNotificationSelector).map(method_getImplementation))
+        let proxyClass: AnyClass = try XCTUnwrap(objc_allocateClassPair(realClass, "TestProxy_\(UUID().uuidString)", 0))
+        typealias Donor = @convention(block) (NSObject, UIApplication, NSDictionary, @escaping @convention(block) (UIBackgroundFetchResult) -> Void) -> Void
+        let donor: Donor = { _, _, _, completion in completion(.noData) }
+        let types = protocol_getMethodDescription(UIApplicationDelegate.self, remoteNotificationSelector, false, true).types
+        class_addMethod(proxyClass, remoteNotificationSelector, imp_implementationWithBlock(donor), types.map { UnsafePointer($0) })
+        objc_registerClassPair(proxyClass)
+        object_setClass(object, proxyClass)
+        return original
+    }
+
+    func testDidReceiveRemoteNotification_whenCalledOnTheWrapperClass_thenWrappedDelegateHandlesIt() throws {
+        let wrapped = BackgroundPushAppDelegate()
+        let wrapper = CioProviderAgnosticAppDelegate(messagingPush: mockMessagingPush, appDelegate: wrapped, config: { self.createMockConfig() }, logger: mockLogger)
+
+        let result = try callClassImplementation(on: wrapper, userInfo: ["order_id": "42"])
+
+        XCTAssertEqual(wrapped.receivedUserInfo?["order_id"] as? String, "42")
+        XCTAssertEqual(result, .newData)
+        XCTAssertTrue(wrapper.responds(to: remoteNotificationSelector))
+    }
+
+    func testDidReceiveRemoteNotification_whenAProxyCallsItWithSilentPushOff_thenAppIsNotCalledAsBefore() throws {
+        let wrapped = BackgroundPushAppDelegate()
+        let wrapper = CioProviderAgnosticAppDelegate(messagingPush: mockMessagingPush, appDelegate: wrapped, config: { self.createMockConfig() }, logger: mockLogger)
+        let original = try proxyLikeFirebase(wrapper)
+
+        XCTAssertEqual(callImplementation(original, on: wrapper, userInfo: ["order_id": "42"]), .noData)
+        XCTAssertNil(wrapped.receivedUserInfo)
+    }
+
+    func testDidReceiveRemoteNotification_whenAProxyCallsItWithSilentPushOn_thenAppHandlesIt() throws {
+        let wrapped = BackgroundPushAppDelegate()
+        var config = createMockConfig()
+        config.backgroundPushEnabled = true
+        let wrapper = CioProviderAgnosticAppDelegate(messagingPush: mockMessagingPush, appDelegate: wrapped, config: { config }, logger: mockLogger)
+        let original = try proxyLikeFirebase(wrapper)
+
+        XCTAssertEqual(callImplementation(original, on: wrapper, userInfo: ["order_id": "42"]), .newData)
+        XCTAssertEqual(wrapped.receivedUserInfo?["order_id"] as? String, "42")
+    }
+
+    func testDidReceiveRemoteNotification_whenWrappedDelegateLacksIt_thenWrapperDoesNotClaimItAndCompletesWithNoData() throws {
+        XCTAssertFalse(appDelegate.responds(to: remoteNotificationSelector), "UIKit must not treat the app as handling background pushes")
+
+        XCTAssertEqual(try callClassImplementation(on: appDelegate, userInfo: [:]), .noData)
+    }
+
+    func testDidReceiveRemoteNotification_whenAppSubclassImplementsIt_thenSubclassRuns() throws {
+        // Compiles without `override`, so apps that already implement it in their subclass keep building.
+        let subclass = SubclassWithBackgroundPushHandler(messagingPush: mockMessagingPush, appDelegate: mockAppDelegate, logger: mockLogger)
+
+        let result = try callClassImplementation(on: subclass, userInfo: ["order_id": "42"])
+
+        XCTAssertEqual(subclass.receivedUserInfo?["order_id"] as? String, "42")
+        XCTAssertEqual(result, .newData)
+    }
+
+    func testInstallRemoteNotificationForwarding_whenSwiftUIStyleDelegateForwardsToWrapper_thenAProxyReachesTheApp() throws {
+        let wrapped = BackgroundPushAppDelegate()
+        var config = createMockConfig()
+        config.backgroundPushEnabled = true
+        let wrapper = CioProviderAgnosticAppDelegate(messagingPush: mockMessagingPush, appDelegate: wrapped, config: { config }, logger: mockLogger)
+        let applicationDelegate = AdaptorStyleAppDelegate(target: wrapper)
+        XCTAssertNil(class_getInstanceMethod(AdaptorStyleAppDelegate.self, remoteNotificationSelector))
+
+        wrapper.installRemoteNotificationForwarding(on: applicationDelegate)
+        let original = try proxyLikeFirebase(applicationDelegate)
+
+        XCTAssertEqual(callImplementation(original, on: applicationDelegate, userInfo: ["order_id": "42"]), .newData)
+        XCTAssertEqual(wrapped.receivedUserInfo?["order_id"] as? String, "42")
+    }
+
+    func testInstallRemoteNotificationForwarding_whenAppHasNoHandler_thenDelegateClassIsLeftAlone() {
+        // `mockAppDelegate` doesn't handle background pushes.
+        let applicationDelegate = NoHandlerAdaptorStyleAppDelegate(target: appDelegate)
+
+        appDelegate.installRemoteNotificationForwarding(on: applicationDelegate)
+
+        XCTAssertNil(class_getInstanceMethod(NoHandlerAdaptorStyleAppDelegate.self, remoteNotificationSelector))
+    }
+
     func testRespondsToApplicationOpenUrl_whenSelectorIsInImplementedMethods_thenReturnsTrue() {
         // Test that the app delegate responds to the URL opening selector
         let urlSelector = #selector(UIApplicationDelegate.application(_:open:options:))
@@ -267,3 +375,43 @@ class CioProviderAgnosticAppDelegateTests: XCTestCase {
         XCTAssertEqual(appDelegate.forwardingTarget(for: urlSelector) as? CioProviderAgnosticAppDelegate, appDelegate, "URL handling should be handled by CioAppDelegate, not forwarded to wrapped delegate")
     }
 }
+
+private final class BackgroundPushAppDelegate: NSObject, UIApplicationDelegate {
+    var receivedUserInfo: [AnyHashable: Any]?
+
+    func application(_ application: UIApplication, didReceiveRemoteNotification userInfo: [AnyHashable: Any], fetchCompletionHandler completionHandler: @escaping (UIBackgroundFetchResult) -> Void) {
+        receivedUserInfo = userInfo
+        completionHandler(.newData)
+    }
+}
+
+private final class SubclassWithBackgroundPushHandler: CioProviderAgnosticAppDelegate {
+    var receivedUserInfo: [AnyHashable: Any]?
+
+    func application(_ application: UIApplication, didReceiveRemoteNotification userInfo: [AnyHashable: Any], fetchCompletionHandler completionHandler: @escaping (UIBackgroundFetchResult) -> Void) {
+        receivedUserInfo = userInfo
+        completionHandler(.newData)
+    }
+}
+
+/// Like SwiftUI's app delegate: forwards to the `UIApplicationDelegateAdaptor` delegate without implementing the callback.
+/// Tests patch its subclasses, one per test, as adding a method to a class lasts for the whole test run.
+private class AdaptorStyleAppDelegateBase: NSObject, UIApplicationDelegate {
+    private let target: NSObject
+
+    init(target: NSObject) {
+        self.target = target
+    }
+
+    override func responds(to aSelector: Selector!) -> Bool {
+        super.responds(to: aSelector) || target.responds(to: aSelector)
+    }
+
+    override func forwardingTarget(for aSelector: Selector!) -> Any? {
+        target.responds(to: aSelector) ? target : nil
+    }
+}
+
+private final class AdaptorStyleAppDelegate: AdaptorStyleAppDelegateBase {}
+
+private final class NoHandlerAdaptorStyleAppDelegate: AdaptorStyleAppDelegateBase {}
