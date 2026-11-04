@@ -6,7 +6,7 @@ A silent push wakes the app in the background and hands it data. Nothing is show
 
 ## 1. Minimum version
 
-Silent push needs customerio-ios **5.2.0** or later, the first release with `MessagingPush.handleBackgroundPush(userInfo:)`. It ships as a `feat`, so semantic-release makes it the next minor version; update this number if another minor release lands first.
+Silent push needs customerio-ios **5.2.0** or later, the first release with `MessagingPush.handleBackgroundPush(userInfo:)`.
 
 Older SDKs never report `cio_background_push_version`, and Customer.io sends silent pushes only to devices reporting `"1"`, so devices on older versions are skipped.
 
@@ -129,7 +129,7 @@ Still unhandled: a SwiftUI app with Firebase's proxy on and **without** `CioAppD
 
 ## 6. Wrapper SDKs
 
-React Native, Flutter and Expo need their own follow-up before general release. The pilot covers native apps only. Until a wrapper turns on `backgroundPushEnabled`, its apps report `"0"` and the app delegate forwarder passes nothing new to them.
+React Native, Flutter and Expo need their own follow-up. Until a wrapper turns on `backgroundPushEnabled`, its apps report `"0"` and the app delegate forwarder passes nothing new to them.
 
 - Push config reaches the wrappers through `MessagingPushConfigBuilder.build(from:)` or generated code, and neither has a `backgroundPushEnabled` key yet.
 - iOS calls the handler on a background launch before JS or Dart is ready. A bridge calls `handleBackgroundPush` natively, hands `deliveryID`, `deliveryToken` and `data` across, and calls the completion handler itself if JS or Dart doesn't answer in time.
