@@ -47,7 +47,6 @@ public extension CioMessagingPush.MessagingPushConfigBuilder {
 	public fun func build(from dictionary: List<String: Any>) -> MessagingPushConfigOptions;
 }
 public final class CioMessagingPush.MessagingPushConfigOptions {
-	public var backgroundPushEnabled: Boolean;
 	public final val logLevel: CioLogLevel;
 	public final val cdpApiKey: String;
 	public final val region: Region;
@@ -56,6 +55,7 @@ public final class CioMessagingPush.MessagingPushConfigOptions {
 	public final val showPushAppInForeground: Boolean;
 	public final val appGroupId: String?;
 	public final val apiHost: String?;
+	public final val backgroundPushEnabled: Boolean;
 }
 public interface CioMessagingPush.MessagingPushInstance {
 	public fun func registerDeviceToken(_ deviceToken: String);

@@ -59,7 +59,8 @@ public extension MessagingPushConfigOptions {
             autoTrackPushEvents: defaults.autoTrackPushEvents,
             showPushAppInForeground: defaults.showPushAppInForeground,
             appGroupId: defaults.appGroupId,
-            apiHost: apiHost
+            apiHost: apiHost,
+            backgroundPushEnabled: defaults.backgroundPushEnabled
         )
     }
 }

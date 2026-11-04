@@ -33,7 +33,8 @@ class CioProviderAgnosticAppDelegateTests: XCTestCase {
     func createMockConfig(
         autoFetchDeviceToken: Bool = true,
         autoTrackPushEvents: Bool = true,
-        showPushAppInForeground: Bool = true
+        showPushAppInForeground: Bool = true,
+        backgroundPushEnabled: Bool = false
     ) -> MessagingPushConfigOptions {
         MessagingPushConfigOptions(
             logLevel: .info,
@@ -43,7 +44,8 @@ class CioProviderAgnosticAppDelegateTests: XCTestCase {
             autoTrackPushEvents: autoTrackPushEvents,
             showPushAppInForeground: showPushAppInForeground,
             appGroupId: nil,
-            apiHost: nil
+            apiHost: nil,
+            backgroundPushEnabled: backgroundPushEnabled
         )
     }
 
@@ -317,8 +319,7 @@ class CioProviderAgnosticAppDelegateTests: XCTestCase {
 
     func testDidReceiveRemoteNotification_whenAProxyCallsItWithSilentPushOn_thenAppHandlesIt() throws {
         let wrapped = BackgroundPushAppDelegate()
-        var config = createMockConfig()
-        config.backgroundPushEnabled = true
+        let config = createMockConfig(backgroundPushEnabled: true)
         let wrapper = CioProviderAgnosticAppDelegate(messagingPush: mockMessagingPush, appDelegate: wrapped, config: { config }, logger: mockLogger)
         let original = try proxyLikeFirebase(wrapper)
 
@@ -344,8 +345,7 @@ class CioProviderAgnosticAppDelegateTests: XCTestCase {
 
     func testInstallRemoteNotificationForwarding_whenSwiftUIStyleDelegateForwardsToWrapper_thenAProxyReachesTheApp() throws {
         let wrapped = BackgroundPushAppDelegate()
-        var config = createMockConfig()
-        config.backgroundPushEnabled = true
+        let config = createMockConfig(backgroundPushEnabled: true)
         let wrapper = CioProviderAgnosticAppDelegate(messagingPush: mockMessagingPush, appDelegate: wrapped, config: { config }, logger: mockLogger)
         let applicationDelegate = AdaptorStyleAppDelegate(target: wrapper)
         XCTAssertNil(class_getInstanceMethod(AdaptorStyleAppDelegate.self, remoteNotificationSelector))

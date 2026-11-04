@@ -22,7 +22,8 @@ class CioNotificationCenterDelegateTests: XCTestCase {
             autoTrackPushEvents: true,
             showPushAppInForeground: showPushAppInForeground,
             appGroupId: nil,
-            apiHost: nil
+            apiHost: nil,
+            backgroundPushEnabled: false
         )
     }
 

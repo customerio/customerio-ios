@@ -50,7 +50,8 @@ class CioAppDelegateFCMTests: XCTestCase {
             autoTrackPushEvents: autoTrackPushEvents,
             showPushAppInForeground: false,
             appGroupId: nil,
-            apiHost: nil
+            apiHost: nil,
+            backgroundPushEnabled: false
         )
     }
 

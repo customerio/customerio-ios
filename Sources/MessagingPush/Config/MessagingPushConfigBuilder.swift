@@ -162,7 +162,6 @@ public class MessagingPushConfigBuilder {
     /// Builds and returns `MessagingPushConfigOptions` instance from the configured properties.
     public func build() -> MessagingPushConfigOptions {
         let configOptions = MessagingPushConfigOptions(
-            backgroundPushEnabled: backgroundPushEnabled,
             logLevel: logLevel,
             cdpApiKey: cdpApiKey,
             region: region ?? ApiKey.region(of: cdpApiKey) ?? .US,
@@ -170,7 +169,8 @@ public class MessagingPushConfigBuilder {
             autoTrackPushEvents: autoTrackPushEvents,
             showPushAppInForeground: showPushAppInForeground,
             appGroupId: appGroupId,
-            apiHost: apiHost
+            apiHost: apiHost,
+            backgroundPushEnabled: backgroundPushEnabled
         )
 
         return configOptions
