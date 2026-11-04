@@ -203,6 +203,40 @@ class DataPipelineEventBustTests: IntegrationTest {
         XCTAssertEqual((outputReader.lastEvent as? TrackEvent)?.properties?["cio_background_push_version"]?.stringValue, "0")
     }
 
+    func testBackgroundReadiness_unchangedSinceTheLastDeviceUpdate_sendsNoExtraUpdate() async {
+        deviceAttributesMock.getDefaultDeviceAttributesClosure = { $0([:]) }
+        let deviceUpdates = { self.outputReader.events.compactMap { $0 as? TrackEvent }.filter { $0.event == "Device Created or Updated" } }
+        await eventBusHandler.postEventAndWait(RegisterDeviceTokenEvent(token: "token-a"))
+        XCTAssertEqual(deviceUpdates().count, 1)
+        XCTAssertEqual(globalDataStoreMock.reportedBackgroundPushVersion, "0")
+
+        // Posted on every launch by MessagingPush; the last device update already says "0".
+        await eventBusHandler.postEventAndWait(BackgroundPushReadinessChangedEvent(ready: false))
+        XCTAssertEqual(deviceUpdates().count, 1)
+
+        await eventBusHandler.postEventAndWait(BackgroundPushReadinessChangedEvent(ready: true))
+        XCTAssertEqual(deviceUpdates().count, 2)
+        XCTAssertEqual(deviceUpdates().last?.properties?["cio_background_push_version"]?.stringValue, "1")
+        XCTAssertEqual(globalDataStoreMock.reportedBackgroundPushVersion, "1")
+
+        await eventBusHandler.postEventAndWait(BackgroundPushReadinessChangedEvent(ready: true))
+        XCTAssertEqual(deviceUpdates().count, 2)
+    }
+
+    func testBackgroundReadiness_reportedOnAnEarlierLaunch_sendsNoUpdateUntilItChanges() async {
+        deviceAttributesMock.getDefaultDeviceAttributesClosure = { $0([:]) }
+        globalDataStoreMock.pushDeviceToken = "token-a"
+        globalDataStoreMock.reportedBackgroundPushVersion = "1"
+        let deviceUpdates = { self.outputReader.events.compactMap { $0 as? TrackEvent }.filter { $0.event == "Device Created or Updated" } }
+
+        await eventBusHandler.postEventAndWait(BackgroundPushReadinessChangedEvent(ready: true))
+        XCTAssertEqual(deviceUpdates().count, 0)
+
+        // The host removed the background mode in an app update.
+        await eventBusHandler.postEventAndWait(BackgroundPushReadinessChangedEvent(ready: false))
+        XCTAssertEqual(deviceUpdates().map { $0.properties?["cio_background_push_version"]?.stringValue }, ["0"])
+    }
+
     func testBackgroundReadiness_delayedAttributeCallbacksUseCurrentReadiness() async {
         var pending: [([String: Any]) -> Void] = []
         deviceAttributesMock.getDefaultDeviceAttributesClosure = { pending.append($0) }

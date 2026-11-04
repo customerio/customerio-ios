@@ -2213,6 +2213,55 @@ public class GlobalDataStoreMock: @unchecked Sendable, GlobalDataStore, Mock {
         }
     }
 
+    /**
+     When setter of the property called, the value given to setter is set here.
+     When the getter of the property called, the value set here will be returned. Your chance to mock the property.
+     */
+    private let _underlyingReportedBackgroundPushVersion: CioInternalCommon.Synchronized<String?> = .init(nil)
+    public var underlyingReportedBackgroundPushVersion: String? {
+        get { _underlyingReportedBackgroundPushVersion.wrappedValue }
+        set { _underlyingReportedBackgroundPushVersion.wrappedValue = newValue }
+    }
+
+    /// `true` if the getter or setter of property is called at least once.
+    public var reportedBackgroundPushVersionCalled: Bool {
+        reportedBackgroundPushVersionGetCalled || reportedBackgroundPushVersionSetCalled
+    }
+
+    /// `true` if the getter called on the property at least once.
+    public var reportedBackgroundPushVersionGetCalled: Bool {
+        reportedBackgroundPushVersionGetCallsCount > 0
+    }
+
+    private let _reportedBackgroundPushVersionGetCallsCount: CioInternalCommon.Synchronized<Int> = .init(0)
+    public var reportedBackgroundPushVersionGetCallsCount: Int {
+        _reportedBackgroundPushVersionGetCallsCount.wrappedValue
+    }
+
+    /// `true` if the setter called on the property at least once.
+    public var reportedBackgroundPushVersionSetCalled: Bool {
+        reportedBackgroundPushVersionSetCallsCount > 0
+    }
+
+    private let _reportedBackgroundPushVersionSetCallsCount: CioInternalCommon.Synchronized<Int> = .init(0)
+    public var reportedBackgroundPushVersionSetCallsCount: Int {
+        _reportedBackgroundPushVersionSetCallsCount.wrappedValue
+    }
+
+    /// The mocked property with a getter and setter.
+    public var reportedBackgroundPushVersion: String? {
+        get {
+            mockCalled = true
+            _reportedBackgroundPushVersionGetCallsCount += 1
+            return underlyingReportedBackgroundPushVersion
+        }
+        set(value) {
+            mockCalled = true
+            _reportedBackgroundPushVersionSetCallsCount += 1
+            underlyingReportedBackgroundPushVersion = value
+        }
+    }
+
     public func resetMock() {
         pushDeviceToken = nil
         _pushDeviceTokenGetCallsCount.wrappedValue = 0
@@ -2220,6 +2269,9 @@ public class GlobalDataStoreMock: @unchecked Sendable, GlobalDataStore, Mock {
         pushDeviceTokenType = nil
         _pushDeviceTokenTypeGetCallsCount.wrappedValue = 0
         _pushDeviceTokenTypeSetCallsCount.wrappedValue = 0
+        reportedBackgroundPushVersion = nil
+        _reportedBackgroundPushVersionGetCallsCount.wrappedValue = 0
+        _reportedBackgroundPushVersionSetCallsCount.wrappedValue = 0
         _deleteAllCallsCount.wrappedValue = 0
 
         mockCalled = false // do last as resetting properties above can make this true

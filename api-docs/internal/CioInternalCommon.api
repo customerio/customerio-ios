@@ -134,6 +134,7 @@ public final class CioInternalCommon.CioQueue {
 public final class CioInternalCommon.CioSharedDataStore {
 	public var pushDeviceToken: String?;
 	public var pushDeviceTokenType: DeviceTokenType?;
+	public var reportedBackgroundPushVersion: String?;
 	public fun init(keyValueStorage: SharedKeyValueStorage);
 	public fun func deleteAll();
 }
@@ -384,6 +385,7 @@ public enum CioInternalCommon.GeofenceTransition {
 public interface CioInternalCommon.GlobalDataStore {
 	public var pushDeviceToken: String?;
 	public var pushDeviceTokenType: DeviceTokenType?;
+	public var reportedBackgroundPushVersion: String?;
 	public fun func deleteAll();
 }
 public extension CioInternalCommon.GlobalDataStore {

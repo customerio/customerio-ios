@@ -6,6 +6,8 @@ public protocol GlobalDataStore: AutoMockable {
     var pushDeviceToken: String? { get set }
     // Type of `pushDeviceToken`, when the SDK knows it
     var pushDeviceTokenType: DeviceTokenType? { get set }
+    // `cio_background_push_version` as sent in the last device update, so an unchanged value isn't sent again
+    var reportedBackgroundPushVersion: String? { get set }
 
     // Used for testing
     func deleteAll()
@@ -46,6 +48,15 @@ public class CioSharedDataStore: GlobalDataStore {
         }
         set {
             keyValueStorage.setString(newValue?.rawValue, forKey: .pushDeviceTokenType)
+        }
+    }
+
+    public var reportedBackgroundPushVersion: String? {
+        get {
+            keyValueStorage.string(.reportedBackgroundPushVersion)
+        }
+        set {
+            keyValueStorage.setString(newValue, forKey: .reportedBackgroundPushVersion)
         }
     }
 

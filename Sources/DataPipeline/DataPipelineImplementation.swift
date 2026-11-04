@@ -3,7 +3,7 @@ import CioInternalCommon
 
 class DataPipelineImplementation: DataPipelineInstance, DataPipelineTracking, BackgroundDeliveryCdpApiKeyProvider {
     let moduleConfig: DataPipelineConfigOptions
-    private let logger: Logger
+    let logger: Logger
     private let dataPipelinesLogger: DataPipelinesLogger
     let analytics: Analytics
     let eventBusHandler: EventBusHandler
@@ -130,7 +130,9 @@ class DataPipelineImplementation: DataPipelineInstance, DataPipelineTracking, Ba
         eventBusHandler.addObserver(BackgroundPushReadinessChangedEvent.self) { event in
             self.deviceTokenLock.lock()
             defer { self.deviceTokenLock.unlock() }
-            self.backgroundPushReady = event.ready
+            self.backgroundPushVersion = event.ready ? "1" : "0"
+            // Posted on every launch. Every device update carries the value, so only a change needs its own update.
+            guard self.globalDataStore.reportedBackgroundPushVersion != self.backgroundPushVersion else { return }
             self.addDeviceAttributes(token: self.contextPlugin.deviceToken ?? self.globalDataStore.pushDeviceToken)
         }
 
@@ -306,9 +308,11 @@ class DataPipelineImplementation: DataPipelineInstance, DataPipelineTracking, Ba
         addDeviceAttributes(token: contextPlugin.deviceToken, attributes: attributes)
     }
 
-    /// Internal method for passing device token to the plugin and updating device attributes
-    private var backgroundPushReady = false
+    /// `cio_background_push_version`: "1" when MessagingPush says the host can receive silent pushes, "0" otherwise.
+    /// Read and written under `deviceTokenLock`.
+    private var backgroundPushVersion = "0"
 
+    /// Internal method for passing device token to the plugin and updating device attributes
     private func addDeviceAttributes(token deviceToken: String?, attributes customAttributes: [String: Any] = [:]) {
         guard let token = deviceToken, !token.isBlankOrEmpty() else {
             dataPipelinesLogger.logTrackingDevicesAttributesWithoutValidToken()
@@ -337,41 +341,12 @@ class DataPipelineImplementation: DataPipelineInstance, DataPipelineTracking, Ba
             // Sent even when automatic device attributes are off, as the backend uses it to tell FIDs from tokens.
             let tokenType = self.globalDataStore.pushDeviceToken == token ? self.globalDataStore.pushDeviceTokenType : nil
             var deviceAttributes = defaultDeviceAttributes.mergeWith(customAttributes.withDeviceTokenType(tokenType, logger: self.dataPipelinesLogger))
-            deviceAttributes["cio_background_push_version"] = self.backgroundPushReady ? "1" : "0"
+            // Set last, so custom attributes can't override it.
+            deviceAttributes["cio_background_push_version"] = self.backgroundPushVersion
             self.contextPlugin.attributes = deviceAttributes
             self.analytics.track(name: "Device Created or Updated", properties: deviceAttributes, enrichments: [Context.deviceTokenEnrichment(token)])
+            self.globalDataStore.reportedBackgroundPushVersion = self.backgroundPushVersion
         }
-    }
-
-    func trackPushMetric(deliveryID: String, event: String, deviceToken: String) {
-        logger.info("push metric \(event)")
-
-        logger.debug("delivery id \(deliveryID) device token \(deviceToken)")
-
-        trackMetricEvent(deliveryID: deliveryID, event: event, deviceToken: deviceToken)
-    }
-
-    func trackInAppMetric(deliveryID: String, event: String, metaData: [String: String]) {
-        logger.info("in-app metric \(event)")
-
-        logger.debug("delivery id \(deliveryID) metaData \(metaData)")
-
-        trackMetricEvent(deliveryID: deliveryID, event: event, metaData: metaData)
-    }
-
-    /// Tracks metric events for push and in-app messages
-    private func trackMetricEvent(deliveryID: String, event: String, deviceToken: String? = nil, metaData: [String: String] = [:]) {
-        // property keys should be camelCase
-        var properties: [String: String] = metaData
-
-        properties["metric"] = event
-        properties["deliveryId"] = deliveryID
-
-        if let token = deviceToken {
-            properties["recipient"] = token
-        }
-
-        analytics.track(name: "Report Delivery Event", properties: properties)
     }
 }
 
