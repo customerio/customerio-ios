@@ -31,7 +31,7 @@ class BackgroundPushTest: UnitTest {
             XCTAssertEqual(payload.deliveryToken, fcm ? "fixture-fcm-token-1" : "fixture-apns-token-1")
             XCTAssertEqual(receiptStore.loadAll().first?.deviceToken, payload.deliveryToken)
             XCTAssertEqual(mock.trackMetricCallsCount, 0)
-            await MessagingPush.backgroundPushReceiptSender?.waitUntilIdle()
+            await MessagingPush.backgroundPushReceiptSender.wrappedValue?.waitUntilIdle()
         }
     }
 
@@ -54,7 +54,7 @@ class BackgroundPushTest: UnitTest {
             diGraphShared: diGraphShared,
             config: MessagingPushConfigBuilder().autoTrackPushEvents(autoTrack).build()
         )
-        MessagingPush.backgroundPushReceiptSender = makeReceiptSender()
+        MessagingPush.backgroundPushReceiptSender.wrappedValue = makeReceiptSender()
         return mock
     }
 

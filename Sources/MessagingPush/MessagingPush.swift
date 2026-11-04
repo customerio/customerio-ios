@@ -14,12 +14,8 @@ public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, Messagi
     @Atomic public private(set) static var moduleConfig: MessagingPushConfigOptions =
         MessagingPushConfigBuilder().build()
 
-    /// Holds the background push receipt sender. See ``backgroundPushReceiptSenderCreatingIfNeeded()``.
-    static let backgroundPushReceiptSenderStorage = Synchronized<BackgroundPushReceiptSender?>(nil)
-    static var backgroundPushReceiptSender: BackgroundPushReceiptSender? {
-        get { backgroundPushReceiptSenderStorage.wrappedValue }
-        set { backgroundPushReceiptSenderStorage.wrappedValue = newValue }
-    }
+    /// The background push receipt sender, once created. See ``backgroundPushReceiptSenderCreatingIfNeeded()``.
+    static let backgroundPushReceiptSender = Synchronized<BackgroundPushReceiptSender?>(nil)
 
     private static let moduleName = "MessagingPush"
 
@@ -98,14 +94,14 @@ public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, Messagi
     static func resetTestEnvironment() {
         // Drain any in-flight startup flush before tearing down so a leaked detached task cannot resolve the
         // next test's freshly-overridden DataPipeline/store mocks and forward a stray metric.
-        if let sender = backgroundPushReceiptSender {
+        if let sender = backgroundPushReceiptSender.wrappedValue {
             let semaphore = DispatchSemaphore(value: 0)
             Task.detached { await sender.waitUntilIdle()
                 semaphore.signal()
             }
             semaphore.wait()
         }
-        backgroundPushReceiptSender = nil
+        backgroundPushReceiptSender.wrappedValue = nil
         awaitPendingMetricsFlushForTests()
         moduleConfig = MessagingPushConfigBuilder().build()
         shared = MessagingPush()

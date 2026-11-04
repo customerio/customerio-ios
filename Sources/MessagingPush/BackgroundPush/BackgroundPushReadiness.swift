@@ -18,7 +18,7 @@ extension MessagingPush {
     /// so that push's receipt is saved then and sent once the SDK can reach Customer.io.
     @available(iOSApplicationExtension, unavailable)
     static func backgroundPushReceiptSenderCreatingIfNeeded() -> BackgroundPushReceiptSender {
-        backgroundPushReceiptSenderStorage.mutating { existing in
+        backgroundPushReceiptSender.mutating { existing in
             if let existing { return existing }
             let graph = DIGraphShared.shared
             let taskRunner: BackgroundTaskRunner = graph.getOverriddenInstance() ?? UIKitBackgroundTaskRunner(name: "io.customer.background-push-receipt")

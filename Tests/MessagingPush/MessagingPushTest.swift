@@ -150,7 +150,7 @@ class MessagingPushTest: IntegrationTest {
         diGraphShared.override(value: events, forType: EventBusHandler.self)
         MessagingPush.initializeExtensionModule(config: MessagingPushConfigBuilder().backgroundPushEnabled(true).build())
         XCTAssertFalse(events.postEventReceivedInvocations.contains { $0 is BackgroundPushReadinessChangedEvent })
-        XCTAssertNil(MessagingPush.backgroundPushReceiptSender)
+        XCTAssertNil(MessagingPush.backgroundPushReceiptSender.wrappedValue)
     }
 
     private let backgroundPush: [AnyHashable: Any] = [
