@@ -4,14 +4,6 @@ import CioInternalCommon
 // To process pending tasks in background queue
 // BGQ in each of the following methods refer to background queue
 extension DataPipelineImplementation {
-    func trackDeliveryEvent(token: String?, event: String, deliveryId: String, timestamp: String) {
-        processMetricsFromBGQ(token: token, event: event, deliveryId: deliveryId, timestamp: timestamp, metaData: [:])
-    }
-
-    func trackMetric(deliveryID: String, event: Metric, deviceToken: String) {
-        trackPushMetric(deliveryID: deliveryID, event: event.rawValue, deviceToken: deviceToken)
-    }
-
     func processAlreadyIdentifiedUser(identifier: String) {
         commonIdentifyProfile(userId: identifier)
     }

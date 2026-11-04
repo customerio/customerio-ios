@@ -14,13 +14,18 @@ public enum BackgroundDeliveryHttpError: Error, Equatable {
 /// One CDP `/track` request for a background-delivery caller. Bundles the request-body fields
 /// into one value so the client signature stays stable as the payload grows.
 public struct BackgroundTrackRequest {
+    /// CDP `track` event name.
     public let eventName: String
-    /// Identified user id. Empty for an anonymous request. Identified callers validate it is non-empty.
+    /// Identified user id. Caller must validate non-empty before sending. Empty when `anonymousId` is set.
     public let userId: String
     /// Set for events tied to a message and no profile, such as push delivery receipts.
     /// When set, the body carries `anonymousId` and omits `userId`.
     public let anonymousId: String?
+    /// Custom event properties payload.
     public let properties: [String: Any]
+    /// When the event occurred. Serialized into the reserved top-level `timestamp` field so the
+    /// endpoint attributes the event to this instant rather than to when it was received; nil omits
+    /// the field. The client owns the wire format, keeping it identical to the analytics channel.
     public let timestamp: Date?
 
     public init(eventName: String, userId: String, properties: [String: Any] = [:], timestamp: Date? = nil) {

@@ -2,8 +2,16 @@ import CioAnalytics
 import CioInternalCommon
 import Foundation
 
-// Push and in-app delivery metrics, sent as "Report Delivery Event".
+// Push and in-app delivery metrics.
 extension DataPipelineImplementation {
+    func trackDeliveryEvent(token: String?, event: String, deliveryId: String, timestamp: String) {
+        processMetricsFromBGQ(token: token, event: event, deliveryId: deliveryId, timestamp: timestamp, metaData: [:])
+    }
+
+    func trackMetric(deliveryID: String, event: Metric, deviceToken: String) {
+        trackPushMetric(deliveryID: deliveryID, event: event.rawValue, deviceToken: deviceToken)
+    }
+
     func trackPushMetric(deliveryID: String, event: String, deviceToken: String) {
         logger.info("push metric \(event)")
 

@@ -378,7 +378,9 @@ extension DataPipelineImplementation {
             return
         }
         dataPipelinesLogger.logStoringDevicePushToken(token: deviceToken, userId: registeredUserId)
-        // Segment does not persist device tokens; save this one before publishing attributes.
+        // save the device token for later use.
+        // segment plugin doesn't store token anywhere so we need to pass token to it every time
+        // storing it so we can reference the token and update device plugin app relaunch
         globalDataStore.savePushDeviceToken(deviceToken, type: tokenType)
 
         dataPipelinesLogger.logRegisteringPushToken(token: deviceToken, userId: registeredUserId)
