@@ -128,7 +128,7 @@ final class BackgroundPushReceiptSender: @unchecked Sendable {
         }
     }
 
-    /// A retryable error ends this wake's work, including requests arriving while offline.
+    /// Sends saved receipts in order. Returns false, ending this pass, on a retryable error or at the deadline.
     private func drainOnce(deadline: TimeInterval) async -> Bool {
         for metric in state.using({ $0.unsaved }) {
             guard ProcessInfo.processInfo.systemUptime < deadline, await finish(metric) else { return false }
