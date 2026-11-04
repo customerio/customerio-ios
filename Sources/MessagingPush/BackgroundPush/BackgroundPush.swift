@@ -91,8 +91,9 @@ public extension MessagingPush {
     ///
     /// When `autoTrackPushEvents` is on, the receipt is saved to app storage before this returns, then sent with
     /// extra background time. A receipt that can't be sent is retried on a later push, launch or profile change.
-    /// A repeat of the same delivery records no second receipt. Calling this before `MessagingPush.initialize`
-    /// returns the data too, and its receipt is sent once the SDK is initialized.
+    /// A repeat records no second receipt while the first is still saved, or when the first came earlier in
+    /// this launch. Calling this before `MessagingPush.initialize` returns the data too. Its receipt is saved and
+    /// waits for `initialize`, which sends it, or removes it when `autoTrackPushEvents` is off.
     @available(iOSApplicationExtension, unavailable)
     @discardableResult
     func handleBackgroundPush(userInfo: [AnyHashable: Any]) -> CustomerIOBackgroundPushResult {

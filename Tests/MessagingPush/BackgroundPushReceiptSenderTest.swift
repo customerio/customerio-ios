@@ -11,8 +11,11 @@ final class BackgroundPushReceiptSenderTest: XCTestCase {
         return CioAppGroupPendingPushDeliveryStore(privateFileURL: directory.appendingPathComponent("receipts.json"), logger: LoggerMock())
     }
 
+    /// A sender as `MessagingPush.initialize` leaves it: started, with automatic tracking on.
     private func makeSender(store: PendingPushDeliveryStore, client: BackgroundDeliveryHttpClient) -> BackgroundPushReceiptSender {
-        BackgroundPushReceiptSender(store: store, httpClient: client, taskRunner: NoBackgroundTaskRunner(), logger: LoggerMock())
+        let sender = BackgroundPushReceiptSender(store: store, httpClient: client, taskRunner: NoBackgroundTaskRunner(), logger: LoggerMock())
+        sender.start(autoTrackPushEvents: true)
+        return sender
     }
 
     func test_persistsBeforeReturningAndRemovesOnlyAfterAcceptance() async {
@@ -86,6 +89,60 @@ final class BackgroundPushReceiptSenderTest: XCTestCase {
 
         XCTAssertEqual(store.loadAll().map(\.deliveryId), ["delivery"])
         XCTAssertEqual(store.loadAll().first?.timestamp, receivedAt)
+    }
+
+    func test_duplicateArrivingAfterAFailedSend_retriesTheSavedReceipt() async {
+        let store = makeStore()
+        let client = BackgroundDeliveryHttpClientMock()
+        let online = Synchronized(false)
+        client.sendTrackEventClosure = { _, done in done(online.wrappedValue ? .success(()) : .failure(.transport)) }
+        let sender = makeSender(store: store, client: client)
+        let receivedAt = Date(timeIntervalSince1970: 1700000000)
+
+        sender.enqueue(deliveryID: "delivery", deviceToken: "target", receivedAt: receivedAt)
+        await sender.waitUntilIdle()
+        XCTAssertEqual(store.loadAll().count, 1)
+        online.wrappedValue = true
+        sender.enqueue(deliveryID: "delivery", deviceToken: "target", receivedAt: Date())
+        await sender.waitUntilIdle()
+
+        XCTAssertEqual(client.sendTrackEventCallsCount, 2)
+        XCTAssertEqual(client.sendTrackEventReceivedArguments?.request.timestamp, receivedAt)
+        XCTAssertTrue(store.loadAll().isEmpty)
+    }
+
+    func test_receiptsSavedBeforeStart_waitForStartAndAreSent() async {
+        let store = makeStore()
+        let client = BackgroundDeliveryHttpClientMock()
+        client.sendTrackEventClosure = { _, done in done(.success(())) }
+        let sender = BackgroundPushReceiptSender(store: store, httpClient: client, taskRunner: NoBackgroundTaskRunner(), logger: LoggerMock())
+
+        sender.enqueue(deliveryID: "early", deviceToken: "target", receivedAt: Date())
+        await sender.waitUntilIdle()
+        XCTAssertEqual(client.sendTrackEventCallsCount, 0)
+        XCTAssertEqual(store.loadAll().map(\.deliveryId), ["early"])
+
+        sender.start(autoTrackPushEvents: true)
+        await sender.waitUntilIdle()
+        XCTAssertEqual(client.sendTrackEventCallsCount, 1)
+        XCTAssertTrue(store.loadAll().isEmpty)
+    }
+
+    func test_receiptsSavedBeforeStart_withAutoTrackingOff_areRemovedUnsent() async {
+        let store = makeStore()
+        let receivedAt = Date(timeIntervalSince1970: 1700000000)
+        // Saved by an earlier launch, which had automatic tracking on.
+        XCTAssertTrue(store.append(PendingPushDeliveryMetric(deliveryId: "earlier-launch", deviceToken: "target", event: .delivered, timestamp: receivedAt)))
+        let client = BackgroundDeliveryHttpClientMock()
+        client.sendTrackEventClosure = { _, done in done(.failure(.transport)) }
+        let sender = BackgroundPushReceiptSender(store: store, httpClient: client, taskRunner: NoBackgroundTaskRunner(), logger: LoggerMock())
+
+        sender.enqueue(deliveryID: "early", deviceToken: "target", receivedAt: Date())
+        sender.start(autoTrackPushEvents: false)
+        await sender.waitUntilIdle()
+
+        XCTAssertEqual(store.loadAll().map(\.deliveryId), ["earlier-launch"])
+        XCTAssertFalse(client.sendTrackEventReceivedInvocations.contains { $0.request.anonymousId == "early" })
     }
 
     func test_concurrentDuplicates_saveOneReceipt() async {

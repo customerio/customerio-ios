@@ -38,7 +38,7 @@ extension MessagingPush {
         let graph = DIGraphShared.shared
         let receiptSender = backgroundPushReceiptSenderCreatingIfNeeded()
         receiptSender.observeContextReadiness(graph.eventBusHandler)
-        receiptSender.scheduleDrain()
+        receiptSender.start(autoTrackPushEvents: config.autoTrackPushEvents)
         let backgroundPushReady = BackgroundPushReadiness.isReady(
             enabled: config.backgroundPushEnabled,
             backgroundModes: Bundle.main.object(forInfoDictionaryKey: "UIBackgroundModes")

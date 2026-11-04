@@ -153,38 +153,65 @@ class MessagingPushTest: IntegrationTest {
         XCTAssertNil(MessagingPush.backgroundPushReceiptSender)
     }
 
-    func test_backgroundPushBeforeInitialization_savesReceiptAndSendsItOnceInitialized() async {
+    private let backgroundPush: [AnyHashable: Any] = [
+        "aps": ["content-available": 1],
+        "CIO-Background-Version": "1",
+        "CIO-Background-Delivery-ID": "delivery",
+        "CIO-Background-Delivery-Token": "target",
+        "order_id": "42"
+    ]
+
+    private struct ReceiptHarness {
+        let store: CioAppGroupPendingPushDeliveryStore
+        let client: BackgroundDeliveryHttpClientMock
+        let sender: BackgroundPushReceiptSender
+    }
+
+    /// Installs a receipt sender backed by a temporary file, whose sends succeed.
+    private func installReceiptSender() -> ReceiptHarness {
         let file = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString).appendingPathComponent("receipts.json")
-        defer { try? FileManager.default.removeItem(at: file.deletingLastPathComponent()) }
+        addTeardownBlock { try? FileManager.default.removeItem(at: file.deletingLastPathComponent()) }
         let store = CioAppGroupPendingPushDeliveryStore(privateFileURL: file, logger: log)
-        // Before initialization there's no API key, as on a cold launch with none saved.
-        let keyReady = Synchronized(false)
         let client = BackgroundDeliveryHttpClientMock()
-        client.sendTrackEventClosure = { _, done in done(keyReady.wrappedValue ? .success(()) : .failure(.missingCdpApiKey)) }
+        client.sendTrackEventClosure = { _, done in done(.success(())) }
         let sender = BackgroundPushReceiptSender(store: store, httpClient: client, taskRunner: NoBackgroundTaskRunner(), logger: log)
         diGraphShared.override(value: sender, forType: BackgroundPushReceiptSender.self)
+        return ReceiptHarness(store: store, client: client, sender: sender)
+    }
+
+    func test_backgroundPushBeforeInitialization_savesReceiptAndSendsItOnlyOnceInitialized() async {
+        let harness = installReceiptSender()
+        let (store, client, sender) = (harness.store, harness.client, harness.sender)
         XCTAssertFalse(MessagingPush.shared.hasBeenInitialized)
 
-        let result = MessagingPush.shared.handleBackgroundPush(userInfo: [
-            "aps": ["content-available": 1],
-            "CIO-Background-Version": "1",
-            "CIO-Background-Delivery-ID": "delivery",
-            "CIO-Background-Delivery-Token": "target",
-            "order_id": "42"
-        ])
-
-        guard case .received(let payload) = result else { return XCTFail("Background data must reach the host before initialization") }
+        guard case .received(let payload) = MessagingPush.shared.handleBackgroundPush(userInfo: backgroundPush) else {
+            return XCTFail("Background data must reach the host before initialization")
+        }
         XCTAssertEqual(payload.data, ["order_id": "42"])
         XCTAssertEqual(store.loadAll().map(\.deliveryId), ["delivery"])
+        // Waits for initialize, which knows whether the app tracks automatically.
         await sender.waitUntilIdle()
-        XCTAssertEqual(store.loadAll().count, 1)
+        XCTAssertEqual(client.sendTrackEventCallsCount, 0)
 
-        keyReady.wrappedValue = true
         MessagingPush.initialize()
         await sender.waitUntilIdle()
 
         XCTAssertTrue(store.loadAll().isEmpty)
         XCTAssertEqual(client.sendTrackEventReceivedArguments?.request.properties["recipient"] as? String, "target")
+    }
+
+    func test_backgroundPushBeforeInitialization_withAutoTrackingOff_sendsNoReceipt() async {
+        let harness = installReceiptSender()
+        let (store, client, sender) = (harness.store, harness.client, harness.sender)
+
+        guard case .received = MessagingPush.shared.handleBackgroundPush(userInfo: backgroundPush) else {
+            return XCTFail("Background data must reach the host before initialization")
+        }
+        MessagingPush.initialize(withConfig: MessagingPushConfigBuilder().autoTrackPushEvents(false).build())
+        await sender.waitUntilIdle()
+
+        XCTAssertEqual(client.sendTrackEventCallsCount, 0)
+        XCTAssertTrue(store.loadAll().isEmpty)
     }
 
     func test_receiptsRetryWhenDataPipelinePublishesItsReadyProfile() async {
