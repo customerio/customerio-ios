@@ -152,29 +152,20 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
     // MARK: UISceneSession Lifecycle
 
+    // Customer.io silent push. Needs `.backgroundPushEnabled(true)` above and Remote notifications in
+    // Background Modes (Info.plist `UIBackgroundModes` lists `remote-notification`).
+    // iOS gives this callback about 30 seconds: call completionHandler once, as soon as the work ends.
     func application(_ application: UIApplication, didReceiveRemoteNotification userInfo: [AnyHashable: Any], fetchCompletionHandler completionHandler: @escaping (UIBackgroundFetchResult) -> Void) {
         switch MessagingPush.shared.handleBackgroundPush(userInfo: userInfo) {
-        case .received(let payload):
-            do {
-                let receipt: [String: Any] = ["delivery_id": payload.deliveryID, "received_at_ms": Date().timeIntervalSince1970 * 1000, "data": payload.data]
-                let url = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
-                    .appendingPathComponent("background-push.jsonl")
-                var row = try JSONSerialization.data(withJSONObject: receipt, options: [.sortedKeys])
-                row.append(0x0A)
-                if FileManager.default.fileExists(atPath: url.path) {
-                    let handle = try FileHandle(forWritingTo: url)
-                    defer { handle.closeFile() }
-                    handle.seekToEndOfFile()
-                    handle.write(row)
-                } else {
-                    try row.write(to: url, options: .atomic)
-                }
-                completionHandler(.newData)
-            } catch {
-                CioInternalCommon.DIGraphShared.shared.logger.error("Unable to store background push sample receipt: \(error)")
-                completionHandler(.failed)
-            }
-        case .unsupported, .notBackground:
+        case .received(let push):
+            // The same push can arrive twice, so real work should be keyed on `push.deliveryID`.
+            // This sample logs every arrival, repeats included, for checks on a device.
+            completionHandler(BackgroundPushLog.append(push) ? .newData : .failed)
+        case .unsupported:
+            // A newer silent push format than this SDK reads. Nothing is shown.
+            completionHandler(.noData)
+        case .notBackground:
+            // Not a Customer.io silent push. Hand it to any other push handlers here.
             completionHandler(.noData)
         }
     }
@@ -304,5 +295,31 @@ class SampleInboxEventListener: InboxEventListener {
 
     func messageDismissed(message: InboxMessage) {
         os_log("[CIO-Inbox] sample listener: dismissed queueId=%{public}@", log: Self.log, type: .info, message.queueId)
+    }
+}
+
+/// Appends each silent push to `Documents/background-push.jsonl`, one JSON object per line, so a tester can
+/// pull the file off a device and match arrivals to sends.
+private enum BackgroundPushLog {
+    static func append(_ push: CustomerIOBackgroundPush) -> Bool {
+        let row: [String: Any] = ["delivery_id": push.deliveryID, "received_at_ms": Date().timeIntervalSince1970 * 1000, "data": push.data]
+        do {
+            let url = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+                .appendingPathComponent("background-push.jsonl")
+            var line = try JSONSerialization.data(withJSONObject: row, options: [.sortedKeys])
+            line.append(0x0A)
+            guard FileManager.default.fileExists(atPath: url.path) else {
+                try line.write(to: url, options: .atomic)
+                return true
+            }
+            let handle = try FileHandle(forWritingTo: url)
+            defer { try? handle.close() }
+            try handle.seekToEnd()
+            try handle.write(contentsOf: line)
+            return true
+        } catch {
+            CioInternalCommon.DIGraphShared.shared.logger.error("Unable to log background push \(push.deliveryID): \(error)")
+            return false
+        }
     }
 }

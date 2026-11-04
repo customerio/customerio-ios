@@ -26,6 +26,7 @@ Suite name pattern: `io.customer.sdk[.<appBundleId>].shared`
 | Key | Written by | Data type | Purpose |
 |---|---|---|---|
 | `pushDeviceToken` | `GlobalDataStore` | String | APN or FCM device push token |
+| `reported_background_push_version` | `GlobalDataStore` (DataPipeline) | String | `cio_background_push_version` in the last device update, so unchanged readiness sends no extra update |
 
 ### Segment Analytics (cdp-analytics-swift) — Per Write Key
 
@@ -68,6 +69,14 @@ Base path: `~/Library/Application Support/Events/<eventType>/`
 | `<storageId>.json` | JSON | Serialized SDK events, one file per event |
 
 Events are sorted by timestamp on retrieval. Each event type gets its own subdirectory.
+
+### CIO SDK — Silent Push Receipts
+
+Base path: `~/Library/Application Support/io.customer/` (host app only, never shared with extensions)
+
+| File | Format | Purpose |
+|---|---|---|
+| `background_push_receipts.json` | JSON array of `PendingPushDeliveryMetric` | Delivered receipts for silent pushes, saved before `handleBackgroundPush` returns and removed once sent |
 
 ### CIO SDK — Temporary Rich Push Images
 

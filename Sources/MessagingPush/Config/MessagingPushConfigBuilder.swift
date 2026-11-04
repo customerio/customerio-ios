@@ -30,10 +30,16 @@ import Foundation
 public class MessagingPushConfigBuilder {
     private var backgroundPushEnabled = false
 
-    /// Enable only after adding the Remote notifications background mode and calling
-    /// `MessagingPush.shared.handleBackgroundPush` from your AppDelegate's remote-notification
-    /// callback. Configure this on every launch, including a background launch. The host owns
-    /// the fetch completion handler. Background delivery is best effort and may repeat.
+    /// Lets this app receive Customer.io silent (background) pushes. Off by default.
+    ///
+    /// Turn it on only after adding the Remote notifications background mode and calling
+    /// `MessagingPush.shared.handleBackgroundPush(userInfo:)` from your AppDelegate's
+    /// `application(_:didReceiveRemoteNotification:fetchCompletionHandler:)`. Initialize with it on every
+    /// launch, including background launches, in `application(_:didFinishLaunchingWithOptions:)`.
+    ///
+    /// The SDK reports the device attribute `cio_background_push_version` on every device update:
+    /// `"1"` when this is on and Info.plist `UIBackgroundModes` lists `remote-notification`, `"0"` otherwise.
+    /// Customer.io sends silent pushes only to devices reporting `"1"`.
     @discardableResult
     public func backgroundPushEnabled(_ value: Bool) -> MessagingPushConfigBuilder {
         backgroundPushEnabled = value
