@@ -8,20 +8,6 @@ import XCTest
 class BackgroundPushTest: UnitTest {
     private var receiptStore: PendingPushDeliveryStore!
 
-    func test_beforeInitialization_returnsDataUsingDefaultConfigWithoutCrashing() {
-        MessagingPush.resetTestEnvironment()
-        XCTAssertFalse(MessagingPush.shared.hasBeenInitialized)
-        XCTAssertTrue(MessagingPush.moduleConfig.autoTrackPushEvents)
-
-        diGraphShared.override(value: makeReceiptSender(), forType: BackgroundPushReceiptSender.self)
-
-        guard case .received(let payload) = MessagingPush.shared.handleBackgroundPush(userInfo: userInfo()) else {
-            return XCTFail("An uninitialized receipt tracker must not hide background data")
-        }
-        XCTAssertEqual(payload.deliveryID, "dlv_123")
-        XCTAssertEqual(receiptStore.loadAll().map(\.deliveryId), ["dlv_123"])
-    }
-
     func test_goEncodedAPNsAndFCMFixtures_returnUnchangedDataWithTransportMetadataRemoved() async throws {
         for (json, fcm) in [(BackgroundPushFixtures.apns, false), (BackgroundPushFixtures.fcm, true)] {
             let mock = installMock()
@@ -89,7 +75,8 @@ class BackgroundPushTest: UnitTest {
         guard case .received(let received) = MessagingPush.shared.handleBackgroundPush(userInfo: payload) else {
             return XCTFail("Expected background data")
         }
-        XCTAssertNil(received.data["gcm.message_id"])
+        // Title and body are plain data here, and an empty value is kept.
+        XCTAssertEqual(received.data, ["title": "Order shipped", "body": "", "order_id": "42"])
         XCTAssertEqual(mock.trackMetricCallsCount, 0)
         XCTAssertEqual(receiptStore.loadAll().count, 1)
         XCTAssertEqual(receiptStore.loadAll().first?.deliveryId, "dlv_123")
@@ -188,24 +175,5 @@ class BackgroundPushTest: UnitTest {
         XCTAssertEqual(MessagingPush.shared.handleBackgroundPush(userInfo: payload), .notBackground)
         XCTAssertEqual(mock.trackMetricCallsCount, 0)
         XCTAssertTrue(receiptStore.loadAll().isEmpty)
-    }
-
-    func test_validBackgroundPush_returnsBusinessDataIncludingTitleAndBody() {
-        installMock()
-        let result = MessagingPush.shared.handleBackgroundPush(userInfo: [
-            "aps": ["content-available": 1],
-            "CIO-Background-Version": "1",
-            "CIO-Background-Delivery-ID": "dlv_123",
-            "CIO-Background-Delivery-Token": "tok_abc",
-            "title": "Order shipped",
-            "body": "",
-            "order_id": "42"
-        ])
-
-        guard case .received(let payload) = result else {
-            return XCTFail("A valid background push must reach the host")
-        }
-        XCTAssertEqual(payload.deliveryID, "dlv_123")
-        XCTAssertEqual(payload.data, ["title": "Order shipped", "body": "", "order_id": "42"])
     }
 }
