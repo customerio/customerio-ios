@@ -14,7 +14,12 @@ public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, Messagi
     @Atomic public private(set) static var moduleConfig: MessagingPushConfigOptions =
         MessagingPushConfigBuilder().build()
 
-    @Atomic static var backgroundPushReceiptSender: BackgroundPushReceiptSender?
+    /// Holds the background push receipt sender. See ``backgroundPushReceiptSenderCreatingIfNeeded()``.
+    static let backgroundPushReceiptSenderStorage = Synchronized<BackgroundPushReceiptSender?>(nil)
+    static var backgroundPushReceiptSender: BackgroundPushReceiptSender? {
+        get { backgroundPushReceiptSenderStorage.wrappedValue }
+        set { backgroundPushReceiptSenderStorage.wrappedValue = newValue }
+    }
 
     private static let moduleName = "MessagingPush"
 

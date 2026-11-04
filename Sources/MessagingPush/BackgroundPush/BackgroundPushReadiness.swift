@@ -14,17 +14,29 @@ enum BackgroundPushReadiness {
 }
 
 extension MessagingPush {
+    /// The one receipt sender, created on first use. A host can handle a push before calling `initialize`,
+    /// so that push's receipt is saved then and sent once the SDK can reach Customer.io.
+    @available(iOSApplicationExtension, unavailable)
+    static func backgroundPushReceiptSenderCreatingIfNeeded() -> BackgroundPushReceiptSender {
+        backgroundPushReceiptSenderStorage.mutating { existing in
+            if let existing { return existing }
+            let graph = DIGraphShared.shared
+            let taskRunner: BackgroundTaskRunner = graph.getOverriddenInstance() ?? UIKitBackgroundTaskRunner(name: "io.customer.background-push-receipt")
+            let created: BackgroundPushReceiptSender = graph.getOverriddenInstance() ?? BackgroundPushReceiptSender(
+                store: CioAppGroupPendingPushDeliveryStore(privateFileURL: BackgroundPushReceiptSender.defaultFileURL(), logger: graph.logger),
+                httpClient: graph.backgroundDeliveryHttpClient,
+                taskRunner: taskRunner,
+                logger: graph.logger
+            )
+            existing = created
+            return created
+        }
+    }
+
     @available(iOSApplicationExtension, unavailable)
     static func initializeBackgroundPushSupport(config: MessagingPushConfigOptions) {
         let graph = DIGraphShared.shared
-        let taskRunner: BackgroundTaskRunner = graph.getOverriddenInstance() ?? UIKitBackgroundTaskRunner(name: "io.customer.background-push-receipt")
-        let receiptSender: BackgroundPushReceiptSender = graph.getOverriddenInstance() ?? BackgroundPushReceiptSender(
-            store: CioAppGroupPendingPushDeliveryStore(privateFileURL: BackgroundPushReceiptSender.defaultFileURL(), logger: graph.logger),
-            httpClient: graph.backgroundDeliveryHttpClient,
-            taskRunner: taskRunner,
-            logger: graph.logger
-        )
-        Self.backgroundPushReceiptSender = receiptSender
+        let receiptSender = backgroundPushReceiptSenderCreatingIfNeeded()
         receiptSender.observeContextReadiness(graph.eventBusHandler)
         receiptSender.scheduleDrain()
         let backgroundPushReady = BackgroundPushReadiness.isReady(

@@ -3,14 +3,18 @@ import Foundation
 
 /// Persists receipts before the host completes its background callback. The queue is at least once;
 /// retries preserve the original timestamp and target token, independent of the current profile.
+/// A delivery gets one receipt: a repeat is skipped while its receipt is pending or was handled this launch.
 final class BackgroundPushReceiptSender: @unchecked Sendable {
     static let fileName = "background_push_receipts.json"
     static let maxUnsaved = 50
+    static let maxHandledDeliveryIDs = 100
 
     private struct State {
         var task: Task<Void, Never>?
         var requested: UInt64 = 0
         var unsaved: [PendingPushDeliveryMetric] = []
+        /// Deliveries given a receipt this launch, oldest first.
+        var handledDeliveryIDs: [String] = []
     }
 
     private let store: PendingPushDeliveryStore
@@ -34,12 +38,25 @@ final class BackgroundPushReceiptSender: @unchecked Sendable {
 
     func enqueue(deliveryID: String, deviceToken: String, receivedAt: Date) {
         let metric = PendingPushDeliveryMetric(deliveryId: deliveryID, deviceToken: deviceToken, event: .delivered, timestamp: receivedAt)
-        if !store.append(metric) {
-            logger.error("Background push receipt could not be saved; held in memory for this launch only")
-            state.mutating { s in
+        // Checked and saved under one lock, so duplicates arriving together save one receipt.
+        let isNew = state.mutating { s -> Bool in
+            guard !s.handledDeliveryIDs.contains(deliveryID),
+                  !store.loadAll().contains(where: { $0.deliveryId == deliveryID })
+            else { return false }
+            s.handledDeliveryIDs.append(deliveryID)
+            if s.handledDeliveryIDs.count > Self.maxHandledDeliveryIDs {
+                s.handledDeliveryIDs.removeFirst(s.handledDeliveryIDs.count - Self.maxHandledDeliveryIDs)
+            }
+            if !store.append(metric) {
+                logger.error("Background push receipt could not be saved; held in memory for this launch only")
                 s.unsaved.append(metric)
                 if s.unsaved.count > Self.maxUnsaved { s.unsaved.removeFirst(s.unsaved.count - Self.maxUnsaved) }
             }
+            return true
+        }
+        guard isNew else {
+            logger.debug("Background push \(deliveryID) arrived again; its delivered receipt is already recorded")
+            return
         }
         scheduleDrain()
     }

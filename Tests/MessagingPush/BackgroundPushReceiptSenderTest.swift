@@ -58,6 +58,52 @@ final class BackgroundPushReceiptSenderTest: XCTestCase {
         }
     }
 
+    func test_deliveryAlreadySentThisLaunch_isNotSentAgain() async {
+        let store = makeStore()
+        let client = BackgroundDeliveryHttpClientMock()
+        client.sendTrackEventClosure = { _, done in done(.success(())) }
+        let sender = makeSender(store: store, client: client)
+
+        sender.enqueue(deliveryID: "delivery", deviceToken: "target", receivedAt: Date())
+        await sender.waitUntilIdle()
+        sender.enqueue(deliveryID: "delivery", deviceToken: "target", receivedAt: Date())
+        await sender.waitUntilIdle()
+
+        XCTAssertEqual(client.sendTrackEventCallsCount, 1)
+        XCTAssertTrue(store.loadAll().isEmpty)
+    }
+
+    func test_deliveryStillPendingFromAnEarlierLaunch_isSavedOnce() async {
+        let store = makeStore()
+        let receivedAt = Date(timeIntervalSince1970: 1700000000)
+        XCTAssertTrue(store.append(PendingPushDeliveryMetric(deliveryId: "delivery", deviceToken: "target", event: .delivered, timestamp: receivedAt)))
+        let client = BackgroundDeliveryHttpClientMock()
+        client.sendTrackEventClosure = { _, done in done(.failure(.transport)) }
+        let nextLaunch = makeSender(store: store, client: client)
+
+        nextLaunch.enqueue(deliveryID: "delivery", deviceToken: "target", receivedAt: Date())
+        await nextLaunch.waitUntilIdle()
+
+        XCTAssertEqual(store.loadAll().map(\.deliveryId), ["delivery"])
+        XCTAssertEqual(store.loadAll().first?.timestamp, receivedAt)
+    }
+
+    func test_concurrentDuplicates_saveOneReceipt() async {
+        let store = makeStore()
+        let client = BackgroundDeliveryHttpClientMock()
+        client.sendTrackEventClosure = { _, done in done(.failure(.transport)) }
+        let sender = makeSender(store: store, client: client)
+
+        await withTaskGroup(of: Void.self) { group in
+            for _ in 0 ..< 20 {
+                group.addTask { sender.enqueue(deliveryID: "delivery", deviceToken: "target", receivedAt: Date()) }
+            }
+        }
+        await sender.waitUntilIdle()
+
+        XCTAssertEqual(store.loadAll().map(\.deliveryId), ["delivery"])
+    }
+
     func test_permanentHTTP400LeavesNoRetry() async {
         let store = makeStore()
         let client = BackgroundDeliveryHttpClientMock()
@@ -151,7 +197,7 @@ final class BackgroundPushReceiptSenderTest: XCTestCase {
         let client = BackgroundDeliveryHttpClientMock()
         let sent = Synchronized<Set<String>>([])
         client.sendTrackEventClosure = { request, done in
-            sent.mutating { $0.insert(request.anonymousId ?? "") }
+            _ = sent.mutating { $0.insert(request.anonymousId ?? "") }
             done(.success(()))
         }
         let sender = makeSender(store: store, client: client)

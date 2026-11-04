@@ -13,10 +13,13 @@ class BackgroundPushTest: UnitTest {
         XCTAssertFalse(MessagingPush.shared.hasBeenInitialized)
         XCTAssertTrue(MessagingPush.moduleConfig.autoTrackPushEvents)
 
+        diGraphShared.override(value: makeReceiptSender(), forType: BackgroundPushReceiptSender.self)
+
         guard case .received(let payload) = MessagingPush.shared.handleBackgroundPush(userInfo: userInfo()) else {
             return XCTFail("An uninitialized receipt tracker must not hide background data")
         }
         XCTAssertEqual(payload.deliveryID, "dlv_123")
+        XCTAssertEqual(receiptStore.loadAll().map(\.deliveryId), ["dlv_123"])
     }
 
     func test_goEncodedAPNsAndFCMFixtures_returnUnchangedDataWithTransportMetadataRemoved() async throws {
@@ -56,6 +59,7 @@ class BackgroundPushTest: UnitTest {
         ]
     }
 
+    @discardableResult
     private func installMock(autoTrack: Bool = true) -> MessagingPushInstanceMock {
         let mock = MessagingPushInstanceMock()
         mockCollection.add(mock: mock)
@@ -64,13 +68,18 @@ class BackgroundPushTest: UnitTest {
             diGraphShared: diGraphShared,
             config: MessagingPushConfigBuilder().autoTrackPushEvents(autoTrack).build()
         )
+        MessagingPush.backgroundPushReceiptSender = makeReceiptSender()
+        return mock
+    }
+
+    /// A sender whose receipts stay in `receiptStore`, a temporary file, and whose sends fail.
+    private func makeReceiptSender() -> BackgroundPushReceiptSender {
         let file = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString).appendingPathComponent("receipts.json")
         receiptStore = CioAppGroupPendingPushDeliveryStore(privateFileURL: file, logger: log)
         let client = BackgroundDeliveryHttpClientMock()
         client.sendTrackEventClosure = { _, completion in completion(.failure(.transport)) }
-        MessagingPush.backgroundPushReceiptSender = BackgroundPushReceiptSender(store: receiptStore, httpClient: client, taskRunner: NoBackgroundTaskRunner(), logger: log)
         addTeardownBlock { try? FileManager.default.removeItem(at: file.deletingLastPathComponent()) }
-        return mock
+        return BackgroundPushReceiptSender(store: receiptStore, httpClient: client, taskRunner: NoBackgroundTaskRunner(), logger: log)
     }
 
     func test_validBackgroundPush_tracksOnlyDeliveredWithItsOwnReceiptToken() {
@@ -98,17 +107,27 @@ class BackgroundPushTest: UnitTest {
         XCTAssertEqual(mock.trackMetricCallsCount, 0)
     }
 
-    func test_repeatedBackgroundPush_requestsReceiptForEachInvocation() {
+    func test_repeatedBackgroundPush_returnsDataEachTimeAndSavesOneReceipt() {
         let mock = installMock()
 
         for _ in 0 ..< 2 {
-            guard case .received = MessagingPush.shared.handleBackgroundPush(userInfo: userInfo()) else {
+            guard case .received(let payload) = MessagingPush.shared.handleBackgroundPush(userInfo: userInfo()) else {
                 return XCTFail("A repeated delivery must remain available to the host")
             }
+            XCTAssertEqual(payload.deliveryID, "dlv_123")
         }
 
         XCTAssertEqual(mock.trackMetricCallsCount, 0)
-        XCTAssertEqual(receiptStore.loadAll().map(\.deliveryId), ["dlv_123", "dlv_123"])
+        XCTAssertEqual(receiptStore.loadAll().map(\.deliveryId), ["dlv_123"])
+    }
+
+    func test_futureVersionMarkedOnlyByItsVersion_isUnsupported() {
+        installMock()
+        // A later version may rename every other key, so the version key alone marks the message.
+        let payload: [AnyHashable: Any] = ["aps": ["content-available": 1], "CIO-Background-Version": "2", "order_id": "42"]
+
+        XCTAssertEqual(MessagingPush.shared.handleBackgroundPush(userInfo: payload), .unsupported)
+        XCTAssertTrue(receiptStore.loadAll().isEmpty)
     }
 
     func test_invalidMarkedPayloads_areUnsupportedWithoutMetrics() {
@@ -172,6 +191,7 @@ class BackgroundPushTest: UnitTest {
     }
 
     func test_validBackgroundPush_returnsBusinessDataIncludingTitleAndBody() {
+        installMock()
         let result = MessagingPush.shared.handleBackgroundPush(userInfo: [
             "aps": ["content-available": 1],
             "CIO-Background-Version": "1",
