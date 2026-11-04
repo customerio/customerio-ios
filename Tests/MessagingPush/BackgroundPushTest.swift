@@ -119,6 +119,7 @@ class BackgroundPushTest: UnitTest {
             ("CIO-Background-Delivery-Token", nil),
             ("CIO-Background-Delivery-ID", " "),
             ("CIO-Delivery-ID", "legacy"),
+            ("CIO-Delivery-Token", "legacy"),
             ("CIO-Background-Unknown", "future"),
             ("order_id", 42),
             ("aps", ["content-available": 1, "alert": "visible"]),
@@ -146,14 +147,26 @@ class BackgroundPushTest: UnitTest {
         XCTAssertTrue(receiptStore.loadAll().isEmpty)
     }
 
-    func test_legacyBusinessKeys_resemblingBackgroundMetadata_remainAvailableToExistingHandlers() {
+    func test_legacyBusinessKeys_includingBackgroundMetadata_remainAvailableToExistingHandlers() {
         let mock = installMock()
-        for key in ["CIO-Background-sync", "cio-background-version", "CIO-Background-Delivery-ID-extra"] {
+        for key in ["CIO-Background-Version", "CIO-Background-Delivery-ID", "CIO-Background-Delivery-Token", "CIO-Background-sync", "cio-background-version", "CIO-Background-Delivery-ID-extra"] {
             let payload: [AnyHashable: Any] = [
                 "CIO-Delivery-ID": "old", "CIO-Delivery-Token": "old", key: "existing business data"
             ]
             XCTAssertEqual(MessagingPush.shared.handleBackgroundPush(userInfo: payload), .notBackground, key)
         }
+        XCTAssertEqual(mock.trackMetricCallsCount, 0)
+        XCTAssertTrue(receiptStore.loadAll().isEmpty)
+    }
+
+    func test_legacyTrackingPair_takesPrecedenceOverBackgroundMetadata() {
+        let mock = installMock()
+        var payload = userInfo()
+        payload["CIO-Delivery-ID"] = "legacy-delivery"
+        payload["CIO-Delivery-Token"] = "legacy-token"
+        payload["CIO-Background-Version"] = "2"
+
+        XCTAssertEqual(MessagingPush.shared.handleBackgroundPush(userInfo: payload), .notBackground)
         XCTAssertEqual(mock.trackMetricCallsCount, 0)
         XCTAssertTrue(receiptStore.loadAll().isEmpty)
     }

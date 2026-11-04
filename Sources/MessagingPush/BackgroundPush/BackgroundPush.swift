@@ -12,6 +12,8 @@ public struct CustomerIOBackgroundPush: Equatable {
 
 /// Only `notBackground` is eligible for another push handler. An unsupported marked
 /// message must be consumed without falling back to notification rendering.
+/// The legacy delivery ID/token pair keeps legacy handling, even when business data
+/// uses background metadata field names. New background envelopes forbid that pair.
 public enum CustomerIOBackgroundPushResult: Equatable {
     case notBackground
     case unsupported
@@ -20,6 +22,10 @@ public enum CustomerIOBackgroundPushResult: Equatable {
 
 private enum BackgroundPushParser {
     static func parse(_ userInfo: [AnyHashable: Any]) -> (CustomerIOBackgroundPushResult, String?) {
+        // The legacy relay owns this pair; background envelopes forbid it.
+        if userInfo["CIO-Delivery-ID"] is String, userInfo["CIO-Delivery-Token"] is String {
+            return (.notBackground, nil)
+        }
         let prefix = "CIO-Background-"
         let metadataKeys: Set = ["\(prefix)Version", "\(prefix)Delivery-ID", "\(prefix)Delivery-Token"]
         // Existing customer keys may share the prefix without declaring background intent.
