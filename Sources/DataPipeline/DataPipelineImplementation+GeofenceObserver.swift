@@ -10,6 +10,6 @@ extension DataPipelineImplementation {
         var trackEvent = TrackEvent(event: metric.trackEventName, properties: try? JSON(metric.trackEventProperties))
         trackEvent.timestamp = metric.timestamp.string(format: .iso8601WithMilliseconds)
         trackEvent.userId = metric.userId
-        analytics.process(event: trackEvent)
+        segment.process(event: trackEvent)
     }
 }

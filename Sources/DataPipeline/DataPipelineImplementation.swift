@@ -6,6 +6,8 @@ class DataPipelineImplementation: DataPipelineInstance, DataPipelineTracking, Ba
     private let logger: Logger
     private let dataPipelinesLogger: DataPipelinesLogger
     let analytics: Analytics
+    /// Every event and identity read goes through here, never `analytics` directly.
+    let segment: SegmentGateway
     let eventBusHandler: EventBusHandler
 
     private var globalDataStore: GlobalDataStore
@@ -30,7 +32,7 @@ class DataPipelineImplementation: DataPipelineInstance, DataPipelineTracking, Ba
         self.dataPipelinesLogger = diGraph.dataPipelinesLogger
         // Keep identity and queued events when the app switches to a `pk_` key.
         AnalyticsStorageMigration.run(for: moduleConfig.cdpApiKey, diGraph: diGraph)
-        self.analytics = .init(configuration: moduleConfig.toSegmentConfiguration())
+        self.analytics = diGraph.segmentFactory.makeAnalytics(moduleConfig.toSegmentConfiguration())
 
         self.eventBusHandler = diGraph.eventBusHandler
         self.globalDataStore = diGraph.globalDataStore
@@ -41,6 +43,7 @@ class DataPipelineImplementation: DataPipelineInstance, DataPipelineTracking, Ba
         self.backgroundDeliveryContextStore = diGraph.backgroundDeliveryContextStore
 
         self.contextPlugin = Context(diGraph: diGraph)
+        self.segment = diGraph.segmentFactory.makeGateway(analytics)
 
         initialize(diGraph: diGraph)
     }
@@ -106,11 +109,11 @@ class DataPipelineImplementation: DataPipelineInstance, DataPipelineTracking, Ba
         if let siteId = moduleConfig.migrationSiteId, let identifier = profileStore.getProfileId(siteId: siteId) {
             backgroundDeliveryContextStore.setUserId(identifier)
             eventBusHandler.postEvent(ProfileIdentifiedEvent(identifier: identifier))
-        } else if let identifier = analytics.userId {
+        } else if let identifier = segment.userId {
             backgroundDeliveryContextStore.setUserId(identifier)
             eventBusHandler.postEvent(ProfileIdentifiedEvent(identifier: identifier))
-        } else if !analytics.anonymousId.isEmpty {
-            eventBusHandler.postEvent(AnonymousProfileIdentifiedEvent(identifier: analytics.anonymousId))
+        } else if !segment.anonymousId.isEmpty {
+            eventBusHandler.postEvent(AnonymousProfileIdentifiedEvent(identifier: segment.anonymousId))
         }
     }
 
@@ -158,7 +161,7 @@ class DataPipelineImplementation: DataPipelineInstance, DataPipelineTracking, Ba
     /// - Parameters:
     ///   - traits: A dictionary of traits you know about the user. Things like: email, name, plan, etc.
     func identify(traits: Codable) {
-        analytics.identify(traits: traits)
+        segment.identify(traits: traits)
     }
 
     var registeredDeviceToken: String? {
@@ -171,32 +174,26 @@ class DataPipelineImplementation: DataPipelineInstance, DataPipelineTracking, Ba
     }
 
     func track(name: String, properties: [String: Any]?) {
-        analytics.track(name: name, properties: properties)
+        segment.track(name: name, properties: properties)
     }
 
     func track<RequestBody: Codable>(name: String, properties: RequestBody?) {
-        analytics.track(name: name, properties: properties)
+        segment.track(name: name, properties: properties)
     }
 
     func screen(title: String, properties: [String: Any]?) {
-        analytics.screen(title: title, properties: properties)
+        segment.screen(title: title, category: nil, properties: properties)
     }
 
     func screen<RequestBody: Codable>(title: String, properties: RequestBody?) {
-        analytics.screen(title: title, properties: properties)
-    }
-
-    @available(*, deprecated, message: "Use setProfileAttributes() instead")
-    var profileAttributes: [String: Any] {
-        get { analytics.traits() ?? [:] }
-        set { setProfileAttributes(newValue) }
+        segment.screen(title: title, category: nil, properties: properties)
     }
 
     func setProfileAttributes(_ attributes: [String: Any]) {
         let userId = registeredUserId
         guard let userId = userId else {
             if let jsonTraits = try? JSON(attributes) {
-                analytics.identify(traits: jsonTraits)
+                segment.identify(traits: jsonTraits)
             } else {
                 logger.error("Failed to convert attributes to JSON format for identify call")
             }
@@ -231,15 +228,15 @@ class DataPipelineImplementation: DataPipelineInstance, DataPipelineTracking, Ba
             deleteDeviceToken()
         }
 
-        // Mirror for cold-wake direct-HTTP callers. Must precede `analytics.identify`, which
+        // Mirror for cold-wake direct-HTTP callers. Must precede `segment.identify`, which
         // publishes `ProfileIdentifiedEvent` from a `.before` plugin — subscribers resolve the
         // user from this store, and would otherwise read nil.
         backgroundDeliveryContextStore.setUserId(userId)
 
         if let attributes = attributesCodable {
-            analytics.identify(userId: userId, traits: attributes)
+            segment.identify(userId: userId, traits: attributes)
         } else {
-            analytics.identify(userId: userId, traits: attributesDict)
+            segment.identify(userId: userId, traits: attributesDict)
         }
 
         // Update session tracker so subsequent no-traits same-userId calls
@@ -264,7 +261,7 @@ class DataPipelineImplementation: DataPipelineInstance, DataPipelineTracking, Ba
 
         // reset all to default state
         logger.debug("resetting user profile")
-        analytics.reset()
+        segment.reset()
 
         // Reset per-session identify dedup tracker so the next identify (even
         // for the same userId) takes the full path.
@@ -282,15 +279,7 @@ class DataPipelineImplementation: DataPipelineInstance, DataPipelineTracking, Ba
             // The Context plugin adds the token when the event is processed, which can be after a newer token is
             // set (events wait while settings refresh). Set the token being deleted on the event.
             let token = contextPlugin.deviceToken ?? storedToken
-            analytics.track(name: "Device Deleted", properties: nil, enrichments: [Context.deviceTokenEnrichment(token)])
-        }
-    }
-
-    @available(*, deprecated, message: "Use setDeviceAttributes method instead. This property getter always returns an empty dictionary.")
-    var deviceAttributes: [String: Any] {
-        get { [:] }
-        set {
-            setDeviceAttributes(newValue)
+            segment.track(name: "Device Deleted", properties: nil, deviceToken: token)
         }
     }
 
@@ -329,7 +318,7 @@ class DataPipelineImplementation: DataPipelineInstance, DataPipelineTracking, Ba
             let tokenType = self.globalDataStore.pushDeviceToken == token ? self.globalDataStore.pushDeviceTokenType : nil
             let deviceAttributes = defaultDeviceAttributes.mergeWith(customAttributes.withDeviceTokenType(tokenType, logger: self.dataPipelinesLogger))
             self.contextPlugin.attributes = deviceAttributes
-            self.analytics.track(name: "Device Created or Updated", properties: deviceAttributes, enrichments: [Context.deviceTokenEnrichment(token)])
+            self.segment.track(name: "Device Created or Updated", properties: deviceAttributes, deviceToken: token)
         }
     }
 
@@ -369,7 +358,7 @@ class DataPipelineImplementation: DataPipelineInstance, DataPipelineTracking, Ba
             properties["recipient"] = token
         }
 
-        analytics.track(name: "Report Delivery Event", properties: properties)
+        segment.track(name: "Report Delivery Event", properties: properties)
     }
 }
 
