@@ -63,12 +63,11 @@ private enum BackgroundPushParser {
 }
 
 public extension MessagingPush {
-    /// Reads a Customer.io silent push and records its Delivered receipt. It never shows a notification
-    /// and never tracks Opened.
+    /// Reads a Customer.io silent push. It never shows a notification and never tracks Opened.
     ///
-    /// Call it from `application(_:didReceiveRemoteNotification:fetchCompletionHandler:)`, after enabling
-    /// `MessagingPushConfigBuilder.backgroundPushEnabled(_:)` and the Remote notifications background mode.
-    /// Your app owns the completion handler. iOS allows about 30 seconds: call it once, as soon as your work ends.
+    /// Call it from `application(_:didReceiveRemoteNotification:fetchCompletionHandler:)` to get the push's data.
+    /// Silent pushes need the Remote notifications background mode. Your app owns the completion handler.
+    /// iOS allows about 30 seconds: call it once, as soon as your work ends.
     ///
     /// ```swift
     /// func application(_ application: UIApplication, didReceiveRemoteNotification userInfo: [AnyHashable: Any],
@@ -88,22 +87,32 @@ public extension MessagingPush {
     /// an app the person force-quit. While the device is offline, Apple keeps only the newest push for the app,
     /// so an earlier silent push can be dropped.
     ///
-    /// With `autoTrackPushEvents` on, a Delivered receipt is saved before this returns, then sent, and retried
-    /// later if sending fails. It also works before `MessagingPush.initialize`, which then sends the receipt.
+    /// With `autoTrackPushEvents` on, the push's Delivered receipt is saved before this returns, then sent, and
+    /// retried later if sending fails. Apps using `CioAppDelegateWrapper` get the receipt before their handler runs,
+    /// and calling this as well doesn't record a second one. It also works before `MessagingPush.initialize`,
+    /// which then sends the receipt.
     @available(iOSApplicationExtension, unavailable)
     @discardableResult
     func handleBackgroundPush(userInfo: [AnyHashable: Any]) -> CustomerIOBackgroundPushResult {
+        let result = Self.recordBackgroundPush(userInfo: userInfo)
+        if result == .unsupported {
+            logger.info("Ignoring unsupported background push without displaying a notification")
+        }
+        return result
+    }
+}
+
+extension MessagingPush {
+    /// Reads `userInfo` and, for a Customer.io silent push with `autoTrackPushEvents` on, saves its Delivered receipt.
+    /// `handleBackgroundPush(userInfo:)` and `CioAppDelegateWrapper` both call it; a push both see gets one receipt.
+    @available(iOSApplicationExtension, unavailable)
+    @discardableResult
+    static func recordBackgroundPush(userInfo: [AnyHashable: Any]) -> CustomerIOBackgroundPushResult {
         let receivedAt = Date()
         let result = BackgroundPushParser.parse(userInfo)
-        switch result {
-        case .received(let payload):
-            guard Self.moduleConfig.autoTrackPushEvents else { break }
-            Self.backgroundPushReceiptSenderCreatingIfNeeded()
+        if case .received(let payload) = result, moduleConfig.autoTrackPushEvents {
+            backgroundPushReceiptSenderCreatingIfNeeded()
                 .enqueue(deliveryID: payload.deliveryID, deviceToken: payload.deliveryToken, receivedAt: receivedAt)
-        case .unsupported:
-            logger.info("Ignoring unsupported background push without displaying a notification")
-        case .notBackground:
-            break
         }
         return result
     }

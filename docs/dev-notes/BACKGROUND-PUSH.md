@@ -8,21 +8,19 @@ A silent push wakes the app in the background and hands it data. Nothing is show
 
 Silent push needs customerio-ios **5.2.0** or later, the first release with `MessagingPush.handleBackgroundPush(userInfo:)`.
 
-Older SDKs never report `cio_background_push_version`, and Customer.io sends silent pushes only to devices reporting `"1"`, so devices on older versions are skipped.
+Customer.io sends silent pushes to every iOS device and doesn't check the SDK version. On an older SDK, nothing records Delivered and nothing reads the data; an app handler that exists sees an unknown push.
 
 ---
 
 ## 2. App setup
 
-1. In Xcode, add **Background Modes → Remote notifications**. Info.plist `UIBackgroundModes` then lists `remote-notification`.
-2. Turn on `backgroundPushEnabled(true)` and initialize MessagingPush in `application(_:didFinishLaunchingWithOptions:)` on every launch. iOS launches the app in the background for a silent push, and that launch needs the SDK too.
-3. Call `handleBackgroundPush(userInfo:)` from the app delegate and call the completion handler yourself:
+1. In Xcode, add **Background Modes → Remote notifications**. Info.plist `UIBackgroundModes` then lists `remote-notification`. Without it, iOS doesn't wake the app for a silent push.
+2. Initialize MessagingPush in `application(_:didFinishLaunchingWithOptions:)` on every launch. iOS launches the app in the background for a silent push, and that launch needs the SDK too.
+3. To read the data, call `handleBackgroundPush(userInfo:)` from the app delegate and call the completion handler yourself:
 
 ```swift
 MessagingPushAPN.initialize(
-    withConfig: MessagingPushConfigBuilder()
-        .backgroundPushEnabled(true)
-        .build()
+    withConfig: MessagingPushConfigBuilder().build()
 )
 
 func application(
@@ -47,6 +45,8 @@ func application(
 
 Apps using `CioAppDelegateWrapper` put this method on the wrapped `AppDelegate`. FCM apps use `MessagingPushFCM.initialize` and the same handler.
 
+Delivered doesn't depend on this handler. With `CioAppDelegateWrapper`, the SDK records it before the app's handler runs, and also when the app has no handler. Without the wrapper, `handleBackgroundPush(userInfo:)` records it. A push both see gets one receipt.
+
 Silent pushes need no notification permission. The app still registers for remote notifications, which `autoFetchDeviceToken` does.
 
 ---
@@ -65,7 +65,7 @@ Silent pushes need no notification permission. The app still registers for remot
 
 | Result | Meaning | What the SDK records |
 |---|---|---|
-| `.received(push)` | A Customer.io silent push: `push.data`, `push.deliveryID`, `push.deliveryToken` | Delivered, once per delivery, when `autoTrackPushEvents` is on |
+| `.received(push)` | A Customer.io silent push: `push.data`, `push.deliveryID`, `push.deliveryToken` | Delivered, once per delivery, when `autoTrackPushEvents` is on (already done by `CioAppDelegateWrapper`) |
 | `.unsupported` | Marked as a Customer.io silent push, but an unknown version or bad metadata | Nothing |
 | `.notBackground` | Any other push, including every push with `CIO-Delivery-ID` and `CIO-Delivery-Token` | Nothing |
 
@@ -77,11 +77,10 @@ Silent pushes need no notification permission. The app still registers for remot
 
 | File | Purpose |
 |------|---------|
-| `Sources/MessagingPush/BackgroundPush/BackgroundPush.swift` | Public types, payload parser, `handleBackgroundPush(userInfo:)` |
+| `Sources/MessagingPush/BackgroundPush/BackgroundPush.swift` | Public types, payload parser, `handleBackgroundPush(userInfo:)`, `recordBackgroundPush(userInfo:)` |
 | `Sources/MessagingPush/BackgroundPush/BackgroundPushReceiptSender.swift` | Saves and sends Delivered receipts |
-| `Sources/MessagingPush/BackgroundPush/BackgroundPushReadiness.swift` | Readiness check and setup at `initialize` |
-| `Sources/DataPipeline/DataPipelineImplementation.swift` | Adds `cio_background_push_version` to device updates |
-| `Sources/MessagingPush/Integration/CioProviderAgnosticAppDelegate.swift` | Forwards the remote-notification callback to the wrapped app delegate |
+| `Sources/MessagingPush/BackgroundPush/MessagingPush+BackgroundPushReceipts.swift` | Creates the receipt sender and starts it at `initialize` |
+| `Sources/MessagingPush/Integration/CioProviderAgnosticAppDelegate.swift` | Records Delivered for pushes reaching the wrapper, then forwards them to the wrapped app delegate |
 
 ### Wire format, version 1
 
@@ -105,33 +104,33 @@ Sent with `apns-push-type: background` and `apns-priority: 5`. Over Firebase the
 
 ### Delivered receipts
 
-- Saved to `Application Support/io.customer/background_push_receipts.json` before `handleBackgroundPush` returns, then sent as `Report Delivery Event` with `anonymousId` set to the delivery ID, `metric: delivered` and `recipient` set to the delivery token. The original receive time is kept.
+- Saved to `Application Support/io.customer/background_push_receipts.json` before `handleBackgroundPush` returns or the wrapped app delegate is called, then sent as `Report Delivery Event` with `anonymousId` set to the delivery ID, `metric: delivered` and `recipient` set to the delivery token. The original receive time is kept.
 - Sent with a `UIApplication` background task. Rows that fail are retried on the next push, the next `initialize`, or when Data Pipeline publishes a profile. 4xx answers other than 401, 403, 408 and 429 drop the row.
 - One receipt per delivery: a repeat is skipped while a row for it is saved or after it was handled earlier in this launch (the last 100 deliveries). A repeat still triggers a send attempt, so a receipt left by a failed send goes out when the push arrives again.
 - Before `MessagingPush.initialize`, the receipt is saved the same way and nothing is sent. `initialize` then sends it, or removes it when `autoTrackPushEvents` is off.
+- The file and its folder use `completeUntilFirstUserAuthentication`, set on every write since each write replaces the file. Silent pushes wake the app while the device is locked, and an app whose entitlement defaults to `complete` protection could otherwise neither save nor send receipts then.
 
-### Readiness
+### App delegate wrapper
 
-`cio_background_push_version` is set last on every `Device Created or Updated`, so custom device attributes can't override it. It is `"1"` when `backgroundPushEnabled` is on and Info.plist lists `remote-notification`, and `"0"` otherwise, including apps that never initialize MessagingPush. MessagingPush posts `BackgroundPushReadinessChangedEvent` from `initialize`. Data Pipeline sends a device update for it only when the value differs from the last device update, so a launch with unchanged readiness sends nothing extra. The last value is saved in `GlobalDataStore.reportedBackgroundPushVersion` once the event gets past Analytics' in-memory startup queue, so an update lost to the app being killed before then is sent again on the next launch.
+`CioProviderAgnosticAppDelegate`, the base of `CioAppDelegateWrapper`, has no `application(_:didReceiveRemoteNotification:fetchCompletionHandler:)` of its own. `forwardingTarget(for:)` hands that selector to a relay, which calls `recordBackgroundPush(userInfo:)` and then the wrapped app delegate with the same arguments. The app's handler is reached exactly as before, and a push gets its Delivered receipt even when the app doesn't call `handleBackgroundPush`.
+
+`responds(to:)` answers yes when the wrapped app delegate implements the method, or when the app has the Remote notifications background mode, so apps without a handler still get receipts; the relay then completes with `.noData`. It answers no for an app that implements only the older `application(_:didReceiveRemoteNotification:)`, which UIKit calls only when the newer one is missing. An app's own subclass of the wrapper that implements the method runs instead of the relay and records nothing unless it calls `handleBackgroundPush`.
 
 ### App delegate proxies
 
-Firebase's app delegate proxy (GoogleUtilities' `GULAppDelegateSwizzler`) subclasses the class of `UIApplication.shared.delegate` when Firebase is configured. Its `application(_:didReceiveRemoteNotification:fetchCompletionHandler:)` calls only the implementation that class had at that moment and never asks `forwardingTarget(for:)`. Two classes need one:
+Firebase's app delegate proxy (GoogleUtilities' `GULAppDelegateSwizzler`) subclasses the class of `UIApplication.shared.delegate` when Firebase is configured. Its `application(_:didReceiveRemoteNotification:fetchCompletionHandler:)` calls the implementation that class had at that moment. The wrapper class has none, so what happens depends on the GoogleUtilities version, exactly as before silent push support:
 
-- `CioProviderAgnosticAppDelegate` adds the method to itself at runtime and forwards it to the wrapped app delegate. Adding it at runtime keeps an app's subclass that already implements the method compiling without `override`. `responds(to:)` still answers for the wrapped delegate, so UIKit calls it only when the app handles background pushes.
-- With `@UIApplicationDelegateAdaptor`, `UIApplication.shared.delegate` is SwiftUI's own app delegate, which forwards the callback without implementing it. The wrapper's `application(_:didFinishLaunchingWithOptions:)` adds a forwarder to that class before calling the wrapped delegate, where apps usually call `FirebaseApp.configure()`.
+- **8.1.5 and later** forward to `forwardingTarget(for:)` when the class has no implementation (google/GoogleUtilities#247). The call reaches the relay, so Delivered is recorded and the app's handler runs once. This also covers SwiftUI's `UIApplicationDelegateAdaptor`, whose own app delegate forwards to the wrapper.
+- **8.1.4 and earlier** call nothing more. Neither the app's handler nor the SDK sees the push: no data and no Delivered. Such apps need GoogleUtilities 8.1.5 or later (new installs resolve it; existing CocoaPods apps run `pod update GoogleUtilities`), or `FirebaseAppDelegateProxyEnabled` set to `NO`, in which case UIKit calls the wrapper directly and the SDK passes the APNs token to Firebase itself.
 
-A call that arrives through such a proxy reaches the app only when `backgroundPushEnabled` is on, as some apps must not get it: Flutter's `FlutterAppDelegate` would hand the push to `firebase_messaging`, which also registers with the proxy directly and so would see it twice. UIKit's own calls, without a proxy, always reach the app.
-
-Still unhandled: a SwiftUI app with Firebase's proxy on and **without** `CioAppDelegateWrapper` never gets the callback, and neither does one that configures Firebase before the wrapper's `didFinishLaunching` (for example in the `App` initializer). Those apps can set `FirebaseAppDelegateProxyEnabled` to `NO` in Info.plist; the SDK passes the APNs token to Firebase itself.
+The wrapper adds no method of its own because the proxy would call it as the original in every version. It would then have to decide, for every push, whether to reach the app's handler, and the right answer differed by version: a Flutter app whose `firebase_messaging` registers with the proxy and as a `FlutterAppDelegate` plugin could get each message twice.
 
 ---
 
 ## 6. Wrapper SDKs
 
-React Native, Flutter and Expo need their own follow-up. Until a wrapper turns on `backgroundPushEnabled`, its apps report `"0"` and the app delegate forwarder passes nothing new to them.
+React Native, Flutter and Expo apps get Delivered from the native wrapper with no bridge change once they use an SDK with this support. Reading the data needs a bridge:
 
-- Push config reaches the wrappers through `MessagingPushConfigBuilder.build(from:)` or generated code, and neither has a `backgroundPushEnabled` key yet.
 - iOS calls the handler on a background launch before JS or Dart is ready. A bridge calls `handleBackgroundPush` natively, hands `deliveryID`, `deliveryToken` and `data` across, and calls the completion handler itself if JS or Dart doesn't answer in time.
-- Flutter apps that also use `firebase_messaging` would get each FCM data message twice once the wrapper opts in, as `FlutterAppDelegate` forwards the proxy's call to that plugin again. The bridge should handle Customer.io silent pushes before plugins see them.
-- The Expo plugin needs an option that adds the background mode, the builder call and an app delegate subscriber that calls `handleBackgroundPush`.
+- Flutter apps that also use `firebase_messaging` see FCM data messages through both the proxy and `FlutterAppDelegate`; firebase_messaging releases since firebase/flutterfire#18830 pass each one to Dart once.
+- The Expo plugin needs an option that adds the background mode and an app delegate subscriber that calls `handleBackgroundPush`.

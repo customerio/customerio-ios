@@ -7,7 +7,6 @@ public enum KeyValueStorageKey: String {
     case identifiedProfileId
     case pushDeviceToken
     case pushDeviceTokenType
-    case reportedBackgroundPushVersion = "reported_background_push_version"
     case inAppUserQueueFetchCachedResponse
     // The identity the cached queue response was fetched for; a 304 for anyone else must not reuse it.
     case inAppUserQueueFetchCachedResponseOwner = "in_app_user_queue_fetch_cached_response_owner"

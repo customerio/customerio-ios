@@ -17,8 +17,6 @@ public struct MessagingPushConfigOptions {
     /// Optional host Notification Service Extension sends metrics to, for routing them through your own proxy.
     /// When `nil` or empty, the SDK uses the Customer.io host for `region`.
     public let apiHost: String?
-    /// The host has configured background remote notifications and calls `handleBackgroundPush`.
-    public let backgroundPushEnabled: Bool
 }
 
 // Add MessagingPush config options to the DIGraph like we do for SdkConfig.

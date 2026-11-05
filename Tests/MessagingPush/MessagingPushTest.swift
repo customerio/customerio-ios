@@ -136,20 +136,9 @@ class MessagingPushTest: IntegrationTest {
         return UNNotificationRequest(identifier: "id", content: content, trigger: nil)
     }
 
-    func test_backgroundReadinessIsFalseWhenHostLacksRemoteNotificationMode() {
-        let events = EventBusHandlerMock()
-        diGraphShared.override(value: events, forType: EventBusHandler.self)
-        MessagingPush.initialize(withConfig: MessagingPushConfigBuilder().autoTrackPushEvents(false).backgroundPushEnabled(true).build())
-        let readiness = events.postEventReceivedInvocations.compactMap { $0 as? BackgroundPushReadinessChangedEvent }
-        XCTAssertEqual(readiness.count, 1)
-        XCTAssertEqual(readiness.first?.ready, false)
-    }
+    func test_initializeForExtension_expectNoReceiptSender() {
+        MessagingPush.initializeExtensionModule(config: MessagingPushConfigBuilder(cdpApiKey: "pk_us_key", region: nil).build())
 
-    func test_extensionNeverPublishesHostReadiness() {
-        let events = EventBusHandlerMock()
-        diGraphShared.override(value: events, forType: EventBusHandler.self)
-        MessagingPush.initializeExtensionModule(config: MessagingPushConfigBuilder().backgroundPushEnabled(true).build())
-        XCTAssertFalse(events.postEventReceivedInvocations.contains { $0 is BackgroundPushReadinessChangedEvent })
         XCTAssertNil(MessagingPush.backgroundPushReceiptSender.wrappedValue)
     }
 
@@ -226,5 +215,70 @@ class MessagingPushTest: IntegrationTest {
         await diGraphShared.eventBusHandler.postEventAndWait(AnonymousProfileIdentifiedEvent(identifier: "anonymous"))
         await harness.sender.waitUntilIdle()
         XCTAssertTrue(harness.store.loadAll().isEmpty)
+    }
+
+    /// Sends `userInfo` to `delegate` as UIKit does, through Objective-C dispatch.
+    private func deliverLikeUIKit(_ userInfo: [AnyHashable: Any], to delegate: UIApplicationDelegate) {
+        delegate.application?(UIApplication.shared, didReceiveRemoteNotification: userInfo) { _ in }
+    }
+
+    func test_silentPushThroughTheAppDelegateWrapper_recordsDeliveredWithoutAppCode() async {
+        let harness = installReceiptSender()
+        MessagingPush.initialize()
+        let app = RemoteNotificationRecordingAppDelegate(callsHandleBackgroundPush: false)
+        let wrapper = CioProviderAgnosticAppDelegate(messagingPush: MessagingPush.shared, appDelegate: app, logger: log)
+
+        deliverLikeUIKit(backgroundPush, to: wrapper)
+        await harness.sender.waitUntilIdle()
+
+        XCTAssertEqual(app.receivedUserInfos.count, 1)
+        XCTAssertEqual(harness.client.sendTrackEventCallsCount, 1)
+        XCTAssertEqual(harness.client.sendTrackEventReceivedArguments?.request.anonymousId, "delivery")
+    }
+
+    func test_silentPushThroughTheAppDelegateWrapper_whenAppAlsoCallsHandleBackgroundPush_recordsDeliveredOnce() async {
+        let harness = installReceiptSender()
+        MessagingPush.initialize()
+        let app = RemoteNotificationRecordingAppDelegate(callsHandleBackgroundPush: true)
+        let wrapper = CioProviderAgnosticAppDelegate(messagingPush: MessagingPush.shared, appDelegate: app, logger: log)
+
+        deliverLikeUIKit(backgroundPush, to: wrapper)
+        await harness.sender.waitUntilIdle()
+
+        XCTAssertEqual(app.results, [.received(CustomerIOBackgroundPush(deliveryID: "delivery", deliveryToken: "target", data: ["order_id": "42"]))])
+        XCTAssertEqual(harness.client.sendTrackEventCallsCount, 1)
+    }
+
+    func test_otherPushThroughTheAppDelegateWrapper_recordsNothing() async {
+        let harness = installReceiptSender()
+        MessagingPush.initialize()
+        let app = RemoteNotificationRecordingAppDelegate(callsHandleBackgroundPush: false)
+        let wrapper = CioProviderAgnosticAppDelegate(messagingPush: MessagingPush.shared, appDelegate: app, logger: log)
+
+        deliverLikeUIKit(["aps": ["content-available": 1], "order_id": "42"], to: wrapper)
+        await harness.sender.waitUntilIdle()
+
+        XCTAssertEqual(app.receivedUserInfos.count, 1)
+        XCTAssertEqual(harness.client.sendTrackEventCallsCount, 0)
+        XCTAssertTrue(harness.store.loadAll().isEmpty)
+    }
+}
+
+/// An app delegate with its own remote notification handler.
+private final class RemoteNotificationRecordingAppDelegate: NSObject, UIApplicationDelegate {
+    private let callsHandleBackgroundPush: Bool
+    private(set) var receivedUserInfos: [[AnyHashable: Any]] = []
+    private(set) var results: [CustomerIOBackgroundPushResult] = []
+
+    init(callsHandleBackgroundPush: Bool) {
+        self.callsHandleBackgroundPush = callsHandleBackgroundPush
+    }
+
+    func application(_ application: UIApplication, didReceiveRemoteNotification userInfo: [AnyHashable: Any], fetchCompletionHandler completionHandler: @escaping (UIBackgroundFetchResult) -> Void) {
+        receivedUserInfos.append(userInfo)
+        if callsHandleBackgroundPush {
+            results.append(MessagingPush.shared.handleBackgroundPush(userInfo: userInfo))
+        }
+        completionHandler(.noData)
     }
 }

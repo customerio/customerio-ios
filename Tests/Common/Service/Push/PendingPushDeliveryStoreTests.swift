@@ -1,4 +1,4 @@
-@testable import CioInternalCommon
+@_spi(Internal) @testable import CioInternalCommon
 @testable import CioInternalCommonMocks
 import Foundation
 import SharedTests
@@ -174,5 +174,39 @@ final class CioAppGroupPendingPushDeliveryStoreTests: UnitTest {
 
     func test_read_givenNoFile_expectEmptyNotUnreadable() {
         XCTAssertEqual(makeStore().read(), .rows([]))
+    }
+
+    /// Silent pushes can wake the app while the device is locked, so the receipt queue must stay readable and
+    /// writable after the first unlock, whatever protection the app's entitlement sets by default.
+    func test_privateFileStore_expectEveryWriteReadableAfterFirstUnlock() {
+        let file = container.appendingPathComponent("io.customer", isDirectory: true).appendingPathComponent("receipts.json")
+        let store = CioAppGroupPendingPushDeliveryStore(privateFileURL: file, logger: logger)
+        var writeOptions: [Data.WritingOptions] = []
+        store.writeData = { data, url, options in
+            writeOptions.append(options)
+            try data.write(to: url, options: options)
+        }
+        let first = makeMetric(deliveryId: "d1")
+
+        XCTAssertTrue(store.append(first))
+        XCTAssertTrue(store.append(makeMetric(deliveryId: "d2")))
+        // Removing replaces the whole file too.
+        XCTAssertTrue(store.remove(id: first.id))
+
+        XCTAssertEqual(writeOptions, Array(repeating: [.atomic, .completeFileProtectionUntilFirstUserAuthentication], count: 3))
+        XCTAssertEqual(store.loadAll().map(\.deliveryId), ["d2"])
+    }
+
+    func test_appGroupStore_expectTheAppsDefaultProtection() {
+        let store = makeStore()
+        var writeOptions: [Data.WritingOptions] = []
+        store.writeData = { data, url, options in
+            writeOptions.append(options)
+            try data.write(to: url, options: options)
+        }
+
+        XCTAssertTrue(store.append(makeMetric()))
+
+        XCTAssertEqual(writeOptions, [.atomic])
     }
 }

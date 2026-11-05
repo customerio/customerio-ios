@@ -71,14 +71,6 @@ public final class CioInternalCommon.BackgroundDeliveryHttpClientImpl {
 }
 public enum CioInternalCommon.BackgroundDeliveryHttpError {
 }
-public final class CioInternalCommon.BackgroundPushReadinessChangedEvent {
-	public final val storageId: String;
-	public final val params: List<String : String>;
-	public final val timestamp: Date;
-	public final val ready: Boolean;
-	public var isPersistent: Boolean;
-	public fun init(ready: Boolean, storageId: String = UUID().uuidString, timestamp: Date = Date());
-}
 public interface CioInternalCommon.BackgroundTaskRunner {
 	public fun func withBackgroundTime(_ work: @Sendable () async -> Unit) async;
 }
@@ -134,7 +126,6 @@ public final class CioInternalCommon.CioQueue {
 public final class CioInternalCommon.CioSharedDataStore {
 	public var pushDeviceToken: String?;
 	public var pushDeviceTokenType: DeviceTokenType?;
-	public var reportedBackgroundPushVersion: String?;
 	public fun init(keyValueStorage: SharedKeyValueStorage);
 	public fun func deleteAll();
 }
@@ -385,7 +376,6 @@ public enum CioInternalCommon.GeofenceTransition {
 public interface CioInternalCommon.GlobalDataStore {
 	public var pushDeviceToken: String?;
 	public var pushDeviceTokenType: DeviceTokenType?;
-	public var reportedBackgroundPushVersion: String?;
 	public fun func deleteAll();
 }
 public extension CioInternalCommon.GlobalDataStore {

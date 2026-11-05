@@ -188,95 +188,6 @@ class DataPipelineEventBustTests: IntegrationTest {
         XCTAssertEqual(trackEvent.properties?["cio_token_type"]?.stringValue, "fid")
     }
 
-    func testBackgroundReadiness_updatesExistingTokenAndCannotBeOverriddenByCustomAttributes() async {
-        deviceAttributesMock.getDefaultDeviceAttributesClosure = { $0([:]) }
-        await eventBusHandler.postEventAndWait(RegisterDeviceTokenEvent(token: "token-a"))
-        XCTAssertEqual((outputReader.lastEvent as? TrackEvent)?.properties?["cio_background_push_version"]?.stringValue, "0")
-
-        await eventBusHandler.postEventAndWait(BackgroundPushReadinessChangedEvent(ready: true))
-        XCTAssertEqual((outputReader.lastEvent as? TrackEvent)?.properties?["cio_background_push_version"]?.stringValue, "1")
-
-        customerIO.setDeviceAttributes(["cio_background_push_version": "0"])
-        XCTAssertEqual((outputReader.lastEvent as? TrackEvent)?.properties?["cio_background_push_version"]?.stringValue, "1")
-
-        await eventBusHandler.postEventAndWait(BackgroundPushReadinessChangedEvent(ready: false))
-        XCTAssertEqual((outputReader.lastEvent as? TrackEvent)?.properties?["cio_background_push_version"]?.stringValue, "0")
-    }
-
-    func testBackgroundReadiness_unchangedSinceTheLastDeviceUpdate_sendsNoExtraUpdate() async {
-        deviceAttributesMock.getDefaultDeviceAttributesClosure = { $0([:]) }
-        await eventBusHandler.postEventAndWait(RegisterDeviceTokenEvent(token: "token-a"))
-        XCTAssertEqual(outputReader.deviceUpdateEvents.count, 1)
-        XCTAssertEqual(globalDataStoreMock.reportedBackgroundPushVersion, "0")
-
-        // Posted on every launch by MessagingPush; the last device update already says "0".
-        await eventBusHandler.postEventAndWait(BackgroundPushReadinessChangedEvent(ready: false))
-        XCTAssertEqual(outputReader.deviceUpdateEvents.count, 1)
-
-        await eventBusHandler.postEventAndWait(BackgroundPushReadinessChangedEvent(ready: true))
-        XCTAssertEqual(outputReader.deviceUpdateEvents.count, 2)
-        XCTAssertEqual(outputReader.deviceUpdateEvents.last?.properties?["cio_background_push_version"]?.stringValue, "1")
-        XCTAssertEqual(globalDataStoreMock.reportedBackgroundPushVersion, "1")
-
-        await eventBusHandler.postEventAndWait(BackgroundPushReadinessChangedEvent(ready: true))
-        XCTAssertEqual(outputReader.deviceUpdateEvents.count, 2)
-    }
-
-    func testBackgroundReadiness_reportedOnAnEarlierLaunch_sendsNoUpdateUntilItChanges() async {
-        deviceAttributesMock.getDefaultDeviceAttributesClosure = { $0([:]) }
-        globalDataStoreMock.pushDeviceToken = "token-a"
-        globalDataStoreMock.reportedBackgroundPushVersion = "1"
-
-        await eventBusHandler.postEventAndWait(BackgroundPushReadinessChangedEvent(ready: true))
-        XCTAssertEqual(outputReader.deviceUpdateEvents.count, 0)
-
-        // The host removed the background mode in an app update.
-        await eventBusHandler.postEventAndWait(BackgroundPushReadinessChangedEvent(ready: false))
-        XCTAssertEqual(outputReader.deviceUpdateEvents.map { $0.properties?["cio_background_push_version"]?.stringValue }, ["0"])
-    }
-
-    func testBackgroundReadiness_updateHeldWhileAnalyticsStarts_isMarkedReportedOnlyOnceProcessed() async {
-        deviceAttributesMock.getDefaultDeviceAttributesClosure = { $0([:]) }
-        globalDataStoreMock.pushDeviceToken = "token-a"
-        let startupQueue = holdAnalyticsEvents()
-
-        await eventBusHandler.postEventAndWait(BackgroundPushReadinessChangedEvent(ready: true))
-        // Held in memory: if the app is killed now, the next launch must send it again.
-        XCTAssertNil(globalDataStoreMock.reportedBackgroundPushVersion)
-
-        releaseAnalyticsEvents(startupQueue)
-        XCTAssertEqual(globalDataStoreMock.reportedBackgroundPushVersion, "1")
-    }
-
-    func testBackgroundReadiness_changingBackWhileAnUpdateIsHeld_sendsBothInOrder() async {
-        deviceAttributesMock.getDefaultDeviceAttributesClosure = { $0([:]) }
-        globalDataStoreMock.pushDeviceToken = "token-a"
-        globalDataStoreMock.reportedBackgroundPushVersion = "0"
-        let startupQueue = holdAnalyticsEvents()
-
-        await eventBusHandler.postEventAndWait(BackgroundPushReadinessChangedEvent(ready: true))
-        await eventBusHandler.postEventAndWait(BackgroundPushReadinessChangedEvent(ready: false))
-        releaseAnalyticsEvents(startupQueue)
-
-        let versions = outputReader.deviceUpdateEvents.map { $0.properties?["cio_background_push_version"]?.stringValue }
-        XCTAssertEqual(versions, ["1", "0"])
-        XCTAssertEqual(globalDataStoreMock.reportedBackgroundPushVersion, "0")
-    }
-
-    func testBackgroundReadiness_delayedAttributeCallbacksUseCurrentReadiness() async {
-        var pending: [([String: Any]) -> Void] = []
-        deviceAttributesMock.getDefaultDeviceAttributesClosure = { pending.append($0) }
-
-        await eventBusHandler.postEventAndWait(RegisterDeviceTokenEvent(token: "token-a"))
-        await eventBusHandler.postEventAndWait(BackgroundPushReadinessChangedEvent(ready: true))
-        await eventBusHandler.postEventAndWait(BackgroundPushReadinessChangedEvent(ready: false))
-        pending.reversed().forEach { $0([:]) }
-
-        let events = outputReader.deviceUpdateEvents
-        XCTAssertEqual(events.count, 3)
-        XCTAssertTrue(events.allSatisfy { $0.properties?["cio_background_push_version"]?.stringValue == "0" })
-    }
-
     func testSubscribeToJourneyEvents_givenSameTokenPostedConcurrently_expectDeviceRegisteredOnce() async {
         deviceAttributesMock.getDefaultDeviceAttributesClosure = { $0([:]) }
         // Logged between the stored-token check and the store, so concurrent handlers overlap there
@@ -427,31 +338,5 @@ class DataPipelineEventBustTests: IntegrationTest {
         let properties = trackEvent.properties?.dictionaryValue
         XCTAssertEqual(properties?["latitude"] as? Double, givenLatitude)
         XCTAssertEqual(properties?["longitude"] as? Double, givenLongitude)
-    }
-}
-
-private extension DataPipelineEventBustTests {
-    /// Makes Analytics hold events in memory, as it does while settings load at startup.
-    func holdAnalyticsEvents() -> StartupQueue? {
-        let startupQueue = analytics.find(pluginType: StartupQueue.self)
-        XCTAssertNotNil(startupQueue)
-        analytics.store.dispatch(action: System.ToggleRunningAction(running: false))
-        waitUntil { startupQueue?.running == false }
-        return startupQueue
-    }
-
-    /// Lets Analytics run again and waits until it has processed the held events.
-    func releaseAnalyticsEvents(_ startupQueue: StartupQueue?) {
-        analytics.store.dispatch(action: System.ToggleRunningAction(running: true))
-        // Replay runs on the main queue under `syncQueue`, emptying the held events last.
-        waitUntil { startupQueue?.running == true && startupQueue?.syncQueue.sync { startupQueue?.queuedEvents.isEmpty } == true }
-    }
-
-    func waitUntil(_ condition: () -> Bool, file: StaticString = #filePath, line: UInt = #line) {
-        let deadline = Date().addingTimeInterval(5)
-        while !condition(), Date() < deadline {
-            RunLoop.current.run(until: Date().addingTimeInterval(0.01))
-        }
-        XCTAssertTrue(condition(), "Timed out waiting for Analytics", file: file, line: line)
     }
 }

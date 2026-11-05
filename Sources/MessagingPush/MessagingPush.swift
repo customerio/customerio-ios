@@ -154,7 +154,7 @@ public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, Messagi
             }
             DIGraphShared.shared.registerPendingPushDeliveryStore()
             Self.schedulePendingPushDeliveryMetricsFlush()
-            Self.initializeBackgroundPushSupport(config: config)
+            Self.startBackgroundPushReceipts(config: config)
 
             return shared.getImplementation(config: config)
         }

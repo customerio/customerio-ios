@@ -203,8 +203,7 @@ class MessagingPushNotificationDelegateTests: XCTestCase {
             autoTrackPushEvents: autoTrackPushEvents,
             showPushAppInForeground: showPushAppInForeground,
             appGroupId: nil,
-            apiHost: nil,
-            backgroundPushEnabled: false
+            apiHost: nil
         )
     }
 

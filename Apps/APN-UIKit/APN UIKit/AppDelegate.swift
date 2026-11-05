@@ -96,7 +96,6 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         // Initialize messaging features after initializing Customer.io SDK
         MessagingPushAPN.initialize(
             withConfig: MessagingPushConfigBuilder()
-                .backgroundPushEnabled(true)
                 .autoFetchDeviceToken(settings.messaging.autoFetchDeviceToken)
                 .autoTrackPushEvents(settings.messaging.autoTrackPushEvents)
                 .showPushAppInForeground(settings.messaging.showPushAppInForeground)
@@ -152,8 +151,8 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
     // MARK: UISceneSession Lifecycle
 
-    // Customer.io silent push. Needs `.backgroundPushEnabled(true)` above and Remote notifications in
-    // Background Modes (Info.plist `UIBackgroundModes` lists `remote-notification`).
+    // Customer.io silent push. Needs Remote notifications in Background Modes (Info.plist `UIBackgroundModes`
+    // lists `remote-notification`). `CioAppDelegateWrapper` records Delivered before this runs.
     // iOS gives this callback about 30 seconds: call completionHandler once, as soon as the work ends.
     func application(_ application: UIApplication, didReceiveRemoteNotification userInfo: [AnyHashable: Any], fetchCompletionHandler completionHandler: @escaping (UIBackgroundFetchResult) -> Void) {
         switch MessagingPush.shared.handleBackgroundPush(userInfo: userInfo) {

@@ -76,7 +76,6 @@ class AppDelegate: NSObject, UIApplicationDelegate {
             .setEventListener(self)
         MessagingPushFCM.initialize(
             withConfig: MessagingPushConfigBuilder()
-                .backgroundPushEnabled(true)
                 .autoFetchDeviceToken(true)
                 .autoTrackPushEvents(true)
                 .showPushAppInForeground(true)
@@ -100,11 +99,10 @@ class AppDelegate: NSObject, UIApplicationDelegate {
         return true
     }
 
-    // Customer.io silent push, sent through Firebase. Needs `.backgroundPushEnabled(true)` above and Remote
-    // notifications in Background Modes (Info.plist `UIBackgroundModes` lists `remote-notification`).
-    // iOS gives this callback about 30 seconds: call completionHandler once, as soon as the work ends.
-    // Firebase's app delegate proxy reaches this method through `CioAppDelegateWrapper` (see App.swift), as long as
-    // `FirebaseApp.configure()` runs here in didFinishLaunching.
+    // Customer.io silent push, sent through Firebase. Needs Remote notifications in Background Modes (Info.plist
+    // `UIBackgroundModes` lists `remote-notification`). `CioAppDelegateWrapper` (see App.swift) records Delivered
+    // before this runs. With Firebase's app delegate proxy on, this method is reached only with GoogleUtilities
+    // 8.1.5 or later. iOS gives this callback about 30 seconds: call completionHandler once, as soon as the work ends.
     func application(_ application: UIApplication, didReceiveRemoteNotification userInfo: [AnyHashable: Any], fetchCompletionHandler completionHandler: @escaping (UIBackgroundFetchResult) -> Void) {
         switch MessagingPush.shared.handleBackgroundPush(userInfo: userInfo) {
         case .received(let push):
