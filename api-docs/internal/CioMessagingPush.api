@@ -30,6 +30,7 @@ public final class CioMessagingPush.MessagingPush {
 	public fun func serviceExtensionTimeWillExpire();
 }
 public extension CioMessagingPush.MessagingPush {
+	public var wrapperBackgroundPushHandler: ((CustomerIOBackgroundPush, @escaping (UIBackgroundFetchResult) -> ()) -> Boolean)?;
 	public fun func handleBackgroundPush(userInfo: List<AnyHashable: Any>) -> CustomerIOBackgroundPushResult;
 	public fun func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse, withCompletionHandler completionHandler: @escaping () -> Unit) -> Boolean;
 	public fun func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse) -> CustomerIOParsedPushPayload?;

@@ -278,6 +278,100 @@ class MessagingPushTest: IntegrationTest {
         XCTAssertEqual(harness.client.sendTrackEventCallsCount, 1)
     }
 
+    private enum WrapperHandlerSetting: CaseIterable {
+        case unset, declines, takes
+    }
+
+    func test_wrapperBackgroundPushHandler_eachSetting_completesOnceAndRecordsDeliveredOnce() async throws {
+        let harness = installReceiptSender()
+        MessagingPush.initialize()
+        var expectedSends = 0
+        for setting in WrapperHandlerSetting.allCases {
+            for throughProxy in [false, true] {
+                let label = "\(setting), through proxy: \(throughProxy)"
+                var push = backgroundPush
+                push["CIO-Background-Delivery-ID"] = "delivery-\(setting)-\(throughProxy)"
+                let handlerPushes = Synchronized<[CustomerIOBackgroundPush]>([])
+                switch setting {
+                case .unset:
+                    MessagingPush.wrapperBackgroundPushHandler = nil
+                case .declines:
+                    MessagingPush.wrapperBackgroundPushHandler = { push, _ in
+                        handlerPushes.mutating { $0.append(push) }
+                        return false
+                    }
+                case .takes:
+                    MessagingPush.wrapperBackgroundPushHandler = { push, completionHandler in
+                        handlerPushes.mutating { $0.append(push) }
+                        completionHandler(.newData)
+                        return true
+                    }
+                }
+                let app = RemoteNotificationRecordingAppDelegate(callsHandleBackgroundPush: true)
+                let wrapper = CioProviderAgnosticAppDelegate(messagingPush: MessagingPush.shared, appDelegate: app, logger: log)
+                if throughProxy {
+                    try proxyLikeFirebase(wrapper, forwardsWhenClassLacksIt: true)
+                }
+                var completions: [UIBackgroundFetchResult] = []
+
+                await(wrapper as UIApplicationDelegate).application?(UIApplication.shared, didReceiveRemoteNotification: push) { completions.append($0) }
+                await harness.sender.waitUntilIdle()
+                expectedSends += 1
+
+                XCTAssertEqual(completions.count, 1, label)
+                XCTAssertEqual(harness.client.sendTrackEventCallsCount, expectedSends, label)
+                XCTAssertEqual(handlerPushes.wrappedValue.map(\.deliveryID), setting == .unset ? [] : ["delivery-\(setting)-\(throughProxy)"], label)
+                XCTAssertEqual(app.receivedUserInfos.count, setting == .takes ? 0 : 1, label)
+            }
+        }
+    }
+
+    func test_wrapperBackgroundPushHandler_otherPushes_neverReachIt() {
+        let handlerCalls = Synchronized(0)
+        MessagingPush.wrapperBackgroundPushHandler = { _, _ in
+            handlerCalls.mutating { $0 += 1 }
+            return true
+        }
+        let app = RemoteNotificationRecordingAppDelegate(callsHandleBackgroundPush: false)
+        let wrapper = CioProviderAgnosticAppDelegate(messagingPush: MessagingPush.shared, appDelegate: app, logger: log)
+        var unsupported = backgroundPush
+        unsupported["CIO-Background-Version"] = "2"
+
+        for userInfo in [["aps": ["content-available": 1], "order_id": "42"], unsupported] {
+            deliverLikeUIKit(userInfo, to: wrapper)
+        }
+
+        XCTAssertEqual(handlerCalls.wrappedValue, 0)
+        XCTAssertEqual(app.receivedUserInfos.count, 2)
+    }
+
+    func test_wrapperBackgroundPushHandler_thatNeverCompletes_isCompletedOnceByTheTimeout() async {
+        _ = installReceiptSender()
+        MessagingPush.initialize()
+        MessagingPush.wrapperBackgroundPushTimeout.wrappedValue = 0.01
+        let heldCompletion = Synchronized<((UIBackgroundFetchResult) -> Void)?>(nil)
+        MessagingPush.wrapperBackgroundPushHandler = { _, completionHandler in
+            heldCompletion.wrappedValue = completionHandler
+            return true
+        }
+        let app = RemoteNotificationRecordingAppDelegate(callsHandleBackgroundPush: false)
+        let wrapper = CioProviderAgnosticAppDelegate(messagingPush: MessagingPush.shared, appDelegate: app, logger: log)
+        let completed = expectation(description: "Completed by the timeout")
+        let results = Synchronized<[UIBackgroundFetchResult]>([])
+
+        await(wrapper as UIApplicationDelegate).application?(UIApplication.shared, didReceiveRemoteNotification: backgroundPush) { result in
+            results.mutating { $0.append(result) }
+            completed.fulfill()
+        }
+        await fulfillment(of: [completed], timeout: 5)
+        // The wrapper SDK answering late, then twice, changes nothing.
+        heldCompletion.wrappedValue?(.newData)
+        heldCompletion.wrappedValue?(.newData)
+
+        XCTAssertEqual(results.wrappedValue, [.noData])
+        XCTAssertTrue(app.receivedUserInfos.isEmpty)
+    }
+
     func test_otherPushThroughTheAppDelegateWrapper_recordsNothing() async {
         let harness = installReceiptSender()
         MessagingPush.initialize()

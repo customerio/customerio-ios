@@ -217,7 +217,17 @@ private final class RemoteNotificationRelay: NSObject, UIApplicationDelegate {
         didReceiveRemoteNotification userInfo: [AnyHashable: Any],
         fetchCompletionHandler completionHandler: @escaping (UIBackgroundFetchResult) -> Void
     ) {
-        MessagingPush.recordBackgroundPush(userInfo: userInfo)
+        var completionHandler = completionHandler
+        if case .received(let push) = MessagingPush.recordBackgroundPush(userInfo: userInfo),
+           let wrapperHandler = MessagingPush.wrapperBackgroundPushHandler {
+            let completion = BackgroundFetchCompletion(completionHandler)
+            if wrapperHandler(push, completion.complete) {
+                completion.scheduleCompletion(.noData, after: MessagingPush.wrapperBackgroundPushTimeout.wrappedValue)
+                return
+            }
+            // Declined. Passed on guarded, in case the wrapper SDK completed it anyway.
+            completionHandler = completion.complete
+        }
         let forwarded: Void? = appDelegate?.application?(application, didReceiveRemoteNotification: userInfo, fetchCompletionHandler: completionHandler)
         if forwarded == nil {
             completionHandler(.noData)

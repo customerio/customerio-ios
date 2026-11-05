@@ -101,6 +101,8 @@ public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, Messagi
             semaphore.wait()
         }
         backgroundPushReceiptSender.wrappedValue = nil
+        wrapperBackgroundPushHandler = nil
+        wrapperBackgroundPushTimeout.wrappedValue = defaultWrapperBackgroundPushTimeout
         // Drain any in-flight startup flush before tearing down so a leaked detached task cannot resolve the
         // next test's freshly-overridden DataPipeline/store mocks and forward a stray metric.
         awaitPendingMetricsFlushForTests()
