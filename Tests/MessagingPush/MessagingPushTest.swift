@@ -207,7 +207,7 @@ class MessagingPushTest: IntegrationTest {
     func test_receiptsRetryWhenDataPipelinePublishesItsReadyProfile() async {
         let keyReady = Synchronized(false)
         let harness = installReceiptSender { _ in keyReady.wrappedValue ? .success(()) : .failure(.missingCdpApiKey) }
-        MessagingPush.initialize(withConfig: MessagingPushConfigBuilder().autoTrackPushEvents(false).build())
+        MessagingPush.initialize()
         harness.sender.enqueue(deliveryID: "delivery", deviceToken: "target", receivedAt: Date())
         await harness.sender.waitUntilIdle()
         XCTAssertEqual(harness.store.loadAll().count, 1)
@@ -258,6 +258,27 @@ class MessagingPushTest: IntegrationTest {
         await harness.sender.waitUntilIdle()
 
         XCTAssertEqual(wrapper.receivedUserInfos.count, 1)
+        XCTAssertEqual(harness.client.sendTrackEventCallsCount, 1)
+    }
+
+    func test_silentPushToAWrapperSubclassWithItsOwnHandler_goesToTheWrapperBackgroundPushHandlerWhenItTakesIt() async {
+        let harness = installReceiptSender()
+        MessagingPush.initialize()
+        let handlerPushes = Synchronized<[CustomerIOBackgroundPush]>([])
+        MessagingPush.wrapperBackgroundPushHandler = { push, completionHandler in
+            handlerPushes.mutating { $0.append(push) }
+            completionHandler(.newData)
+            return true
+        }
+        let wrapper = WrapperSubclassWithOwnHandler(messagingPush: MessagingPush.shared, appDelegate: nil, logger: log)
+        var completions: [UIBackgroundFetchResult] = []
+
+        await(wrapper as UIApplicationDelegate).application?(UIApplication.shared, didReceiveRemoteNotification: backgroundPush) { completions.append($0) }
+        await harness.sender.waitUntilIdle()
+
+        XCTAssertEqual(handlerPushes.wrappedValue.map(\.deliveryID), ["delivery"])
+        XCTAssertTrue(wrapper.receivedUserInfos.isEmpty)
+        XCTAssertEqual(completions, [.newData])
         XCTAssertEqual(harness.client.sendTrackEventCallsCount, 1)
     }
 

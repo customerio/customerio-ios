@@ -168,9 +168,9 @@ extension CioProviderAgnosticAppDelegate {
     /// Handlers of app subclasses already set to record first.
     private static let subclassHandlersRecordingFirst = Synchronized<Set<OpaquePointer>>([])
 
-    /// An app's subclass of this wrapper that implements the callback runs instead of the relay. Records the receipt
-    /// before that implementation, so it doesn't depend on the app calling `handleBackgroundPush`. A class without an
-    /// implementation gets none, so proxies keep seeing it as before.
+    /// An app's subclass of this wrapper that implements the callback runs instead of the relay. Does what the relay
+    /// does before that implementation: records the receipt and offers the push to the wrapper SDK's handler, so
+    /// neither depends on the app's code. A class without an implementation gets none, so proxies see it as before.
     private static func recordBeforeSubclassHandler(in delegateClass: AnyClass?) {
         let selector = RemoteNotificationRelay.selector
         guard let delegateClass, let method = class_getInstanceMethod(delegateClass, selector) else { return }
@@ -178,8 +178,9 @@ extension CioProviderAgnosticAppDelegate {
             guard patched.insert(method).inserted else { return }
             let original = unsafeBitCast(method_getImplementation(method), to: FetchHandlerIMP.self)
             let recordingFirst: FetchHandlerBlock = { delegate, application, userInfo, completionHandler in
-                MessagingPush.recordBackgroundPush(userInfo: userInfo as? [AnyHashable: Any] ?? [:])
-                original(delegate, selector, application, userInfo, completionHandler)
+                MessagingPush.receiveRemoteNotification(userInfo as? [AnyHashable: Any] ?? [:], completionHandler: completionHandler) { completion in
+                    original(delegate, selector, application, userInfo) { completion($0) }
+                }
             }
             method_setImplementation(method, imp_implementationWithBlock(recordingFirst))
         }
@@ -217,20 +218,11 @@ private final class RemoteNotificationRelay: NSObject, UIApplicationDelegate {
         didReceiveRemoteNotification userInfo: [AnyHashable: Any],
         fetchCompletionHandler completionHandler: @escaping (UIBackgroundFetchResult) -> Void
     ) {
-        var completionHandler = completionHandler
-        if case .received(let push) = MessagingPush.recordBackgroundPush(userInfo: userInfo),
-           let wrapperHandler = MessagingPush.wrapperBackgroundPushHandler {
-            let completion = BackgroundFetchCompletion(completionHandler)
-            if wrapperHandler(push, completion.complete) {
-                completion.scheduleCompletion(.noData, after: MessagingPush.wrapperBackgroundPushTimeout.wrappedValue)
-                return
+        MessagingPush.receiveRemoteNotification(userInfo, completionHandler: completionHandler) { completionHandler in
+            let forwarded: Void? = appDelegate?.application?(application, didReceiveRemoteNotification: userInfo, fetchCompletionHandler: completionHandler)
+            if forwarded == nil {
+                completionHandler(.noData)
             }
-            // Declined. Passed on guarded, in case the wrapper SDK completed it anyway.
-            completionHandler = completion.complete
-        }
-        let forwarded: Void? = appDelegate?.application?(application, didReceiveRemoteNotification: userInfo, fetchCompletionHandler: completionHandler)
-        if forwarded == nil {
-            completionHandler(.noData)
         }
     }
 

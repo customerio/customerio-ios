@@ -184,19 +184,36 @@ final class BackgroundPushReceiptSenderTest: XCTestCase {
 
     func test_receiptsSavedBeforeStart_withAutoTrackingOff_areRemovedUnsent() async {
         let store = makeStore()
-        let receivedAt = Date(timeIntervalSince1970: 1700000000)
-        // Saved by an earlier launch, which had automatic tracking on.
-        XCTAssertTrue(store.append(PendingPushDeliveryMetric(deliveryId: "earlier-launch", deviceToken: "target", event: .delivered, timestamp: receivedAt)))
+        // Saved by an earlier launch.
+        XCTAssertTrue(store.append(PendingPushDeliveryMetric(deliveryId: "earlier-launch", deviceToken: "target", event: .delivered, timestamp: Date())))
         let client = BackgroundDeliveryHttpClientMock()
-        client.sendTrackEventClosure = { _, done in done(.failure(.transport)) }
+        client.sendTrackEventClosure = { _, done in done(.success(())) }
         let sender = BackgroundPushReceiptSender(store: store, httpClient: client, taskRunner: NoBackgroundTaskRunner(), logger: LoggerMock())
 
         sender.enqueue(deliveryID: "early", deviceToken: "target", receivedAt: Date())
         sender.start(autoTrackPushEvents: false)
+        sender.scheduleDrain()
         await sender.waitUntilIdle()
 
-        XCTAssertEqual(store.loadAll().map(\.deliveryId), ["earlier-launch"])
-        XCTAssertFalse(client.sendTrackEventReceivedInvocations.contains { $0.request.anonymousId == "early" })
+        XCTAssertEqual(client.sendTrackEventCallsCount, 0)
+        XCTAssertEqual(store.read(), .rows([]))
+    }
+
+    func test_receiptSavedBeforeInitializeInALaunchThatEnded_isNotSentWhenTheNextLaunchHasAutoTrackingOff() async {
+        let store = makeStore()
+        let client = BackgroundDeliveryHttpClientMock()
+        client.sendTrackEventClosure = { _, done in done(.success(())) }
+        // The push arrives before `initialize`, then the process ends.
+        let endedLaunch = BackgroundPushReceiptSender(store: store, httpClient: client, taskRunner: NoBackgroundTaskRunner(), logger: LoggerMock())
+        endedLaunch.enqueue(deliveryID: "early", deviceToken: "target", receivedAt: Date())
+        XCTAssertEqual(store.loadAll().map(\.deliveryId), ["early"])
+
+        let nextLaunch = BackgroundPushReceiptSender(store: store, httpClient: client, taskRunner: NoBackgroundTaskRunner(), logger: LoggerMock())
+        nextLaunch.start(autoTrackPushEvents: false)
+        await nextLaunch.waitUntilIdle()
+
+        XCTAssertEqual(client.sendTrackEventCallsCount, 0)
+        XCTAssertEqual(store.read(), .rows([]))
     }
 
     func test_concurrentDuplicates_saveOneReceipt() async {

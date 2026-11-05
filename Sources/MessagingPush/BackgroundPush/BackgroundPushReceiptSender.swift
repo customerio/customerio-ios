@@ -5,6 +5,8 @@ import Foundation
 /// retries preserve the original timestamp and target token, independent of the current profile.
 /// A delivery gets one receipt: a repeat is skipped while its receipt is pending or was handled or sent this launch.
 /// Nothing is sent until ``start(autoTrackPushEvents:)``, which `MessagingPush.initialize` calls with the app's config.
+/// With automatic tracking off, nothing is ever sent, and every saved receipt is removed, including ones an earlier
+/// launch saved before it ended without initializing.
 final class BackgroundPushReceiptSender: @unchecked Sendable {
     static let maxUnsaved = 50
     static let maxHandledDeliveryIDs = 100
@@ -15,9 +17,8 @@ final class BackgroundPushReceiptSender: @unchecked Sendable {
         var unsaved: [PendingPushDeliveryMetric] = []
         /// Deliveries given a receipt this launch, oldest first.
         var handledDeliveryIDs: [String] = []
-        var started = false
-        /// Receipts saved before `start`, when it wasn't yet known whether the app tracks automatically.
-        var earlyReceiptIDs: [UUID] = []
+        /// The app's `autoTrackPushEvents`, once `start` gives it. Until then receipts are saved, not sent.
+        var tracking: Bool?
     }
 
     private let store: PendingPushDeliveryStore
@@ -49,6 +50,7 @@ final class BackgroundPushReceiptSender: @unchecked Sendable {
     }
 
     func enqueue(deliveryID: String, deviceToken: String, receivedAt: Date) {
+        guard state.using({ $0.tracking }) != false else { return }
         let metric = PendingPushDeliveryMetric(deliveryId: deliveryID, deviceToken: deviceToken, event: .delivered, timestamp: receivedAt)
         // Checked and saved under one lock, so duplicates arriving together save one receipt.
         let isNew = state.mutating { s -> Bool in
@@ -61,7 +63,6 @@ final class BackgroundPushReceiptSender: @unchecked Sendable {
                 s.unsaved.append(metric)
                 if s.unsaved.count > Self.maxUnsaved { s.unsaved.removeFirst(s.unsaved.count - Self.maxUnsaved) }
             }
-            if !s.started { s.earlyReceiptIDs.append(metric.id) }
             return true
         }
         if !isNew {
@@ -71,17 +72,16 @@ final class BackgroundPushReceiptSender: @unchecked Sendable {
         scheduleDrain()
     }
 
-    /// Starts sending. With automatic tracking off, receipts saved before this are removed unsent.
+    /// Starts sending, or with automatic tracking off, removes every saved receipt and never sends.
     func start(autoTrackPushEvents: Bool) {
         state.mutating { s in
-            let early = s.earlyReceiptIDs
-            if !autoTrackPushEvents, !early.isEmpty {
-                early.forEach { _ = store.remove(id: $0) }
-                s.unsaved.removeAll { early.contains($0.id) }
-                logger.info("Removed \(early.count) background push receipts saved before initialization, as autoTrackPushEvents is off")
+            s.tracking = autoTrackPushEvents
+            guard !autoTrackPushEvents else { return }
+            s.unsaved = []
+            guard case .rows(let rows) = store.read(), !rows.isEmpty else { return }
+            if store.removeAll(ids: Set(rows.map(\.id))) {
+                logger.info("Removed \(rows.count) background push receipts, as autoTrackPushEvents is off")
             }
-            s.earlyReceiptIDs = []
-            s.started = true
         }
         scheduleDrain()
     }
@@ -89,7 +89,7 @@ final class BackgroundPushReceiptSender: @unchecked Sendable {
     func scheduleDrain() {
         state.mutating { s in
             s.requested &+= 1
-            guard s.started, s.task == nil else { return }
+            guard s.tracking == true, s.task == nil else { return }
             guard !s.unsaved.isEmpty || !store.loadAll().isEmpty else { return }
             s.task = makeDrainTask()
         }

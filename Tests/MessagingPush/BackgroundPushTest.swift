@@ -121,7 +121,6 @@ class BackgroundPushTest: UnitTest {
         let mock = installMock()
         let invalidChanges: [(String, Any?)] = [
             ("CIO-Background-Version", "2"),
-            ("CIO-Background-Version", nil),
             ("CIO-Background-Delivery-Token", nil),
             ("CIO-Background-Delivery-ID", " "),
             ("CIO-Delivery-ID", "legacy"),
@@ -146,7 +145,17 @@ class BackgroundPushTest: UnitTest {
 
     func test_legacyAndForeignPushes_remainAvailableToExistingHandlers() {
         let mock = installMock()
-        for payload: [AnyHashable: Any] in [[:], ["CIO-Delivery-ID": "old", "CIO-Delivery-Token": "old"], ["order_id": "42"]] {
+        var withoutVersion = userInfo()
+        withoutVersion["CIO-Background-Version"] = nil
+        let foreign: [[AnyHashable: Any]] = [
+            [:],
+            ["CIO-Delivery-ID": "old", "CIO-Delivery-Token": "old"],
+            ["order_id": "42"],
+            // Only `CIO-Background-Version` marks a silent push; other keys with the prefix are someone else's data.
+            ["aps": ["content-available": 1], "CIO-Background-Delivery-ID": "theirs"],
+            withoutVersion
+        ]
+        for payload in foreign {
             XCTAssertEqual(MessagingPush.shared.handleBackgroundPush(userInfo: payload), .notBackground)
         }
         XCTAssertEqual(mock.trackMetricCallsCount, 0)

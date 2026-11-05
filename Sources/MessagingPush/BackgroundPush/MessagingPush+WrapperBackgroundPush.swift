@@ -22,6 +22,30 @@ public extension MessagingPush {
 }
 
 extension MessagingPush {
+    /// What `CioAppDelegateWrapper` does with a remote notification before the app's handler runs: records a
+    /// Customer.io silent push's Delivered receipt and offers the push to the wrapper SDK's handler. Calls `forward`
+    /// with the completion handler to pass on, unless the wrapper SDK took the push.
+    @available(iOSApplicationExtension, unavailable)
+    static func receiveRemoteNotification(
+        _ userInfo: [AnyHashable: Any],
+        completionHandler: @escaping (UIBackgroundFetchResult) -> Void,
+        forward: (@escaping (UIBackgroundFetchResult) -> Void) -> Void
+    ) {
+        guard case .received(let push) = recordBackgroundPush(userInfo: userInfo),
+              let wrapperHandler = wrapperBackgroundPushHandler
+        else {
+            forward(completionHandler)
+            return
+        }
+        let completion = BackgroundFetchCompletion(completionHandler)
+        if wrapperHandler(push, completion.complete) {
+            completion.scheduleCompletion(.noData, after: wrapperBackgroundPushTimeout.wrappedValue)
+        } else {
+            // Declined. Passed on guarded, in case the wrapper SDK completed it anyway.
+            forward(completion.complete)
+        }
+    }
+
     static let wrapperBackgroundPushHandlerStorage = Synchronized<WrapperBackgroundPushHandler?>(nil)
     static let defaultWrapperBackgroundPushTimeout: TimeInterval = 25
     /// Seconds a wrapper SDK has to complete a push it took, under iOS's limit of about 30. Tests shorten it.

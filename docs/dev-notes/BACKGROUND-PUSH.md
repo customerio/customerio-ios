@@ -99,15 +99,15 @@ Sent with `apns-push-type: background` and `apns-priority: 5`. Over Firebase the
 ### Parsing rules
 
 1. A complete `CIO-Delivery-ID` and `CIO-Delivery-Token` pair returns `.notBackground`, so existing push handling never changes.
-2. Without any of the three `CIO-Background-*` keys above, the result is `.notBackground`.
-3. With any of them, everything must hold or the result is `.unsupported`: version `"1"`, a non-blank delivery ID and token, `aps` exactly `{"content-available": 1}`, and every other value a string. Keys starting with `cio-` and the keys `notification`, `from`, `message_type` and `collapse_key` (any case) are reserved.
+2. Without `CIO-Background-Version`, the result is `.notBackground`, even when other `CIO-Background-*` keys are present: they may be someone else's data.
+3. With it, everything must hold or the result is `.unsupported`: version `"1"`, a non-blank delivery ID and token, `aps` exactly `{"content-available": 1}`, and every other value a string. Keys starting with `cio-` and the keys `notification`, `from`, `message_type` and `collapse_key` (any case) are reserved.
 
 ### Delivered receipts
 
 - Saved to `Application Support/io.customer/background_push_receipts.json` before `handleBackgroundPush` returns or the wrapped app delegate is called, then sent as `Report Delivery Event` with `anonymousId` set to the delivery ID, `metric: delivered` and `recipient` set to the delivery token. The original receive time is kept.
 - Sent with a `UIApplication` background task. Rows that fail are retried on the next push, the next `initialize`, or when Data Pipeline publishes a profile. 4xx answers other than 401, 403, 408 and 429 drop the row.
 - One receipt per delivery: a repeat is skipped while a row for it is saved, or after it was handled or its row sent earlier in this launch (the last 100 deliveries). A repeat still triggers a send attempt, so a receipt left by a failed send goes out when the push arrives again.
-- Before `MessagingPush.initialize`, the receipt is saved the same way and nothing is sent. `initialize` then sends it, or removes it when `autoTrackPushEvents` is off.
+- Before `MessagingPush.initialize`, the receipt is saved the same way and nothing is sent. `initialize` then sends it. With `autoTrackPushEvents` off, `initialize` removes every saved receipt and nothing is ever sent, which also covers a receipt an earlier launch saved before it ended without initializing.
 - The file and its folder use `completeUntilFirstUserAuthentication`, set on every write since each write replaces the file. Silent pushes wake the app while the device is locked, and an app whose entitlement defaults to `complete` protection could otherwise neither save nor send receipts then.
 
 ### App delegate wrapper
@@ -116,7 +116,7 @@ Sent with `apns-push-type: background` and `apns-priority: 5`. Over Firebase the
 
 `responds(to:)` answers yes when the wrapped app delegate implements the method, or when the app has the Remote notifications background mode, so apps without a handler still get receipts; the relay then completes with `.noData`. It answers no for an app that implements only the older `application(_:didReceiveRemoteNotification:)`, which UIKit calls only when the newer one is missing; the relay takes that older callback too, records the receipt and passes it on.
 
-An app's own subclass of the wrapper that implements the method runs instead of the relay. When the wrapper is created, that implementation is set to record the receipt first. Classes without an implementation get none, so proxies see them as before.
+An app's own subclass of the wrapper that implements the method runs instead of the relay. When the wrapper is created, that implementation is set to do what the relay does first: record the receipt and offer the push to `wrapperBackgroundPushHandler`. Classes without an implementation get none, so proxies see them as before.
 
 Every path records through `recordBackgroundPush(userInfo:)`, and the sender keeps one receipt per delivery: a repeat is skipped while its row is saved, or once it was handled or sent this launch.
 

@@ -33,8 +33,8 @@ private enum BackgroundPushParser {
         }
         let prefix = "CIO-Background-"
         let metadataKeys: Set = ["\(prefix)Version", "\(prefix)Delivery-ID", "\(prefix)Delivery-Token"]
-        // Existing customer keys may share the prefix without declaring background intent.
-        guard metadataKeys.contains(where: { userInfo[$0] != nil }) else {
+        // Only the version marks a silent push. Other keys with the prefix may be someone else's data.
+        guard userInfo["\(prefix)Version"] != nil else {
             return .notBackground
         }
         guard userInfo["\(prefix)Version"] as? String == "1",
