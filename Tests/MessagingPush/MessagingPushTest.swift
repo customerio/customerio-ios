@@ -168,6 +168,7 @@ class MessagingPushTest: IntegrationTest {
     }
 
     /// Installs a receipt sender backed by a temporary file. Sends succeed unless `send` says otherwise.
+    /// Its clock stands still, so a slow run never reaches the drain deadline.
     private func installReceiptSender(
         send: @escaping (BackgroundTrackRequest) -> Result<Void, BackgroundDeliveryHttpError> = { _ in .success(()) }
     ) -> ReceiptHarness {
@@ -176,7 +177,7 @@ class MessagingPushTest: IntegrationTest {
         let store = CioAppGroupPendingPushDeliveryStore(privateFileURL: file, logger: log)
         let client = BackgroundDeliveryHttpClientMock()
         client.sendTrackEventClosure = { request, done in done(send(request)) }
-        let sender = BackgroundPushReceiptSender(store: store, httpClient: client, taskRunner: NoBackgroundTaskRunner(), logger: log)
+        let sender = BackgroundPushReceiptSender(store: store, httpClient: client, taskRunner: NoBackgroundTaskRunner(), logger: log, uptime: { 0 })
         MessagingPush.backgroundPushReceiptSender.wrappedValue = sender
         return ReceiptHarness(store: store, client: client, sender: sender)
     }

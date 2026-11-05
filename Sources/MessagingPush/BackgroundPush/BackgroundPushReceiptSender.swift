@@ -24,13 +24,22 @@ final class BackgroundPushReceiptSender: @unchecked Sendable {
     private let httpClient: BackgroundDeliveryHttpClient
     private let taskRunner: BackgroundTaskRunner
     private let logger: Logger
+    /// Seconds on a monotonic clock, for the drain deadline.
+    private let uptime: @Sendable () -> TimeInterval
     private let state = Synchronized(State())
 
-    init(store: PendingPushDeliveryStore, httpClient: BackgroundDeliveryHttpClient, taskRunner: BackgroundTaskRunner, logger: Logger) {
+    init(
+        store: PendingPushDeliveryStore,
+        httpClient: BackgroundDeliveryHttpClient,
+        taskRunner: BackgroundTaskRunner,
+        logger: Logger,
+        uptime: @escaping @Sendable () -> TimeInterval = { ProcessInfo.processInfo.systemUptime }
+    ) {
         self.store = store
         self.httpClient = httpClient
         self.taskRunner = taskRunner
         self.logger = logger
+        self.uptime = uptime
     }
 
     static func defaultFileURL() -> URL? {
@@ -111,7 +120,7 @@ final class BackgroundPushReceiptSender: @unchecked Sendable {
 
     private func drainUntilIdle() async {
         // Start requests for at most five seconds; each HTTP request has a twenty-second resource timeout.
-        let deadline = ProcessInfo.processInfo.systemUptime + 5
+        let deadline = uptime() + 5
         while true {
             let seen = state.using { $0.requested }
             let drained = await drainOnce(deadline: deadline)
@@ -119,7 +128,7 @@ final class BackgroundPushReceiptSender: @unchecked Sendable {
                 guard s.requested != seen else { s.task = nil
                     return false
                 }
-                if drained, ProcessInfo.processInfo.systemUptime < deadline { return true }
+                if drained, uptime() < deadline { return true }
                 // A push arriving during a failed send gets one fresh background-time window.
                 s.task = makeDrainTask()
                 return false
@@ -131,12 +140,12 @@ final class BackgroundPushReceiptSender: @unchecked Sendable {
     /// Sends saved receipts in order. Returns false, ending this pass, on a retryable error or at the deadline.
     private func drainOnce(deadline: TimeInterval) async -> Bool {
         for metric in state.using({ $0.unsaved }) {
-            guard ProcessInfo.processInfo.systemUptime < deadline, await finish(metric) else { return false }
+            guard uptime() < deadline, await finish(metric) else { return false }
             state.mutating { $0.unsaved.removeAll { $0.id == metric.id } }
         }
         guard case .rows(let rows) = store.read() else { return false }
         for metric in rows {
-            guard ProcessInfo.processInfo.systemUptime < deadline, await finish(metric) else { return false }
+            guard uptime() < deadline, await finish(metric) else { return false }
             guard store.remove(id: metric.id) else {
                 logger.error("Background push receipt could not be removed after sending; it may be sent again")
                 return false

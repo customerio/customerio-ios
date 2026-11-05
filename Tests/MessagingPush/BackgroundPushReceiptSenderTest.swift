@@ -44,8 +44,13 @@ final class BackgroundPushReceiptSenderTest: XCTestCase {
     }
 
     /// A sender as `MessagingPush.initialize` leaves it: started, with automatic tracking on.
-    private func makeSender(store: PendingPushDeliveryStore, client: BackgroundDeliveryHttpClient) -> BackgroundPushReceiptSender {
-        let sender = BackgroundPushReceiptSender(store: store, httpClient: client, taskRunner: NoBackgroundTaskRunner(), logger: LoggerMock())
+    /// Its clock stands still, so a slow run never reaches the drain deadline.
+    private func makeSender(
+        store: PendingPushDeliveryStore,
+        client: BackgroundDeliveryHttpClient,
+        uptime: @escaping @Sendable () -> TimeInterval = { 0 }
+    ) -> BackgroundPushReceiptSender {
+        let sender = BackgroundPushReceiptSender(store: store, httpClient: client, taskRunner: NoBackgroundTaskRunner(), logger: LoggerMock(), uptime: uptime)
         sender.start(autoTrackPushEvents: true)
         return sender
     }
@@ -261,6 +266,26 @@ final class BackgroundPushReceiptSenderTest: XCTestCase {
         XCTAssertTrue(store.loadAll().isEmpty)
     }
 
+    func test_drainReachingItsDeadline_leavesTheRestSaved() async {
+        let store = makeStore()
+        for id in ["first", "second", "third"] {
+            XCTAssertTrue(store.append(PendingPushDeliveryMetric(deliveryId: id, deviceToken: "target", event: .delivered, timestamp: Date())))
+        }
+        let client = BackgroundDeliveryHttpClientMock()
+        client.sendTrackEventClosure = { _, done in done(.success(())) }
+        // Two seconds pass on every reading, so the five-second deadline arrives before the third send.
+        let clock = Synchronized<TimeInterval>(0)
+        let sender = makeSender(store: store, client: client, uptime: {
+            clock.mutating { now in
+                defer { now += 2 }
+                return now
+            }
+        })
+        await sender.waitUntilIdle()
+        XCTAssertEqual(client.sendTrackEventCallsCount, 2)
+        XCTAssertEqual(store.loadAll().map(\.deliveryId), ["third"])
+    }
+
     func test_concurrentEnqueuesAndAcknowledgementsKeepEveryReceipt() async {
         let store = makeStore()
         let client = BackgroundDeliveryHttpClientMock()
@@ -277,6 +302,6 @@ final class BackgroundPushReceiptSenderTest: XCTestCase {
         }
         await sender.waitUntilIdle()
         XCTAssertEqual(sent.wrappedValue, Set((0 ..< 100).map(String.init)))
-        XCTAssertTrue(store.loadAll().isEmpty)
+        XCTAssertEqual(store.read(), .rows([]))
     }
 }
