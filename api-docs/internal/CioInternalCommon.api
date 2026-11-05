@@ -133,7 +133,7 @@ public final class CioInternalCommon.CioThreadUtil {
 	public fun func runUtility(_ block: @escaping () -> Unit);
 }
 public final class CioInternalCommon.CombinedCacheEventBusHandler {
-	public fun init(eventStorage: EventStorage, logger: Logger);
+	public fun convenience init(eventStorage: EventStorage, logger: Logger);
 	public fun deinit;
 	public fun func loadEventsFromStorage() async;
 	public fun func addObserver<E: EventRepresentable>(_ eventType: E.Type, action: @escaping (E) -> Unit);
@@ -208,6 +208,7 @@ public final class CioInternalCommon.DIGraphShared {
 }
 public extension CioInternalCommon.DIGraphShared {
 	public var pendingPushDeliveryStore: any PendingPushDeliveryStore;
+	public var taskSpawning: any TaskSpawning;
 	public fun func registerPendingPushDeliveryStore(appGroupId: String?) -> PendingPushDeliveryStore;
 }
 public interface CioInternalCommon.DataPipelineTracking {
@@ -420,6 +421,11 @@ public final class CioInternalCommon.JsonAdapter {
 	public fun func toJsonString<T: Encodable>(_ obj: T, nilIfEmpty: Boolean = true) -> String?;
 }
 public enum CioInternalCommon.KeyValueStorageKey {
+}
+public final class CioInternalCommon.LiveTaskSpawner {
+	public fun init();
+	public fun func spawn<Success: Sendable>(@_inheritActorContext @_implicitSelfCapture _ operation: sending @escaping @isolated(any) () async -> Success) -> Task<Success, Never>;
+	public fun func spawnDetached<Success: Sendable>(priority: TaskPriority?, _ operation: sending @escaping @isolated(any) () async -> Success) -> Task<Success, Never>;
 }
 public final class CioInternalCommon.LocationAcquiredEvent {
 	public final val storageId: String;
@@ -730,6 +736,10 @@ public final class CioInternalCommon.TaskDetail {
 	public final val data: Data;
 	public final val taskType: QueueTaskType;
 	public final val timestamp: Date;
+}
+public interface CioInternalCommon.TaskSpawning {
+	public fun func spawn<Success: Sendable>(@_inheritActorContext @_implicitSelfCapture _ operation: sending @escaping @isolated(any) () async -> Success) -> Task<Success, Never>;
+	public fun func spawnDetached<Success: Sendable>(priority: TaskPriority?, _ operation: sending @escaping @isolated(any) () async -> Success) -> Task<Success, Never>;
 }
 public interface CioInternalCommon.ThreadUtil {
 	public fun func runBackground(_ block: @escaping () -> Unit);

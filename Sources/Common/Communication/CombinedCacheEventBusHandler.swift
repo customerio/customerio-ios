@@ -11,6 +11,7 @@ public class CombinedCacheEventBusHandler: EventBusHandler {
     private let bus: CioEventBus
     let eventStorage: EventStorage
     let logger: Logger
+    private let taskSpawner: TaskSpawning
 
     /// Tails of the FIFO chains of observer registrations/removals, grouped by event key.
     ///
@@ -33,10 +34,15 @@ public class CombinedCacheEventBusHandler: EventBusHandler {
     /// later persistence work performed by the same `EventStorage` actor.
     private let pendingCleanupWork = Synchronized<[String: Task<Void, Never>]>([:])
 
-    public init(eventStorage: EventStorage, logger: Logger) {
+    public convenience init(eventStorage: EventStorage, logger: Logger) {
+        self.init(eventStorage: eventStorage, logger: logger, taskSpawner: LiveTaskSpawner())
+    }
+
+    init(eventStorage: EventStorage, logger: Logger, taskSpawner: TaskSpawning) {
         self.bus = CioEventBus()
         self.eventStorage = eventStorage
         self.logger = logger
+        self.taskSpawner = taskSpawner
 
         // Seed each event cache on the same per-key chain used by observer registration.
         // This makes startup ordering deterministic without blocking unrelated event types.
@@ -59,7 +65,7 @@ public class CombinedCacheEventBusHandler: EventBusHandler {
     func chainRegistryWork(forKey key: String, operation: @escaping () async -> Void) -> Task<Void, Never> {
         pendingRegistryWork.mutating { workByKey in
             let previous = workByKey[key]
-            let next = Task {
+            let next = taskSpawner.spawn {
                 await previous?.value
                 guard !Task.isCancelled else { return }
                 await operation()
@@ -177,7 +183,7 @@ public class CombinedCacheEventBusHandler: EventBusHandler {
     /// Posts `event` asynchronously. This fire-and-forget API does not guarantee ordering
     /// relative to later calls; use `postEventAndWait` when delivery or ordering matters.
     public func postEvent<E: EventRepresentable>(_ event: E) {
-        Task { [weak self] in
+        taskSpawner.spawn { [weak self] in
             guard let self else { return }
             await postEventAndWait(event)
         }
