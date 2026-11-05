@@ -113,6 +113,23 @@ final class BackgroundPushReceiptSenderTest: XCTestCase {
         XCTAssertTrue(store.loadAll().isEmpty)
     }
 
+    func test_deliverySentFromAnEarlierLaunchsRow_isNotRecordedAgainThisLaunch() async {
+        let store = makeStore()
+        XCTAssertTrue(store.append(PendingPushDeliveryMetric(deliveryId: "delivery", deviceToken: "target", event: .delivered, timestamp: Date())))
+        let client = BackgroundDeliveryHttpClientMock()
+        client.sendTrackEventClosure = { _, done in done(.success(())) }
+        let sender = makeSender(store: store, client: client)
+        await sender.waitUntilIdle()
+        XCTAssertEqual(client.sendTrackEventCallsCount, 1)
+
+        // The same push again, for example from an app handler that runs after the wrapper recorded it.
+        sender.enqueue(deliveryID: "delivery", deviceToken: "target", receivedAt: Date())
+        await sender.waitUntilIdle()
+
+        XCTAssertEqual(client.sendTrackEventCallsCount, 1)
+        XCTAssertTrue(store.loadAll().isEmpty)
+    }
+
     func test_deliveryStillPendingFromAnEarlierLaunch_isSavedOnce() async {
         let store = makeStore()
         let receivedAt = Date(timeIntervalSince1970: 1700000000)

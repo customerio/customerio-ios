@@ -106,7 +106,7 @@ Sent with `apns-push-type: background` and `apns-priority: 5`. Over Firebase the
 
 - Saved to `Application Support/io.customer/background_push_receipts.json` before `handleBackgroundPush` returns or the wrapped app delegate is called, then sent as `Report Delivery Event` with `anonymousId` set to the delivery ID, `metric: delivered` and `recipient` set to the delivery token. The original receive time is kept.
 - Sent with a `UIApplication` background task. Rows that fail are retried on the next push, the next `initialize`, or when Data Pipeline publishes a profile. 4xx answers other than 401, 403, 408 and 429 drop the row.
-- One receipt per delivery: a repeat is skipped while a row for it is saved or after it was handled earlier in this launch (the last 100 deliveries). A repeat still triggers a send attempt, so a receipt left by a failed send goes out when the push arrives again.
+- One receipt per delivery: a repeat is skipped while a row for it is saved, or after it was handled or its row sent earlier in this launch (the last 100 deliveries). A repeat still triggers a send attempt, so a receipt left by a failed send goes out when the push arrives again.
 - Before `MessagingPush.initialize`, the receipt is saved the same way and nothing is sent. `initialize` then sends it, or removes it when `autoTrackPushEvents` is off.
 - The file and its folder use `completeUntilFirstUserAuthentication`, set on every write since each write replaces the file. Silent pushes wake the app while the device is locked, and an app whose entitlement defaults to `complete` protection could otherwise neither save nor send receipts then.
 
@@ -114,7 +114,11 @@ Sent with `apns-push-type: background` and `apns-priority: 5`. Over Firebase the
 
 `CioProviderAgnosticAppDelegate`, the base of `CioAppDelegateWrapper`, has no `application(_:didReceiveRemoteNotification:fetchCompletionHandler:)` of its own. `forwardingTarget(for:)` hands that selector to a relay, which calls `recordBackgroundPush(userInfo:)` and then the wrapped app delegate with the same arguments. The app's handler is reached exactly as before, and a push gets its Delivered receipt even when the app doesn't call `handleBackgroundPush`.
 
-`responds(to:)` answers yes when the wrapped app delegate implements the method, or when the app has the Remote notifications background mode, so apps without a handler still get receipts; the relay then completes with `.noData`. It answers no for an app that implements only the older `application(_:didReceiveRemoteNotification:)`, which UIKit calls only when the newer one is missing. An app's own subclass of the wrapper that implements the method runs instead of the relay and records nothing unless it calls `handleBackgroundPush`.
+`responds(to:)` answers yes when the wrapped app delegate implements the method, or when the app has the Remote notifications background mode, so apps without a handler still get receipts; the relay then completes with `.noData`. It answers no for an app that implements only the older `application(_:didReceiveRemoteNotification:)`, which UIKit calls only when the newer one is missing; the relay takes that older callback too, records the receipt and passes it on.
+
+An app's own subclass of the wrapper that implements the method runs instead of the relay. When the wrapper is created, that implementation is set to record the receipt first. Classes without an implementation get none, so proxies see them as before.
+
+Every path records through `recordBackgroundPush(userInfo:)`, and the sender keeps one receipt per delivery: a repeat is skipped while its row is saved, or once it was handled or sent this launch.
 
 ### App delegate proxies
 

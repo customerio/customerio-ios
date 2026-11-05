@@ -3,7 +3,7 @@ import Foundation
 
 /// Persists receipts before the host completes its background callback. The queue is at least once;
 /// retries preserve the original timestamp and target token, independent of the current profile.
-/// A delivery gets one receipt: a repeat is skipped while its receipt is pending or was handled this launch.
+/// A delivery gets one receipt: a repeat is skipped while its receipt is pending or was handled or sent this launch.
 /// Nothing is sent until ``start(autoTrackPushEvents:)``, which `MessagingPush.initialize` calls with the app's config.
 final class BackgroundPushReceiptSender: @unchecked Sendable {
     static let maxUnsaved = 50
@@ -55,10 +55,7 @@ final class BackgroundPushReceiptSender: @unchecked Sendable {
             guard !s.handledDeliveryIDs.contains(deliveryID),
                   !store.loadAll().contains(where: { $0.deliveryId == deliveryID })
             else { return false }
-            s.handledDeliveryIDs.append(deliveryID)
-            if s.handledDeliveryIDs.count > Self.maxHandledDeliveryIDs {
-                s.handledDeliveryIDs.removeFirst(s.handledDeliveryIDs.count - Self.maxHandledDeliveryIDs)
-            }
+            Self.remember(deliveryID, in: &s)
             if !store.append(metric) {
                 logger.error("Background push receipt could not be saved; held in memory for this launch only")
                 s.unsaved.append(metric)
@@ -112,6 +109,14 @@ final class BackgroundPushReceiptSender: @unchecked Sendable {
         eventBus.addObserver(AnonymousProfileIdentifiedEvent.self) { [weak self] _ in self?.scheduleDrain() }
     }
 
+    private static func remember(_ deliveryID: String, in state: inout State) {
+        guard !state.handledDeliveryIDs.contains(deliveryID) else { return }
+        state.handledDeliveryIDs.append(deliveryID)
+        if state.handledDeliveryIDs.count > maxHandledDeliveryIDs {
+            state.handledDeliveryIDs.removeFirst(state.handledDeliveryIDs.count - maxHandledDeliveryIDs)
+        }
+    }
+
     private func makeDrainTask() -> Task<Void, Never> {
         Task.detached(priority: .utility) { [self] in
             await taskRunner.withBackgroundTime { await self.drainUntilIdle() }
@@ -146,6 +151,8 @@ final class BackgroundPushReceiptSender: @unchecked Sendable {
         guard case .rows(let rows) = store.read() else { return false }
         for metric in rows {
             guard uptime() < deadline, await finish(metric) else { return false }
+            // A row saved by an earlier launch: a repeat of its push this launch gets no new receipt.
+            state.mutating { Self.remember(metric.deliveryId, in: &$0) }
             guard store.remove(id: metric.id) else {
                 logger.error("Background push receipt could not be removed after sending; it may be sent again")
                 return false

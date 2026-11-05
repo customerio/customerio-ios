@@ -249,6 +249,35 @@ class MessagingPushTest: IntegrationTest {
         XCTAssertEqual(harness.client.sendTrackEventCallsCount, 1)
     }
 
+    func test_silentPushToAWrapperSubclassWithItsOwnHandler_recordsDeliveredWithoutAppCode() async {
+        let harness = installReceiptSender()
+        MessagingPush.initialize()
+        let wrapper = WrapperSubclassWithOwnHandler(messagingPush: MessagingPush.shared, appDelegate: nil, logger: log)
+
+        deliverLikeUIKit(backgroundPush, to: wrapper)
+        await harness.sender.waitUntilIdle()
+
+        XCTAssertEqual(wrapper.receivedUserInfos.count, 1)
+        XCTAssertEqual(harness.client.sendTrackEventCallsCount, 1)
+    }
+
+    func test_silentPushThroughTheOlderCallback_recordsDeliveredWithoutAppCode() async {
+        let harness = installReceiptSender()
+        MessagingPush.initialize()
+        let app = OlderCallbackAppDelegate()
+        let wrapper = CioProviderAgnosticAppDelegate(messagingPush: MessagingPush.shared, appDelegate: app, logger: log)
+        let olderSelector = NSSelectorFromString("application:didReceiveRemoteNotification:")
+
+        // UIKit calls the older callback only when the delegate lacks the newer one.
+        XCTAssertFalse(wrapper.responds(to: #selector(UIApplicationDelegate.application(_:didReceiveRemoteNotification:fetchCompletionHandler:))))
+        XCTAssertTrue(wrapper.responds(to: olderSelector))
+        wrapper.perform(olderSelector, with: UIApplication.shared, with: backgroundPush)
+        await harness.sender.waitUntilIdle()
+
+        XCTAssertEqual(app.receivedUserInfos.count, 1)
+        XCTAssertEqual(harness.client.sendTrackEventCallsCount, 1)
+    }
+
     func test_otherPushThroughTheAppDelegateWrapper_recordsNothing() async {
         let harness = installReceiptSender()
         MessagingPush.initialize()
@@ -261,6 +290,26 @@ class MessagingPushTest: IntegrationTest {
         XCTAssertEqual(app.receivedUserInfos.count, 1)
         XCTAssertEqual(harness.client.sendTrackEventCallsCount, 0)
         XCTAssertTrue(harness.store.loadAll().isEmpty)
+    }
+}
+
+/// An app's subclass of the wrapper that handles remote notifications itself and never calls `handleBackgroundPush`.
+private final class WrapperSubclassWithOwnHandler: CioProviderAgnosticAppDelegate {
+    private(set) var receivedUserInfos: [[AnyHashable: Any]] = []
+
+    func application(_ application: UIApplication, didReceiveRemoteNotification userInfo: [AnyHashable: Any], fetchCompletionHandler completionHandler: @escaping (UIBackgroundFetchResult) -> Void) {
+        receivedUserInfos.append(userInfo)
+        completionHandler(.noData)
+    }
+}
+
+/// Implements only the callback without a completion handler.
+private final class OlderCallbackAppDelegate: NSObject, UIApplicationDelegate {
+    private(set) var receivedUserInfos: [[AnyHashable: Any]] = []
+
+    @objc(application:didReceiveRemoteNotification:)
+    func olderApplication(_ application: UIApplication, didReceiveRemoteNotification userInfo: [AnyHashable: Any]) {
+        receivedUserInfos.append(userInfo)
     }
 }
 
