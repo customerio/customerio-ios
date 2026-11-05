@@ -80,11 +80,31 @@ jobs:
           echo "apn=$apn" >> "$GITHUB_OUTPUT"
           echo "fcm=$fcm" >> "$GITHUB_OUTPUT"
 
+  # Picks the Mac runner label: GitHub's, or the second pool's when GitHub's pool is busy.
+  # Skipped while the switch is off or when no sample compiles, so the jobs below start exactly as before.
+  select-runner:
+    needs: detect-changes
+    if: >-
+      vars.MACOS_OVERFLOW_ENABLED == 'true'
+      && (needs.detect-changes.outputs.apn == 'true' || needs.detect-changes.outputs.fcm == 'true')
+    uses: customerio/mobile-ci-tools/.github/workflows/macos-runner-select.yml@main
+    with:
+      enabled: ${{ vars.MACOS_OVERFLOW_ENABLED }}
+      github-label: xcode-27
+      overflow-label: ${{ vars.MACOS_OVERFLOW_RUNNER_LABEL }}
+      running-threshold: ${{ fromJSON(vars.MACOS_OVERFLOW_RUNNING_THRESHOLD || '13') }}
+      # The spend check is off while the cap variable is unset.
+      monthly-spend-cap: ${{ fromJSON(vars.MACOS_OVERFLOW_MONTHLY_CAP || '0') }}
+      spend-url: ${{ vars.MACOS_OVERFLOW_SPEND_URL }}
+    secrets:
+      spend-api-key: ${{ secrets.MACOS_OVERFLOW_SPEND_API_KEY }}
+
   compile-apn:
     name: Compile APN sample
-    needs: detect-changes
-    if: needs.detect-changes.outputs.apn == 'true'
-    runs-on: xcode-27
+    needs: [detect-changes, select-runner]
+    # The selector may be skipped or fail; the compile still runs on GitHub's label then.
+    if: ${{ !cancelled() && needs.detect-changes.result == 'success' && needs.detect-changes.outputs.apn == 'true' }}
+    runs-on: ${{ needs.select-runner.outputs.label || 'xcode-27' }}
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v7
@@ -121,9 +141,10 @@ jobs:
 
   compile-fcm:
     name: Compile FCM sample
-    needs: detect-changes
-    if: needs.detect-changes.outputs.fcm == 'true'
-    runs-on: xcode-27
+    needs: [detect-changes, select-runner]
+    # The selector may be skipped or fail; the compile still runs on GitHub's label then.
+    if: ${{ !cancelled() && needs.detect-changes.result == 'success' && needs.detect-changes.outputs.fcm == 'true' }}
+    runs-on: ${{ needs.select-runner.outputs.label || 'xcode-27' }}
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v7
