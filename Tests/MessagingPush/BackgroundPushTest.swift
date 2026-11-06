@@ -38,7 +38,6 @@ class BackgroundPushTest: UnitTest {
     private func userInfo() -> [AnyHashable: Any] {
         [
             "aps": ["content-available": 1],
-            "CIO-Background-Version": "1",
             "CIO-Background-Delivery-ID": "dlv_123",
             "CIO-Background-Delivery-Token": "tok_abc",
             "title": "Order shipped", "body": "", "order_id": "42"
@@ -108,10 +107,10 @@ class BackgroundPushTest: UnitTest {
         XCTAssertEqual(receiptStore.loadAll().map(\.deliveryId), ["dlv_123"])
     }
 
-    func test_futureVersionMarkedOnlyByItsVersion_isUnsupported() {
+    func test_deliveryIDWithoutToken_isUnsupported() {
         installMock()
-        // A later version may rename every other key, so the version key alone marks the message.
-        let payload: [AnyHashable: Any] = ["aps": ["content-available": 1], "CIO-Background-Version": "2", "order_id": "42"]
+        // The delivery ID alone marks a Customer.io silent push, so one that can't be read is consumed.
+        let payload: [AnyHashable: Any] = ["aps": ["content-available": 1], "CIO-Background-Delivery-ID": "dlv_123", "order_id": "42"]
 
         XCTAssertEqual(MessagingPush.shared.handleBackgroundPush(userInfo: payload), .unsupported)
         XCTAssertTrue(receiptStore.loadAll().isEmpty)
@@ -120,7 +119,7 @@ class BackgroundPushTest: UnitTest {
     func test_invalidMarkedPayloads_areUnsupportedWithoutMetrics() {
         let mock = installMock()
         let invalidChanges: [(String, Any?)] = [
-            ("CIO-Background-Version", "2"),
+            ("CIO-Background-Version", "1"),
             ("CIO-Background-Delivery-Token", nil),
             ("CIO-Background-Delivery-ID", " "),
             ("CIO-Delivery-ID", "legacy"),
@@ -145,15 +144,14 @@ class BackgroundPushTest: UnitTest {
 
     func test_legacyAndForeignPushes_remainAvailableToExistingHandlers() {
         let mock = installMock()
-        var withoutVersion = userInfo()
-        withoutVersion["CIO-Background-Version"] = nil
         let foreign: [[AnyHashable: Any]] = [
             [:],
             ["CIO-Delivery-ID": "old", "CIO-Delivery-Token": "old"],
             ["order_id": "42"],
-            // Only `CIO-Background-Version` marks a silent push; other keys with the prefix are someone else's data.
-            ["aps": ["content-available": 1], "CIO-Background-Delivery-ID": "theirs"],
-            withoutVersion
+            // Only `CIO-Background-Delivery-ID` marks a silent push; a token alone, or other keys with the prefix,
+            // are someone else's data.
+            ["aps": ["content-available": 1], "CIO-Background-Delivery-Token": "theirs"],
+            ["aps": ["content-available": 1], "CIO-Background-Sync": "theirs"]
         ]
         for payload in foreign {
             XCTAssertEqual(MessagingPush.shared.handleBackgroundPush(userInfo: payload), .notBackground)
@@ -170,7 +168,6 @@ class BackgroundPushTest: UnitTest {
         var complete = userInfo()
         complete["CIO-Delivery-ID"] = "legacy-delivery"
         complete["CIO-Delivery-Token"] = "legacy-token"
-        complete["CIO-Background-Version"] = "2"
         payloads.append(complete)
 
         for payload in payloads {

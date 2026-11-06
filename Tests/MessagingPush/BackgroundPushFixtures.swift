@@ -1,5 +1,5 @@
-// Byte copies of Services deliveries/backgroundpush/testdata outputs.
-// Package.swift has no test resource declaration; keep these literals unchanged.
+// Copies of Services deliveries/backgroundpush/testdata outputs.
+// Package.swift has no test resource declaration; keep these literals in sync with that testdata by hand.
 import Foundation
 
 enum BackgroundPushFixtures {
@@ -7,7 +7,6 @@ enum BackgroundPushFixtures {
     {
       "CIO-Background-Delivery-ID": "fixture-delivery-1",
       "CIO-Background-Delivery-Token": "fixture-apns-token-1",
-      "CIO-Background-Version": "1",
       "aps": {
         "content-available": 1
       },
@@ -30,7 +29,6 @@ enum BackgroundPushFixtures {
           "payload": {
             "CIO-Background-Delivery-ID": "fixture-delivery-1",
             "CIO-Background-Delivery-Token": "fixture-fcm-token-1",
-            "CIO-Background-Version": "1",
             "aps": {
               "content-available": 1
             },

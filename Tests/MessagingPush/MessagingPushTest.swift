@@ -144,7 +144,6 @@ class MessagingPushTest: IntegrationTest {
 
     private let backgroundPush: [AnyHashable: Any] = [
         "aps": ["content-available": 1],
-        "CIO-Background-Version": "1",
         "CIO-Background-Delivery-ID": "delivery",
         "CIO-Background-Delivery-Token": "target",
         "order_id": "42"
@@ -356,7 +355,7 @@ class MessagingPushTest: IntegrationTest {
         let app = RemoteNotificationRecordingAppDelegate(callsHandleBackgroundPush: false)
         let wrapper = CioProviderAgnosticAppDelegate(messagingPush: MessagingPush.shared, appDelegate: app, logger: log)
         var unsupported = backgroundPush
-        unsupported["CIO-Background-Version"] = "2"
+        unsupported["CIO-Background-Delivery-Token"] = nil
 
         for userInfo in [["aps": ["content-available": 1], "order_id": "42"], unsupported] {
             deliverLikeUIKit(userInfo, to: wrapper)

@@ -18,8 +18,8 @@ public enum CustomerIOBackgroundPushResult: Equatable {
     /// Not a Customer.io silent push. Pass it to your other push handlers.
     /// A push carrying the older `CIO-Delivery-ID` and `CIO-Delivery-Token` pair is always this case.
     case notBackground
-    /// A Customer.io silent push this SDK version can't read, such as a newer version.
-    /// Nothing is shown and no receipt is recorded. Complete your handler with `.noData`.
+    /// A Customer.io silent push this SDK can't read, for example one without a delivery token or with a value
+    /// that isn't text. Nothing is shown and no receipt is recorded. Complete your handler with `.noData`.
     case unsupported
     /// A Customer.io silent push, with its data.
     case received(CustomerIOBackgroundPush)
@@ -31,16 +31,16 @@ private enum BackgroundPushParser {
         if userInfo["CIO-Delivery-ID"] is String, userInfo["CIO-Delivery-Token"] is String {
             return .notBackground
         }
-        let prefix = "CIO-Background-"
-        let metadataKeys: Set = ["\(prefix)Version", "\(prefix)Delivery-ID", "\(prefix)Delivery-Token"]
-        // Only the version marks a silent push. Other keys with the prefix may be someone else's data.
-        guard userInfo["\(prefix)Version"] != nil else {
+        let deliveryIDKey = "CIO-Background-Delivery-ID"
+        let tokenKey = "CIO-Background-Delivery-Token"
+        let metadataKeys: Set = [deliveryIDKey, tokenKey]
+        // Only the delivery ID marks a silent push. A token alone, or other keys with the prefix, may be someone else's data.
+        guard userInfo[deliveryIDKey] != nil else {
             return .notBackground
         }
-        guard userInfo["\(prefix)Version"] as? String == "1",
-              let deliveryID = userInfo["\(prefix)Delivery-ID"] as? String,
+        guard let deliveryID = userInfo[deliveryIDKey] as? String,
               !deliveryID.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
-              let token = userInfo["\(prefix)Delivery-Token"] as? String,
+              let token = userInfo[tokenKey] as? String,
               !token.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
               let aps = userInfo["aps"] as? [String: Any], aps.count == 1,
               let available = aps["content-available"] as? NSNumber,

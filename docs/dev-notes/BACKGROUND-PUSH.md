@@ -82,25 +82,24 @@ Silent pushes need no notification permission. The app still registers for remot
 | `Sources/MessagingPush/BackgroundPush/MessagingPush+BackgroundPushReceipts.swift` | Creates the receipt sender and starts it at `initialize` |
 | `Sources/MessagingPush/Integration/CioProviderAgnosticAppDelegate.swift` | Records Delivered for pushes reaching the wrapper, then forwards them to the wrapped app delegate |
 
-### Wire format, version 1
+### Wire format
 
 ```json
 {
   "aps": {"content-available": 1},
-  "CIO-Background-Version": "1",
   "CIO-Background-Delivery-ID": "<delivery id>",
   "CIO-Background-Delivery-Token": "<device token the push was sent to>",
   "order_id": "A-1001"
 }
 ```
 
-Sent with `apns-push-type: background` and `apns-priority: 5`. Over Firebase the same object is `message.apns.payload`; Firebase adds `gcm.*` and `google.*` keys, which the parser drops from the data.
+Sent with `apns-push-type: background` and `apns-priority: 5`. The push relay adds the two keys at send time where it adds `CIO-Delivery-ID` and `CIO-Delivery-Token` to regular pushes: the top level of the APNs payload, or Firebase's `message.data`, which reaches the app as top-level `userInfo` keys. Firebase adds `gcm.*` and `google.*` keys, which the parser drops from the data.
 
 ### Parsing rules
 
 1. A complete `CIO-Delivery-ID` and `CIO-Delivery-Token` pair returns `.notBackground`, so existing push handling never changes.
-2. Without `CIO-Background-Version`, the result is `.notBackground`, even when other `CIO-Background-*` keys are present: they may be someone else's data.
-3. With it, everything must hold or the result is `.unsupported`: version `"1"`, a non-blank delivery ID and token, `aps` exactly `{"content-available": 1}`, and every other value a string. Keys starting with `cio-` and the keys `notification`, `from`, `message_type` and `collapse_key` (any case) are reserved.
+2. Without `CIO-Background-Delivery-ID`, the result is `.notBackground`, even when `CIO-Background-Delivery-Token` or other `CIO-Background-*` keys are present: they may be someone else's data.
+3. With it, everything must hold or the result is `.unsupported`: a non-blank delivery ID and token, `aps` exactly `{"content-available": 1}`, and every other value a string. Keys starting with `cio-` and the keys `notification`, `from`, `message_type` and `collapse_key` (any case) are reserved.
 
 ### Delivered receipts
 
