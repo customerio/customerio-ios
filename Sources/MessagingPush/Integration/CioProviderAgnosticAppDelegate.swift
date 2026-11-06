@@ -37,6 +37,9 @@ open class CioProviderAgnosticAppDelegate: CioAppDelegateType {
     @_spi(Internal) public var config: ConfigInstance?
 
     private let wrappedAppDelegate: UIApplicationDelegate?
+    private let remoteNotificationRelay: RemoteNotificationRelay
+    /// Reads Info.plist `UIBackgroundModes`. Tests replace it.
+    var readBackgroundModes: () -> Any? = { Bundle.main.object(forInfoDictionaryKey: "UIBackgroundModes") }
 
     override public convenience init() {
         DIGraphShared.shared.logger.error("CIO: This no-argument initializer should not to be used. Added since UIKit's AppDelegate initialization process crashes if for no-arg init is missing.")
@@ -58,7 +61,9 @@ open class CioProviderAgnosticAppDelegate: CioAppDelegateType {
         self.logger = logger
         self.config = config
         self.wrappedAppDelegate = appDelegate
+        self.remoteNotificationRelay = RemoteNotificationRelay(appDelegate: appDelegate)
         super.init()
+        Self.recordBeforeSubclassHandler(in: object_getClass(self))
     }
 
     open func application(
@@ -101,6 +106,9 @@ open class CioProviderAgnosticAppDelegate: CioAppDelegateType {
 
     @objc
     override public func responds(to aSelector: Selector!) -> Bool {
+        if aSelector == RemoteNotificationRelay.selector {
+            return super.responds(to: aSelector) || takesRemoteNotifications
+        }
         if implementedOptionalMethods.contains(aSelector), super.responds(to: aSelector) {
             return true
         }
@@ -109,6 +117,12 @@ open class CioProviderAgnosticAppDelegate: CioAppDelegateType {
 
     @objc
     override public func forwardingTarget(for aSelector: Selector!) -> Any? {
+        if aSelector == RemoteNotificationRelay.selector {
+            return takesRemoteNotifications ? remoteNotificationRelay : nil
+        }
+        if aSelector == RemoteNotificationRelay.olderSelector {
+            return wrappedAppDelegate?.responds(to: aSelector) == true ? remoteNotificationRelay : nil
+        }
         if implementedOptionalMethods.contains(aSelector), super.responds(to: aSelector) {
             return self
         }
@@ -137,5 +151,85 @@ extension CioProviderAgnosticAppDelegate {
         options: [UIApplication.OpenURLOptionsKey: Any] = [:]
     ) -> Bool {
         wrappedAppDelegate?.application?(app, open: url, options: options) ?? false
+    }
+}
+
+/// Remote notifications, silent pushes included, reach the app delegate through
+/// `application(_:didReceiveRemoteNotification:fetchCompletionHandler:)`, or the older callback without a completion
+/// handler. This class has no method of its own for either, so SDKs that proxy the app delegate, such as Firebase's,
+/// treat it as they always have. `forwardingTarget(for:)` hands the call to `RemoteNotificationRelay` instead, which
+/// records a Customer.io silent push's Delivered receipt and then calls the wrapped app delegate.
+@available(iOSApplicationExtension, unavailable)
+extension CioProviderAgnosticAppDelegate {
+    private typealias FetchCompletion = @convention(block) (UIBackgroundFetchResult) -> Void
+    private typealias FetchHandlerIMP = @convention(c) (AnyObject, Selector, UIApplication, NSDictionary, FetchCompletion) -> Void
+    private typealias FetchHandlerBlock = @convention(block) (AnyObject, UIApplication, NSDictionary, @escaping FetchCompletion) -> Void
+
+    /// Handlers of app subclasses already set to record first.
+    private static let subclassHandlersRecordingFirst = Synchronized<Set<OpaquePointer>>([])
+
+    /// An app's subclass of this wrapper that implements the callback runs instead of the relay. Does what the relay
+    /// does before that implementation: records the receipt and offers the push to the wrapper SDK's handler, so
+    /// neither depends on the app's code. A class without an implementation is left alone.
+    private static func recordBeforeSubclassHandler(in delegateClass: AnyClass?) {
+        let selector = RemoteNotificationRelay.selector
+        guard let delegateClass, let method = class_getInstanceMethod(delegateClass, selector) else { return }
+        subclassHandlersRecordingFirst.mutating { patched in
+            guard patched.insert(method).inserted else { return }
+            let original = unsafeBitCast(method_getImplementation(method), to: FetchHandlerIMP.self)
+            let recordingFirst: FetchHandlerBlock = { delegate, application, userInfo, completionHandler in
+                MessagingPush.receiveRemoteNotification(userInfo as? [AnyHashable: Any] ?? [:], completionHandler: completionHandler) { completion in
+                    original(delegate, selector, application, userInfo) { completion($0) }
+                }
+            }
+            method_setImplementation(method, imp_implementationWithBlock(recordingFirst))
+        }
+    }
+
+    /// Whether to take remote notifications from UIKit: the wrapped app delegate handles them, or the app has the
+    /// Remote notifications background mode, so a silent push still gets its receipt.
+    private var takesRemoteNotifications: Bool {
+        if wrappedAppDelegate?.responds(to: RemoteNotificationRelay.selector) == true {
+            return true
+        }
+        // UIKit calls this older callback only when the delegate lacks the newer one.
+        if wrappedAppDelegate?.responds(to: RemoteNotificationRelay.olderSelector) == true {
+            return false
+        }
+        return (readBackgroundModes() as? [String])?.contains("remote-notification") == true
+    }
+}
+
+/// Records a Customer.io silent push's Delivered receipt, then passes the call to the app delegate unchanged.
+@available(iOSApplicationExtension, unavailable)
+private final class RemoteNotificationRelay: NSObject, UIApplicationDelegate {
+    static let selector = #selector(UIApplicationDelegate.application(_:didReceiveRemoteNotification:fetchCompletionHandler:))
+    static let olderSelector = NSSelectorFromString("application:didReceiveRemoteNotification:")
+
+    /// The wrapper holds the app delegate.
+    private weak var appDelegate: UIApplicationDelegate?
+
+    init(appDelegate: UIApplicationDelegate?) {
+        self.appDelegate = appDelegate
+    }
+
+    func application(
+        _ application: UIApplication,
+        didReceiveRemoteNotification userInfo: [AnyHashable: Any],
+        fetchCompletionHandler completionHandler: @escaping (UIBackgroundFetchResult) -> Void
+    ) {
+        MessagingPush.receiveRemoteNotification(userInfo, completionHandler: completionHandler) { completionHandler in
+            let forwarded: Void? = appDelegate?.application?(application, didReceiveRemoteNotification: userInfo, fetchCompletionHandler: completionHandler)
+            if forwarded == nil {
+                completionHandler(.noData)
+            }
+        }
+    }
+
+    /// The older callback, which UIKit calls only when the app delegate lacks the one above.
+    @objc(application:didReceiveRemoteNotification:)
+    func olderApplication(_ application: UIApplication, didReceiveRemoteNotification userInfo: [AnyHashable: Any]) {
+        MessagingPush.recordBackgroundPush(userInfo: userInfo)
+        _ = (appDelegate as? NSObject)?.perform(Self.olderSelector, with: application, with: userInfo)
     }
 }
