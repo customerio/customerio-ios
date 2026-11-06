@@ -12,7 +12,26 @@ concurrency: # cancel previous workflow run if one exists.
   cancel-in-progress: true
 
 jobs:
+  # Picks the Mac runner label: GitHub's, or the second pool's when GitHub's pool is busy.
+  # Skipped while the switch is off, so the tests start exactly as before.
+  select-runner:
+    if: vars.MACOS_OVERFLOW_ENABLED == 'true'
+    uses: customerio/mobile-ci-tools/.github/workflows/macos-runner-select.yml@main
+    with:
+      enabled: ${{ vars.MACOS_OVERFLOW_ENABLED }}
+      github-label: xcode-27
+      overflow-label: ${{ vars.MACOS_OVERFLOW_RUNNER_LABEL }}
+      running-threshold: ${{ fromJSON(vars.MACOS_OVERFLOW_RUNNING_THRESHOLD || '13') }}
+      # The spend check is off while the cap variable is unset.
+      monthly-spend-cap: ${{ fromJSON(vars.MACOS_OVERFLOW_MONTHLY_CAP || '0') }}
+      spend-url: ${{ vars.MACOS_OVERFLOW_SPEND_URL }}
+    secrets:
+      spend-api-key: ${{ secrets.MACOS_OVERFLOW_SPEND_API_KEY }}
+
   test:
+    needs: select-runner
+    # Runs when the selector succeeded, was skipped, or failed. Only a cancelled run stops it.
+    if: ${{ !cancelled() }}
     # The shared workflow posts test results as a check, so it needs checks: write. Set here so the job keeps it when
     # the repo's default token permission is read-only.
     permissions:
@@ -20,7 +39,7 @@ jobs:
       checks: write
     uses: customerio/mobile-ci-tools/.github/workflows/ios-test.yml@main
     with:
-      runner-label: 'xcode-27'
+      runner-label: ${{ needs.select-runner.outputs.label || 'xcode-27' }}
       # Pinned with fastlane/Scanfile: 27.0 is the only Xcode on the xcode-27 image that ships a
       # simulator runtime (iOS 27.0). Change one, check the other.
       xcode-version: '27.0'
