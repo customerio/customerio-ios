@@ -17,7 +17,12 @@ class BackgroundPushTest: UnitTest {
                 let message = try XCTUnwrap(object["message"] as? [String: Any])
                 let apns = try XCTUnwrap(message["apns"] as? [String: Any])
                 userInfo = try XCTUnwrap(apns["payload"] as? [String: Any])
-                // FCM adds transport metadata when delivering this payload.
+                // FCM delivers `message.data` to an iOS app as top-level keys next to the APNs payload, and adds
+                // its own transport metadata.
+                let data = try XCTUnwrap(message["data"] as? [String: Any])
+                userInfo.merge(data) { _, _ in XCTFail("message.data and the APNs payload share a key")
+                    return ""
+                }
                 userInfo["gcm.message_id"] = "provider-message"
                 userInfo["google.c.a.e"] = 1
             } else {

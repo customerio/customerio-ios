@@ -1,4 +1,4 @@
-// Copies of Services deliveries/backgroundpush/testdata outputs.
+// Copies of Services deliveries/backgroundpush/testdata outputs: what the push relay sends to APNs and to FCM.
 // Package.swift has no test resource declaration; keep these literals in sync with that testdata by hand.
 import Foundation
 
@@ -27,8 +27,6 @@ enum BackgroundPushFixtures {
             "apns-push-type": "background"
           },
           "payload": {
-            "CIO-Background-Delivery-ID": "fixture-delivery-1",
-            "CIO-Background-Delivery-Token": "fixture-fcm-token-1",
             "aps": {
               "content-available": 1
             },
@@ -37,6 +35,10 @@ enum BackgroundPushFixtures {
             "order_id": "A-1001",
             "title": "Order shipped"
           }
+        },
+        "data": {
+          "CIO-Background-Delivery-ID": "fixture-delivery-1",
+          "CIO-Background-Delivery-Token": "fixture-fcm-token-1"
         }
       }
     }
