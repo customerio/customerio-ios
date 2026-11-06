@@ -170,7 +170,7 @@ extension CioProviderAgnosticAppDelegate {
 
     /// An app's subclass of this wrapper that implements the callback runs instead of the relay. Does what the relay
     /// does before that implementation: records the receipt and offers the push to the wrapper SDK's handler, so
-    /// neither depends on the app's code. A class without an implementation gets none, so proxies see it as before.
+    /// neither depends on the app's code. A class without an implementation is left alone.
     private static func recordBeforeSubclassHandler(in delegateClass: AnyClass?) {
         let selector = RemoteNotificationRelay.selector
         guard let delegateClass, let method = class_getInstanceMethod(delegateClass, selector) else { return }

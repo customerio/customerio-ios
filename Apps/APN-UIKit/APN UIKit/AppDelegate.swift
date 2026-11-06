@@ -158,11 +158,9 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         switch MessagingPush.shared.handleBackgroundPush(userInfo: userInfo) {
         case .received(let push):
             // The same push can arrive twice, so real work should be keyed on `push.deliveryID`.
-            // This sample records every arrival, repeats included, in the diagnostics log.
             DiagnosticLog.shared.note("Silent push \(push.deliveryID): \(push.data)", tag: "BackgroundPush", level: .info)
             completionHandler(.newData)
         case .unsupported:
-            // A newer silent push format than this SDK reads. Nothing is shown.
             completionHandler(.noData)
         case .notBackground:
             // Not a Customer.io silent push. Hand it to any other push handlers here.

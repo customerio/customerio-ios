@@ -41,8 +41,7 @@ extension MessagingPush {
         if wrapperHandler(push, completion.complete) {
             completion.scheduleCompletion(.noData, after: wrapperBackgroundPushTimeout.wrappedValue)
         } else {
-            // Declined. Passed on guarded, in case the wrapper SDK completed it anyway.
-            forward(completion.complete)
+            forward(completionHandler)
         }
     }
 

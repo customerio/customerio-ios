@@ -5,8 +5,7 @@ import Foundation
 /// retries preserve the original timestamp and target token, independent of the current profile.
 /// A delivery gets one receipt: a repeat is skipped while its receipt is pending or was handled or sent this launch.
 /// Nothing is sent until ``start(autoTrackPushEvents:)``, which `MessagingPush.initialize` calls with the app's config.
-/// With automatic tracking off, nothing is ever sent, and every saved receipt is removed, including ones an earlier
-/// launch saved before it ended without initializing.
+/// With automatic tracking off, nothing is ever sent and every saved receipt is removed.
 final class BackgroundPushReceiptSender: @unchecked Sendable {
     static let maxUnsaved = 50
     static let maxHandledDeliveryIDs = 100

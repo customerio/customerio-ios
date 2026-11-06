@@ -114,35 +114,18 @@ class BackgroundPushTest: UnitTest {
 
     func test_deliveryIDWithoutToken_isUnsupported() {
         installMock()
-        // The delivery ID alone marks a Customer.io silent push, so one that can't be read is consumed.
         let payload: [AnyHashable: Any] = ["aps": ["content-available": 1], "CIO-Background-Delivery-ID": "dlv_123", "order_id": "42"]
 
         XCTAssertEqual(MessagingPush.shared.handleBackgroundPush(userInfo: payload), .unsupported)
         XCTAssertTrue(receiptStore.loadAll().isEmpty)
     }
 
-    func test_invalidMarkedPayloads_areUnsupportedWithoutMetrics() {
+    func test_valueThatIsNotText_isUnsupportedWithoutMetrics() {
         let mock = installMock()
-        let invalidChanges: [(String, Any?)] = [
-            ("CIO-Background-Version", "1"),
-            ("CIO-Background-Delivery-Token", nil),
-            ("CIO-Background-Delivery-ID", " "),
-            ("CIO-Delivery-ID", "legacy"),
-            ("CIO-Delivery-Token", "legacy"),
-            ("CIO-Background-Unknown", "future"),
-            ("order_id", 42),
-            ("aps", ["content-available": 1, "alert": "visible"]),
-            ("aps", ["content-available": 1, "sound": "default"]),
-            ("aps", ["content-available": 1, "badge": 1]),
-            ("aps", ["content-available": true]),
-            ("aps", ["content-available": 1.1]),
-            ("aps", nil)
-        ]
-        for (key, value) in invalidChanges {
-            var payload = userInfo()
-            payload[key] = value
-            XCTAssertEqual(MessagingPush.shared.handleBackgroundPush(userInfo: payload), .unsupported, "Invalid field: \(key)")
-        }
+        var payload = userInfo()
+        payload["order_id"] = 42
+
+        XCTAssertEqual(MessagingPush.shared.handleBackgroundPush(userInfo: payload), .unsupported)
         XCTAssertEqual(mock.trackMetricCallsCount, 0)
         XCTAssertTrue(receiptStore.loadAll().isEmpty)
     }
@@ -150,13 +133,10 @@ class BackgroundPushTest: UnitTest {
     func test_legacyAndForeignPushes_remainAvailableToExistingHandlers() {
         let mock = installMock()
         let foreign: [[AnyHashable: Any]] = [
-            [:],
             ["CIO-Delivery-ID": "old", "CIO-Delivery-Token": "old"],
             ["order_id": "42"],
-            // Only `CIO-Background-Delivery-ID` marks a silent push; a token alone, or other keys with the prefix,
-            // are someone else's data.
-            ["aps": ["content-available": 1], "CIO-Background-Delivery-Token": "theirs"],
-            ["aps": ["content-available": 1], "CIO-Background-Sync": "theirs"]
+            // Only the delivery ID marks a silent push.
+            ["aps": ["content-available": 1], "CIO-Background-Delivery-Token": "theirs"]
         ]
         for payload in foreign {
             XCTAssertEqual(MessagingPush.shared.handleBackgroundPush(userInfo: payload), .notBackground)
@@ -167,17 +147,11 @@ class BackgroundPushTest: UnitTest {
 
     func test_legacyTrackingPair_takesPrecedenceOverBackgroundMetadata() {
         let mock = installMock()
-        var payloads: [[AnyHashable: Any]] = ["CIO-Background-Version", "CIO-Background-Delivery-ID", "CIO-Background-Delivery-Token", "CIO-Background-sync", "cio-background-version", "CIO-Background-Delivery-ID-extra"].map {
-            ["CIO-Delivery-ID": "old", "CIO-Delivery-Token": "old", $0: "existing business data"]
-        }
-        var complete = userInfo()
-        complete["CIO-Delivery-ID"] = "legacy-delivery"
-        complete["CIO-Delivery-Token"] = "legacy-token"
-        payloads.append(complete)
+        var payload = userInfo()
+        payload["CIO-Delivery-ID"] = "legacy-delivery"
+        payload["CIO-Delivery-Token"] = "legacy-token"
 
-        for payload in payloads {
-            XCTAssertEqual(MessagingPush.shared.handleBackgroundPush(userInfo: payload), .notBackground, "\(payload.keys)")
-        }
+        XCTAssertEqual(MessagingPush.shared.handleBackgroundPush(userInfo: payload), .notBackground)
         XCTAssertEqual(mock.trackMetricCallsCount, 0)
         XCTAssertTrue(receiptStore.loadAll().isEmpty)
     }

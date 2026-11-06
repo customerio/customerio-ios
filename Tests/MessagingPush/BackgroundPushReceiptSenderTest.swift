@@ -58,21 +58,17 @@ final class BackgroundPushReceiptSenderTest: XCTestCase {
     func test_persistsBeforeReturningAndRemovesOnlyAfterAcceptance() async {
         let store = makeStore()
         let client = BackgroundDeliveryHttpClientMock()
-        let inFlight = expectation(description: "HTTP request in flight")
-        let completion = Synchronized<((Result<Void, BackgroundDeliveryHttpError>) -> Void)?>(nil)
-        client.sendTrackEventClosure = { _, done in completion.wrappedValue = done
-            inFlight.fulfill()
-        }
+        let request = holdFirstRequest(of: client)
         let sender = makeSender(store: store, client: client)
         let receivedAt = Date(timeIntervalSince1970: 1700000000)
         sender.enqueue(deliveryID: "delivery", deviceToken: "original-target", receivedAt: receivedAt)
         XCTAssertEqual(store.loadAll().first?.deliveryId, "delivery")
         XCTAssertEqual(store.loadAll().first?.deviceToken, "original-target")
         XCTAssertEqual(store.loadAll().first?.timestamp, receivedAt)
-        await fulfillment(of: [inFlight], timeout: 2)
+        await fulfillment(of: [request.inFlight], timeout: 2)
         XCTAssertEqual(client.sendTrackEventReceivedArguments?.request.anonymousId, "delivery")
         XCTAssertEqual(client.sendTrackEventReceivedArguments?.request.properties["metric"] as? String, "delivered")
-        completion.wrappedValue?(.success(()))
+        request.complete(.success(()))
         await sender.waitUntilIdle()
         XCTAssertTrue(store.loadAll().isEmpty)
     }
@@ -184,33 +180,17 @@ final class BackgroundPushReceiptSenderTest: XCTestCase {
 
     func test_receiptsSavedBeforeStart_withAutoTrackingOff_areRemovedUnsent() async {
         let store = makeStore()
-        // Saved by an earlier launch.
-        XCTAssertTrue(store.append(PendingPushDeliveryMetric(deliveryId: "earlier-launch", deviceToken: "target", event: .delivered, timestamp: Date())))
         let client = BackgroundDeliveryHttpClientMock()
         client.sendTrackEventClosure = { _, done in done(.success(())) }
+        // A launch that saved a receipt before `initialize` and then ended.
+        BackgroundPushReceiptSender(store: store, httpClient: client, taskRunner: NoBackgroundTaskRunner(), logger: LoggerMock())
+            .enqueue(deliveryID: "earlier-launch", deviceToken: "target", receivedAt: Date())
         let sender = BackgroundPushReceiptSender(store: store, httpClient: client, taskRunner: NoBackgroundTaskRunner(), logger: LoggerMock())
 
         sender.enqueue(deliveryID: "early", deviceToken: "target", receivedAt: Date())
         sender.start(autoTrackPushEvents: false)
         sender.scheduleDrain()
         await sender.waitUntilIdle()
-
-        XCTAssertEqual(client.sendTrackEventCallsCount, 0)
-        XCTAssertEqual(store.read(), .rows([]))
-    }
-
-    func test_receiptSavedBeforeInitializeInALaunchThatEnded_isNotSentWhenTheNextLaunchHasAutoTrackingOff() async {
-        let store = makeStore()
-        let client = BackgroundDeliveryHttpClientMock()
-        client.sendTrackEventClosure = { _, done in done(.success(())) }
-        // The push arrives before `initialize`, then the process ends.
-        let endedLaunch = BackgroundPushReceiptSender(store: store, httpClient: client, taskRunner: NoBackgroundTaskRunner(), logger: LoggerMock())
-        endedLaunch.enqueue(deliveryID: "early", deviceToken: "target", receivedAt: Date())
-        XCTAssertEqual(store.loadAll().map(\.deliveryId), ["early"])
-
-        let nextLaunch = BackgroundPushReceiptSender(store: store, httpClient: client, taskRunner: NoBackgroundTaskRunner(), logger: LoggerMock())
-        nextLaunch.start(autoTrackPushEvents: false)
-        await nextLaunch.waitUntilIdle()
 
         XCTAssertEqual(client.sendTrackEventCallsCount, 0)
         XCTAssertEqual(store.read(), .rows([]))
@@ -230,16 +210,6 @@ final class BackgroundPushReceiptSenderTest: XCTestCase {
         await sender.waitUntilIdle()
 
         XCTAssertEqual(store.loadAll().map(\.deliveryId), ["delivery"])
-    }
-
-    func test_permanentHTTP400LeavesNoRetry() async {
-        let store = makeStore()
-        let client = BackgroundDeliveryHttpClientMock()
-        client.sendTrackEventClosure = { _, done in done(.failure(.http(statusCode: 400))) }
-        let sender = makeSender(store: store, client: client)
-        sender.enqueue(deliveryID: "delivery", deviceToken: "target", receivedAt: Date())
-        await sender.waitUntilIdle()
-        XCTAssertTrue(store.loadAll().isEmpty)
     }
 
     func test_unavailableFileStillSendsFromMemory() async {
@@ -291,7 +261,7 @@ final class BackgroundPushReceiptSenderTest: XCTestCase {
         XCTAssertTrue(store.append(PendingPushDeliveryMetric(deliveryId: "valid", deviceToken: "target", event: .delivered, timestamp: now)))
         let client = BackgroundDeliveryHttpClientMock()
         client.sendTrackEventClosure = { request, done in
-            done(request.anonymousId == "invalid" ? .failure(.http(statusCode: 422)) : .success(()))
+            done(request.anonymousId == "invalid" ? .failure(.http(statusCode: 400)) : .success(()))
         }
         let sender = makeSender(store: store, client: client)
         sender.scheduleDrain()

@@ -66,7 +66,7 @@ Silent pushes need no notification permission. The app still registers for remot
 | Result | Meaning | What the SDK records |
 |---|---|---|
 | `.received(push)` | A Customer.io silent push: `push.data`, `push.deliveryID`, `push.deliveryToken` | Delivered, once per delivery, when `autoTrackPushEvents` is on (already done by `CioAppDelegateWrapper`) |
-| `.unsupported` | Marked as a Customer.io silent push, but an unknown version or bad metadata | Nothing |
+| `.unsupported` | Has `CIO-Background-Delivery-ID`, but no delivery token or a value that isn't text | Nothing |
 | `.notBackground` | Any other push, including every push with `CIO-Delivery-ID` and `CIO-Delivery-Token` | Nothing |
 
 ---
@@ -98,8 +98,8 @@ Sent with `apns-push-type: background` and `apns-priority: 5`. The push relay ad
 ### Parsing rules
 
 1. A complete `CIO-Delivery-ID` and `CIO-Delivery-Token` pair returns `.notBackground`, so existing push handling never changes.
-2. Without `CIO-Background-Delivery-ID`, the result is `.notBackground`, even when `CIO-Background-Delivery-Token` or other `CIO-Background-*` keys are present: they may be someone else's data.
-3. With it, everything must hold or the result is `.unsupported`: a non-blank delivery ID and token, `aps` exactly `{"content-available": 1}`, and every other value a string. Keys starting with `cio-` and the keys `notification`, `from`, `message_type` and `collapse_key` (any case) are reserved.
+2. Without `CIO-Background-Delivery-ID`, the result is `.notBackground`.
+3. With it, the delivery ID, the token and every data value must be strings, or the result is `.unsupported`. `aps`, the two delivery keys, and Firebase's `gcm.*` and `google.*` keys are left out of the data.
 
 ### Delivered receipts
 
@@ -111,17 +111,17 @@ Sent with `apns-push-type: background` and `apns-priority: 5`. The push relay ad
 
 ### App delegate wrapper
 
-`CioProviderAgnosticAppDelegate`, the base of `CioAppDelegateWrapper`, has no `application(_:didReceiveRemoteNotification:fetchCompletionHandler:)` of its own. `forwardingTarget(for:)` hands that selector to a relay, which calls `recordBackgroundPush(userInfo:)` and then the wrapped app delegate with the same arguments. The app's handler is reached exactly as before, and a push gets its Delivered receipt even when the app doesn't call `handleBackgroundPush`.
+`CioProviderAgnosticAppDelegate`, the base of `CioAppDelegateWrapper`, has no `application(_:didReceiveRemoteNotification:fetchCompletionHandler:)` of its own. `forwardingTarget(for:)` hands that selector to a relay, which calls `recordBackgroundPush(userInfo:)` and then the wrapped app delegate with the same arguments, so a push gets its Delivered receipt even when the app doesn't call `handleBackgroundPush`.
 
 `responds(to:)` answers yes when the wrapped app delegate implements the method, or when the app has the Remote notifications background mode, so apps without a handler still get receipts; the relay then completes with `.noData`. It answers no for an app that implements only the older `application(_:didReceiveRemoteNotification:)`, which UIKit calls only when the newer one is missing; the relay takes that older callback too, records the receipt and passes it on.
 
-An app's own subclass of the wrapper that implements the method runs instead of the relay. When the wrapper is created, that implementation is set to do what the relay does first: record the receipt and offer the push to `wrapperBackgroundPushHandler`. Classes without an implementation get none, so proxies see them as before.
+An app's own subclass of the wrapper that implements the method runs instead of the relay. When the wrapper is created, that implementation is set to do what the relay does first: record the receipt and offer the push to `wrapperBackgroundPushHandler`. Classes without an implementation are left alone.
 
-Every path records through `recordBackgroundPush(userInfo:)`, and the sender keeps one receipt per delivery: a repeat is skipped while its row is saved, or once it was handled or sent this launch.
+Every path records through `recordBackgroundPush(userInfo:)`, so a push more than one path sees gets one receipt.
 
 ### App delegate proxies
 
-Firebase's app delegate proxy (GoogleUtilities' `GULAppDelegateSwizzler`) subclasses the class of `UIApplication.shared.delegate` when Firebase is configured. Its `application(_:didReceiveRemoteNotification:fetchCompletionHandler:)` calls the implementation that class had at that moment. The wrapper class has none, so what happens depends on the GoogleUtilities version, exactly as before silent push support:
+Firebase's app delegate proxy (GoogleUtilities' `GULAppDelegateSwizzler`) subclasses the class of `UIApplication.shared.delegate` when Firebase is configured. Its `application(_:didReceiveRemoteNotification:fetchCompletionHandler:)` calls the implementation that class had at that moment. The wrapper class has none, so what happens depends on the GoogleUtilities version:
 
 - **8.1.5 and later** forward to `forwardingTarget(for:)` when the class has no implementation (google/GoogleUtilities#247). The call reaches the relay, so Delivered is recorded and the app's handler runs once. This also covers SwiftUI's `UIApplicationDelegateAdaptor`, whose own app delegate forwards to the wrapper.
 - **8.1.4 and earlier** call nothing more. Neither the app's handler nor the SDK sees the push: no data and no Delivered. Such apps need GoogleUtilities 8.1.5 or later (new installs resolve it; existing CocoaPods apps run `pod update GoogleUtilities`), or `FirebaseAppDelegateProxyEnabled` set to `NO`, in which case UIKit calls the wrapper directly and the SDK passes the APNs token to Firebase itself.

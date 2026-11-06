@@ -278,7 +278,7 @@ class CioProviderAgnosticAppDelegateTests: XCTestCase {
     }
 
     func testWrapperClass_whenCreated_thenHasNoRemoteNotificationMethodOfItsOwn() {
-        // A proxy that subclasses the app delegate then sees this class exactly as it did before silent push support.
+        // A proxy that subclasses the app delegate then finds no method here to call as the original.
         _ = makeWrapper(wrapping: BackgroundPushAppDelegate())
 
         XCTAssertNil(class_getInstanceMethod(CioProviderAgnosticAppDelegate.self, remoteNotificationSelector))
@@ -296,26 +296,16 @@ class CioProviderAgnosticAppDelegateTests: XCTestCase {
     func testDidReceiveRemoteNotification_whenAProxyForwardsLikeGoogleUtilities815_thenAppHandlesItOnce() throws {
         let wrapped = BackgroundPushAppDelegate()
         let wrapper = makeWrapper(wrapping: wrapped)
-        try proxyLikeFirebase(wrapper, forwardsWhenClassLacksIt: true)
+        try proxyLikeFirebase(wrapper)
 
         XCTAssertEqual(deliverLikeUIKit(to: wrapper), [.newData])
         XCTAssertEqual(wrapped.receivedUserInfos.count, 1)
     }
 
-    func testDidReceiveRemoteNotification_whenAProxyDoesNotForwardLikeEarlierGoogleUtilities_thenAppIsNotCalled() throws {
-        // Unchanged from before silent push support: such a proxy never reaches a wrapped app delegate.
-        let wrapped = BackgroundPushAppDelegate()
-        let wrapper = makeWrapper(wrapping: wrapped)
-        try proxyLikeFirebase(wrapper, forwardsWhenClassLacksIt: false)
-
-        XCTAssertEqual(deliverLikeUIKit(to: wrapper), [.noData])
-        XCTAssertTrue(wrapped.receivedUserInfos.isEmpty)
-    }
-
     func testDidReceiveRemoteNotification_whenSwiftUIStyleDelegateForwardsToTheWrapperUnderAProxy_thenAppHandlesItOnce() throws {
         let wrapped = BackgroundPushAppDelegate()
         let applicationDelegate = AdaptorStyleAppDelegate(target: makeWrapper(wrapping: wrapped))
-        try proxyLikeFirebase(applicationDelegate, forwardsWhenClassLacksIt: true)
+        try proxyLikeFirebase(applicationDelegate)
 
         XCTAssertEqual(deliverLikeUIKit(to: applicationDelegate), [.newData])
         XCTAssertEqual(wrapped.receivedUserInfos.count, 1)

@@ -16,7 +16,7 @@ public struct CustomerIOBackgroundPush: Equatable {
 /// What ``MessagingPush/handleBackgroundPush(userInfo:)`` found in a remote notification.
 public enum CustomerIOBackgroundPushResult: Equatable {
     /// Not a Customer.io silent push. Pass it to your other push handlers.
-    /// A push carrying the older `CIO-Delivery-ID` and `CIO-Delivery-Token` pair is always this case.
+    /// A regular Customer.io push, with `CIO-Delivery-ID` and `CIO-Delivery-Token`, is always this case.
     case notBackground
     /// A Customer.io silent push this SDK can't read, for example one without a delivery token or with a value
     /// that isn't text. Nothing is shown and no receipt is recorded. Complete your handler with `.noData`.
@@ -33,29 +33,16 @@ private enum BackgroundPushParser {
         }
         let deliveryIDKey = "CIO-Background-Delivery-ID"
         let tokenKey = "CIO-Background-Delivery-Token"
-        let metadataKeys: Set = [deliveryIDKey, tokenKey]
-        // Only the delivery ID marks a silent push. A token alone, or other keys with the prefix, may be someone else's data.
-        guard userInfo[deliveryIDKey] != nil else {
-            return .notBackground
+        guard userInfo[deliveryIDKey] != nil else { return .notBackground }
+        guard let deliveryID = userInfo[deliveryIDKey] as? String, let token = userInfo[tokenKey] as? String else {
+            return .unsupported
         }
-        guard let deliveryID = userInfo[deliveryIDKey] as? String,
-              !deliveryID.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
-              let token = userInfo[tokenKey] as? String,
-              !token.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
-              let aps = userInfo["aps"] as? [String: Any], aps.count == 1,
-              let available = aps["content-available"] as? NSNumber,
-              CFGetTypeID(available) != CFBooleanGetTypeID(), available.doubleValue == 1
-        else { return .unsupported }
 
         var data: [String: String] = [:]
         for (rawKey, value) in userInfo {
             guard let key = rawKey as? String else { return .unsupported }
-            let lower = key.lowercased()
-            if key == "aps" || metadataKeys.contains(key) || lower.hasPrefix("google.") || lower.hasPrefix("gcm.") { continue }
-            guard !key.isEmpty, !lower.hasPrefix("cio-"),
-                  !["aps", "cio", "notification", "from", "message_type", "collapse_key"].contains(lower),
-                  let value = value as? String
-            else { return .unsupported }
+            if ["aps", deliveryIDKey, tokenKey].contains(key) || key.hasPrefix("gcm.") || key.hasPrefix("google.") { continue }
+            guard let value = value as? String else { return .unsupported }
             data[key] = value
         }
         return .received(CustomerIOBackgroundPush(deliveryID: deliveryID, deliveryToken: token, data: data))

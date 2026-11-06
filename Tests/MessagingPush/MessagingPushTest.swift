@@ -330,7 +330,7 @@ class MessagingPushTest: IntegrationTest {
                 let app = RemoteNotificationRecordingAppDelegate(callsHandleBackgroundPush: true)
                 let wrapper = CioProviderAgnosticAppDelegate(messagingPush: MessagingPush.shared, appDelegate: app, logger: log)
                 if throughProxy {
-                    try proxyLikeFirebase(wrapper, forwardsWhenClassLacksIt: true)
+                    try proxyLikeFirebase(wrapper)
                 }
                 var completions: [UIBackgroundFetchResult] = []
 

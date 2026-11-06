@@ -110,7 +110,6 @@ class AppDelegate: NSObject, UIApplicationDelegate {
             print("Silent push \(push.deliveryID): \(push.data)")
             completionHandler(.newData)
         case .unsupported:
-            // A newer silent push format than this SDK reads. Nothing is shown.
             completionHandler(.noData)
         case .notBackground:
             // Not a Customer.io silent push. Hand it to any other push handlers here.

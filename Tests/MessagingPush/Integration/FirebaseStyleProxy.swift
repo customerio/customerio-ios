@@ -2,10 +2,9 @@ import UIKit
 import XCTest
 
 extension XCTestCase {
-    /// Does what Firebase's app delegate proxy (GoogleUtilities) does: moves `object` to a new subclass whose method
-    /// calls the original class's implementation. When the class has none, GoogleUtilities 8.1.5 and later forward
-    /// through `forwardingTarget(for:)`, and earlier versions call nothing.
-    func proxyLikeFirebase(_ object: NSObject, forwardsWhenClassLacksIt: Bool) throws {
+    /// Does what Firebase's app delegate proxy (GoogleUtilities 8.1.5 and later) does: moves `object` to a new subclass
+    /// whose method calls the original class's implementation or, when the class has none, `forwardingTarget(for:)`.
+    func proxyLikeFirebase(_ object: NSObject) throws {
         typealias Completion = @convention(block) (UIBackgroundFetchResult) -> Void
         typealias Original = @convention(c) (AnyObject, Selector, UIApplication, NSDictionary, Completion) -> Void
         typealias Donor = @convention(block) (NSObject, UIApplication, NSDictionary, @escaping Completion) -> Void
@@ -15,7 +14,7 @@ extension XCTestCase {
         let donor: Donor = { delegate, application, userInfo, completion in
             if let original {
                 unsafeBitCast(original, to: Original.self)(delegate, selector, application, userInfo, completion)
-            } else if forwardsWhenClassLacksIt, let target = delegate.forwardingTarget(for: selector) as? NSObject,
+            } else if let target = delegate.forwardingTarget(for: selector) as? NSObject,
                       target !== delegate, target.responds(to: selector) {
                 (target as? UIApplicationDelegate)?.application?(application, didReceiveRemoteNotification: userInfo as? [AnyHashable: Any] ?? [:], fetchCompletionHandler: completion)
             } else {
