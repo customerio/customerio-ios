@@ -22,7 +22,6 @@ enum BackgroundPushFixtures {
       "message": {
         "apns": {
           "headers": {
-            "apns-expiration": "1798848000",
             "apns-priority": "5",
             "apns-push-type": "background"
           },
