@@ -8,6 +8,8 @@ import Foundation
 public typealias MessagingPush = CioMessagingPush.MessagingPush
 public typealias MessagingPushConfigBuilder = CioMessagingPush.MessagingPushConfigBuilder
 public typealias MessagingPushConfigOptions = CioMessagingPush.MessagingPushConfigOptions
+public typealias CustomerIOBackgroundPush = CioMessagingPush.CustomerIOBackgroundPush
+public typealias CustomerIOBackgroundPushResult = CioMessagingPush.CustomerIOBackgroundPushResult
 #if canImport(UserNotifications)
 public typealias CustomerIOParsedPushPayload = CioMessagingPush.CustomerIOParsedPushPayload
 #endif

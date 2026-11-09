@@ -56,7 +56,7 @@ Silent pushes need no notification permission. The app still registers for remot
 - **About 30 seconds.** iOS gives the callback about 30 seconds of wall-clock time. Call the completion handler once, as soon as the work ends. Apps that run long or use a lot of power get woken less often.
 - **Repeats.** The same push can arrive more than once. Key work on `deliveryID`.
 - **Force-quit apps.** iOS doesn't wake an app the person swiped away in the app switcher. Pushes resume after they open it again.
-- **Offline devices.** While a device is offline, APNs keeps only the newest push for the app, so an earlier silent push can be dropped. Customer.io sets a 24-hour expiry. Treat each push as a signal to sync, and fetch anything missed from your own backend.
+- **Offline devices.** While a device is offline, APNs keeps only the newest push for the app, so an earlier silent push can be dropped. Treat each push as a signal to sync, and fetch anything missed from your own backend.
 - **Throttling.** Apple treats silent pushes as low priority and can delay or drop them, for example in Low Power Mode. Apple's guidance is no more than two or three an hour.
 
 ---
@@ -132,7 +132,7 @@ The wrapper adds no method of its own because the proxy would call it as the ori
 
 ## 6. Wrapper SDKs
 
-React Native, Flutter and Expo apps get Delivered from the native wrapper with no bridge change once they use an SDK with this support. Reading the data needs a bridge:
+React Native and Flutter apps get Delivered from the native wrapper with no bridge change once they use an SDK with this support. Reading the data needs a bridge:
 
 - iOS calls the handler on a background launch before JS or Dart is ready. A bridge hands `deliveryID`, `deliveryToken` and `data` across, and calls the completion handler itself if JS or Dart doesn't answer in time.
 - Wrappers set `MessagingPush.wrapperBackgroundPushHandler` (`@_spi(Internal)`). `CioAppDelegateWrapper`'s relay calls it only for a Customer.io silent push, after saving Delivered. Returning `true` takes the push: the app delegate isn't called, and the wrapper calls the completion handler. Only the first call counts, and the SDK completes with `.noData` after 25 seconds if the wrapper hasn't. Returning `false` forwards the push to the app delegate as usual. With no handler set, nothing changes. Flutter needs this because `FlutterAppDelegate` claims the callback only when a plugin does and leaves the completion handler uncalled when no plugin takes a push. Apps without the wrapper call `handleBackgroundPush` from their own handler.
