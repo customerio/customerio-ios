@@ -1,3 +1,9 @@
+## [5.2.0](https://github.com/customerio/customerio-ios/compare/5.1.3...5.2.0) (2026-11-10)
+
+### Features
+
+* support silent push data and delivered receipts ([#1388](https://github.com/customerio/customerio-ios/issues/1388)) ([802c0f5](https://github.com/customerio/customerio-ios/commit/802c0f5b12389fdf759c2cffe53491f8e27a7673))
+
 ## [5.1.3](https://github.com/customerio/customerio-ios/compare/5.1.2...5.1.3) (2026-10-28)
 
 ### Bug Fixes
