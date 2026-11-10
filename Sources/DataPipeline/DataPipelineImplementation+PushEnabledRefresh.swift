@@ -14,7 +14,7 @@ extension DataPipelineImplementation {
     /// Sends a device update when `push_enabled` differs from the value this process last sent.
     /// Skipped while no profile is identified, and until a device update is sent, including after the device is deleted.
     func refreshPushEnabledIfChanged() {
-        guard registeredUserId != nil, registeredDeviceToken != nil else { return }
+        guard registeredUserId != nil, sentPushEnabled != nil else { return }
 
         deviceInfo.isPushSubscribed { [weak self] isEnabled in
             guard let self else { return }
@@ -35,6 +35,13 @@ extension DataPipelineImplementation {
             self.contextPlugin.attributes[DeviceAttributeKey.pushEnabled] = pushEnabled
             self.addDeviceAttributes(token: token)
         }
+    }
+
+    private var sentPushEnabled: String? {
+        deviceTokenLock.lock()
+        defer { deviceTokenLock.unlock() }
+
+        return contextPlugin.attributes[DeviceAttributeKey.pushEnabled] as? String
     }
 
     /// Stops the refresh until the next device update, so it doesn't re-create a deleted device.

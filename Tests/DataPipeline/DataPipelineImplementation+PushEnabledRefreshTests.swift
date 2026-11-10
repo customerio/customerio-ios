@@ -244,15 +244,17 @@ class DataPipelinePushEnabledRefreshTests: IntegrationTest {
         XCTAssertEqual(lastPushEnabledSent, "true")
     }
 
-    func test_becomeActive_givenDeviceDeleted_expectNoDeviceUpdate() {
+    func test_becomeActive_givenDeviceDeleted_expectNoPermissionCheck() {
         setUpSdk()
         customerIO.registerDeviceToken(String.random)
         customerIO.deleteDeviceToken()
+        let checksAfterDelete = deviceInfoStub.isPushSubscribedCallCount.wrappedValue
         outputReader.resetPlugin()
 
         deviceInfoStub.pushSubscribed = true
         simulateAppBecameActive()
 
+        XCTAssertEqual(deviceInfoStub.isPushSubscribedCallCount.wrappedValue, checksAfterDelete)
         XCTAssertEqual(outputReader.deviceUpdateEvents.count, 0)
     }
 
