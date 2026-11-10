@@ -69,6 +69,14 @@ Base path: `~/Library/Application Support/Events/<eventType>/`
 
 Events are sorted by timestamp on retrieval. Each event type gets its own subdirectory.
 
+### CIO SDK — Silent Push Receipts
+
+Base path: `~/Library/Application Support/io.customer/` (host app only, never shared with extensions)
+
+| File | Format | Purpose |
+|---|---|---|
+| `background_push_receipts.json` | JSON array of `PendingPushDeliveryMetric` | Delivered receipts for silent pushes, saved when the push arrives and removed once sent. Protected `completeUntilFirstUserAuthentication` |
+
 ### CIO SDK — Temporary Rich Push Images
 
 Base path: `~/tmp/cio_sdk/`

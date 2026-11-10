@@ -31,6 +31,19 @@ struct BackgroundDeliveryHttpClientTests {
         HTTPURLResponse(url: URL(string: "https://cdp.customer.io/v1/track")!, statusCode: statusCode, httpVersion: nil, headerFields: nil)!
     }
 
+    @Test
+    func anonymousReceipt_usesDeliveryIdentityWithoutUserID() async {
+        let (client, runner) = makeClient(store: makeStore())
+        runner.requestClosure = { _, _, done in done(Data(), makeOkResponse(), nil) }
+        await withCheckedContinuation { continuation in
+            client.sendTrackEvent(BackgroundTrackRequest(eventName: "Report Delivery Event", anonymousId: "delivery", properties: ["recipient": "original-token"])) { _ in continuation.resume() }
+        }
+        let body = runner.requestReceivedArguments?.params.body.flatMap { try? JSONSerialization.jsonObject(with: $0) as? [String: Any] }
+        #expect(body?["anonymousId"] as? String == "delivery")
+        #expect(body?["userId"] == nil)
+        #expect((body?["properties"] as? [String: Any])?["recipient"] as? String == "original-token")
+    }
+
     // MARK: - Wire format
 
     @Test

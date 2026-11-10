@@ -1,0 +1,158 @@
+@testable import CioMessagingPush
+@_spi(Internal) @testable import CioInternalCommon
+@testable import CioInternalCommonMocks
+@testable import CioMessagingPushMocks
+import Foundation
+import XCTest
+
+class BackgroundPushTest: UnitTest {
+    private var receiptStore: PendingPushDeliveryStore!
+
+    func test_goEncodedAPNsAndFCMFixtures_returnUnchangedDataWithTransportMetadataRemoved() async throws {
+        for (json, fcm) in [(BackgroundPushFixtures.apns, false), (BackgroundPushFixtures.fcm, true)] {
+            let mock = installMock()
+            let object = try XCTUnwrap(JSONSerialization.jsonObject(with: Data(json.utf8)) as? [String: Any])
+            var userInfo: [String: Any]
+            if fcm {
+                let message = try XCTUnwrap(object["message"] as? [String: Any])
+                let apns = try XCTUnwrap(message["apns"] as? [String: Any])
+                userInfo = try XCTUnwrap(apns["payload"] as? [String: Any])
+                // FCM delivers `message.data` to an iOS app as top-level keys next to the APNs payload, and adds
+                // its own transport metadata.
+                let data = try XCTUnwrap(message["data"] as? [String: Any])
+                userInfo.merge(data) { _, _ in XCTFail("message.data and the APNs payload share a key")
+                    return ""
+                }
+                userInfo["gcm.message_id"] = "provider-message"
+                userInfo["google.c.a.e"] = 1
+            } else {
+                userInfo = object
+            }
+            guard case .received(let payload) = MessagingPush.shared.handleBackgroundPush(userInfo: userInfo) else {
+                return XCTFail("The Go-encoded payload must be accepted unchanged")
+            }
+            XCTAssertEqual(payload.deliveryID, "fixture-delivery-1")
+            XCTAssertEqual(payload.data, ["title": "Order shipped", "order_id": "A-1001", "note": "line one\nsays \"hi\" <b>&</b> ✓", "cıo-x": "dotless"])
+            XCTAssertEqual(payload.deliveryToken, fcm ? "fixture-fcm-token-1" : "fixture-apns-token-1")
+            XCTAssertEqual(receiptStore.loadAll().first?.deviceToken, payload.deliveryToken)
+            XCTAssertEqual(mock.trackMetricCallsCount, 0)
+            await MessagingPush.backgroundPushReceiptSender.wrappedValue?.waitUntilIdle()
+        }
+    }
+
+    private func userInfo() -> [AnyHashable: Any] {
+        [
+            "aps": ["content-available": 1],
+            "CIO-Background-Delivery-ID": "dlv_123",
+            "CIO-Background-Delivery-Token": "tok_abc",
+            "title": "Order shipped", "body": "", "order_id": "42"
+        ]
+    }
+
+    @discardableResult
+    private func installMock(autoTrack: Bool = true) -> MessagingPushInstanceMock {
+        let mock = MessagingPushInstanceMock()
+        mockCollection.add(mock: mock)
+        MessagingPush.setUpSharedInstanceForUnitTest(
+            implementation: mock,
+            diGraphShared: diGraphShared,
+            config: MessagingPushConfigBuilder().autoTrackPushEvents(autoTrack).build()
+        )
+        MessagingPush.backgroundPushReceiptSender.wrappedValue = makeReceiptSender()
+        return mock
+    }
+
+    /// A sender whose receipts stay in `receiptStore`, a temporary file, and whose sends fail.
+    private func makeReceiptSender() -> BackgroundPushReceiptSender {
+        let file = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString).appendingPathComponent("receipts.json")
+        receiptStore = CioAppGroupPendingPushDeliveryStore(privateFileURL: file, logger: log)
+        let client = BackgroundDeliveryHttpClientMock()
+        client.sendTrackEventClosure = { _, completion in completion(.failure(.transport)) }
+        addTeardownBlock { try? FileManager.default.removeItem(at: file.deletingLastPathComponent()) }
+        return BackgroundPushReceiptSender(store: receiptStore, httpClient: client, taskRunner: NoBackgroundTaskRunner(), logger: log)
+    }
+
+    func test_validBackgroundPush_tracksOnlyDeliveredWithItsOwnReceiptToken() {
+        let mock = installMock()
+        var payload = userInfo()
+        payload["gcm.message_id"] = "provider-metadata"
+        guard case .received(let received) = MessagingPush.shared.handleBackgroundPush(userInfo: payload) else {
+            return XCTFail("Expected background data")
+        }
+        // Title and body are plain data here, and an empty value is kept.
+        XCTAssertEqual(received.data, ["title": "Order shipped", "body": "", "order_id": "42"])
+        XCTAssertEqual(mock.trackMetricCallsCount, 0)
+        XCTAssertEqual(receiptStore.loadAll().count, 1)
+        XCTAssertEqual(receiptStore.loadAll().first?.deliveryId, "dlv_123")
+        XCTAssertEqual(receiptStore.loadAll().first?.deviceToken, "tok_abc")
+        XCTAssertEqual(receiptStore.loadAll().first?.event, .delivered)
+    }
+
+    func test_autoTrackingDisabled_stillReturnsDataWithoutTracking() {
+        let mock = installMock(autoTrack: false)
+        guard case .received(let payload) = MessagingPush.shared.handleBackgroundPush(userInfo: userInfo()) else {
+            return XCTFail("Automatic metrics must not gate business data")
+        }
+        XCTAssertEqual(payload.deliveryToken, "tok_abc")
+        XCTAssertTrue(receiptStore.loadAll().isEmpty)
+        XCTAssertEqual(mock.trackMetricCallsCount, 0)
+    }
+
+    func test_repeatedBackgroundPush_returnsDataEachTimeAndSavesOneReceipt() {
+        let mock = installMock()
+
+        for _ in 0 ..< 2 {
+            guard case .received(let payload) = MessagingPush.shared.handleBackgroundPush(userInfo: userInfo()) else {
+                return XCTFail("A repeated delivery must remain available to the host")
+            }
+            XCTAssertEqual(payload.deliveryID, "dlv_123")
+        }
+
+        XCTAssertEqual(mock.trackMetricCallsCount, 0)
+        XCTAssertEqual(receiptStore.loadAll().map(\.deliveryId), ["dlv_123"])
+    }
+
+    func test_deliveryIDWithoutToken_isUnsupported() {
+        installMock()
+        let payload: [AnyHashable: Any] = ["aps": ["content-available": 1], "CIO-Background-Delivery-ID": "dlv_123", "order_id": "42"]
+
+        XCTAssertEqual(MessagingPush.shared.handleBackgroundPush(userInfo: payload), .unsupported)
+        XCTAssertTrue(receiptStore.loadAll().isEmpty)
+    }
+
+    func test_valueThatIsNotText_isUnsupportedWithoutMetrics() {
+        let mock = installMock()
+        var payload = userInfo()
+        payload["order_id"] = 42
+
+        XCTAssertEqual(MessagingPush.shared.handleBackgroundPush(userInfo: payload), .unsupported)
+        XCTAssertEqual(mock.trackMetricCallsCount, 0)
+        XCTAssertTrue(receiptStore.loadAll().isEmpty)
+    }
+
+    func test_legacyAndForeignPushes_remainAvailableToExistingHandlers() {
+        let mock = installMock()
+        let foreign: [[AnyHashable: Any]] = [
+            ["CIO-Delivery-ID": "old", "CIO-Delivery-Token": "old"],
+            ["order_id": "42"],
+            // Only the delivery ID marks a silent push.
+            ["aps": ["content-available": 1], "CIO-Background-Delivery-Token": "theirs"]
+        ]
+        for payload in foreign {
+            XCTAssertEqual(MessagingPush.shared.handleBackgroundPush(userInfo: payload), .notBackground)
+        }
+        XCTAssertEqual(mock.trackMetricCallsCount, 0)
+        XCTAssertTrue(receiptStore.loadAll().isEmpty)
+    }
+
+    func test_legacyTrackingPair_takesPrecedenceOverBackgroundMetadata() {
+        let mock = installMock()
+        var payload = userInfo()
+        payload["CIO-Delivery-ID"] = "legacy-delivery"
+        payload["CIO-Delivery-Token"] = "legacy-token"
+
+        XCTAssertEqual(MessagingPush.shared.handleBackgroundPush(userInfo: payload), .notBackground)
+        XCTAssertEqual(mock.trackMetricCallsCount, 0)
+        XCTAssertTrue(receiptStore.loadAll().isEmpty)
+    }
+}

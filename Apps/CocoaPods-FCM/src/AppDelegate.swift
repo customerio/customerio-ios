@@ -99,6 +99,24 @@ class AppDelegate: NSObject, UIApplicationDelegate {
         return true
     }
 
+    // Customer.io silent push, sent through Firebase. Needs Remote notifications in Background Modes (Info.plist
+    // `UIBackgroundModes` lists `remote-notification`). `CioAppDelegateWrapper` (see App.swift) records Delivered
+    // before this runs. With Firebase's app delegate proxy on, this method is reached only with GoogleUtilities
+    // 8.1.5 or later. iOS gives this callback about 30 seconds: call completionHandler once, as soon as the work ends.
+    func application(_ application: UIApplication, didReceiveRemoteNotification userInfo: [AnyHashable: Any], fetchCompletionHandler completionHandler: @escaping (UIBackgroundFetchResult) -> Void) {
+        switch MessagingPush.shared.handleBackgroundPush(userInfo: userInfo) {
+        case .received(let push):
+            // The same push can arrive twice, so real work should be keyed on `push.deliveryID`.
+            print("Silent push \(push.deliveryID): \(push.data)")
+            completionHandler(.newData)
+        case .unsupported:
+            completionHandler(.noData)
+        case .notBackground:
+            // Not a Customer.io silent push. Hand it to any other push handlers here.
+            completionHandler(.noData)
+        }
+    }
+
     // IMPORTANT: If FCM is used with enabled swizzling (default state) it will not call this method in SwiftUI based apps.
     //            Use `deepLinkCallback` on SDKConfigBuilder, as that works in all scenarios.
     func application(_ application: UIApplication, continue userActivity: NSUserActivity, restorationHandler: @escaping ([any UIUserActivityRestoring]?) -> Void) -> Bool {

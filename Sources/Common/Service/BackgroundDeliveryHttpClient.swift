@@ -16,8 +16,11 @@ public enum BackgroundDeliveryHttpError: Error, Equatable {
 public struct BackgroundTrackRequest {
     /// CDP `track` event name.
     public let eventName: String
-    /// Identified user id. Caller must validate non-empty before sending.
+    /// Identified user id. Caller must validate non-empty before sending. Empty when `anonymousId` is set.
     public let userId: String
+    /// Set for events tied to a message and no profile, such as push delivery receipts. Caller must pass a
+    /// non-empty value. When set, the body carries `anonymousId` and omits `userId`.
+    public let anonymousId: String?
     /// Custom event properties payload.
     public let properties: [String: Any]
     /// When the event occurred. Serialized into the reserved top-level `timestamp` field so the
@@ -26,8 +29,17 @@ public struct BackgroundTrackRequest {
     public let timestamp: Date?
 
     public init(eventName: String, userId: String, properties: [String: Any] = [:], timestamp: Date? = nil) {
+        self.init(eventName: eventName, userId: userId, anonymousId: nil, properties: properties, timestamp: timestamp)
+    }
+
+    public init(eventName: String, anonymousId: String, properties: [String: Any] = [:], timestamp: Date? = nil) {
+        self.init(eventName: eventName, userId: "", anonymousId: anonymousId, properties: properties, timestamp: timestamp)
+    }
+
+    private init(eventName: String, userId: String, anonymousId: String?, properties: [String: Any], timestamp: Date?) {
         self.eventName = eventName
         self.userId = userId
+        self.anonymousId = anonymousId
         self.properties = properties
         self.timestamp = timestamp
     }
@@ -107,11 +119,12 @@ public final class BackgroundDeliveryHttpClientImpl: BackgroundDeliveryHttpClien
             return completion(.failure(.missingCdpApiKey))
         }
 
-        var body: [String: Any] = [
-            "event": request.eventName,
-            "userId": request.userId,
-            "properties": request.properties
-        ]
+        var body: [String: Any] = ["event": request.eventName, "properties": request.properties]
+        if let anonymousId = request.anonymousId {
+            body["anonymousId"] = anonymousId
+        } else {
+            body["userId"] = request.userId
+        }
         // Reserved top-level field: a bare integer here is read as milliseconds, so send the ISO-8601 string.
         if let timestamp = request.timestamp {
             body["timestamp"] = timestamp.string(format: .iso8601WithMilliseconds)
