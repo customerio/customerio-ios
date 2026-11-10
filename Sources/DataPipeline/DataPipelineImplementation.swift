@@ -1,3 +1,4 @@
+// swiftlint:disable file_length
 import CioAnalytics
 import CioInternalCommon
 
@@ -9,11 +10,11 @@ class DataPipelineImplementation: DataPipelineInstance, DataPipelineTracking, Ba
     let eventBusHandler: EventBusHandler
 
     private var globalDataStore: GlobalDataStore
-    private let deviceTokenLock = Lock.unsafeInit()
+    let deviceTokenLock = Lock.unsafeInit()
     private let deviceAttributesProvider: DeviceAttributesProvider
     private let dateUtil: DateUtil
-    private let deviceInfo: DeviceInfo
-    private let contextPlugin: Context
+    let deviceInfo: DeviceInfo
+    let contextPlugin: Context
     private let profileStore: ProfileStore
     private let backgroundDeliveryContextStore: BackgroundDeliveryContextStore
 
@@ -283,6 +284,7 @@ class DataPipelineImplementation: DataPipelineInstance, DataPipelineTracking, Ba
             // set (events wait while settings refresh). Set the token being deleted on the event.
             let token = contextPlugin.deviceToken ?? storedToken
             analytics.track(name: "Device Deleted", properties: nil, enrichments: [Context.deviceTokenEnrichment(token)])
+            forgetSentPushEnabled()
         }
     }
 
@@ -300,7 +302,7 @@ class DataPipelineImplementation: DataPipelineInstance, DataPipelineTracking, Ba
     }
 
     /// Internal method for passing device token to the plugin and updating device attributes
-    private func addDeviceAttributes(token deviceToken: String?, attributes customAttributes: [String: Any] = [:]) {
+    func addDeviceAttributes(token deviceToken: String?, attributes customAttributes: [String: Any] = [:]) {
         guard let token = deviceToken, !token.isBlankOrEmpty() else {
             dataPipelinesLogger.logTrackingDevicesAttributesWithoutValidToken()
             return

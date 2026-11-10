@@ -95,14 +95,25 @@ public class CIODeviceInfo: DeviceInfo {
         #if canImport(UserNotifications)
         let current = UNUserNotificationCenter.current()
         current.getNotificationSettings(completionHandler: { settings in
-            if settings.authorizationStatus == .authorized {
-                completion(true)
-                return
-            }
-            completion(false)
+            completion(Self.isPushEnabled(settings.authorizationStatus))
         })
         #else
         completion(false)
         #endif
     }
+
+    #if canImport(UserNotifications)
+    // Every status that lets a push reach the device counts as enabled.
+    // Provisional delivers quietly to Notification Center. Ephemeral is granted to App Clips.
+    static func isPushEnabled(_ status: UNAuthorizationStatus) -> Bool {
+        switch status {
+        case .authorized, .provisional, .ephemeral:
+            return true
+        case .denied, .notDetermined:
+            return false
+        @unknown default:
+            return false
+        }
+    }
+    #endif
 }
