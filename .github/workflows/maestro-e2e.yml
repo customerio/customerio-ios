@@ -77,7 +77,12 @@ jobs:
 
           case "$profile" in
             quick) suites='["smoke"]' ;;
-            standard) suites='["smoke","geofence","message-inbox","live-activities"]' ;;
+            # geofence is paused: the iOS 27 simulator reports region monitoring as
+            # unsupported (isMonitoringAvailable == false, CLMonitor conditionUnsupported),
+            # so the flow fails on every run on the Xcode 27 image. Still runnable on demand
+            # with profile=single, suite=geofence. Re-add it to this list once the simulator
+            # supports region monitoring or the flow stops depending on OS crossings.
+            standard) suites='["smoke","message-inbox","live-activities"]' ;;
             single) suites="[\"${REQUESTED_SUITE:-smoke}\"]" ;;
             remote) suites='["live-activities-remote"]' ;;
             *) echo "Unknown profile: $profile" >&2; exit 2 ;;
