@@ -1,6 +1,7 @@
 @testable import CioInternalCommon
 import Foundation
 import SharedTests
+import UserNotifications
 import XCTest
 
 class DeviceInfoTest: UnitTest {
@@ -18,5 +19,16 @@ class DeviceInfoTest: UnitTest {
         // Regex tests that format is "X-X" instead of "X_X"
         // https://regexr.com/6i6io
         XCTAssertMatches(actual, regex: #"\w+-\w+"#)
+    }
+
+    func test_isPushEnabled_givenStatusThatAllowsPush_expectTrue() {
+        XCTAssertTrue(CIODeviceInfo.isPushEnabled(.authorized))
+        XCTAssertTrue(CIODeviceInfo.isPushEnabled(.provisional))
+        XCTAssertTrue(CIODeviceInfo.isPushEnabled(.ephemeral))
+    }
+
+    func test_isPushEnabled_givenStatusThatBlocksPush_expectFalse() {
+        XCTAssertFalse(CIODeviceInfo.isPushEnabled(.denied))
+        XCTAssertFalse(CIODeviceInfo.isPushEnabled(.notDetermined))
     }
 }

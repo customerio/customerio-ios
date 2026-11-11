@@ -10,9 +10,20 @@ public class DeviceInfoStub: DeviceInfo {
     public var customerAppVersion: String = "1.30.887"
     public var customerBundleId: String = "io.customer.superawesomestore"
     public var deviceLocale: String = "en-US"
+    public var pushSubscribed = false
+    public let isPushSubscribedCallCount = Synchronized(0)
+    // When set, completions wait in `pendingPushSubscribed` until the test runs them, as the check is async in the app
+    public let defersPushSubscribed = Synchronized(false)
+    public let pendingPushSubscribed = Synchronized<[() -> Void]>([])
 
     public func isPushSubscribed(completion: @escaping (Bool) -> Void) {
-        completion(false)
+        isPushSubscribedCallCount.mutating { $0 += 1 }
+        let isSubscribed = pushSubscribed
+        if defersPushSubscribed.wrappedValue {
+            pendingPushSubscribed.mutating { $0.append { completion(isSubscribed) } }
+        } else {
+            completion(isSubscribed)
+        }
     }
 
     func getDefaultAttributes(isPushSubscribed: Bool = false) -> [String: Any] {

@@ -1,6 +1,11 @@
 import CioInternalCommon
 import Foundation
 
+/// Device attribute keys the SDK reads back after sending.
+enum DeviceAttributeKey {
+    static let pushEnabled = "push_enabled"
+}
+
 protocol DeviceAttributesProvider: AutoMockable {
     func getDefaultDeviceAttributes(onComplete: @escaping ([String: Any]) -> Void)
 }
@@ -37,7 +42,7 @@ class SdkDeviceAttributesProvider: DeviceAttributesProvider {
             deviceAttributes["device_os"] = deviceOsVersion
         }
         deviceInfo.isPushSubscribed { isSubscribed in
-            deviceAttributes["push_enabled"] = String(isSubscribed)
+            deviceAttributes[DeviceAttributeKey.pushEnabled] = String(isSubscribed)
 
             onComplete(deviceAttributes)
         }

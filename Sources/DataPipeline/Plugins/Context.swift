@@ -1,5 +1,8 @@
 import CioAnalytics
 import CioInternalCommon
+#if canImport(UIKit)
+import UIKit
+#endif
 
 /// Plugin class that update the context properties in the request payload
 class Context: Plugin {
@@ -8,6 +11,8 @@ class Context: Plugin {
 
     public var deviceToken: String?
     public var attributes: [String: Any] = [:]
+    /// Called each time the app becomes active.
+    let onBecameActive = Synchronized<(() -> Void)?>(nil)
 
     let userAgentUtil: UserAgentUtil
 
@@ -73,3 +78,11 @@ extension Context {
         }
     }
 }
+
+#if os(iOS) || os(tvOS) || os(visionOS) || targetEnvironment(macCatalyst)
+extension Context: iOSLifecycle {
+    func applicationDidBecomeActive(application: UIApplication?) {
+        onBecameActive.wrappedValue?()
+    }
+}
+#endif

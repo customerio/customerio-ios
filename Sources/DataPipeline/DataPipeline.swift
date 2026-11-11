@@ -40,6 +40,7 @@ public class DataPipeline: ModuleTopLevelObject<DataPipelineInstance>, DataPipel
     @discardableResult
     public static func setUpSharedInstanceForIntegrationTest(diGraphShared: DIGraphShared, config: DataPipelineConfigOptions) -> DataPipelineInstance {
         let implementation = DataPipelineImplementation(diGraph: diGraphShared, moduleConfig: config)
+        implementation.startPushEnabledRefresh()
         return setUpSharedInstanceForUnitTest(implementation: implementation, config: config)
     }
 
@@ -61,6 +62,7 @@ public class DataPipeline: ModuleTopLevelObject<DataPipelineInstance>, DataPipel
 
             let implementation = DataPipelineImplementation(diGraph: DIGraphShared.shared, moduleConfig: moduleConfig)
             implementation.replayMissedLaunchLifecycleEvents(enabled: moduleConfig.trackApplicationLifecycleEvents)
+            implementation.startPushEnabledRefresh()
             return implementation
         }
 
