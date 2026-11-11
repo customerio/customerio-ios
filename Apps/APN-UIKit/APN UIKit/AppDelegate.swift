@@ -151,6 +151,23 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
     // MARK: UISceneSession Lifecycle
 
+    // Customer.io silent push. Needs Remote notifications in Background Modes (Info.plist `UIBackgroundModes`
+    // lists `remote-notification`). `CioAppDelegateWrapper` records Delivered before this runs.
+    // iOS gives this callback about 30 seconds: call completionHandler once, as soon as the work ends.
+    func application(_ application: UIApplication, didReceiveRemoteNotification userInfo: [AnyHashable: Any], fetchCompletionHandler completionHandler: @escaping (UIBackgroundFetchResult) -> Void) {
+        switch MessagingPush.shared.handleBackgroundPush(userInfo: userInfo) {
+        case .received(let push):
+            // The same push can arrive twice, so real work should be keyed on `push.deliveryID`.
+            DiagnosticLog.shared.note("Silent push \(push.deliveryID): \(push.data)", tag: "BackgroundPush", level: .info)
+            completionHandler(.newData)
+        case .unsupported:
+            completionHandler(.noData)
+        case .notBackground:
+            // Not a Customer.io silent push. Hand it to any other push handlers here.
+            completionHandler(.noData)
+        }
+    }
+
     func application(_ application: UIApplication, configurationForConnecting connectingSceneSession: UISceneSession, options: UIScene.ConnectionOptions) -> UISceneConfiguration {
         // Called when a new scene session is being created.
         // Use this method to select a configuration to create the new scene with.

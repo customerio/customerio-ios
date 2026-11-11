@@ -34,6 +34,12 @@ open class UnitTest: SharedTests.UnitTestBase<MessagingPushInstance> {
         super.setUp(enableLogs: enableLogs, sdkConfig: nil)
     }
 
+    override open func setUpDependencies() {
+        super.setUpDependencies()
+        // The receipt sender asks the graph for this; UIKit's background task API isn't needed in tests.
+        diGraphShared.override(value: NoBackgroundTaskRunner(), forType: BackgroundTaskRunner.self)
+    }
+
     override open func initializeSDKComponents() -> MessagingPushInstance? {
         // Initialize and configure MessagingPush implementation for unit testing
         let implementation = MessagingPushImplementation(diGraph: diGraphShared, moduleConfig: messagingPushConfigOptions)
@@ -42,8 +48,8 @@ open class UnitTest: SharedTests.UnitTestBase<MessagingPushInstance> {
     }
 
     override open func cleanupTestEnvironment() {
-        super.cleanupTestEnvironment()
         MessagingPush.resetTestEnvironment()
+        super.cleanupTestEnvironment()
     }
 }
 

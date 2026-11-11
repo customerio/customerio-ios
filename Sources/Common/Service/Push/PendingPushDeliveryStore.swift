@@ -71,6 +71,10 @@ public final class CioAppGroupPendingPushDeliveryStore: PendingPushDeliveryStore
     private let maxEntries: Int
     /// When `nil` (bundle unresolved, App Group not in entitlements, etc.), read/write methods return early; callers may always call `append`.
     private let metricsFileURL: URL?
+    /// Protects the file and its folder with `completeUntilFirstUserAuthentication`; off keeps the app's default.
+    private let readableAfterFirstUnlock: Bool
+    /// Writes the file. Tests replace it, as the simulator doesn't report data protection.
+    var writeData: (Data, URL, Data.WritingOptions) throws -> Void = { try $0.write(to: $1, options: $2) }
 
     public let appGroupSuiteName: String?
 
@@ -86,6 +90,7 @@ public final class CioAppGroupPendingPushDeliveryStore: PendingPushDeliveryStore
         self.logger = logger
         self.fileManager = fileManager
         self.maxEntries = PendingPushDeliveryMetricsConstants.maxEntries
+        self.readableAfterFirstUnlock = false
 
         if let explicitId = appGroupId {
             self.appGroupSuiteName = explicitId
@@ -114,6 +119,21 @@ public final class CioAppGroupPendingPushDeliveryStore: PendingPushDeliveryStore
                 logger.error("Pending push delivery store: could not resolve app group container for suite \(suite).")
             }
         }
+    }
+
+    /// Stores rows in `fileURL`, a file only this process uses (for example the host app's Application
+    /// Support). `appGroupSuiteName` is `nil` because no extension shares the file. A `nil` URL gives a
+    /// store whose reads report `unreadable` and whose writes return `false`.
+    /// The file stays readable and writable while the device is locked, once it has been unlocked after a restart,
+    /// as silent pushes wake the app then.
+    @_spi(Internal)
+    public init(privateFileURL fileURL: URL?, logger: Logger) {
+        self.logger = logger
+        self.fileManager = .default
+        self.maxEntries = PendingPushDeliveryMetricsConstants.maxEntries
+        self.metricsFileURL = fileURL
+        self.readableAfterFirstUnlock = true
+        self.appGroupSuiteName = nil
     }
 
     public func append(_ metric: PendingPushDeliveryMetric) -> Bool {
@@ -261,14 +281,19 @@ public final class CioAppGroupPendingPushDeliveryStore: PendingPushDeliveryStore
             try fileManager.createDirectory(
                 at: fileURL.deletingLastPathComponent(),
                 withIntermediateDirectories: true,
-                attributes: nil
+                attributes: readableAfterFirstUnlock ? [.protectionKey: FileProtectionType.completeUntilFirstUserAuthentication] : nil
             )
 
             let encoder = JSONEncoder()
             encoder.outputFormatting = [.sortedKeys]
             encoder.dateEncodingStrategy = .iso8601
             let data = try encoder.encode(items)
-            try data.write(to: fileURL, options: .atomic)
+            // Every write replaces the whole file, so the protection applies to each replacement.
+            var options: Data.WritingOptions = .atomic
+            if readableAfterFirstUnlock {
+                options.insert(.completeFileProtectionUntilFirstUserAuthentication)
+            }
+            try writeData(data, fileURL, options)
             return true
         } catch {
             logger.error("Pending push delivery store: failed to save — \(error.localizedDescription)")

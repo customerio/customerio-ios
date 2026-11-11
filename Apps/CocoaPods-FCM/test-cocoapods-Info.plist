@@ -15,6 +15,10 @@
 	</array>
 	<key>FirebaseMessagingInstallationIdEnabled</key>
 	<string>$(CIO_FID_ENABLED)</string>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>remote-notification</string>
+	</array>
 	<key>UIAppFonts</key>
 	<array>
 		<string>AbrilFatface-Regular.ttf</string>

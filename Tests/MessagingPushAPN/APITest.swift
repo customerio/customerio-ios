@@ -127,4 +127,17 @@ class MessagingPushAPNAPITest: UnitTest {
         _ = pushContent?.image
         #endif
     }
+
+    func test_backgroundPushPublicFunctions() throws {
+        try skipRunningTest()
+
+        // Apps that import only this module name the result and its data.
+        let result: CustomerIOBackgroundPushResult = MessagingPush.shared.handleBackgroundPush(userInfo: [:])
+        if case .received(let push) = result {
+            let backgroundPush: CustomerIOBackgroundPush = push
+            _ = backgroundPush.deliveryID
+            _ = backgroundPush.deliveryToken
+            _ = backgroundPush.data
+        }
+    }
 }
