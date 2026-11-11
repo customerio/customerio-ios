@@ -283,6 +283,78 @@ class CDPInteractionDefaultConfigTests: DataPipelineInteractionTests {
         XCTAssertEqual(properties?["push_enabled"]?.stringValue, "true")
     }
 
+    func test_registerToken_givenFirebaseType_expectNoApnsEnvironmentAndTypeKept() {
+        for givenType in [DeviceTokenType.token, .fid] {
+            mockDeviceAttributes(defaultAttributes: ["push_enabled": "true", "apns_environment": "sandbox"])
+            customerIO.identify(userId: String.random)
+            outputReader.resetPlugin()
+
+            dataPipelineImplementation.registerDeviceToken(String.random, tokenType: givenType)
+
+            let properties = outputReader.deviceUpdateEvents.last?.properties
+            XCTAssertNil(properties?["apns_environment"], "type: \(givenType)")
+            XCTAssertEqual(properties?["cio_token_type"]?.stringValue, givenType.rawValue)
+            XCTAssertEqual(properties?["push_enabled"]?.stringValue, "true")
+        }
+    }
+
+    func test_registerToken_givenNoType_expectApnsEnvironmentInProperties() {
+        mockDeviceAttributes(defaultAttributes: ["apns_environment": "production"])
+        customerIO.identify(userId: String.random)
+        outputReader.resetPlugin()
+
+        customerIO.registerDeviceToken(String.random)
+
+        let properties = outputReader.deviceUpdateEvents.last?.properties
+        XCTAssertEqual(properties?["apns_environment"]?.stringValue, "production")
+        XCTAssertNil(properties?["cio_token_type"])
+    }
+
+    func test_tokenChanged_givenFidToTokenWithoutType_expectApnsEnvironmentAndNoType() {
+        mockDeviceAttributes(defaultAttributes: ["apns_environment": "sandbox"])
+        customerIO.identify(userId: String.random)
+        dataPipelineImplementation.registerDeviceToken(String.random, tokenType: .fid)
+        outputReader.resetPlugin()
+
+        let givenToken = String.random
+        customerIO.registerDeviceToken(givenToken)
+
+        let properties = outputReader.deviceUpdateEvents.last?.properties
+        XCTAssertEqual(outputReader.deviceUpdateEvents.last?.deviceToken, givenToken)
+        XCTAssertEqual(properties?["apns_environment"]?.stringValue, "sandbox")
+        XCTAssertNil(properties?["cio_token_type"])
+    }
+
+    // Launch re-registers the stored token without a type, as `postInitialize` does
+    func test_registerToken_givenStoredFidReRegisteredWithoutType_expectNoApnsEnvironment() {
+        let givenFid = String.random
+        mockDeviceAttributes(defaultAttributes: ["apns_environment": "sandbox"])
+        customerIO.identify(userId: String.random)
+        dataPipelineImplementation.registerDeviceToken(givenFid, tokenType: .fid)
+        outputReader.resetPlugin()
+
+        customerIO.registerDeviceToken(givenFid)
+
+        let properties = outputReader.deviceUpdateEvents.last?.properties
+        XCTAssertNil(properties?["apns_environment"])
+        XCTAssertEqual(properties?["cio_token_type"]?.stringValue, "fid")
+    }
+
+    func test_setDeviceAttributes_givenFidStored_expectNoApnsEnvironment() {
+        let givenFid = String.random
+        mockDeviceAttributes(defaultAttributes: ["apns_environment": "sandbox"])
+        customerIO.identify(userId: String.random)
+        dataPipelineImplementation.registerDeviceToken(givenFid, tokenType: .fid)
+        outputReader.resetPlugin()
+
+        customerIO.setDeviceAttributes(["foo": "bar"])
+
+        let properties = outputReader.deviceUpdateEvents.last?.properties
+        XCTAssertNil(properties?["apns_environment"])
+        XCTAssertEqual(properties?["cio_token_type"]?.stringValue, "fid")
+        XCTAssertEqual(properties?["foo"]?.stringValue, "bar")
+    }
+
     func test_registerToken_givenNoType_expectNoTypeInProperties() {
         mockDeviceAttributes()
         customerIO.identify(userId: String.random)

@@ -329,7 +329,12 @@ class DataPipelineImplementation: DataPipelineInstance, DataPipelineTracking, Ba
             // Read here, as the same token can get a type while attributes load.
             // Sent even when automatic device attributes are off, as the backend uses it to tell FIDs from tokens.
             let tokenType = self.globalDataStore.pushDeviceToken == token ? self.globalDataStore.pushDeviceTokenType : nil
-            let deviceAttributes = defaultDeviceAttributes.mergeWith(customAttributes.withDeviceTokenType(tokenType, logger: self.dataPipelinesLogger))
+            var sdkAttributes = defaultDeviceAttributes
+            // Only Firebase tokens have a type, and FCM picks the APNs environment itself
+            if tokenType != nil {
+                sdkAttributes[DeviceAttributeKey.apnsEnvironment] = nil
+            }
+            let deviceAttributes = sdkAttributes.mergeWith(customAttributes.withDeviceTokenType(tokenType, logger: self.dataPipelinesLogger))
             self.contextPlugin.attributes = deviceAttributes
             // The SDK's value, not a custom one, so the push_enabled refresh keeps a custom value until the permission changes
             self.contextPlugin.attributes[DeviceAttributeKey.pushEnabled] = defaultDeviceAttributes[DeviceAttributeKey.pushEnabled]
