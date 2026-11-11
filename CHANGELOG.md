@@ -1,3 +1,9 @@
+## [5.2.1](https://github.com/customerio/customerio-ios/compare/5.2.0...5.2.1) (2026-11-11)
+
+### Bug Fixes
+
+* **datapipeline:** refresh push_enabled when the app becomes active ([#1394](https://github.com/customerio/customerio-ios/issues/1394)) ([059513c](https://github.com/customerio/customerio-ios/commit/059513ce2bfc72c8ea3289ca6ac1b7b94b92825f))
+
 ## [5.2.0](https://github.com/customerio/customerio-ios/compare/5.1.3...5.2.0) (2026-11-10)
 
 ### Features
