@@ -153,6 +153,37 @@ class DataPipelinePushEnabledRefreshTests: IntegrationTest {
         XCTAssertEqual(outputReader.deviceUpdateEvents.count, 0)
     }
 
+    func test_becomeActive_givenCustomPushEnabled_expectCustomValueKeptUntilPermissionChanges() {
+        setUpSdk(pushSubscribed: true)
+        customerIO.registerDeviceToken(String.random)
+        customerIO.setDeviceAttributes(["push_enabled": "false"])
+        XCTAssertEqual(lastPushEnabledSent, "false")
+        outputReader.resetPlugin()
+
+        simulateAppBecameActive()
+        XCTAssertEqual(outputReader.deviceUpdateEvents.count, 0)
+
+        deviceInfoStub.pushSubscribed = false
+        simulateAppBecameActive()
+        XCTAssertEqual(outputReader.deviceUpdateEvents.count, 1)
+        XCTAssertEqual(lastPushEnabledSent, "false")
+    }
+
+    func test_becomeActive_givenCustomPushEnabledNotString_expectDeviceUpdateWhenPermissionChanges() {
+        setUpSdk(pushSubscribed: true)
+        customerIO.registerDeviceToken(String.random)
+        customerIO.setDeviceAttributes(["push_enabled": false])
+        outputReader.resetPlugin()
+
+        simulateAppBecameActive()
+        XCTAssertEqual(outputReader.deviceUpdateEvents.count, 0)
+
+        deviceInfoStub.pushSubscribed = false
+        simulateAppBecameActive()
+        XCTAssertEqual(outputReader.deviceUpdateEvents.count, 1)
+        XCTAssertEqual(lastPushEnabledSent, "false")
+    }
+
     func test_becomeActive_givenNoDeviceUpdateSentYet_expectNoDeviceUpdate() {
         setUpSdk()
         storeDeviceToken(String.random)

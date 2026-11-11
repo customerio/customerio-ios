@@ -11,7 +11,7 @@ extension DataPipelineImplementation {
         }
     }
 
-    /// Sends a device update when `push_enabled` differs from the value this process last sent.
+    /// Sends a device update when `push_enabled` differs from the SDK's value in the last device update.
     /// Skipped while no profile is identified, and until a device update is sent, including after the device is deleted.
     func refreshPushEnabledIfChanged() {
         guard registeredUserId != nil, sentPushEnabled != nil else { return }
