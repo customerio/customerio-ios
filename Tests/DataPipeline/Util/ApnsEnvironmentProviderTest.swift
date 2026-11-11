@@ -33,7 +33,57 @@ class ApnsEnvironmentProviderTest: XCTestCase {
         XCTAssertNil(resolve(profile: profile(apsEnvironment: "staging")))
     }
 
-    func test_environment_givenUnreadableProfile_expectNil() {
+    func test_environment_givenUnusableProfile_expectNil() {
+        XCTAssertNil(SdkApnsEnvironmentProvider.environment(isSimulator: false, isRunningOnMac: false, profile: .unusable))
+        XCTAssertNil(SdkApnsEnvironmentProvider.environment(isSimulator: false, isRunningOnMac: true, profile: .unusable))
+    }
+
+    func test_environment_givenProfileLargerThanLimit_expectNil() {
+        var givenProfile = profile(apsEnvironment: "production")
+        givenProfile.append(Data(count: SdkApnsEnvironmentProvider.maxProfileSize))
+
+        XCTAssertNil(resolve(profile: givenProfile))
+    }
+
+    func test_environment_givenProfileAtLimit_expectValue() {
+        var givenProfile = profile(apsEnvironment: "production")
+        givenProfile.append(Data(count: SdkApnsEnvironmentProvider.maxProfileSize - givenProfile.count))
+
+        XCTAssertEqual(resolve(profile: givenProfile), .production)
+    }
+
+    func test_readProfile_givenNoUrl_expectMissing() {
+        XCTAssertEqual(SdkApnsEnvironmentProvider.readProfile(at: nil), .missing)
+    }
+
+    func test_readProfile_givenFile_expectContents() throws {
+        let givenData = profile(apsEnvironment: "development")
+        let url = try temporaryFile(givenData)
+
+        XCTAssertEqual(SdkApnsEnvironmentProvider.readProfile(at: url), .contents(givenData))
+    }
+
+    func test_readProfile_givenFileAtLimit_expectContents() throws {
+        let givenData = Data(count: SdkApnsEnvironmentProvider.maxProfileSize)
+        let url = try temporaryFile(givenData)
+
+        XCTAssertEqual(SdkApnsEnvironmentProvider.readProfile(at: url), .contents(givenData))
+    }
+
+    func test_readProfile_givenFileLargerThanLimit_expectUnusable() throws {
+        let url = try temporaryFile(Data(count: SdkApnsEnvironmentProvider.maxProfileSize + 1))
+
+        XCTAssertEqual(SdkApnsEnvironmentProvider.readProfile(at: url), .unusable)
+    }
+
+    func test_readProfile_givenMissingFileOrDirectory_expectUnusable() {
+        let missingFile = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+
+        XCTAssertEqual(SdkApnsEnvironmentProvider.readProfile(at: missingFile), .unusable)
+        XCTAssertEqual(SdkApnsEnvironmentProvider.readProfile(at: FileManager.default.temporaryDirectory), .unusable)
+    }
+
+    func test_environment_givenGarbageProfile_expectNil() {
         XCTAssertNil(resolve(profile: Data()))
         XCTAssertNil(resolve(profile: Data([0x30, 0x80, 0x06, 0x09, 0x2A, 0x86])))
         XCTAssertNil(resolve(profile: Data("<?xml version=\"1.0\"?><plist><dict>".utf8)))
@@ -47,11 +97,30 @@ class ApnsEnvironmentProviderTest: XCTestCase {
         XCTAssertNil(resolve(profile: signedEnvelope(around: plist)))
     }
 
+    func test_environment_givenApsEnvironmentBeforeEntitlements_expectNil() {
+        let plist = """
+        <?xml version="1.0"?><plist><dict><key>aps-environment</key><string>production</string>
+        <key>Entitlements</key><dict><key>get-task-allow</key><true/></dict></dict></plist>
+        """
+        XCTAssertNil(resolve(profile: signedEnvelope(around: plist)))
+    }
+
+    func test_environment_givenWhitespaceBetweenKeyAndValue_expectValue() {
+        let plist = "<plist><dict><key>Entitlements</key><dict><key>aps-environment</key>\n\t\t\r <string>development</string></dict></dict></plist>"
+
+        XCTAssertEqual(resolve(profile: signedEnvelope(around: plist)), .sandbox)
+    }
+
     func test_environment_givenMalformedPlist_expectNil() {
         let cases = [
-            // Markers out of order, or the start marker at the very end
+            // Markers out of order, or cut off
             "</plist><?xml version=\"1.0\"?>",
             "garbage<?xml",
+            "<key>Entitlements</key><dict><key>aps-environment</key><string>production",
+            "<key>Entitlements</key><dict><key>aps-environment</key>",
+            "</string><key>Entitlements</key><key>aps-environment</key>",
+            // Something other than whitespace between the key and its value
+            "<key>Entitlements</key><dict><key>aps-environment</key><true/><string>production</string>",
             // Root or values of unexpected types
             "<?xml version=\"1.0\"?><plist><array><string>production</string></array></plist>",
             "<?xml version=\"1.0\"?><plist><dict><key>Entitlements</key><array/></dict></plist>",
@@ -81,15 +150,15 @@ class ApnsEnvironmentProviderTest: XCTestCase {
     func test_environment_givenSliceNotStartingAtZero_expectSameResult() {
         let givenProfile = profile(apsEnvironment: "production")
 
-        // Up to the 17-byte envelope header, so the plist stays whole
-        for start in [1, 10, 17] {
+        // Any start before the Entitlements key keeps the value readable
+        for start in [1, 10, 17, 40] {
             XCTAssertEqual(resolve(profile: givenProfile.suffix(from: start)), .production, "start: \(start)")
         }
     }
 
     func test_environment_givenRandomBytes_expectNoCrash() {
         var generator = SeededGenerator(seed: 2770)
-        let markers = [Data("<?xml".utf8), Data("</plist>".utf8), Data("<key>Entitlements</key>".utf8)]
+        let markers = ["<key>Entitlements</key>", "<key>aps-environment</key>", "<string>", "production", "</string>"].map { Data($0.utf8) }
 
         for _ in 0 ..< 500 {
             var givenData = Data((0 ..< Int.random(in: 0 ... 256, using: &generator)).map { _ in UInt8.random(in: 0 ... 255, using: &generator) })
@@ -101,6 +170,31 @@ class ApnsEnvironmentProviderTest: XCTestCase {
         }
     }
 
+    // Markers in order with random filler between them, so the search often reaches the value
+    func test_environment_givenOrderedMarkersWithRandomFiller_expectOnlyKnownValues() {
+        var generator = SeededGenerator(seed: 1395)
+        let markers = ["<key>Entitlements</key>", "<key>aps-environment</key>", "<string>", "production", "</string>"].map { Data($0.utf8) }
+        let fillers = [Data(), Data(" ".utf8), Data("\n\t".utf8), Data("<x>".utf8)]
+
+        var productionCount = 0
+        for _ in 0 ..< 500 {
+            var givenData = Data()
+            for marker in markers {
+                givenData.append(fillers.randomElement(using: &generator) ?? Data())
+                if Int.random(in: 0 ..< 10, using: &generator) > 0 {
+                    givenData.append(marker)
+                }
+            }
+
+            let actual = resolve(profile: givenData)
+            XCTAssertTrue(actual == nil || actual == .production)
+            if actual == .production {
+                productionCount += 1
+            }
+        }
+        XCTAssertGreaterThan(productionCount, 0, "the value path must be reached")
+    }
+
     func test_environment_expectRawValuesSentAsAttribute() {
         XCTAssertEqual(ApnsEnvironment.sandbox.rawValue, "sandbox")
         XCTAssertEqual(ApnsEnvironment.production.rawValue, "production")
@@ -109,7 +203,11 @@ class ApnsEnvironmentProviderTest: XCTestCase {
 
 private extension ApnsEnvironmentProviderTest {
     func resolve(isSimulator: Bool = false, isRunningOnMac: Bool = false, profile: Data?) -> ApnsEnvironment? {
-        SdkApnsEnvironmentProvider.environment(isSimulator: isSimulator, isRunningOnMac: isRunningOnMac, profile: profile)
+        SdkApnsEnvironmentProvider.environment(
+            isSimulator: isSimulator,
+            isRunningOnMac: isRunningOnMac,
+            profile: profile.map { .contents($0) } ?? .missing
+        )
     }
 
     // Shaped like embedded.mobileprovision: binary CMS bytes around a plist with top-level keys before Entitlements
@@ -133,6 +231,13 @@ private extension ApnsEnvironmentProviderTest {
         </plist>
         """
         return signedEnvelope(around: plist)
+    }
+
+    func temporaryFile(_ data: Data) throws -> URL {
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        addTeardownBlock { try? FileManager.default.removeItem(at: url) }
+        try data.write(to: url)
+        return url
     }
 
     // Deterministic, so a failure reproduces
