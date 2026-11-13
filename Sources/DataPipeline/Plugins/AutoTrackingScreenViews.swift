@@ -123,7 +123,9 @@ extension AutoTrackingScreenViews {
 
         let addionalScreenViewData = autoScreenViewBody?() ?? [:]
         guard let analytics else { return }
-        AnalyticsSegmentGateway(analytics: analytics).screen(title: name, category: nil, properties: addionalScreenViewData)
+        DataPipelineLogTail.input("auto.screen", [("event", name)]) {
+            LoggingSegmentGateway(analytics: analytics).screen(title: name, category: nil, properties: addionalScreenViewData)
+        }
     }
 }
 

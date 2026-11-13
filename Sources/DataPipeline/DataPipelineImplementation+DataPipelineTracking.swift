@@ -9,7 +9,10 @@ extension DataPipelineImplementation {
     }
 
     func track(name: String, properties: [String: Any]) {
-        segment.track(name: name, properties: properties)
+        // Another module's event, not the app's call
+        DataPipelineLogTail.input("module.track", [("event", name)]) {
+            segment.track(name: name, properties: properties)
+        }
     }
 }
 
