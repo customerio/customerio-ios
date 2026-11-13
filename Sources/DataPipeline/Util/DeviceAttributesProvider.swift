@@ -27,25 +27,26 @@ class SdkDeviceAttributesProvider: DeviceAttributesProvider {
     }
 
     func getDefaultDeviceAttributes(onComplete: @escaping ([String: Any]) -> Void) {
+        var deviceAttributes: [String: String] = [:]
+        // Sent even when automatic device attributes are off, as the backend picks the APNs environment from it
+        if let apnsEnvironment = apnsEnvironmentProvider.environment {
+            deviceAttributes[DeviceAttributeKey.apnsEnvironment] = apnsEnvironment.rawValue
+        }
+
         if !moduleConfig.autoTrackDeviceAttributes {
-            onComplete([:])
+            onComplete(deviceAttributes)
             return
         }
 
-        var deviceAttributes = [
-            "cio_sdk_version": sdkClient.sdkVersion,
-            "app_version": deviceInfo.customerAppVersion,
-            "device_locale": deviceInfo.deviceLocale,
-            "device_manufacturer": deviceInfo.deviceManufacturer
-        ]
+        deviceAttributes["cio_sdk_version"] = sdkClient.sdkVersion
+        deviceAttributes["app_version"] = deviceInfo.customerAppVersion
+        deviceAttributes["device_locale"] = deviceInfo.deviceLocale
+        deviceAttributes["device_manufacturer"] = deviceInfo.deviceManufacturer
         if let deviceModel = deviceInfo.deviceModel {
             deviceAttributes["device_model"] = deviceModel
         }
         if let deviceOsVersion = deviceInfo.osVersion {
             deviceAttributes["device_os"] = deviceOsVersion
-        }
-        if let apnsEnvironment = apnsEnvironmentProvider.environment {
-            deviceAttributes[DeviceAttributeKey.apnsEnvironment] = apnsEnvironment.rawValue
         }
         deviceInfo.isPushSubscribed { isSubscribed in
             deviceAttributes[DeviceAttributeKey.pushEnabled] = String(isSubscribed)

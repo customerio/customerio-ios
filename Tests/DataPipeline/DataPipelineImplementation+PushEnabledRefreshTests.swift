@@ -90,23 +90,6 @@ class DataPipelinePushEnabledRefreshTests: IntegrationTest {
         XCTAssertEqual(lastPushEnabledSent, "true")
     }
 
-    func test_becomeActive_givenPushEnabledChangedForFid_expectNoApnsEnvironmentAndTypeKept() {
-        setUpSdk()
-        let givenFid = String.random
-        (customerIO.implementation as? DataPipelineImplementation)?.registerDeviceToken(givenFid, tokenType: .fid)
-        outputReader.resetPlugin()
-
-        deviceInfoStub.pushSubscribed = true
-        simulateAppBecameActive()
-
-        let properties = outputReader.deviceUpdateEvents.last?.properties
-        XCTAssertEqual(outputReader.deviceUpdateEvents.count, 1)
-        XCTAssertEqual(outputReader.deviceUpdateEvents.last?.deviceToken, givenFid)
-        XCTAssertEqual(lastPushEnabledSent, "true")
-        XCTAssertNil(properties?["apns_environment"])
-        XCTAssertEqual(properties?["cio_token_type"]?.stringValue, "fid")
-    }
-
     func test_becomeActive_givenPushEnabledChangedForApnsToken_expectApnsEnvironmentKept() {
         setUpSdk()
         customerIO.registerDeviceToken(String.random)

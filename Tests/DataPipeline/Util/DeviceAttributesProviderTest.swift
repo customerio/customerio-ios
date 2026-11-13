@@ -34,24 +34,25 @@ class DeviceAttributesProviderTest: UnitTest {
         )
     }
 
-    func test_getDefaultDeviceAttributes_givenTrackingDeviceAttributesDisabled_expectEmptyAttributes() {
+    func test_getDefaultDeviceAttributes_givenTrackingDeviceAttributesDisabled_expectOnlyApnsEnvironment() {
         super.setUp(modifySdkConfig: { config in
             config.autoTrackDeviceAttributes(false)
         })
 
-        let expected: [String: String] = [:]
+        for (givenEnvironment, expected) in [(ApnsEnvironment.sandbox, ["apns_environment": "sandbox"]), (nil, [:])] {
+            apnsEnvironmentProviderMock.underlyingEnvironment = givenEnvironment
 
-        let expect = expectation(description: "Expect to complete")
-        provider.getDefaultDeviceAttributes { actual in
-            XCTAssertEqual(actual as? [String: String], expected)
+            let expect = expectation(description: "Expect to complete")
+            provider.getDefaultDeviceAttributes { actual in
+                XCTAssertEqual(actual as? [String: String], expected)
 
-            expect.fulfill()
+                expect.fulfill()
+            }
+
+            waitForExpectations()
         }
 
-        waitForExpectations()
-
         XCTAssertFalse(deviceInfoMock.mockCalled)
-        XCTAssertFalse(apnsEnvironmentProviderMock.mockCalled)
     }
 
     func test_getDefaultDeviceAttributes_givenTrackingDeviceAttributesEnabled_expectGetSomeAttributes() {
