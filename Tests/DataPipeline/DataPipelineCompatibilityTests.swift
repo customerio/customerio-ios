@@ -1,4 +1,5 @@
 @testable import CioAnalytics
+@testable import CioDataPipelinesMocks
 @testable import CioInternalCommonMocks
 @testable import CioDataPipelines
 @testable import CioInternalCommon
@@ -14,15 +15,19 @@ class DataPipelineCompatibilityTests: IntegrationTest {
 
     private let eventBusHandlerMock = EventBusHandlerMock()
     private let globalDataStoreMock = GlobalDataStoreMock()
+    private let apnsEnvironmentProviderMock = ApnsEnvironmentProviderMock()
     private var userAgentUtil: UserAgentUtil?
 
     override func setUpDependencies() {
         super.setUpDependencies()
 
-        mockCollection.add(mocks: [eventBusHandlerMock, globalDataStoreMock])
+        mockCollection.add(mocks: [eventBusHandlerMock, globalDataStoreMock, apnsEnvironmentProviderMock])
 
         diGraphShared.override(value: eventBusHandlerMock, forType: EventBusHandler.self)
         diGraphShared.override(value: globalDataStoreMock, forType: GlobalDataStore.self)
+        diGraphShared.override(value: apnsEnvironmentProviderMock, forType: ApnsEnvironmentProvider.self)
+        // Not sandbox, which the real provider returns on a simulator, so a missing override fails the tests
+        apnsEnvironmentProviderMock.underlyingEnvironment = .production
     }
 
     override func setUp() {
@@ -150,6 +155,7 @@ class DataPipelineCompatibilityTests: IntegrationTest {
 
         var expectedData = givenDefaultAttributes
         expectedData["cio_sdk_version"] = diGraphShared.sdkClient.sdkVersion
+        expectedData["apns_environment"] = "production"
         expectedData.merge(
             // swiftlint:disable:next force_cast
             (savedEvent[keyPath: "context.screen"] as! [String: Any]).flatten(parentKey: "screen"),
@@ -200,6 +206,7 @@ class DataPipelineCompatibilityTests: IntegrationTest {
 
         var expectedData = deviceInfoStub.getDefaultAttributes().mergeWith(customAttributes)
         expectedData["cio_sdk_version"] = diGraphShared.sdkClient.sdkVersion
+        expectedData["apns_environment"] = "production"
         expectedData.merge(
             // swiftlint:disable:next force_cast
             (savedEvent[keyPath: "context.screen"] as! [String: Any]).flatten(parentKey: "screen"),

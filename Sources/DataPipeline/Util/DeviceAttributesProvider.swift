@@ -4,6 +4,7 @@ import Foundation
 /// Device attribute keys the SDK reads back after sending.
 enum DeviceAttributeKey {
     static let pushEnabled = "push_enabled"
+    static let apnsEnvironment = "apns_environment"
 }
 
 protocol DeviceAttributesProvider: AutoMockable {
@@ -14,27 +15,33 @@ protocol DeviceAttributesProvider: AutoMockable {
 class SdkDeviceAttributesProvider: DeviceAttributesProvider {
     private let deviceInfo: DeviceInfo
     private let sdkClient: SdkClient
+    private let apnsEnvironmentProvider: ApnsEnvironmentProvider
     private var moduleConfig: DataPipelineConfigOptions {
         DataPipeline.moduleConfig
     }
 
-    init(deviceInfo: DeviceInfo, sdkClient: SdkClient) {
+    init(deviceInfo: DeviceInfo, sdkClient: SdkClient, apnsEnvironmentProvider: ApnsEnvironmentProvider) {
         self.deviceInfo = deviceInfo
         self.sdkClient = sdkClient
+        self.apnsEnvironmentProvider = apnsEnvironmentProvider
     }
 
     func getDefaultDeviceAttributes(onComplete: @escaping ([String: Any]) -> Void) {
+        var deviceAttributes: [String: String] = [:]
+        // Sent even when automatic device attributes are off, as the backend picks the APNs environment from it
+        if let apnsEnvironment = apnsEnvironmentProvider.environment {
+            deviceAttributes[DeviceAttributeKey.apnsEnvironment] = apnsEnvironment.rawValue
+        }
+
         if !moduleConfig.autoTrackDeviceAttributes {
-            onComplete([:])
+            onComplete(deviceAttributes)
             return
         }
 
-        var deviceAttributes = [
-            "cio_sdk_version": sdkClient.sdkVersion,
-            "app_version": deviceInfo.customerAppVersion,
-            "device_locale": deviceInfo.deviceLocale,
-            "device_manufacturer": deviceInfo.deviceManufacturer
-        ]
+        deviceAttributes["cio_sdk_version"] = sdkClient.sdkVersion
+        deviceAttributes["app_version"] = deviceInfo.customerAppVersion
+        deviceAttributes["device_locale"] = deviceInfo.deviceLocale
+        deviceAttributes["device_manufacturer"] = deviceInfo.deviceManufacturer
         if let deviceModel = deviceInfo.deviceModel {
             deviceAttributes["device_model"] = deviceModel
         }
