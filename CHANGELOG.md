@@ -1,3 +1,9 @@
+## [5.3.0](https://github.com/customerio/customerio-ios/compare/5.2.1...5.3.0) (2026-11-16)
+
+### Features
+
+* **datapipeline:** report the APNs environment as a device attribute ([#1395](https://github.com/customerio/customerio-ios/issues/1395)) ([e4aba46](https://github.com/customerio/customerio-ios/commit/e4aba4669ddf53a92d453dc957af7843caa61c4c))
+
 ## [5.2.1](https://github.com/customerio/customerio-ios/compare/5.2.0...5.2.1) (2026-11-11)
 
 ### Bug Fixes
