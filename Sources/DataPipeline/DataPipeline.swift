@@ -15,6 +15,12 @@ public class DataPipeline: ModuleTopLevelObject<DataPipelineInstance>, DataPipel
         implementation?.analytics ?? Analytics(configuration: Configuration(writeKey: "DEADINSTANCE"))
     }
 
+    /// The gateway every event and identity read goes through: the implementation's own, or one in
+    /// front of `analytics` (the dead instance, or a unit test's stand-in).
+    var segment: SegmentGateway {
+        (implementation as? DataPipelineImplementation)?.segment ?? AnalyticsSegmentGateway(analytics: analytics)
+    }
+
     @CioInternalCommon.Atomic public private(set) static var shared = DataPipeline()
     @CioInternalCommon.Atomic public private(set) static var moduleConfig: DataPipelineConfigOptions!
 
