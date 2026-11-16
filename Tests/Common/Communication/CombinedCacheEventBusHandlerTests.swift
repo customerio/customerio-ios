@@ -2,7 +2,7 @@
 import SharedTests
 import XCTest
 
-@testable import CioInternalCommon
+@_spi(Internal) @testable import CioInternalCommon
 
 class CombinedCacheEventBusHandlerTest: UnitTest {
     var mockEventStorage = EventStorageMock()
@@ -459,7 +459,7 @@ private final class DeinitObservableEventBusHandler: CombinedCacheEventBusHandle
 
     init(eventStorage: EventStorage, logger: Logger, onDeinit: @escaping () -> Void) {
         self.onDeinit = onDeinit
-        super.init(eventStorage: eventStorage, logger: logger)
+        super.init(eventStorage: eventStorage, logger: logger, taskSpawner: LiveTaskSpawner())
     }
 
     deinit {
