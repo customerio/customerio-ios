@@ -13,7 +13,7 @@ let package = Package(
         .library(name: "SampleAppsCommon", targets: ["SampleAppsCommon"])
     ],
     dependencies: [
-        .package(path: "../../") // import local CIO SDK to use internally.
+        .package(name: "customerio-ios", path: "../../") // import local CIO SDK to use internally.
     ],
     targets: [
         .target(
