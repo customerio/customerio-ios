@@ -30,7 +30,7 @@ class DataPipelinePushEnabledRefreshTests: IntegrationTest {
         deviceAttributesMock.getDefaultDeviceAttributesClosure = { onComplete in
             requests.mutating { $0 += 1 }
             deviceInfo.isPushSubscribed { isEnabled in
-                let complete = { onComplete(["push_enabled": String(isEnabled)]) }
+                let complete = { onComplete(["push_enabled": String(isEnabled), "apns_environment": "sandbox"]) }
                 if defers.wrappedValue {
                     pending.mutating { $0.append(complete) }
                 } else {
@@ -88,6 +88,20 @@ class DataPipelinePushEnabledRefreshTests: IntegrationTest {
         XCTAssertEqual(outputReader.deviceUpdateEvents.count, 1)
         XCTAssertEqual(outputReader.deviceUpdateEvents.last?.deviceToken, givenToken)
         XCTAssertEqual(lastPushEnabledSent, "true")
+    }
+
+    func test_becomeActive_givenPushEnabledChangedForApnsToken_expectApnsEnvironmentKept() {
+        setUpSdk()
+        customerIO.registerDeviceToken(String.random)
+        outputReader.resetPlugin()
+
+        deviceInfoStub.pushSubscribed = true
+        simulateAppBecameActive()
+
+        let properties = outputReader.deviceUpdateEvents.last?.properties
+        XCTAssertEqual(outputReader.deviceUpdateEvents.count, 1)
+        XCTAssertEqual(properties?["apns_environment"]?.stringValue, "sandbox")
+        XCTAssertNil(properties?["cio_token_type"])
     }
 
     func test_becomeActive_givenPushEnabledUnchanged_expectNoDeviceUpdate() {

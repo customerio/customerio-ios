@@ -60,6 +60,9 @@ extension DIGraphShared {
         _ = autoTrackingScreenViewStore
         countDependenciesResolved += 1
 
+        _ = apnsEnvironmentProvider
+        countDependenciesResolved += 1
+
         _ = deviceAttributesProvider
         countDependenciesResolved += 1
 
@@ -89,6 +92,16 @@ extension DIGraphShared {
         InMemoryAutoTrackingScreenViewStore(lockManager: lockManager)
     }
 
+    // ApnsEnvironmentProvider
+    var apnsEnvironmentProvider: ApnsEnvironmentProvider {
+        getOverriddenInstance() ??
+            newApnsEnvironmentProvider
+    }
+
+    private var newApnsEnvironmentProvider: ApnsEnvironmentProvider {
+        SdkApnsEnvironmentProvider()
+    }
+
     // DeviceAttributesProvider
     var deviceAttributesProvider: DeviceAttributesProvider {
         getOverriddenInstance() ??
@@ -96,7 +109,7 @@ extension DIGraphShared {
     }
 
     private var newDeviceAttributesProvider: DeviceAttributesProvider {
-        SdkDeviceAttributesProvider(deviceInfo: deviceInfo, sdkClient: sdkClient)
+        SdkDeviceAttributesProvider(deviceInfo: deviceInfo, sdkClient: sdkClient, apnsEnvironmentProvider: apnsEnvironmentProvider)
     }
 }
 
