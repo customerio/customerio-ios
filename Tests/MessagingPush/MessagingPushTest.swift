@@ -96,9 +96,14 @@ class MessagingPushTest: IntegrationTest {
         XCTAssertNotEqual(MessagingPush.moduleConfig.cdpApiKey, givenSecretKey)
 
         var actualContent: UNNotificationContent?
-        let handled = MessagingPush.shared.didReceive(makeCIORequest()) { actualContent = $0 }
+        var handlerCallsCount = 0
+        let handled = MessagingPush.shared.didReceive(makeCIORequest()) {
+            actualContent = $0
+            handlerCallsCount += 1
+        }
 
         XCTAssertTrue(handled)
+        XCTAssertEqual(handlerCallsCount, 1)
         XCTAssertEqual(actualContent?.title, "Original")
         XCTAssertFalse(httpClientMock.requestCalled)
         XCTAssertFalse(httpClientMock.downloadFileCalled)
@@ -115,19 +120,6 @@ class MessagingPushTest: IntegrationTest {
 
         XCTAssertFalse(handled)
         XCTAssertEqual(handlerCallsCount, 0)
-    }
-
-    func test_didReceive_givenNotInitialized_whenCioPush_expectTrueAndHandlerCalledOnce() {
-        MessagingPush.initializeExtensionModule(
-            config: MessagingPushConfigBuilder(cdpApiKey: "sk_us_\(String.random)", region: nil).build()
-        )
-        XCTAssertFalse(MessagingPush.shared.hasBeenInitialized)
-
-        var handlerCallsCount = 0
-        let handled = MessagingPush.shared.didReceive(makeCIORequest()) { _ in handlerCallsCount += 1 }
-
-        XCTAssertTrue(handled)
-        XCTAssertEqual(handlerCallsCount, 1)
     }
 
     func test_initializeForExtension_givenPublicKey_expectInitialized() {
