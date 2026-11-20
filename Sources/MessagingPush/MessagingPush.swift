@@ -256,8 +256,11 @@ public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, Messagi
     #if canImport(UserNotifications)
     /**
      - returns:
-     Bool indicating if this push notification is one handled by Customer.io SDK or not.
-     If function returns `false`, `contentHandler` will *not* be called by the SDK.
+     `true` if Customer.io sent this push. The SDK then calls `contentHandler` exactly once, with the original
+     content when it can't process the push (for example, when the SDK is not initialized).
+     `false` if Customer.io did not send this push, whether or not the SDK is initialized. The SDK never calls
+     `contentHandler` in that case, so your extension must deliver the push, for example
+     `contentHandler(request.content)`.
      */
     @discardableResult
     public func didReceive(
@@ -265,8 +268,13 @@ public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, Messagi
         withContentHandler contentHandler: @escaping (UNNotificationContent) -> Void
     ) -> Bool {
         guard let implementation = implementation else {
+            // Without an implementation the SDK can't process the push. It still owns the handler for a push that
+            // Customer.io sent, so the push shows unchanged. Any other push is left to the caller.
+            guard UNNotificationWrapper(notificationRequest: request).isPushSentFromCio else {
+                return false
+            }
             contentHandler(request.content)
-            return false
+            return true
         }
 
         return implementation.didReceive(request, withContentHandler: contentHandler)

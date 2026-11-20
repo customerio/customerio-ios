@@ -98,10 +98,36 @@ class MessagingPushTest: IntegrationTest {
         var actualContent: UNNotificationContent?
         let handled = MessagingPush.shared.didReceive(makeCIORequest()) { actualContent = $0 }
 
-        XCTAssertFalse(handled)
+        XCTAssertTrue(handled)
         XCTAssertEqual(actualContent?.title, "Original")
         XCTAssertFalse(httpClientMock.requestCalled)
         XCTAssertFalse(httpClientMock.downloadFileCalled)
+    }
+
+    func test_didReceive_givenNotInitialized_whenNonCioPush_expectFalseAndHandlerNotCalled() {
+        MessagingPush.initializeExtensionModule(
+            config: MessagingPushConfigBuilder(cdpApiKey: "sk_us_\(String.random)", region: nil).build()
+        )
+        XCTAssertFalse(MessagingPush.shared.hasBeenInitialized)
+
+        var handlerCallsCount = 0
+        let handled = MessagingPush.shared.didReceive(makeNonCIORequest()) { _ in handlerCallsCount += 1 }
+
+        XCTAssertFalse(handled)
+        XCTAssertEqual(handlerCallsCount, 0)
+    }
+
+    func test_didReceive_givenNotInitialized_whenCioPush_expectTrueAndHandlerCalledOnce() {
+        MessagingPush.initializeExtensionModule(
+            config: MessagingPushConfigBuilder(cdpApiKey: "sk_us_\(String.random)", region: nil).build()
+        )
+        XCTAssertFalse(MessagingPush.shared.hasBeenInitialized)
+
+        var handlerCallsCount = 0
+        let handled = MessagingPush.shared.didReceive(makeCIORequest()) { _ in handlerCallsCount += 1 }
+
+        XCTAssertTrue(handled)
+        XCTAssertEqual(handlerCallsCount, 1)
     }
 
     func test_initializeForExtension_givenPublicKey_expectInitialized() {
@@ -124,6 +150,13 @@ class MessagingPushTest: IntegrationTest {
 
         XCTAssertTrue(MessagingPush.shared.hasBeenInitialized)
         XCTAssertEqual(MessagingPush.moduleConfig.cdpApiKey, givenLegacyKey)
+    }
+
+    private func makeNonCIORequest() -> UNNotificationRequest {
+        let content = UNMutableNotificationContent()
+        content.title = "Original"
+        content.userInfo = ["other-provider-key": "value"]
+        return UNNotificationRequest(identifier: "id", content: content, trigger: nil)
     }
 
     private func makeCIORequest() -> UNNotificationRequest {
