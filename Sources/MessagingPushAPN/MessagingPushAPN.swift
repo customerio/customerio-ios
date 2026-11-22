@@ -110,8 +110,11 @@ public class MessagingPushAPN: MessagingPushAPNInstance {
     #if canImport(UserNotifications)
     /**
      - returns:
-     Bool indicating if this push notification is one handled by Customer.io SDK or not.
-     If function returns `false`, `contentHandler` will *not* be called by the SDK.
+     `true` if Customer.io sent this push. The SDK then calls `contentHandler` exactly once, with the original
+     content when it can't process the push (for example, when the SDK is not initialized).
+     `false` if Customer.io did not send this push, whether or not the SDK is initialized. The SDK never calls
+     `contentHandler` in that case, so your extension must deliver the push, for example
+     `contentHandler(request.content)`.
      */
     @discardableResult
     public func didReceive(
