@@ -1,3 +1,9 @@
+## [5.3.1](https://github.com/customerio/customerio-ios/compare/5.3.0...5.3.1) (2026-11-22)
+
+### Bug Fixes
+
+* never call the notification content handler for a push Customer.io didn't send ([#1396](https://github.com/customerio/customerio-ios/issues/1396)) ([80ddf37](https://github.com/customerio/customerio-ios/commit/80ddf3727e3564990f2ead9758a5b7c74c47b805))
+
 ## [5.3.0](https://github.com/customerio/customerio-ios/compare/5.2.1...5.3.0) (2026-11-16)
 
 ### Features
