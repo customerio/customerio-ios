@@ -331,7 +331,10 @@ class DataPipelineImplementation: DataPipelineInstance, DataPipelineTracking, Ba
     }
 
     func trackDeliveryEvent(token: String?, event: String, deliveryId: String, timestamp: String) {
-        processMetricsFromBGQ(token: token, event: event, deliveryId: deliveryId, timestamp: timestamp, metaData: [:])
+        // Logged as its own input: this is a live delivery metric, not a migration replay, and the nested input below is absorbed
+        DataPipelineLogTail.input("push.delivery", [("metric", event), ("delivery", deliveryId)]) {
+            processMetricsFromBGQ(token: token, event: event, deliveryId: deliveryId, timestamp: timestamp, metaData: [:])
+        }
     }
 
     func trackMetric(deliveryID: String, event: Metric, deviceToken: String) {
