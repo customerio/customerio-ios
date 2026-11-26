@@ -83,7 +83,7 @@ open class CioNotificationCenterDelegate: NSObject, UNUserNotificationCenterDele
         }
     }
 
-    /// The presentation options Customer.io uses only when no live peer implements `willPresent`.
+    /// The presentation options Customer.io uses when no peer supplies its own decision.
     private var cioConfiguredPresentationOptions: UNNotificationPresentationOptions {
         guard config?().showPushAppInForeground ?? false else { return [] }
 
@@ -96,50 +96,41 @@ open class CioNotificationCenterDelegate: NSObject, UNUserNotificationCenterDele
         withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
     ) {
         guard willPresentDeliveryGuard.begin(notification) else {
-            completionHandler(presentationOptionsForNestedWillPresent(notification))
+            if willPresentDeliveryContexts.isSolePeerDelivery(notification) {
+                completionHandler(cioConfiguredPresentationOptions)
+            } else {
+                willPresentDeliveryContexts.withCycleCompletion(for: notification) { completionHandler([]) }
+            }
             return
         }
 
-        // Preserve the existing single-peer contract: when at least one peer implements this selector, the
-        // result comes only from peers. With several implementing peers their options are unioned, rather than
-        // using last-writer-wins. Customer.io's configured default is the fallback only when there are no
-        // implementing peers.
         let peers = peersResponding(
             on: center,
             to: #selector(UNUserNotificationCenterDelegate.userNotificationCenter(_:willPresent:withCompletionHandler:))
         )
-        let aggregate = PeerDeliveryCompletionAggregate<UNNotificationPresentationOptions>(
+        // A nil result means there was no independent decision. An empty option set can be intentional.
+        let aggregate = PeerDeliveryCompletionAggregate<UNNotificationPresentationOptions?>(
             retaining: peers.map { $0 as AnyObject },
             deliveryObject: notification,
-            initialValue: peers.isEmpty ? cioConfiguredPresentationOptions : [],
-            merge: { $0.union($1) },
+            initialValue: nil,
+            merge: { accumulated, options in
+                guard let options else { return accumulated }
+                return (accumulated ?? []).union(options)
+            },
             onFinished: { [weak self] options in
+                let resolvedOptions = options ?? self?.cioConfiguredPresentationOptions ?? []
                 self?.completeWillPresentDelivery(notification)
-                completionHandler(options)
+                completionHandler(resolvedOptions)
             },
             onAbandoned: { [weak self] in
                 self?.completeWillPresentDelivery(notification)
             }
         )
 
-        rememberWillPresentDelivery(notification, peerCount: peers.count)
+        willPresentDeliveryContexts.remember(notification, peerCount: peers.count)
 
         for (token, peer) in peers.enumerated() {
-            guard let peerLease = peerDeliveryCoordinator.beginWillPresent(
-                notification,
-                peer: peer
-            ) else {
-                aggregate.complete(token: token, with: [])
-                continue
-            }
-            peer.userNotificationCenter?(
-                center,
-                willPresent: notification,
-                withCompletionHandler: { options in
-                    peerLease.end()
-                    aggregate.complete(token: token, with: options)
-                }
-            )
+            invokeWillPresentPeer(peer, on: center, notification: notification, token: token, aggregate: aggregate)
         }
 
         aggregate.finishDispatching()
@@ -322,14 +313,37 @@ open class CioNotificationCenterDelegate: NSObject, UNUserNotificationCenterDele
 
 @available(iOSApplicationExtension, unavailable)
 private extension CioNotificationCenterDelegate {
-    func rememberWillPresentDelivery(_ notification: UNNotification, peerCount: Int) {
-        willPresentDeliveryContexts.remember(notification, peerCount: peerCount)
-    }
+    func invokeWillPresentPeer(
+        _ peer: UNUserNotificationCenterDelegate,
+        on center: UNUserNotificationCenter,
+        notification: UNNotification,
+        token: Int,
+        aggregate: PeerDeliveryCompletionAggregate<UNNotificationPresentationOptions?>
+    ) {
+        guard let peerLease = peerDeliveryCoordinator.beginWillPresent(notification, peer: peer) else {
+            aggregate.complete(token: token, with: [])
+            return
+        }
 
-    func presentationOptionsForNestedWillPresent(
-        _ notification: UNNotification
-    ) -> UNNotificationPresentationOptions {
-        willPresentDeliveryContexts.isSolePeerDelivery(notification) ? cioConfiguredPresentationOptions : []
+        let receivedCycleResponse = willPresentDeliveryContexts.invokePeer(for: notification, token: token) {
+            peer.userNotificationCenter?(
+                center,
+                willPresent: notification,
+                withCompletionHandler: { [willPresentDeliveryContexts] options in
+                    if options.isEmpty, willPresentDeliveryContexts.recordCycleResponse(for: notification, token: token) {
+                        return
+                    }
+                    peerLease.end()
+                    aggregate.complete(token: token, with: options)
+                }
+            )
+        }
+        // Flutter may pass the same completion to several plugins. Give the peer until it returns to
+        // provide independent options before completing its token with the cycle result.
+        if receivedCycleResponse {
+            peerLease.end()
+            aggregate.complete(token: token, with: nil)
+        }
     }
 
     func completeWillPresentDelivery(_ notification: UNNotification) {
