@@ -45,6 +45,9 @@ on:
         required: true
         description: "Secret for the Slack webhook URL to notify about sample app releases."
 
+permissions:
+  contents: read
+
 jobs:
   build_sample_apps:
     runs-on: xcode-27
