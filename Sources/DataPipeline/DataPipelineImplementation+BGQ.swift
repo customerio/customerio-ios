@@ -15,7 +15,7 @@ extension DataPipelineImplementation {
             let jsonTraits = try? JSON(traits)
             identifyEvent.traits = jsonTraits
         }
-        analytics.process(event: identifyEvent)
+        segment.process(event: identifyEvent)
     }
 
     func processScreenEventFromBGQ(identifier: String, name: String, timestamp: String?, properties: [String: Any]) {
@@ -25,7 +25,7 @@ extension DataPipelineImplementation {
         if let jsonProperties = try? JSON(properties) {
             screenEvent.properties = jsonProperties
         }
-        analytics.process(event: screenEvent)
+        segment.process(event: screenEvent)
     }
 
     func processEventFromBGQ(identifier: String, name: String, timestamp: String?, properties: [String: Any]) {
@@ -35,7 +35,7 @@ extension DataPipelineImplementation {
         if let jsonProperties = try? JSON(properties) {
             trackEvent.properties = jsonProperties
         }
-        analytics.process(event: trackEvent)
+        segment.process(event: trackEvent)
     }
 
     func processDeleteTokenFromBGQ(identifier: String, token: String, timestamp: String) {
@@ -46,7 +46,7 @@ extension DataPipelineImplementation {
         if let context = try? JSON(deviceDict) {
             trackDeleteEvent.context = context
         }
-        analytics.process(event: trackDeleteEvent)
+        segment.process(event: trackDeleteEvent)
     }
 
     func processRegisterDeviceFromBGQ(identifier: String, token: String, timestamp: String, attributes: [String: Any]? = nil) {
@@ -62,7 +62,7 @@ extension DataPipelineImplementation {
         if let attributes = attributes, let attributes = try? JSON(attributes) {
             trackRegisterTokenEvent.properties = attributes
         }
-        analytics.process(event: trackRegisterTokenEvent)
+        segment.process(event: trackRegisterTokenEvent)
     }
 
     func processMetricsFromBGQ(token: String?, event: String, deliveryId: String, timestamp: String, metaData: [String: Any]) {
@@ -77,6 +77,6 @@ extension DataPipelineImplementation {
         // anonymousId or userId is required in the payload for backend processing
         trackPushMetricEvent.anonymousId = deliveryId
         trackPushMetricEvent.timestamp = timestamp
-        analytics.process(event: trackPushMetricEvent)
+        segment.process(event: trackPushMetricEvent)
     }
 }

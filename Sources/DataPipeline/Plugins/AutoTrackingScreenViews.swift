@@ -122,7 +122,9 @@ extension AutoTrackingScreenViews {
         }
 
         let addionalScreenViewData = autoScreenViewBody?() ?? [:]
-        analytics?.screen(title: name, properties: addionalScreenViewData)
+        guard analytics != nil else { return }
+        // The shared gateway, like every other call site, so a stand-in set through the factory sees automatic screens too
+        DataPipeline.shared.segment.screen(title: name, category: nil, properties: addionalScreenViewData)
     }
 }
 
