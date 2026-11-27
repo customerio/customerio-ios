@@ -6,6 +6,3 @@ contact_links:
   - name: Community Forum (for general questions and peer support)
     url: https://community.customer.io/
     about: Our Community Forum is a great place for general questions, advice, and tips from other developers and Customer.io experts. You can tap into our active community and share insights or learn new ways to optimize your implementation.
-  - name: Propose a Fix (for developers with a solution)
-    url: https://github.com/customerio/customerio-ios/pulls
-    about: If you’ve found a bug or have a feature request and have a proposed solution, we encourage you to submit a Pull Request (PR) with your proposed changes. Our team will review and collaborate with you, making it easy to contribute improvements to our SDK directly.
