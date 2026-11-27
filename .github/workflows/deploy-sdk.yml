@@ -37,6 +37,8 @@ jobs:
   deploy-git-tag:
     name: Deploy git tag
     needs: [generate-sdk-size-report]
+    # The release App key lives in this environment, which only `main` can use.
+    environment: release
     runs-on: ubuntu-latest
     outputs:
       new_release_git_head: ${{ steps.semantic-release.outputs.new_release_git_head }}
@@ -195,6 +197,8 @@ jobs:
     needs: [deploy-git-tag] # run after git tag is made
     # Only run if we can find a git tag to checkout.
     if: ${{ needs.deploy-git-tag.outputs.new_release_published == 'true' || github.event_name == 'workflow_dispatch' }}
+    # The CocoaPods trunk token lives in this environment, which only `main` can use.
+    environment: release
     env:
       COCOAPODS_TRUNK_TOKEN: ${{ secrets.COCOAPODS_TRUNK_TOKEN }}
     runs-on: macos-26
