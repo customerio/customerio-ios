@@ -13,5 +13,5 @@ gem "aws-sdk-s3", "1.208.0"
 gem "rexml", "3.4.2"
 
 gem "fastlane", ">= 2.242.0"
-gem 'fastlane-plugin-firebase_app_distribution'
+gem 'fastlane-plugin-firebase_app_distribution', ">= 1.0.0"
 gem "minitest", "~> 5.25"
