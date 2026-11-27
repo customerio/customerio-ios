@@ -173,6 +173,7 @@ final class CioNotificationDelegateMultiPeerTests: XCTestCase {
         var forwardsWillPresentAsynchronously = false
         var forwardsDidReceiveAsynchronously = false
         var forwardsOpenSettingsAsynchronously = false
+        var willPresentOptionsAfterForwarding: UNNotificationPresentationOptions?
         var onAsyncWillPresentForwarded: (() -> Void)?
         var onAsyncOpenSettingsForwarded: (() -> Void)?
 
@@ -192,6 +193,9 @@ final class CioNotificationDelegateMultiPeerTests: XCTestCase {
                     willPresent: notification,
                     withCompletionHandler: completionHandler
                 )
+                if let options = self.willPresentOptionsAfterForwarding {
+                    completionHandler(options)
+                }
             }
             if forwardsWillPresentAsynchronously {
                 DispatchQueue.global().async {
@@ -940,6 +944,23 @@ final class CioNotificationDelegateMultiPeerTests: XCTestCase {
         XCTAssertEqual(results, [[]])
     }
 
+    func testWillPresent_whenPeerForwardsThenAnswersSynchronously_thenPreservesBadgeOnly() {
+        let forwardingPeer = ChainedNotificationCenterDelegate(previousDelegate: delegate)
+        let presentingPeer = ChainedNotificationCenterDelegate(previousDelegate: delegate)
+        presentingPeer.willPresentOptionsAfterForwarding = [.badge]
+        registry.register(forwardingPeer)
+        registry.register(presentingPeer)
+        var results: [UNNotificationPresentationOptions] = []
+
+        delegate.userNotificationCenter(
+            UNUserNotificationCenter.current(),
+            willPresent: UNNotification.testInstance,
+            withCompletionHandler: { results.append($0) }
+        )
+
+        XCTAssertEqual(results, [[.badge]])
+    }
+
     func testWillPresent_whenFlutterPluginSuppressesAfterFirebaseForwards_thenPreservesSuppression() {
         let firebase = ChainedNotificationCenterDelegate(previousDelegate: delegate)
         let suppressingPlugin = Peer()
@@ -955,6 +976,24 @@ final class CioNotificationDelegateMultiPeerTests: XCTestCase {
         )
 
         XCTAssertEqual(results, [[]])
+    }
+
+    func testWillPresent_whenFlutterPluginPresentsAfterFirebaseForwards_thenPreservesBannerAndList() {
+        let firebase = ChainedNotificationCenterDelegate(previousDelegate: delegate)
+        let localNotificationsPlugin = Peer()
+        localNotificationsPlugin.presentationOptions = [.banner, .list]
+        let flutter = FlutterLifecyclePeer(plugins: [firebase, localNotificationsPlugin])
+        registry.register(flutter)
+        registry.register(firebase)
+        var results: [UNNotificationPresentationOptions] = []
+
+        delegate.userNotificationCenter(
+            UNUserNotificationCenter.current(),
+            willPresent: UNNotification.testInstance,
+            withCompletionHandler: { results.append($0) }
+        )
+
+        XCTAssertEqual(results, [[.banner, .list]])
     }
 
     func testWillPresent_whenCycleHasAnotherPeerReturningEmpty_thenDoesNotLeakCioFallback() {
