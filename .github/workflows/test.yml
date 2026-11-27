@@ -11,6 +11,9 @@ concurrency: # cancel previous workflow run if one exists.
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+
 jobs:
   # Picks the Mac runner label: GitHub's, or the second pool's when GitHub's pool is busy.
   # Skipped while the switch is off, so the tests start exactly as before.

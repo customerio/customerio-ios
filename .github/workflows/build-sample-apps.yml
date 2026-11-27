@@ -31,6 +31,9 @@ concurrency:
     }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' || startsWith(github.ref, 'refs/heads/feature/') }}
 
+permissions:
+  contents: read
+
 jobs:
   release_policy:
     if: github.event_name == 'pull_request'

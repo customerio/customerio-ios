@@ -41,6 +41,9 @@ concurrency:
     }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
+permissions:
+  contents: read
+
 jobs:
   # Size is a release guardrail. The `paths:` filter above scopes PR runs to the
   # changes that can move binary size; main keeps warming the exact-SHA baseline
