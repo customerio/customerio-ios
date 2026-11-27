@@ -20,6 +20,9 @@ on:
         description: Whether release intent or ci:full requests distribution validation.
         value: ${{ jobs.classify.outputs.full_validation }}
 
+permissions:
+  contents: read
+
 jobs:
   classify:
     runs-on: ubuntu-latest
