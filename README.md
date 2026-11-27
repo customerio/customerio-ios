@@ -53,7 +53,9 @@ supported by Xcode, follow the [deployment-target normalization guide](docs/coco
 
 # Contributing
 
-Thanks for taking an interest in our project! Code contributions are limited to the Customer.io mobile team, so we don't accept pull requests from outside the team. We'd still love to hear from you: if you find a bug or have an idea, [open an issue](https://github.com/customerio/customerio-ios/issues/new/choose) and we're happy to look into it and make the change. See [CONTRIBUTING.md](CONTRIBUTING.md) for details.
+Thanks for taking an interest in our project! Code contributions are limited to the Customer.io mobile team, so we don't accept pull requests from outside the team. We'd still love to hear from you: if you find a bug or have an idea, [open an issue](https://github.com/customerio/customerio-ios/issues/new/choose) and we're happy to look into it and make the change.
+
+Team members: see the [development instructions](docs/dev-notes/DEVELOPMENT.md) to set up your environment.
 
 > **Note**: We value an open, welcoming, diverse, inclusive, and healthy community for this project. We expect everyone taking part, including in issues, to follow our [code of conduct](CODE_OF_CONDUCT.md).
 
