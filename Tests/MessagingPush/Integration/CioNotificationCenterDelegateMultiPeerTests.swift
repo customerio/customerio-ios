@@ -173,6 +173,7 @@ final class CioNotificationDelegateMultiPeerTests: XCTestCase {
         var forwardsWillPresentAsynchronously = false
         var forwardsDidReceiveAsynchronously = false
         var forwardsOpenSettingsAsynchronously = false
+        var willPresentOptionsAfterForwarding: UNNotificationPresentationOptions?
         var onAsyncWillPresentForwarded: (() -> Void)?
         var onAsyncOpenSettingsForwarded: (() -> Void)?
 
@@ -192,6 +193,9 @@ final class CioNotificationDelegateMultiPeerTests: XCTestCase {
                     willPresent: notification,
                     withCompletionHandler: completionHandler
                 )
+                if let options = self.willPresentOptionsAfterForwarding {
+                    completionHandler(options)
+                }
             }
             if forwardsWillPresentAsynchronously {
                 DispatchQueue.global().async {
@@ -238,6 +242,24 @@ final class CioNotificationDelegateMultiPeerTests: XCTestCase {
                 }
             } else {
                 forward()
+            }
+        }
+    }
+
+    private final class FlutterLifecyclePeer: NSObject, UNUserNotificationCenterDelegate {
+        private let plugins: [UNUserNotificationCenterDelegate]
+
+        init(plugins: [UNUserNotificationCenterDelegate]) {
+            self.plugins = plugins
+        }
+
+        func userNotificationCenter(
+            _ center: UNUserNotificationCenter,
+            willPresent notification: UNNotification,
+            withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
+        ) {
+            for plugin in plugins {
+                plugin.userNotificationCenter?(center, willPresent: notification, withCompletionHandler: completionHandler)
             }
         }
     }
@@ -864,6 +886,114 @@ final class CioNotificationDelegateMultiPeerTests: XCTestCase {
         XCTAssertEqual(willPresentOuterCallsCount, 1)
         XCTAssertEqual(willPresentOptions, [.list, .banner, .badge, .sound])
         XCTAssertEqual(didReceiveOuterCallsCount, 1)
+    }
+
+    func testWillPresent_whenFlutterAndFirebaseBothForwardBack_thenUsesCioConfiguredFallbackOnce() {
+        // Firebase forwards to its previous delegate, and Flutter's lifecycle forwards to Firebase.
+        let firebase = ChainedNotificationCenterDelegate(previousDelegate: delegate)
+        let flutter = ChainedNotificationCenterDelegate(previousDelegate: firebase)
+        registry.register(flutter)
+        registry.register(firebase)
+        var results: [UNNotificationPresentationOptions] = []
+
+        delegate.userNotificationCenter(
+            UNUserNotificationCenter.current(),
+            willPresent: UNNotification.testInstance,
+            withCompletionHandler: { results.append($0) }
+        )
+
+        XCTAssertEqual(results, [[.list, .banner, .badge, .sound]])
+    }
+
+    func testWillPresent_whenAllPeersForwardAndForegroundPresentationIsDisabled_thenSuppressesNotification() {
+        delegate = makeDelegate(showPushAppInForeground: false)
+        let firebase = ChainedNotificationCenterDelegate(previousDelegate: delegate)
+        let flutter = FlutterLifecyclePeer(plugins: [firebase])
+        registry.register(flutter)
+        registry.register(firebase)
+        var results: [UNNotificationPresentationOptions] = []
+
+        delegate.userNotificationCenter(
+            UNUserNotificationCenter.current(),
+            willPresent: UNNotification.testInstance,
+            withCompletionHandler: { results.append($0) }
+        )
+
+        XCTAssertEqual(results, [[]])
+    }
+
+    func testWillPresent_whenPeerReentersAndThenExplicitlySuppresses_thenPreservesSuppression() {
+        let forwardingPeer = ChainedNotificationCenterDelegate(previousDelegate: delegate)
+        let suppressingPeer = Peer()
+        let center = UNUserNotificationCenter.current()
+        let notification = UNNotification.testInstance
+        suppressingPeer.onWillPresentInvocation = { [delegate] in
+            // The peer forwards for side effects, then answers the original callback itself.
+            delegate?.userNotificationCenter(center, willPresent: notification, withCompletionHandler: { _ in })
+        }
+        registry.register(forwardingPeer)
+        registry.register(suppressingPeer)
+        var results: [UNNotificationPresentationOptions] = []
+
+        delegate.userNotificationCenter(
+            center,
+            willPresent: notification,
+            withCompletionHandler: { results.append($0) }
+        )
+
+        XCTAssertEqual(results, [[]])
+    }
+
+    func testWillPresent_whenPeerForwardsThenAnswersSynchronously_thenPreservesBadgeOnly() {
+        let forwardingPeer = ChainedNotificationCenterDelegate(previousDelegate: delegate)
+        let presentingPeer = ChainedNotificationCenterDelegate(previousDelegate: delegate)
+        presentingPeer.willPresentOptionsAfterForwarding = [.badge]
+        registry.register(forwardingPeer)
+        registry.register(presentingPeer)
+        var results: [UNNotificationPresentationOptions] = []
+
+        delegate.userNotificationCenter(
+            UNUserNotificationCenter.current(),
+            willPresent: UNNotification.testInstance,
+            withCompletionHandler: { results.append($0) }
+        )
+
+        XCTAssertEqual(results, [[.badge]])
+    }
+
+    func testWillPresent_whenFlutterPluginSuppressesAfterFirebaseForwards_thenPreservesSuppression() {
+        let firebase = ChainedNotificationCenterDelegate(previousDelegate: delegate)
+        let suppressingPlugin = Peer()
+        let flutter = FlutterLifecyclePeer(plugins: [firebase, suppressingPlugin])
+        registry.register(flutter)
+        registry.register(firebase)
+        var results: [UNNotificationPresentationOptions] = []
+
+        delegate.userNotificationCenter(
+            UNUserNotificationCenter.current(),
+            willPresent: UNNotification.testInstance,
+            withCompletionHandler: { results.append($0) }
+        )
+
+        XCTAssertEqual(results, [[]])
+    }
+
+    func testWillPresent_whenFlutterPluginPresentsAfterFirebaseForwards_thenPreservesBannerAndList() {
+        let firebase = ChainedNotificationCenterDelegate(previousDelegate: delegate)
+        let localNotificationsPlugin = Peer()
+        localNotificationsPlugin.presentationOptions = [.banner, .list]
+        let flutter = FlutterLifecyclePeer(plugins: [firebase, localNotificationsPlugin])
+        registry.register(flutter)
+        registry.register(firebase)
+        var results: [UNNotificationPresentationOptions] = []
+
+        delegate.userNotificationCenter(
+            UNUserNotificationCenter.current(),
+            willPresent: UNNotification.testInstance,
+            withCompletionHandler: { results.append($0) }
+        )
+
+        XCTAssertEqual(results, [[.banner, .list]])
     }
 
     func testWillPresent_whenCycleHasAnotherPeerReturningEmpty_thenDoesNotLeakCioFallback() {
