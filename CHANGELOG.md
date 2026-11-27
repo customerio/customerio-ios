@@ -1,3 +1,9 @@
+## [5.3.2](https://github.com/customerio/customerio-ios/compare/5.3.1...5.3.2) (2026-11-27)
+
+### Bug Fixes
+
+* restore foreground push presentation with FlutterFire (MBL-2907) ([#1398](https://github.com/customerio/customerio-ios/issues/1398)) ([15b7853](https://github.com/customerio/customerio-ios/commit/15b7853a54d1ae4cf30c90b319774c0ea9388de3))
+
 ## [5.3.1](https://github.com/customerio/customerio-ios/compare/5.3.0...5.3.1) (2026-11-22)
 
 ### Bug Fixes
