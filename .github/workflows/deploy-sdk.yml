@@ -9,10 +9,10 @@ on:
         type: string
 
   push:
-    branches: [beta, main, v1] # all branches where deployments currently occur. Make sure this list matches list of branches in  `.releaserc` file.
+    branches: [main] # all branches where deployments currently occur. Make sure this list matches list of branches in  `.releaserc` file and the `release` environment's branch policy.
 
 permissions:
-  contents: write # access to push the git tag
+  contents: read # the release commit and tag are pushed with the release App token, not GITHUB_TOKEN
 
 jobs:
   # We can only generate SDK size reports on macOS and we prefer to run deployments on Linux because macOS resources are limited. 
@@ -197,8 +197,9 @@ jobs:
     needs: [deploy-git-tag] # run after git tag is made
     # Only run if we can find a git tag to checkout.
     if: ${{ needs.deploy-git-tag.outputs.new_release_published == 'true' || github.event_name == 'workflow_dispatch' }}
-    # The CocoaPods trunk token lives in this environment, which only `main` can use.
-    environment: release
+    # The CocoaPods trunk token lives in these environments, which only `main` can use.
+    # Manual runs use `release-manual`, which waits for a squad-mobile approval.
+    environment: ${{ github.event_name == 'workflow_dispatch' && 'release-manual' || 'release' }}
     env:
       COCOAPODS_TRUNK_TOKEN: ${{ secrets.COCOAPODS_TRUNK_TOKEN }}
     runs-on: macos-26
@@ -216,19 +217,35 @@ jobs:
         with:
           ref: ${{ needs.deploy-git-tag.outputs.new_release_git_head }}
 
+      # Manual runs push whatever they check out with the trunk token, so only accept a release version.
+      - name: Validate the existing git tag input
+        if: ${{ github.event_name == 'workflow_dispatch' }}
+        env:
+          EXISTING_GIT_TAG: ${{ inputs.existing-git-tag }}
+        run: |
+          if [[ ! "$EXISTING_GIT_TAG" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z]+(\.[0-9A-Za-z]+)*)?$ ]]; then
+            echo "::error::existing-git-tag must be a release version like 1.0.3 or 2.1.0-beta.1."
+            exit 1
+          fi
+
       - name: Checkout git tag that was previously created
         uses: actions/checkout@v7
         if: ${{ github.event_name == 'workflow_dispatch' }}
         with:
-          ref: ${{ inputs.existing-git-tag }}
+          # A full tag ref, so a branch or commit with the same name can't be checked out.
+          ref: refs/tags/${{ inputs.existing-git-tag }}
 
       - name: Get SDK version
         id: get-version
+        env:
+          NEW_RELEASE_PUBLISHED: ${{ needs.deploy-git-tag.outputs.new_release_published }}
+          NEW_RELEASE_VERSION: ${{ needs.deploy-git-tag.outputs.new_release_version }}
+          EXISTING_GIT_TAG: ${{ inputs.existing-git-tag }}
         run: |
-          if [[ "${{ needs.deploy-git-tag.outputs.new_release_published }}" == "true" ]]; then
-            echo "version=${{ needs.deploy-git-tag.outputs.new_release_version }}" >> $GITHUB_OUTPUT
+          if [[ "$NEW_RELEASE_PUBLISHED" == "true" ]]; then
+            echo "version=$NEW_RELEASE_VERSION" >> "$GITHUB_OUTPUT"
           else
-            echo "version=${{ inputs.existing-git-tag }}" >> $GITHUB_OUTPUT
+            echo "version=$EXISTING_GIT_TAG" >> "$GITHUB_OUTPUT"
           fi
 
       # The downstream CDN wait uses these podspecs from the released checkout.
