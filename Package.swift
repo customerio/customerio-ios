@@ -16,6 +16,9 @@ import Foundation
 // Therefore, it's important that we only expose modules that we want customers to use. Internal modules should not be included in this array.
 var products: [PackageDescription.Product] = [
     .library(name: "DataPipelines", targets: ["CioDataPipelines"]),
+    // Core push module, for apps that link no push provider product (APN or FCM) and still track push metrics or
+    // receive Customer.io push through a wrapper SDK. MessagingPushAPN and MessagingPushFCM already include it.
+    .library(name: "MessagingPush", targets: ["CioMessagingPush"]),
     .library(name: "MessagingPushAPN", targets: ["CioMessagingPushAPN"]),
     .library(name: "MessagingPushFCM", targets: ["CioMessagingPushFCM"]),
     // Firebase adapter for MessagingPushFCM, previously the separate customerio-ios-fcm package. It declares no Firebase
