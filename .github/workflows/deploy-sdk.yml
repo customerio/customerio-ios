@@ -235,6 +235,16 @@ jobs:
           # A full tag ref, so a branch or commit with the same name can't be checked out.
           ref: refs/tags/${{ inputs.existing-git-tag }}
 
+      - name: Check out the publisher from the workflow commit
+        uses: actions/checkout@v7
+        with:
+          # Keep the podspecs at the release tag while using the reviewed publishing logic.
+          ref: ${{ github.workflow_sha }}
+          path: .release-tools
+          persist-credentials: false
+          sparse-checkout: scripts/push-cocoapod.sh
+          sparse-checkout-cone-mode: false
+
       - name: Get SDK version
         id: get-version
         env:
@@ -303,8 +313,7 @@ jobs:
 
           # Every podspec across all tiers, so "N of M" stays right even though the
           # dispatch loop below breaks early.
-          all_podspecs=(${tiers[*]})
-          total=${#all_podspecs[@]}
+          total=$(printf '%s\n' "${tiers[@]}" | awk '{ count += NF } END { print count }')
 
           published_pods=()
           refused_pods=()
@@ -313,7 +322,7 @@ jobs:
             pids=()
             specs=()
             for podspec in $tier; do
-              ./scripts/push-cocoapod.sh "$podspec" > "push-log-$podspec.txt" 2>&1 &
+              ./.release-tools/scripts/push-cocoapod.sh "$podspec" > "push-log-$podspec.txt" 2>&1 &
               pids+=($!)
               specs+=("$podspec")
             done
@@ -345,11 +354,10 @@ jobs:
             fi
           done
 
-          # "confirmed on trunk", not "published by this run": a pod that was
+          # "confirmed on CocoaPods": a pod that was
           # already there is a success here too. The loop breaks on the first bad
-          # tier, and the pods after it were never asked about - some of them may
-          # be on trunk as well, so this is a floor, not a total.
-          on_trunk="${#published_pods[@]} of $total pods confirmed on trunk at this version"
+          # tier, so the count only covers the pods the job checked.
+          on_trunk="${#published_pods[@]} of $total pods confirmed on CocoaPods at this version"
           not_attempted=$((total - ${#published_pods[@]} - ${#refused_pods[@]} - ${#failed_pods[@]}))
           echo "$on_trunk. Refused by trunk: ${#refused_pods[@]}. Failed: ${#failed_pods[@]}. Not attempted: $not_attempted."
 

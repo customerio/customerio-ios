@@ -4,9 +4,9 @@ set -e
 
 # Push one podspec; the tier caller runs independent pods in parallel.
 # Exit codes:
-#   0  this exact pod version is on CocoaPods trunk, including earlier pushes
+#   0  this exact pod version is confirmed by Trunk or the CocoaPods CDN
 #   1  it is absent, or publication could not be confirmed
-#   3  trunk is closed to writes and this version is confirmed absent
+#   3  trunk refused writes and neither source confirmed this version
 # Use 3 rather than 2 because the shell uses 2 for syntax errors, which must not
 # be mistaken for a closed trunk by the caller.
 PODSPEC="${1:-}"
@@ -32,18 +32,45 @@ TRUNK_SETTLE_SECONDS=180
 TRUNK_POLL_INTERVAL_SECONDS=15
 UNKNOWN_FAILURE_SETTLE_SECONDS=45
 
-# Trunk's exact-version endpoint returns 200 only once a published Commit exists.
-# The CDN lags publication and cannot answer whether this push landed.
+# Trunk's exact-version endpoint is the primary publication check.
 trunk_status() {
   request_timeout=${1:-20}
   STATUS_CODE=$(curl -sS -o /dev/null -w '%{http_code}' --max-time "$request_timeout" "$TRUNK_URL") || STATUS_CODE="000"
   printf '%s\n' "$STATUS_CODE"
 }
 
+cdn_has_matching_spec() {
+  # A Specs commit can reach the public CDN before Trunk records it. Require
+  # both the version index CocoaPods resolves against and the exact tagged spec.
+  shard=$(ruby -rdigest -e 'puts Digest::MD5.hexdigest(ARGV[0])[0, 3].chars.join("/")' "$POD_NAME") || return 1
+  cdn=https://cdn.cocoapods.org
+  cdn_spec=$(curl -fsSL --max-time 20 "$cdn/Specs/$shard/$POD_NAME/$VERSION/$POD_NAME.podspec.json") || return 1
+  tagged_spec=$(pod ipc spec "$PODSPEC") || return 1
+  if ! printf '%s\n' "$cdn_spec" | jq -e --argjson tagged "$tagged_spec" \
+    'type == "object" and (del(.pushed_with_swift_version) == $tagged)' >/dev/null; then
+    return 1
+  fi
+
+  index_shard=$(printf '%s' "$shard" | tr '/' '_')
+  cdn_index=$(curl -fsSL --max-time 20 "$cdn/all_pods_versions_$index_shard.txt") || return 1
+  if ! printf '%s\n' "$cdn_index" | awk -F/ -v name="$POD_NAME" -v version="$VERSION" '
+    $1 == name { for (i = 2; i <= NF; i++) if ($i == version) found = 1 }
+    END { exit !found }
+  '; then
+    return 1
+  fi
+
+  echo "::warning::Trunk does not list $POD_NAME $VERSION, but the CocoaPods CDN lists it and serves the matching tagged podspec."
+}
+
+publication_confirmed() {
+  [ "$TRUNK_CODE" = "200" ] || { [ "$TRUNK_CODE" = "404" ] && cdn_has_matching_spec; }
+}
+
 confirmed_after_failure() {
   # Keep the failed command visible even if another push or a late hook made
   # this version available. Confirmation does not prove this command succeeded.
-  echo "::warning::$PODSPEC reported a push failure, but trunk holds $POD_NAME $VERSION. Treating it as published; see the push output above."
+  echo "::warning::$PODSPEC reported a push failure, but CocoaPods has $POD_NAME $VERSION. Treating it as published; see the push output above."
 }
 
 fail_publication() {
@@ -59,8 +86,8 @@ closed_trunk() {
   # Trunk rejects writes before checking duplicates. Reads still work, so a
   # version may already be published even when this push received a refusal.
   TRUNK_CODE=$(trunk_status)
-  if [ "$TRUNK_CODE" = "200" ]; then
-    echo "Trunk is closed to writes, but it already holds $POD_NAME $VERSION."
+  if publication_confirmed; then
+    echo "Trunk is closed to writes, but CocoaPods already has $POD_NAME $VERSION."
     exit 0
   fi
   if [ "$TRUNK_CODE" != "404" ]; then
@@ -111,8 +138,8 @@ wait_for_publication() {
 # Skip before CocoaPods performs expensive validation, including on a rerun
 # during trunk's read-only window. Unknown read status does not block a push.
 TRUNK_CODE=$(trunk_status)
-if [ "$TRUNK_CODE" = "200" ]; then
-  echo "Trunk already holds $POD_NAME $VERSION. Skipping $PODSPEC."
+if publication_confirmed; then
+  echo "CocoaPods already has $POD_NAME $VERSION. Skipping $PODSPEC."
   exit 0
 fi
 
@@ -140,6 +167,10 @@ while :; do
     if wait_for_publication; then
       exit 0
     fi
+    if publication_confirmed; then
+      confirmed_after_failure
+      exit 0
+    fi
     if [ "$attempt" -ge "$MAX_PUSH_ATTEMPTS" ]; then
       fail_publication
     fi
@@ -147,7 +178,7 @@ while :; do
     sleep "$backoff"
     # The hook may have arrived during backoff; do not re-lint a published pod.
     TRUNK_CODE=$(trunk_status)
-    if [ "$TRUNK_CODE" = "200" ]; then
+    if publication_confirmed; then
       confirmed_after_failure
       exit 0
     fi
@@ -159,7 +190,7 @@ while :; do
     echo "Push reported a failure. Waiting ${UNKNOWN_FAILURE_SETTLE_SECONDS}s, then checking trunk."
     sleep "$UNKNOWN_FAILURE_SETTLE_SECONDS"
     TRUNK_CODE=$(trunk_status)
-    if [ "$TRUNK_CODE" = "200" ]; then
+    if publication_confirmed; then
       confirmed_after_failure
       exit 0
     fi

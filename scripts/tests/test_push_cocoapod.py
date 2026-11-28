@@ -15,6 +15,13 @@ SDK_VERSION = re.search(r'public static let version: String = "([^"]+)"',
 TIMEOUT = '[!] Calling the GitHub commit API timed out. Please try again later.'
 SUCCESS = 'CustomerIOCommon (5.0.0) successfully published'
 CLOSED = '[!] We have closed pushing to CocoaPods trunk'
+TAGGED_SPEC = {
+    'name': 'CustomerIOCommon',
+    'version': '5.0.0',
+    'source': {'git': 'https://github.com/customerio/customerio-ios.git', 'tag': '5.0.0'},
+}
+CDN_SPEC = {**TAGGED_SPEC, 'pushed_with_swift_version': '5.3'}
+CDN_INDEX = 'CustomerIOCommon/4.9.0/5.0.0\n'
 STUB = r'''
 import json, os, sys
 from pathlib import Path
@@ -29,6 +36,12 @@ if tool == 'date':
     print(int(s['now']))
 elif tool == 'sleep':
     s['now'] += float(args[0])
+elif tool == 'curl' and args[-1].startswith('https://cdn.cocoapods.org/'):
+    key = 'cdn_index' if '/all_pods_versions_' in args[-1] else 'cdn_spec'
+    if s[key] is not None and s['now'] >= s['cdn_at']:
+        print(json.dumps(s[key]) if key == 'cdn_spec' else s[key])
+    else:
+        code = 22
 elif tool == 'curl':
     index = s['curl_calls']
     s['curl_calls'] += 1
@@ -42,6 +55,8 @@ elif tool == 'curl':
         status, code = '000', 28
     event['status'], event['max_time'] = status, timeout
     print(status, end='')
+elif tool == 'pod' and args[:2] == ['ipc', 'spec']:
+    print(json.dumps(s['tagged_spec']))
 elif tool == 'pod':
     index = s['pod_calls']
     s['pod_calls'] += 1
@@ -58,7 +73,8 @@ sys.exit(code)
 class PushCocoapodTests(unittest.TestCase):
     def run_script(self, statuses=('404',), outputs=(TIMEOUT,), published_at=None,
                    curl_delay=0, podspec=None, argument='spec', podspec_file=None,
-                   expected_name='CustomerIOCommon', expected_version='5.0.0'):
+                   expected_name='CustomerIOCommon', expected_version='5.0.0',
+                   cdn_spec=None, cdn_index=None, cdn_at=0):
         with tempfile.TemporaryDirectory(prefix='push-cocoapod-test-') as directory:
             root = Path(directory)
             (root / 'bin').mkdir()
@@ -67,6 +83,8 @@ class PushCocoapodTests(unittest.TestCase):
                 'now': 0, 'events': [], 'curl_calls': 0, 'pod_calls': 0,
                 'statuses': list(statuses), 'outputs': list(outputs),
                 'published_at': published_at, 'curl_delay': curl_delay,
+                'cdn_spec': cdn_spec, 'cdn_index': cdn_index, 'cdn_at': cdn_at,
+                'tagged_spec': TAGGED_SPEC,
             }))
             for name in ('pod', 'curl', 'sleep', 'date'):
                 path = root / 'bin' / name
@@ -89,10 +107,10 @@ class PushCocoapodTests(unittest.TestCase):
             state = json.loads(state_path.read_text())
             self.assertNotIn('not found', result.stderr, result.stderr)
             for event in state['events']:
-                if event['tool'] == 'pod':
+                if event['tool'] == 'pod' and event['args'][0] != 'ipc':
                     self.assertEqual(event['args'][:2], ['trunk', 'push'])
                     self.assertEqual(event['args'][-2:], ['--allow-warnings', '--synchronous'])
-                if event['tool'] == 'curl':
+                if event['tool'] == 'curl' and event['args'][-1].startswith('https://trunk.'):
                     self.assertEqual(event['args'][-1],
                                      f'https://trunk.cocoapods.org/api/v1/pods/{expected_name}/versions/{expected_version}')
             return result, state
@@ -106,6 +124,29 @@ class PushCocoapodTests(unittest.TestCase):
         self.assertEqual(state['pod_calls'], 0)
         self.assertEqual(state['curl_calls'], 1)
         self.assertFalse(any(e['tool'] == 'sleep' for e in state['events']))
+
+    def test_matching_indexed_cdn_spec_skips_push_when_trunk_returns_404(self):
+        result, state = self.run_script(cdn_spec=CDN_SPEC, cdn_index=CDN_INDEX)
+        self.assert_exit(result, 0)
+        self.assertEqual(state['pod_calls'], 0)
+        self.assertIn('serves the matching tagged podspec', result.stdout)
+        urls = [e['args'][-1] for e in state['events'] if e['tool'] == 'curl']
+        self.assertIn('https://cdn.cocoapods.org/Specs/3/5/9/CustomerIOCommon/5.0.0/CustomerIOCommon.podspec.json', urls)
+        self.assertIn('https://cdn.cocoapods.org/all_pods_versions_3_5_9.txt', urls)
+
+    def test_mismatched_or_unlisted_cdn_spec_still_pushes(self):
+        different_spec = {**CDN_SPEC, 'dependencies': {'OtherPod': ['= 5.0.0']}}
+        for spec, index in [(different_spec, CDN_INDEX), (CDN_SPEC, 'CustomerIOCommon/5.0.01\n')]:
+            with self.subTest(spec=spec, index=index):
+                result, state = self.run_script(cdn_spec=spec, cdn_index=index, outputs=[SUCCESS])
+                self.assert_exit(result, 0)
+                self.assertEqual(state['pod_calls'], 1)
+
+    def test_cdn_confirmation_after_push_error_avoids_a_second_push(self):
+        result, state = self.run_script(cdn_spec=CDN_SPEC, cdn_index=CDN_INDEX, cdn_at=120)
+        self.assert_exit(result, 0)
+        self.assertEqual(state['pod_calls'], 1)
+        self.assertIn('reported a push failure', result.stdout)
 
     def test_missing_or_unknown_version_does_not_block_successful_push(self):
         for status in ['404', '000', '503']:
@@ -167,7 +208,7 @@ class PushCocoapodTests(unittest.TestCase):
         self.assertEqual(state['pod_calls'], 4)
         # Four 180s windows, 30/60/120s backoff, and four 20s checks outside windows.
         self.assertEqual(state['now'], 1010)
-        self.assertTrue(any(e['tool'] == 'curl' and e['max_time'] < 20 for e in state['events']))
+        self.assertTrue(any(e.get('max_time', 20) < 20 for e in state['events']))
 
     def test_permanent_or_unclassified_errors_are_not_retried(self):
         for output in ['[!] Authentication token is invalid or unverified',
