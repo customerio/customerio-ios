@@ -1,0 +1,17 @@
+name: Dismiss stale approvals
+
+# On PRs opened by Moby, dismisses approvals of earlier commits when Moby pushes, the base branch changes, or
+# the PR is reopened. Other authors' PRs skip the job. The logic lives in customerio/mobile-ci-tools.
+# `opened` dismisses nothing; it makes the check report on every PR's first commit, so it can be a required
+# check on main (a skipped job reports success).
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, edited]
+
+permissions: {}
+
+jobs:
+  dismiss:
+    permissions:
+      pull-requests: write
+    uses: customerio/mobile-ci-tools/.github/workflows/dismiss-stale-approvals.yml@main
