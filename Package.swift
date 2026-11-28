@@ -130,7 +130,10 @@ let package = Package(
         // Messaging Push 
         .target(name: "CioMessagingPush",
                 dependencies: ["CioInternalCommon"],
-                path: "Sources/MessagingPush"),
+                path: "Sources/MessagingPush",
+                resources: [
+                    .process("Resources/PrivacyInfo.xcprivacy"),
+                ]),
         .testTarget(name: "MessagingPushTests",
                     dependencies: ["CioMessagingPush", "SharedTests", "CioInternalCommonMocks", "CioMessagingPushMocks"],
                     path: "Tests/MessagingPush"),
