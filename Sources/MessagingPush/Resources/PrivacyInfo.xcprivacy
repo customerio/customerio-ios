@@ -6,8 +6,9 @@
 	See DataPipelines module for documentation of this file. Including resources for each section to learn more.
 
 	This module ships inside the MessagingPush, MessagingPushAPN and MessagingPushFCM products, so it declares what its
-	own code does: it sends push metrics, and the silent push receipt sender reads the system uptime
-	(`ProcessInfo.systemUptime`) as a monotonic clock for its drain deadline.
+	own code does: it sends push metrics, stores the device token in UserDefaults, and the silent push receipt sender
+	reads the system uptime (`ProcessInfo.systemUptime`) as a monotonic clock for its drain deadline. The collected data
+	matches the other push modules' manifests; keep them in sync.
    -->
 	<key>NSPrivacyCollectedDataTypes</key>
 	<array>
@@ -29,6 +30,14 @@
 
 	<key>NSPrivacyAccessedAPITypes</key>
 	<array>
+		<dict>
+			<key>NSPrivacyAccessedAPIType</key>
+			<string>NSPrivacyAccessedAPICategoryUserDefaults</string>
+			<key>NSPrivacyAccessedAPITypeReasons</key>
+			<array>
+				<string>CA92.1</string>
+			</array>
+		</dict>
 		<dict>
 			<key>NSPrivacyAccessedAPIType</key>
 			<string>NSPrivacyAccessedAPICategorySystemBootTime</string>
